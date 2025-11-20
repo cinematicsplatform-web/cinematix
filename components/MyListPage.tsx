@@ -1,0 +1,90 @@
+
+import React, { useMemo } from 'react';
+import type { Content, Profile, View } from '../types';
+import ContentCard from './ContentCard';
+
+interface MyListPageProps {
+  allContent: Content[];
+  activeProfile: Profile;
+  onSelectContent: (content: Content) => void;
+  isLoggedIn: boolean;
+  myList?: string[];
+  onToggleMyList: (contentId: string) => void;
+  onSetView: (view: View) => void;
+  isRamadanTheme?: boolean; // Added prop
+}
+
+// Simple Back Arrow Icon Component
+const BackArrowIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+    </svg>
+);
+
+const MyListPage: React.FC<MyListPageProps> = (props) => {
+  const { allContent, activeProfile, onSelectContent, onSetView, isRamadanTheme } = props;
+  const myListContent = activeProfile.myList
+    .map(contentId => allContent.find(c => c.id === contentId))
+    .filter((c): c is Content => c !== undefined)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return (
+    <div className="min-h-screen bg-[var(--bg-body)] text-white p-4 md:p-8 pt-8 animate-fade-in-up">
+      <div className="max-w-[1600px] mx-auto">
+        
+        {/* Header Row: Title (Right) and Back Button (Left) */}
+        <div className="flex flex-row justify-between items-center mb-12 mt-4">
+            
+            {/* Page Title */}
+            <h1 className="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+                قائمتي
+            </h1>
+
+            {/* Back Button - Top Left */}
+            <button 
+                onClick={() => onSetView('home')}
+                className="group flex items-center gap-2 px-6 py-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-300 hover:bg-gradient-to-r hover:from-[#00A7F8] hover:to-[#00FFB0] hover:border-transparent hover:text-black hover:shadow-[0_0_20px_rgba(0,167,248,0.4)] hover:scale-105 active:scale-95"
+            >
+                {/* Arrow pointing Right (because in RTL, Back means going 'Right' visually to exit, or we use Left arrow) */}
+                <span className="transform rotate-180 transition-transform duration-300 group-hover:-translate-x-1">
+                   <BackArrowIcon />
+                </span>
+                <span className="font-bold text-sm md:text-base">الرجوع</span>
+            </button>
+        </div>
+
+        {myListContent.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 gap-y-12">
+            {myListContent.map(content => (
+              <ContentCard 
+                key={content.id} 
+                content={content} 
+                onSelectContent={onSelectContent}
+                isLoggedIn={props.isLoggedIn}
+                myList={props.myList}
+                onToggleMyList={props.onToggleMyList}
+                isGridItem={true}
+                isRamadanTheme={isRamadanTheme}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-32 text-center opacity-60">
+            <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-300 mb-2">قائمتك فارغة</h2>
+            <p className="text-gray-500 max-w-md">أضف أفلامك ومسلسلاتك المفضلة هنا لتجدها بسهولة لاحقًا وتشاهدها في أي وقت.</p>
+            <button onClick={() => onSetView('home')} className="mt-8 px-6 py-3 bg-[#00A7F8]/10 text-[#00A7F8] border border-[#00A7F8]/30 rounded-lg hover:bg-[#00A7F8] hover:text-white transition-all">
+                تصفح المحتوى
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default MyListPage;
