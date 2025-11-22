@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Custom Favicon: Letter C with Brand Gradient -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300A7F8'/%3E%3Cstop offset='100%25' stop-color='%2300FFB0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='128' fill='url(%23grad)'/%3E%3Ctext x='50%25' y='50%25' dy='.35em' fill='%23ffffff' font-family='sans-serif' font-weight='900' font-size='350' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300A7F8'/%3E%3Cstop offset='100%25' stop-color='%2300FFB0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='128' fill='url(%23grad)'/%3E%3Ctext x='50%25' y='50%25' dy='.35em' fill='%23ffffff' font-family='sans-serif' font-weight='900' font-size='350' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E" />
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
+    <!-- Primary Meta Tags will be managed by React Helmet, keeping defaults here for fallback -->
+    <title>سينماتيكس | Cinematix - مشاهدة أفلام ومسلسلات اون لاين</title>
+    <meta name="title" content="سينماتيكس | Cinematix - مشاهدة أفلام ومسلسلات اون لاين">
+    <meta name="description" content="منصتكم الأولى للترفيه العربي والتركي والأجنبي. شاهدوا أحدث الأفلام والمسلسلات بجودة عالية في أي وقت ومن أي مكان.">
+    
+    <!-- Theme Color for Mobile Browsers -->
+    <meta name="theme-color" content="#141b29" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#141b29" media="(prefers-color-scheme: dark)">
+
+    <!-- Import Map MUST be before any module scripts -->
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://aistudiocdn.com/react@^19.2.0",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+        "react/": "https://aistudiocdn.com/react@^19.2.0/",
+        "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
+        "path": "https://aistudiocdn.com/path@^0.12.7",
+        "vite": "https://aistudiocdn.com/vite@^7.2.2",
+        "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+        "firebase": "https://aistudiocdn.com/firebase@^12.6.0",
+        "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
+        "react-helmet-async": "https://esm.sh/react-helmet-async@2.0.4?external=react,react-dom"
+      }
+    }
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.5/dist/dotlottie-wc.js" type="module"></script>
+    <style>
+      /* Import Cairo Font */
+      @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Lalezar&family=Tajawal:wght@400;500;700;800&display=swap');
+
+      /* --- GLOBAL THEMING VARIABLES --- */
+      :root {
+        /* Default Theme (Cyber/Cool Blue) */
+        --bg-body: #141b29;
+        --color-primary-from: #00A7F8;
+        --color-primary-to: #00FFB0;
+        --color-accent: #00A7F8;
+        --color-accent-hover: #00FFB0;
+        --shadow-color: rgba(0, 167, 248, 0.4);
+        --color-text-primary: #ffffff;
+        --border-radius-std: 0.75rem; /* 12px */
+        --color-text-on-primary: #000000; /* Default text on primary button */
+      }
+
+      /* Ramadan Theme (Golden/Warm) */
+      body.theme-ramadan {
+        --bg-body: #000000; 
+        --color-primary-from: #D4AF37; 
+        --color-primary-to: #F59E0B;   
+        --color-accent: #FFD700;       
+        --color-accent-hover: #FDB931;
+        --shadow-color: rgba(212, 175, 55, 0.4);
+        --color-text-on-primary: #000000;
+      }
+
+      /* Eid Theme (Celebration - Purple/Silver) */
+      body.theme-eid {
+        --bg-body: #141b29; 
+        --color-primary-from: #6A0DAD; /* Royal Purple */
+        --color-primary-to: #C0C0C0;   /* Silver */
+        --color-accent: #9d4edd;       /* Light Purple */
+        --color-accent-hover: #e0aaff;
+        --shadow-color: rgba(106, 13, 173, 0.4);
+        --color-text-on-primary: #ffffff; /* White text on purple gradient */
+      }
+
+      /* iOS Theme (Glassmorphism/Cyan/Clean) */
+      body.theme-ios {
+        --bg-body: #000000; /* Deep Dark Background */
+        --color-primary-from: #00C6FF; /* Cyan */
+        --color-primary-to: #0072FF;   /* iOS Blue */
+        --color-accent: #00C6FF;
+        --color-accent-hover: #0072FF;
+        --shadow-color: rgba(0, 198, 255, 0.4);
+        --glass-bg: rgba(255, 255, 255, 0.08);
+        --glass-border: rgba(255, 255, 255, 0.15);
+        --border-radius-std: 1.5rem; /* 24px for softer iOS look */
+        --color-text-on-primary: #ffffff;
+      }
+
+      /* Night City Theme (Cyberpunk/Neon) */
+      body.theme-night-city {
+        --bg-body: #050505; /* Pure Black */
+        --color-primary-from: #FF00FF; /* Neon Magenta */
+        --color-primary-to: #00FFFF;   /* Neon Cyan */
+        --color-accent: #00FFFF;       /* Electric Blue */
+        --color-accent-hover: #FF1493; /* Hot Pink */
+        --shadow-color: rgba(0, 255, 255, 0.7);
+        --border-radius-std: 0.25rem; /* Sharp edges */
+        --color-text-on-primary: #000000;
+      }
+
+      /* Serene Nature Theme (Forest/Earth) */
+      body.theme-nature {
+        --bg-body: #1a2f2f; /* Deep Forest Green */
+        --color-primary-from: #8FBC8F; /* Dark Sea Green */
+        --color-primary-to: #B8860B;   /* Dark Goldenrod */
+        --color-accent: #F5DEB3;       /* Wheat */
+        --color-accent-hover: #DEB887; /* Burlywood */
+        --color-text-primary: #F5F5DC; /* Beige */
+        --shadow-color: rgba(143, 188, 143, 0.3);
+        --border-radius-std: 1rem; /* Soft organic edges */
+        --color-text-on-primary: #ffffff;
+      }
+
+      /* Cosmic Teal Theme (Refined & Unified) */
+      body.theme-cosmic-teal {
+        --bg-body: #0b1116; /* Exact Dark Color */
+        /* Vertical Gradient Colors for UI Elements: Lighter Top -> Darker Bottom */
+        --color-primary-from: #2DD4BF; /* Bright Teal */
+        --color-primary-to: #0F766E;   /* Deep Teal */
+        --color-accent: #2DD4BF;       /* Matching Accent */
+        --color-accent-hover: #14B8A6;
+        --shadow-color: rgba(45, 212, 191, 0.3);
+        --border-radius-std: 0.75rem;
+        --color-text-on-primary: #000000;
+        
+        /* Background Image */
+        background-color: var(--bg-body);
+        background-image: url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=2011&auto=format&fit=crop');
+        background-size: cover;
+        background-attachment: fixed;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+      
+      /* Overlay for Cosmic Teal - Unified & Shifted Down */
+      body.theme-cosmic-teal::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        /* Modified Vertical Gradient: 
+           Starts semi-transparent at top to show stars, 
+           transitions smoothly, 
+           and becomes completely solid #0b1116 at the bottom to match body bg */
+        background: linear-gradient(
+            to bottom, 
+            rgba(11, 17, 22, 0.85) 0%, 
+            rgba(11, 17, 22, 0.92) 50%, 
+            #0b1116 100%
+        );
+        z-index: -1;
+        pointer-events: none;
+      }
+
+      body {
+        font-family: 'Cairo', sans-serif;
+        background-color: var(--bg-body);
+        color: #fff;
+        transition: background-color 0.5s ease;
+        overscroll-behavior-y: none; /* Prevent pull-to-refresh on mobile */
+      }
+
+      /* --- iOS Specific Styles --- */
+      body.theme-ios .glass-panel {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      }
+
+      body.theme-ios .rounded-xl, 
+      body.theme-ios .rounded-lg, 
+      body.theme-ios .rounded-2xl {
+        border-radius: var(--border-radius-std);
+      }
+
+      /* iOS Selection Button Logic */
+      /* Inactive State */
+      body.theme-ios .ios-btn-select {
+        background-color: #1c1c1e;
+        border: 1px solid #3a3a3c;
+        color: #8e8e93;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      /* Active State */
+      body.theme-ios .ios-btn-select.active {
+        background: linear-gradient(to right, var(--color-primary-from), var(--color-primary-to));
+        border-color: transparent;
+        color: white;
+        box-shadow: 0 0 20px var(--shadow-color);
+      }
+      /* Checkmark Logic (Uses CSS pseudo-element for generic use, or explicit icon in React) */
+      body.theme-ios .ios-btn-select .check-icon {
+        display: none;
+      }
+      body.theme-ios .ios-btn-select.active .check-icon {
+        display: block;
+      }
+
+      /* Night City Specifics */
+      body.theme-night-city .rounded-xl,
+      body.theme-night-city .rounded-lg,
+      body.theme-night-city .rounded-2xl,
+      body.theme-night-city button {
+        border-radius: 4px !important;
+      }
+      
+      /* Nature Specifics */
+      body.theme-nature .rounded-xl,
+      body.theme-nature .rounded-lg {
+        border-radius: 16px;
+      }
+
+      /* --- Preloader Styles --- */
+      #preloader {
+        position: fixed;
+        inset: 0;
+        background-color: var(--bg-body);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.5s ease-in-out;
+        gap: 24px;
+      }
+      #preloader.preloader-hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      /* Preloader Logo Styles */
+      .preloader-logo {
+        font-size: 48px;
+        font-weight: 900;
+        font-family: 'Lalezar', sans-serif;
+        letter-spacing: 1px;
+        color: white;
+        display: flex;
+        align-items: baseline;
+        gap: 2px;
+      }
+      .preloader-logo .accent {
+        background: linear-gradient(to left, var(--color-primary-from), var(--color-primary-to));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-fill-color: transparent;
+      }
+
+      .dots-container {
+        display: flex;
+        gap: 16px;
+        margin-top: 8px;
+      }
+      .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        /* UPDATED: Use CSS Variables so it adapts to the theme class on body */
+        background: linear-gradient(to left, var(--color-primary-from), var(--color-primary-to));
+        animation: pulse-dot 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+      }
+      .dot:nth-child(2) { animation-delay: 0.2s; }
+      .dot:nth-child(3) { animation-delay: 0.4s; }
+      
+      @keyframes pulse-dot {
+        0%, 100% { transform: scale(0.7); opacity: 0.7; }
+        50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 10px var(--shadow-color); }
+      }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <script>
+      // Theme Persistence Script
+      try {
+        // Check activeTheme first, fallback to old key if not present
+        const savedTheme = localStorage.getItem('cinematix_active_theme');
+        const savedRamadan = localStorage.getItem('cinematix_theme_ramadan');
+        
+        // Determine theme to apply immediately
+        let themeToApply = 'default';
+        if (savedTheme) {
+            themeToApply = savedTheme;
+        } else if (savedRamadan === 'true') {
+            themeToApply = 'ramadan';
+        }
+
+        // Apply theme class
+        if (themeToApply === 'ramadan') {
+          document.body.classList.add('theme-ramadan');
+        } else if (themeToApply === 'ios') {
+          document.body.classList.add('theme-ios');
+        } else if (themeToApply === 'night-city') {
+          document.body.classList.add('theme-night-city');
+        } else if (themeToApply === 'nature') {
+          document.body.classList.add('theme-nature');
+        } else if (themeToApply === 'eid') {
+          document.body.classList.add('theme-eid');
+        } else if (themeToApply === 'cosmic-teal') {
+          document.body.classList.add('theme-cosmic-teal');
+        }
+        
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if(metaThemeColor) {
+            if (themeToApply !== 'default') metaThemeColor.setAttribute('content', '#000000');
+            else metaThemeColor.setAttribute('content', '#141b29');
+        }
+
+      } catch (e) {}
+    </script>
+    <!-- Unified Preloader - NO other loaders allowed -->
+    <div id="preloader">
+      <div class="preloader-logo">
+        <span>سينما</span><span class="accent">تيكس</span>
+      </div>
+      <div class="dots-container">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
