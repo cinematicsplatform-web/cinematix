@@ -856,7 +856,8 @@ const SiteSettingsTab: React.FC<{
     };
 
     const generateSitemap = () => {
-        const baseUrl = window.location.origin;
+        // CHANGED: Use hardcoded production URL instead of window.location.origin
+        const baseUrl = 'https://cinematex.vercel.app';
         const date = new Date().toISOString().split('T')[0];
         
         // Parse duration helper (e.g., "1h 30m" -> 5400 seconds)

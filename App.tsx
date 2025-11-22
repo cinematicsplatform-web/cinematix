@@ -369,9 +369,14 @@ const App: React.FC = () => {
           return; // Skip timers
       }
 
-      // UPDATED: Removed safety timer to prevent "double loading" effect.
-      // The splash screen will now remain visible UNTIL data is fully fetched.
+      // --- CRITICAL FIX: 3-Second Safety Timeout ---
+      // Prevents infinite loading screen if Firebase connection hangs
+      const safetyTimer = setTimeout(() => {
+          hideLoader();
+      }, 3000);
+
       fetchData().finally(() => {
+          clearTimeout(safetyTimer); // Clear timeout if data loads fast
           hideLoader();
       });
 

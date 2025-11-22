@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
-      base: './', // Ensure relative paths for assets
+      base: '/', // CHANGED: Absolute path to prevent MIME type errors on routing
       server: {
         port: 3000,
         host: '0.0.0.0',
@@ -17,7 +17,6 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
-          // FIX: Replaced __dirname with '.' to avoid "not defined" error in ES modules.
           '@': path.resolve('.'),
         }
       }
