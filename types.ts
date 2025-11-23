@@ -63,6 +63,9 @@ export interface Season {
   poster?: string; // New: Season specific poster
   backdrop?: string; // New: Season specific backdrop
   logoUrl?: string; // New: Season specific logo (transparent)
+  releaseYear?: number; // New: Optional release year for the season
+  description?: string; // New: Optional description/plot for the season
+  cast?: string[]; // New: Optional cast specific to the season
 }
 
 export interface Content {
@@ -225,5 +228,9 @@ export interface SiteSettings {
     isRamadanModeEnabled: boolean; // Kept for backward compatibility, synced with activeTheme
     activeTheme: ThemeType; // New: Theme Switcher
     isShowRamadanCarousel: boolean; 
-    is_maintenance_mode_enabled: boolean; 
+    is_maintenance_mode_enabled: boolean;
+    // Top 10 Toggles
+    showTop10Home: boolean;
+    showTop10Movies: boolean;
+    showTop10Series: boolean;
 }

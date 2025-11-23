@@ -237,25 +237,27 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
             {/* Cosmic Teal: Removed horizontal gradient to ensure purely vertical flow */}
 
             {/* Content Info - Z-Index 30 (Moved above gradient) */}
-            {/* UX FIX: Changed padding to pb-8 on mobile to position content at the bottom and fill the void */}
-            <div className="absolute inset-0 z-30 flex flex-col justify-end px-4 sm:px-12 lg:px-16 pb-8 md:pb-10 text-white pointer-events-none">
+            {/* FIX: Enforced px-4 and pb-8 specifically for Mobile */}
+            <div className="absolute inset-0 z-30 flex flex-col justify-end px-4 md:px-16 pb-8 md:pb-10 text-white pointer-events-none">
+                {/* FIX: Enforced items-center and text-center specifically for Mobile */}
                 <div className={`max-w-2xl w-full transition-opacity duration-300 pointer-events-auto flex flex-col items-center md:items-start text-center md:text-right ${isActive ? 'opacity-100' : 'opacity-100'}`}>
+                    
+                    {/* Banner Note - Featured Text */}
                     {content.bannerNote && (
-                        <div className="mb-1 md:mb-3 w-full flex justify-center md:justify-start">
-                        <span className={`px-2 py-0.5 md:px-4 md:py-1.5 rounded-lg text-[10px] md:text-sm font-bold tracking-wide backdrop-blur-md border 
+                        <div className={`
+                            mb-2 text-sm font-bold shadow-sm w-fit
                             ${isRamadanTheme 
-                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.3)]' 
+                                ? 'bg-[#D4AF37]/10 text-white border border-[#D4AF37]/10 px-3 py-1 rounded-lg backdrop-blur-md' 
                                 : isEidTheme
-                                    ? 'bg-purple-600/30 border-purple-500/50 text-purple-300 shadow-[0_0_20px_rgba(147,112,219,0.3)]'
+                                    ? 'bg-purple-600/10 text-white border border-purple-500/10 px-3 py-1 rounded-lg backdrop-blur-md'
                                     : isCosmicTealTheme
-                                        ? 'bg-[#35F18B]/20 border-[#35F18B]/50 text-[#35F18B] shadow-[0_0_20px_rgba(53,241,139,0.3)]'
-                                        : 'bg-[#00A7F8]/20 border-[#00A7F8]/30 text-[#00A7F8]'
-                            }`}>
+                                        ? 'bg-[#35F18B]/10 text-white border border-[#35F18B]/10 px-3 py-1 rounded-lg backdrop-blur-md'
+                                        : 'bg-[rgba(15,35,55,0.5)] text-[#00D2FF] border border-[rgba(0,210,255,0.3)] rounded-[6px] px-[12px] py-[4px] backdrop-blur-[4px]'}
+                        `}>
                             {content.bannerNote}
-                        </span>
                         </div>
                     )}
-                    
+
                     {/* Title Logic: Logo vs Text */}
                     {content.isLogoEnabled && content.logoUrl ? (
                         <img 
@@ -281,7 +283,7 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
                     {/* Meta: Reduced gap and margin on mobile */}
                     <div className="flex items-center justify-center md:justify-start gap-2 md:gap-6 mb-1 md:mb-5 text-gray-300 text-xs md:text-base font-medium w-full">
                         <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-sm px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/10">
-                        <StarIcon className={isRamadanTheme ? "text-amber-400 w-3 h-3 md:w-5 md:h-5" : "text-yellow-400 w-3 h-3 md:w-5 md:h-5"} />
+                        <StarIcon className="text-[#FFD700] w-3 h-3 md:w-5 md:h-5" />
                         <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
                         </div>
                         <span>{content.releaseYear}</span>
@@ -332,7 +334,7 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
   return (
     <div 
         ref={containerRef}
-        // UX FIX: Increased mobile height to 80vh to eliminate black gap and ensure content fills the screen appropriately
+        // FIX: Enforced 80vh on mobile and 90vh on desktop exactly as requested
         className="relative h-[80vh] sm:h-[80vh] md:h-[90vh] w-full overflow-hidden bg-black select-none touch-pan-y group"
         onTouchStart={(e) => handleStart(e.targetTouches[0].clientX)}
         onTouchMove={(e) => handleMove(e.targetTouches[0].clientX)}

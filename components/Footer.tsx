@@ -19,11 +19,14 @@ const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter
       { name: 'سياسة الخصوصية', action: () => onSetView('privacy') },
   ];
   
+  // Updated: Use var(--bg-body) to match the page background in all themes.
+  // Updated: Use border-white/10 for subtle separation.
   const footerClasses = isRamadanFooter
-    ? "relative w-full bg-[#101010] shadow-[0_0_25px_rgba(0,0,0,0.8)] z-[100] pt-10 pb-10 border-t border-amber-900/30" 
-    : "bg-[#101010] py-12 border-t border-gray-800"; 
+    ? "relative w-full bg-[var(--bg-body)] shadow-[0_0_25px_rgba(0,0,0,0.8)] z-[100] pt-10 pb-10 border-t border-white/10" 
+    : "bg-[var(--bg-body)] py-12 border-t border-white/10"; 
   
-  const textClasses = "text-gray-400"; 
+  // Updated: Text is now white.
+  const textClasses = "text-white"; 
 
   return (
     <footer className={`${footerClasses} px-4 md:px-8 w-full transition-all duration-500`}>
@@ -33,7 +36,7 @@ const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter
             <h1 className="text-3xl font-extrabold mb-4 cursor-pointer" onClick={() => onSetView('home')}>
               <span className="text-white">سينما</span><span className="gradient-text font-['Lalezar'] tracking-wide">تيكس</span>
             </h1>
-            <p className="text-sm max-w-sm">منصتكم الأولى للترفيه العربي والتركي. شاهدوا أحدث الأفلام والمسلسلات بجودة عالية في أي وقت ومن أي مكان.</p>
+            <p className="text-sm max-w-sm opacity-90">منصتكم الأولى للترفيه العربي والتركي. شاهدوا أحدث الأفلام والمسلسلات بجودة عالية في أي وقت ومن أي مكان.</p>
           </div>
           <div>
             <h3 className="text-white font-bold text-lg mb-4">روابط سريعة</h3>
@@ -46,22 +49,22 @@ const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter
           <div>
             <h3 className="text-white font-bold text-lg mb-4">تابعنا</h3>
             <div className="flex items-center gap-4">
-              <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover-text-accent transition-colors">
+              <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="text-white hover-text-accent transition-colors">
                 <FacebookIcon className="w-6 h-6" />
               </a>
-              <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover-text-accent transition-colors">
+              <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="text-white hover-text-accent transition-colors">
                 <InstagramIcon className="w-6 h-6" />
               </a>
-              <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover-text-accent transition-colors">
+              <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="text-white hover-text-accent transition-colors">
                 <TwitterIcon className="w-6 h-6" />
               </a>
-              <a href={socialLinks.facebookGroup} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover-text-accent transition-colors">
+              <a href={socialLinks.facebookGroup} target="_blank" rel="noopener noreferrer" className="text-white hover-text-accent transition-colors">
                 <GroupIcon className="w-6 h-6" />
               </a>
             </div>
           </div>
         </div>
-        <div className={`border-t border-gray-800 mt-8 pt-6 text-center text-sm ${textClasses}`}>
+        <div className={`border-t border-white/10 mt-8 pt-6 text-center text-sm ${textClasses} opacity-70`}>
           <p>&copy; {new Date().getFullYear()} سينماتيكس. جميع الحقوق محفوظة.</p>
         </div>
       </div>

@@ -19,7 +19,8 @@ const SEO: React.FC<SEOProps> = ({
   schema
 }) => {
   const siteName = "سينماتيكس | Cinematix";
-  const fullTitle = title ? `${title} | ${siteName}` : siteName;
+  // Updated: Use exact title if provided to allow specific formats like "Movie Name (2025) - Cinematix"
+  const fullTitle = title || "سينماتيكس | Cinematix - مشاهدة أفلام ومسلسلات اون لاين";
 
   return (
     <Helmet>

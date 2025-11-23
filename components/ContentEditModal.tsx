@@ -137,11 +137,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [isManagingMovieServers, setIsManagingMovieServers] = useState<boolean>(false);
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(!!content?.slug);
     const [newActor, setNewActor] = useState('');
+    // Temporary state for adding actors to specific seasons
+    const [seasonCastInputs, setSeasonCastInputs] = useState<Record<number, string>>({});
 
     useEffect(() => {
         setFormData(getDefaultFormData());
         setSlugManuallyEdited(!!content?.slug);
         setNewActor('');
+        setSeasonCastInputs({});
     }, [content]);
 
     useEffect(() => {
@@ -256,6 +259,36 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         setFormData(prev => ({
             ...prev,
             seasons: (prev.seasons || []).map(s => s.id === seasonId ? { ...s, [field]: value } : s)
+        }));
+    };
+
+    const handleAddSeasonCast = (seasonId: number) => {
+        const actorName = seasonCastInputs[seasonId]?.trim();
+        if (!actorName) return;
+
+        setFormData(prev => ({
+            ...prev,
+            seasons: (prev.seasons || []).map(s => {
+                if (s.id === seasonId) {
+                    return { ...s, cast: [...(s.cast || []), actorName] };
+                }
+                return s;
+            })
+        }));
+        
+        // Clear input
+        setSeasonCastInputs(prev => ({...prev, [seasonId]: ''}));
+    };
+
+    const handleRemoveSeasonCast = (seasonId: number, actorIndex: number) => {
+        setFormData(prev => ({
+            ...prev,
+            seasons: (prev.seasons || []).map(s => {
+                if (s.id === seasonId) {
+                    return { ...s, cast: (s.cast || []).filter((_, i) => i !== actorIndex) };
+                }
+                return s;
+            })
         }));
     };
     
@@ -692,20 +725,69 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         <div key={season.id} className={`bg-gray-900 rounded-xl p-5 border border-gray-700 hover:border-gray-600 transition-colors`}>
                                             {/* Season Header */}
                                             <div className="flex flex-wrap gap-4 items-center justify-between mb-4 bg-gray-800/50 p-3 rounded-lg border border-gray-700">
-                                                <input 
-                                                    type="text" 
-                                                    value={season.title} 
-                                                    onChange={(e) => handleUpdateSeason(season.id, 'title', e.target.value)}
-                                                    className="bg-transparent font-bold text-lg text-white border-none focus:ring-0 placeholder-gray-500"
-                                                    placeholder="عنوان الموسم"
-                                                />
+                                                <div className="flex gap-2 flex-1">
+                                                    <input 
+                                                        type="text" 
+                                                        value={season.title} 
+                                                        onChange={(e) => handleUpdateSeason(season.id, 'title', e.target.value)}
+                                                        className="bg-transparent font-bold text-lg text-white border-none focus:ring-0 placeholder-gray-500 w-full"
+                                                        placeholder="عنوان الموسم"
+                                                    />
+                                                    <input 
+                                                        type="number" 
+                                                        value={season.releaseYear || ''} 
+                                                        onChange={(e) => handleUpdateSeason(season.id, 'releaseYear', e.target.value === '' ? undefined : parseInt(e.target.value))}
+                                                        className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white w-24 focus:outline-none focus:border-[var(--color-accent)]"
+                                                        placeholder="سنة العرض"
+                                                    />
+                                                </div>
                                                 <div className="flex items-center gap-3">
                                                     <button type="button" onClick={() => handleAddEpisode(season.id)} className="text-green-400 text-xs font-bold bg-green-500/10 px-3 py-1.5 rounded hover:bg-green-500/20 transition-colors">+ حلقة جديدة</button>
                                                     <button type="button" onClick={() => handleDeleteSeason(season.id)} className="text-red-400 text-xs font-bold bg-red-500/10 px-3 py-1.5 rounded hover:bg-red-500/20 transition-colors">حذف</button>
                                                 </div>
                                             </div>
                                             
-                                            {/* Season Images & Logo (Updated with Previews) */}
+                                            {/* Season Details: Description */}
+                                            <div className="mb-4">
+                                                <textarea 
+                                                    value={season.description || ''} 
+                                                    onChange={(e) => handleUpdateSeason(season.id, 'description', e.target.value)}
+                                                    placeholder="قصة الموسم (اختياري)..." 
+                                                    className={`bg-gray-800 border border-gray-600 rounded px-3 py-2 text-xs text-white w-full focus:outline-none focus:border-[var(--color-accent)] resize-none`}
+                                                    rows={2}
+                                                />
+                                            </div>
+
+                                            {/* Season Details: Cast */}
+                                            <div className="mb-4 bg-gray-800/30 p-3 rounded border border-gray-700">
+                                                <div className="flex gap-2 mb-2">
+                                                    <input 
+                                                        type="text" 
+                                                        value={seasonCastInputs[season.id] || ''}
+                                                        onChange={(e) => setSeasonCastInputs(prev => ({...prev, [season.id]: e.target.value}))}
+                                                        onKeyDown={(e) => {
+                                                            if(e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                handleAddSeasonCast(season.id);
+                                                            }
+                                                        }}
+                                                        placeholder="طاقم عمل الموسم (اكتب الاسم واضغط إضافة)..."
+                                                        className="bg-gray-800 border border-gray-600 rounded px-3 py-1 text-xs text-white flex-1 focus:outline-none focus:border-[var(--color-accent)]"
+                                                    />
+                                                    <button type="button" onClick={() => handleAddSeasonCast(season.id)} className="bg-gray-700 hover:bg-gray-600 text-white text-xs px-3 rounded transition-colors">إضافة</button>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {(season.cast || []).map((actor, i) => (
+                                                        <div key={i} className="bg-gray-700 text-gray-200 px-2 py-0.5 rounded flex items-center gap-1 text-[10px]">
+                                                            <span>{actor}</span>
+                                                            <button type="button" onClick={() => handleRemoveSeasonCast(season.id, i)} className="text-gray-400 hover:text-red-400"><CloseIcon className="w-3 h-3" /></button>
+                                                        </div>
+                                                    ))}
+                                                    {(!season.cast || season.cast.length === 0) && <span className="text-gray-600 text-[10px]">لم يتم إضافة ممثلين لهذا الموسم.</span>}
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Season Images & Logo */}
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                                 {/* Poster */}
                                                 <div className="space-y-2">

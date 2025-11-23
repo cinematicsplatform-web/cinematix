@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '../types';
 import VideoPlayer from './VideoPlayer';
@@ -45,20 +44,27 @@ const DetailPage: React.FC<DetailPageProps> = ({
 }) => {
   const playerSectionRef = useRef<HTMLDivElement>(null);
   
-  // --- IMMEDIATE INITIALIZATION ---
-  // We initialize states with the first available data to ensure content renders immediately on mount (Zero-Lag).
-  // The useEffect below will still run to handle deep linking updates, but the user won't see a blank/loading flash.
+  // --- HELPER: Find Latest Season ---
+  const getLatestSeason = (seasons?: Season[]) => {
+      if (!seasons || seasons.length === 0) return null;
+      // Sort by seasonNumber descending
+      return [...seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
+  };
 
+  // --- IMMEDIATE INITIALIZATION ---
+  // Initialize with the LATEST season and its first episode
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(() => {
       if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
-          return content.seasons[0].id;
+          const latest = getLatestSeason(content.seasons);
+          return latest ? latest.id : content.seasons[0].id;
       }
       return null;
   });
 
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(() => {
       if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
-          return content.seasons[0].episodes?.[0] || null;
+          const latest = getLatestSeason(content.seasons);
+          return latest?.episodes?.[0] || null;
       }
       return null;
   });
@@ -68,9 +74,10 @@ const DetailPage: React.FC<DetailPageProps> = ({
       if (content.type === 'movie' && content.servers && content.servers.length > 0) {
           return content.servers.find(s => s.isActive) || content.servers[0];
       }
-      // 2. Series: Default to first episode's server
+      // 2. Series: Default to first episode's server of the latest season
       if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
-          const firstEp = content.seasons[0].episodes?.[0];
+          const latest = getLatestSeason(content.seasons);
+          const firstEp = latest?.episodes?.[0];
           if (firstEp && firstEp.servers && firstEp.servers.length > 0) {
               return firstEp.servers.find(s => s.isActive) || firstEp.servers[0];
           }
@@ -109,10 +116,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   // --- Logic: Deep Link Parsing & Sync on Load/Change ---
   useEffect(() => {
-    // Reset scrolling only if content ID actually changed (to avoid jump on deep link update)
-    // However, for now we can keep it simple.
-    
-    // Only run deep link logic if a path is provided and differs from default state potentially
     const decodedPath = decodeURIComponent(locationPath || window.location.pathname);
     
     if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
@@ -145,8 +148,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     }
                 }
             }
-        } else {
-            // No deep link? State is already initialized to default.
         }
     } 
   }, [content.id, locationPath]); 
@@ -255,6 +256,16 @@ const DetailPage: React.FC<DetailPageProps> = ({
     ? currentSeason.logoUrl
     : content.logoUrl;
 
+  // Determine Description (Season Specific or Content generic)
+  const displayDescription = (content.type === 'series' && currentSeason?.description)
+    ? currentSeason.description
+    : content.description;
+
+  // Determine Cast (Season Specific or Content generic)
+  const displayCast = (content.type === 'series' && currentSeason?.cast && currentSeason.cast.length > 0)
+    ? currentSeason.cast
+    : content.cast;
+
   // Reusable Title Component
   const SectionTitle = ({ title }: { title: string }) => (
     <div className="mb-4 flex items-center gap-3">
@@ -271,45 +282,51 @@ const DetailPage: React.FC<DetailPageProps> = ({
     </div>
   );
   
-  // Custom Logic for Mobile Crop in Detail View
   const mobilePos = content.mobileCropPosition ?? 50;
   const imgStyle = content.enableMobileCrop ? { objectPosition: `${mobilePos}% center` } : undefined;
 
   // --- SEO & SCHEMA MARKUP GENERATION ---
+  
+  // 1. Dynamic Title Logic
+  const getSEOTitle = () => {
+      if (content.type === 'movie') {
+          return `مشاهدة فيلم ${content.title} (${content.releaseYear}) - سينماتيكس`;
+      } else if (content.type === 'series') {
+          // Calculate Episode Number (Index + 1)
+          let epNum = 1;
+          if (selectedEpisode && currentSeason) {
+              const idx = currentSeason.episodes.findIndex(e => e.id === selectedEpisode.id);
+              if (idx !== -1) epNum = idx + 1;
+          }
+          const sNum = currentSeason?.seasonNumber || 1;
+          return `مسلسل ${content.title} الموسم ${sNum} الحلقة ${epNum} - سينماتيكس`;
+      }
+      return `${content.title} - سينماتيكس`;
+  };
+
   const generateSchema = () => {
     const baseSchema: any = {
       "@context": "https://schema.org",
+      "@type": content.type === 'movie' ? "Movie" : "TVSeries",
       "name": content.title,
-      "description": content.description,
       "image": content.poster,
+      "description": content.description,
       "datePublished": content.releaseYear ? `${content.releaseYear}-01-01` : undefined,
       "aggregateRating": {
         "@type": "AggregateRating",
-        "ratingValue": content.rating,
-        "bestRating": "5",
-        "worstRating": "1",
-        "ratingCount": "100" // Placeholder or actual count if available
-      },
-      "genre": content.genres,
-      "actor": content.cast ? content.cast.map(actor => ({
-        "@type": "Person",
-        "name": actor
-      })) : []
+        "ratingValue": content.rating ? content.rating.toString() : "0",
+        "bestRating": "5", // Using 5 as per data source scale
+        "ratingCount": "100" // Placeholder
+      }
     };
 
     if (content.type === 'movie') {
-      return {
-        ...baseSchema,
-        "@type": "Movie",
-        "duration": content.duration // Assuming duration format ISO 8601 (PT1H30M) is preferred but string works for basic
-      };
+        // Movie specific fields
     } else {
-      return {
-        ...baseSchema,
-        "@type": "TVSeries",
-        "numberOfSeasons": content.seasons?.length || 0,
-      };
+        // Series specific fields
     }
+    
+    return baseSchema;
   };
 
   return (
@@ -317,8 +334,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
       
       {/* Dynamic SEO Tags */}
       <SEO 
-        title={content.title}
-        description={content.description.substring(0, 160)}
+        title={getSEOTitle()}
+        description={content.description ? content.description.substring(0, 160) : `مشاهدة ${content.title} اون لاين بجودة عالية`}
         image={content.backdrop}
         type={content.type === 'movie' ? 'video.movie' : 'video.tv_show'}
         schema={generateSchema()}
@@ -327,7 +344,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       {/* Performance Optimization: Preconnect to all server domains */}
       {activeServers.map(server => {
           try {
-              // Extract origin safely
               if (!server.url) return null;
               const origin = new URL(server.url).origin;
               return (
@@ -368,6 +384,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                 ) : (
                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-4 leading-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-300 drop-shadow-lg">
                         {content.title}
+                        {content.type === 'series' && currentSeason && (
+                            <span className="block text-2xl md:text-4xl mt-2 text-white/80 font-normal">{currentSeason.title}</span>
+                        )}
                     </h1>
                 )}
 
@@ -383,7 +402,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     <span className="text-gray-500 text-xl">|</span>
 
                     {/* Year */}
-                    <span className="text-white tracking-wide">{content.releaseYear}</span>
+                    <span className="text-white tracking-wide">{currentSeason?.releaseYear || content.releaseYear}</span>
                     
                     {/* Divider */}
                     <span className="text-gray-500 text-xl">|</span>
@@ -442,16 +461,16 @@ const DetailPage: React.FC<DetailPageProps> = ({
                   <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
                       <SectionTitle title="القصة" />
                       <p className="text-gray-300 text-base md:text-lg leading-relaxed max-w-4xl opacity-90">
-                          {content.description}
+                          {displayDescription}
                       </p>
                   </div>
 
                   {/* B. Cast Section */}
-                  {content.cast && content.cast.length > 0 && (
+                  {displayCast && displayCast.length > 0 && (
                       <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
                           <SectionTitle title="طاقم العمل" />
                           <div className="flex flex-wrap gap-3">
-                              {content.cast.map((actor, index) => (
+                              {displayCast.map((actor, index) => (
                                   <div key={index} className="bg-gray-800/50 border border-gray-700 px-4 py-2 rounded-full text-gray-300 text-sm hover:bg-gray-700 hover:text-white transition-colors cursor-default">
                                       {actor}
                                   </div>
@@ -467,7 +486,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         
                         {/* Season Selector */}
                         <div className="flex items-center gap-3 overflow-x-auto rtl-scroll pb-4 mb-6">
-                            {content.seasons.map(season => (
+                            {[...content.seasons].sort((a, b) => a.seasonNumber - b.seasonNumber).map(season => (
                                 <button
                                     key={season.id}
                                     onClick={() => handleSeasonSelect(season.id)}
@@ -479,7 +498,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                         }
                                     `}
                                 >
-                                    الموسم {season.seasonNumber}
+                                    {season.title || `الموسم ${season.seasonNumber}`}
                                 </button>
                             ))}
                         </div>
@@ -575,7 +594,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                          </div>
 
                          {/* B. The Player Container */}
-                         {/* FIX: Switched background to bg-black to prevent white/blue flash before iframe loads */}
                          <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.7)] border border-gray-800 bg-black z-10 group animate-fade-in-up" style={{ animationDelay: '100ms' }}>
                               
                               {/* Pre-roll Ad Overlay */}

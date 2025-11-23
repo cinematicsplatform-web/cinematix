@@ -4,6 +4,7 @@ import type { Content, Ad, View } from '../types';
 import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
 import Hero from './Hero';
+import SEO from './SEO';
 
 interface KidsPageProps {
   allContent: Content[];
@@ -23,7 +24,7 @@ interface KidsPageProps {
 
 const KidsPage: React.FC<KidsPageProps> = ({ 
   allContent, 
-  pinnedContent,
+  // pinnedContent, // unused to remove "Our Choice" logic
   onSelectContent, 
   isLoggedIn, 
   myList, 
@@ -42,44 +43,30 @@ const KidsPage: React.FC<KidsPageProps> = ({
   , [allContent]);
   
   const heroContent = useMemo(() => {
-    if (pinnedContent && pinnedContent.length > 0) {
-        return pinnedContent;
-    }
+    // Removed Pinned Content logic ("Our Choice") as requested
     const sortedContent = [...animationContent].sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    return sortedContent.slice(0, 1);
-  }, [pinnedContent, animationContent]);
+    // Updated to slice 5 items to enable slider behavior
+    return sortedContent.slice(0, 5);
+  }, [animationContent]);
 
 
   const carousels = useMemo(() => {
     const limit = (list: Content[]) => list.slice(0, 12);
     
-    const topRatedKids = limit([...animationContent]
-      .sort((a, b) => b.rating - a.rating));
-
     const recentKids = limit([...animationContent]
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
 
     const allAnimationMovies = limit(animationContent.filter(c => c.categories.includes('افلام أنميشن')));
 
-    // Top 10 Pinned (Exclusive Ranking)
-    const pinnedKidsCarousel = { 
-        id: 'k_pinned_top', 
-        title: 'أفضل 10 (اختيارنا)', 
-        contents: pinnedContent, 
-        showRanking: true 
-    };
-
     const definedCarousels = [
-      pinnedKidsCarousel,
-      { id: 'k1', title: 'الأعلى تقييماً', contents: topRatedKids, isNew: false, categoryKey: 'top-rated-kids', showRanking: false }, // No Ranking Badge
       { id: 'k2', title: 'أحدث الإضافات', contents: recentKids, isNew: true, categoryKey: 'new-kids' }, 
       { id: 'k3', title: 'افلام أنميشن', contents: allAnimationMovies, isNew: false, categoryKey: 'افلام أنميشن' },
     ].filter(carousel => carousel.contents.length > 0); 
 
     return definedCarousels;
-  }, [animationContent, pinnedContent]); 
+  }, [animationContent]); 
 
   const handleSeeAll = (categoryKey: string) => {
       onNavigate('category', categoryKey);
@@ -121,6 +108,12 @@ const KidsPage: React.FC<KidsPageProps> = ({
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white animate-fade-in-up relative overflow-x-hidden"> 
 
+      <SEO 
+        title="أطفال - سينماتيكس" 
+        description="عالم من المرح والتعليم، أفلام كرتون ومسلسلات أنميشن للأطفال."
+        type="website"
+      />
+
       <div className="relative z-10">
           <Hero 
             contents={heroContent} 
@@ -128,7 +121,7 @@ const KidsPage: React.FC<KidsPageProps> = ({
             isLoggedIn={isLoggedIn}
             myList={myList}
             onToggleMyList={onToggleMyList}
-            autoSlideInterval={4000} 
+            autoSlideInterval={5000} 
             isRamadanTheme={isRamadanTheme}
             isEidTheme={isEidTheme}
             isCosmicTealTheme={isCosmicTealTheme}

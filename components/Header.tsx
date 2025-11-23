@@ -92,8 +92,8 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
             : 'bg-gradient-to-b from-black/70 to-transparent'}
       `}
     >
-      {/* Full Width Header with px-4 md:px-8 Padding */}
-      <div className="w-full px-4 md:px-8 flex items-center justify-between h-16 md:h-20">
+      {/* Full Width Header with px-4 md:px-8 Padding. Added gap-2 to prevent element collision on narrow screens */}
+      <div className="w-full px-4 md:px-8 flex items-center justify-between h-16 md:h-20 gap-2">
         
         {/* Left Side: Logo or Mobile Back Button */}
         <div className="flex items-center gap-8">
@@ -134,12 +134,24 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
         </div>
 
         {/* Right Side: Search & Profile (Hidden on mobile if in Detail View) */}
-        <div className={`flex items-center gap-4 md:gap-6 ${isDetailView ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`flex items-center gap-3 md:gap-6 ${isDetailView ? 'hidden md:flex' : 'flex'}`}>
           
           {/* SEARCH COMPONENT */}
           <div ref={searchRef} className="relative group">
-            {/* UPDATED: Increased widths (w-48/w-96) and focus widths (w-64/w-[500px]) */}
-            <div className={`flex items-center bg-black/30 backdrop-blur-sm border rounded-full py-2 px-4 w-48 md:w-96 transition-all duration-300 focus-within:w-64 md:focus-within:w-[500px] focus-within:bg-black/60 focus-within:shadow-[0_0_15px_rgba(0,167,248,0.3)]
+            {/* Search Input - Responsive Focus Behavior */}
+            <div className={`flex items-center bg-black/30 backdrop-blur-sm border rounded-full py-2 px-4 
+                transition-all duration-300 ease-out
+                
+                /* Mobile: Viewport Width Percentage */
+                w-[35vw] focus-within:w-[50vw] mr-4 md:mr-0
+                
+                /* Desktop: Default Width */
+                md:w-64 
+                
+                /* Desktop Focus: Relative Expand */
+                md:focus-within:w-[450px]
+                
+                focus-within:bg-black/80 focus-within:shadow-[0_0_25px_rgba(0,167,248,0.4)]
                 ${isRamadanTheme 
                   ? 'border-amber-500/30 focus-within:border-amber-500' 
                   : isEidTheme
@@ -151,8 +163,8 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
             `}>
                 <input 
                   type="text" 
-                  name="search_cinematix_app" // Unique name to prevent browser history autofill
-                  placeholder="ابحث عن فيلم، مسلسل..." 
+                  name="search_cinematix_app" 
+                  placeholder="ابحث..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoComplete="off"
@@ -166,73 +178,62 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                 </div>
             </div>
 
-            {/* SEARCH DROPDOWN (CINEMATIC OVERLAY) */}
-            {/* UPDATED: Uses explicit dark background with very low transparency to block underlying content */}
+            {/* SEARCH DROPDOWN - Floating Mobile Layout */}
             {searchResults.length > 0 && (
               <div className={`
-                  fixed left-4 right-4 top-[75px] w-auto z-[100]
-                  md:absolute md:top-full md:mt-3 md:right-0 md:left-auto md:w-full md:min-w-[400px]
-                  bg-[#141b29]/98 backdrop-blur-3xl border rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,0.95)] 
-                  overflow-hidden max-h-[70vh] overflow-y-auto custom-scrollbar animate-fade-in-up 
-                  ${isRamadanTheme 
-                    ? 'border-amber-500/30 ring-1 ring-amber-500/20' 
-                    : isEidTheme 
-                        ? 'border-purple-500/30 ring-1 ring-purple-500/20' 
-                        : isCosmicTealTheme
-                            ? 'border-[#35F18B]/30 ring-1 ring-[#35F18B]/20'
-                            : 'border-white/10 ring-1 ring-white/5'
-                  }
+                  z-[100] overflow-hidden max-h-[70vh] overflow-y-auto custom-scrollbar animate-fade-in-up
+                  bg-[#151922]/95 backdrop-blur-3xl shadow-[0_10px_50px_rgba(0,0,0,0.9)]
+                  
+                  /* Mobile: Floating Centered Box */
+                  !fixed !top-[75px] !left-1/2 !-translate-x-1/2 !w-[92%] !max-w-[95%] !rounded-[20px] border border-white/10
+                  
+                  /* Desktop: Reset to standard absolute positioning relative to parent */
+                  md:!absolute md:!top-full md:!mt-4 md:!left-0 md:!translate-x-0 md:!w-full md:!max-w-none md:!rounded-2xl
               `}>
                 
                 {/* Results List */}
-                <div className="flex flex-col p-2">
+                <div className="flex flex-col p-2 gap-2">
                     {searchResults.map((content) => (
                       <div 
                         key={content.id} 
                         onClick={() => handleResultClick(content)}
-                        className="flex items-start gap-4 p-3 hover:bg-white/10 cursor-pointer transition-colors rounded-xl group/item"
+                        className="flex flex-row items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-xl cursor-pointer transition-all duration-200 group relative border border-white/5"
                       >
-                        {/* Poster Thumbnail */}
-                        <div className="w-12 h-[72px] flex-shrink-0 rounded-lg overflow-hidden shadow-lg border border-white/5 group-hover/item:border-white/20 transition-colors">
-                            <img src={content.poster} alt={content.title} className="w-full h-full object-cover" />
+                        {/* Thumbnail - Right (RTL) - Fixed Size 50x70 */}
+                        <img 
+                            src={content.poster} 
+                            alt={content.title} 
+                            className="w-[50px] h-[70px] rounded-lg object-cover shadow-lg flex-shrink-0 bg-gray-800" 
+                        />
+
+                        {/* Content Info - Middle */}
+                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                          {/* Title */}
+                          <h4 className="text-white font-bold text-sm md:text-base font-['Tajawal'] leading-tight group-hover:text-[var(--color-accent)] transition-colors line-clamp-1">
+                              {content.title}
+                          </h4>
+                          
+                          {/* Meta Row */}
+                          <div className="flex items-center gap-2 text-[10px] md:text-xs text-gray-400 font-medium">
+                              <span>{content.releaseYear}</span>
+                              <span className="w-0.5 h-0.5 rounded-full bg-gray-600"></span>
+                              <span className="truncate max-w-[80px]">{content.genres?.[0]}</span>
+                          </div>
+
+                          {/* Rating */}
+                          <div className="flex items-center gap-1 mt-0.5">
+                              <StarIcon className="w-3 h-3 text-[#FFD700]" />
+                              <span className="text-gray-300 text-[10px] font-bold">{content.rating.toFixed(1)}</span>
+                          </div>
                         </div>
 
-                        {/* Content Info */}
-                        <div className="flex-1 min-w-0 flex flex-col justify-center h-full gap-1">
-                          {/* Title */}
-                          <p className={`font-bold text-base truncate ${isRamadanTheme ? 'text-white group-hover/item:text-[#FFD700]' : isEidTheme ? 'text-white group-hover/item:text-purple-400' : isCosmicTealTheme ? 'text-white group-hover/item:text-[#35F18B]' : 'text-white group-hover/item:text-[#00A7F8]'} transition-colors`}>
-                              {content.title}
-                          </p>
-                          
-                          {/* Meta: Year | Genre */}
-                          <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
-                              <span>{content.releaseYear}</span>
-                              <span className="w-1 h-1 rounded-full bg-gray-600"></span>
-                              <span className="truncate max-w-[150px]">{content.genres[0]}</span>
-                          </div>
-
-                          {/* Rating & Badge */}
-                          <div className="flex items-center justify-between mt-1">
-                              <div className="flex items-center gap-1 text-yellow-400">
-                                  <StarIcon className="w-3 h-3 fill-current" />
-                                  <span className="text-xs font-bold text-gray-200">{content.rating.toFixed(1)}</span>
-                              </div>
-                              
-                              {/* Type Badge */}
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                                  content.type === 'movie' 
-                                    ? (isRamadanTheme ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30')
-                                    : (isRamadanTheme 
-                                        ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' 
-                                        : isEidTheme 
-                                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' 
-                                            : isCosmicTealTheme 
-                                                ? 'bg-[#35F18B]/10 text-[#35F18B] border-[#35F18B]/30'
-                                                : 'bg-green-500/20 text-green-400 border-green-500/30')
-                              }`}>
-                                  {content.type === 'movie' ? 'فيلم' : 'مسلسل'}
-                              </span>
-                          </div>
+                        {/* Badge - Left (RTL) */}
+                        <div className="self-center pl-1">
+                            <span 
+                                className="text-[10px] px-2.5 py-1 rounded-full border border-[var(--color-accent)] text-[var(--color-accent)] font-bold tracking-wide bg-[var(--color-accent)]/5 whitespace-nowrap group-hover:bg-[var(--color-accent)] group-hover:text-black transition-all"
+                            >
+                                {content.type === 'movie' ? 'فيلم' : 'مسلسل'}
+                            </span>
                         </div>
                       </div>
                     ))}

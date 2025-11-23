@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase';
 import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, PageKey, ThemeType } from '../types';
@@ -51,7 +50,8 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
         const getContent = async () => {
             setIsLoadingContent(true);
             try {
-                const data = await db.collection("content").orderBy("createdAt", "desc").get();
+                // Order by updatedAt to show recently modified first, fallback to createdAt
+                const data = await db.collection("content").orderBy("updatedAt", "desc").get();
                 const contentData = data.docs.map(d => ({ ...d.data(), id: d.id })) as Content[];
                 setAllContent(contentData);
             } catch (err) {
@@ -80,16 +80,26 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     
     const handleSaveContent = async (c: Content) => {
         try {
+            // Update the timestamp locally to ensure sorting works immediately
+            const contentWithDate = { ...c, updatedAt: new Date().toISOString() };
+
             if(editingContent) {
-                const { id, ...contentData } = c;
+                const { id, ...contentData } = contentWithDate;
                 await db.collection("content").doc(c.id).update(contentData);
-                setAllContent(prev => prev.map(item => item.id === c.id ? c : item));
-                props.addToast("تم تعديل المحتوى بنجاح!", "success");
+                
+                // Move edited item to the TOP of the list
+                setAllContent(prev => {
+                    const filtered = prev.filter(item => item.id !== c.id);
+                    return [contentWithDate, ...filtered];
+                });
+                props.addToast("تم تعديل المحتوى وتصدر القائمة!", "success");
             } else {
-                const { id, ...contentData } = c;
+                const { id, ...contentData } = contentWithDate;
                 const docRef = await db.collection("content").add(contentData);
-                setAllContent(prev => [{...c, id: docRef.id}, ...prev]);
-                props.addToast("تم إضافة المحتوى بنجاح!", "success");
+                
+                // Add new item to the TOP of the list
+                setAllContent(prev => [{...contentWithDate, id: docRef.id}, ...prev]);
+                props.addToast("تم إضافة المحتوى وتصدر القائمة!", "success");
             }
             props.onContentChanged();
             setIsContentModalOpen(false);
@@ -281,8 +291,13 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
 
 
 const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, totalUsers: number}, allContent: Content[]}> = ({stats, allContent}) => {
+    // Sort by updatedAt to show recently active items (Edited OR Added)
     const recentlyAdded = [...allContent]
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .sort((a, b) => {
+            const dateA = new Date(a.updatedAt || a.createdAt).getTime();
+            const dateB = new Date(b.updatedAt || b.createdAt).getTime();
+            return dateB - dateA;
+        })
         .slice(0, 5);
 
     return (
@@ -315,10 +330,10 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
                 </div>
             </div>
 
-            {/* Recently Added Table */}
+            {/* Recently Active Table */}
             <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-700">
-                    <h3 className="font-bold text-lg">أحدث الإضافات (Live)</h3>
+                    <h3 className="font-bold text-lg">أحدث الأنشطة (إضافة/تعديل)</h3>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-right text-gray-300 whitespace-nowrap">
@@ -326,7 +341,7 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
                             <tr>
                                 <th className="px-6 py-3">العنوان</th>
                                 <th className="px-6 py-3">النوع</th>
-                                <th className="px-6 py-3">تاريخ الإضافة</th>
+                                <th className="px-6 py-3">تاريخ التعديل</th>
                                 <th className="px-6 py-3">الحالة</th>
                             </tr>
                         </thead>
@@ -338,7 +353,10 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
                                         {item.title}
                                     </td>
                                     <td className="px-6 py-4">{item.type === 'movie' ? 'فيلم' : 'مسلسل'}</td>
-                                    <td className="px-6 py-4 dir-ltr text-right">{new Date(item.createdAt).toLocaleDateString('en-GB')}</td>
+                                    <td className="px-6 py-4 dir-ltr text-right">
+                                        {new Date(item.updatedAt || item.createdAt).toLocaleDateString('en-GB')}
+                                        <span className="text-xs text-gray-500 block">{new Date(item.updatedAt || item.createdAt).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'})}</span>
+                                    </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded text-xs ${item.visibility === 'general' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
                                             {item.visibility === 'general' ? 'عام' : 'مقيد'}
@@ -347,7 +365,7 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={4} className="text-center py-8 text-gray-500">لا يوجد محتوى مضاف حديثاً</td>
+                                    <td colSpan={4} className="text-center py-8 text-gray-500">لا يوجد محتوى حديث</td>
                                 </tr>
                             )}
                         </tbody>
@@ -536,7 +554,9 @@ const PinnedContentManagementTab: React.FC<{
     }, [allContent, localPinnedItems, searchTerm, selectedPage]);
 
     const handlePin = (contentId: string) => {
-        if (localPinnedItems.length >= 10) {
+        // FIX: Use pinnedContentDetails.length (valid/visible items) instead of localPinnedItems.length (raw/potentially stale items)
+        // This resolves the logic bug where ghost items (deleted content) were counting towards the limit.
+        if (pinnedContentDetails.length >= 10) {
             alert('يمكنك تثبيت 10 عناصر كحد أقصى.');
             return;
         }
@@ -587,11 +607,12 @@ const PinnedContentManagementTab: React.FC<{
         setDragOverItem(null);
     };
 
-    const pageLabels: Record<PageKey, string> = {
+    // Removed 'kids' from available pin pages to remove "Our Choice/Top 10" capability
+    const pageLabels: Record<string, string> = {
         home: 'الصفحة الرئيسية',
         movies: 'صفحة الأفلام',
         series: 'صفحة المسلسلات',
-        kids: 'صفحة الأطفال',
+        // kids: 'صفحة الأطفال', // REMOVED
         ramadan: 'صفحة رمضان',
         soon: 'صفحة قريباً'
     };
@@ -996,8 +1017,27 @@ const SiteSettingsTab: React.FC<{
                     <ToggleSwitch checked={siteSettings.adsEnabled} onChange={(c) => handleChange('adsEnabled', c)} />
                 </div>
                 <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
-                    <span>عرض كاروسيل رمضان بدلاً من "الأعلى تقييماً"</span>
+                    <span>عرض كاروسيل رمضان في الصفحة الرئيسية</span>
                     <ToggleSwitch checked={siteSettings.isShowRamadanCarousel} onChange={(c) => handleChange('isShowRamadanCarousel', c)} />
+                </div>
+            </div>
+
+            {/* Top 10 Settings Section */}
+            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 space-y-4">
+                <h3 className="text-lg font-bold text-[var(--color-primary-to)] mb-4">إعدادات قوائم أفضل 10 (Top 10)</h3>
+                <p className="text-xs text-gray-400 -mt-3 mb-3">تحكم في ظهور شريط "أفضل 10 أعمال" (المحتوى المثبت) في الصفحات المختلفة.</p>
+                
+                <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
+                    <span>عرض في الصفحة الرئيسية</span>
+                    <ToggleSwitch checked={siteSettings.showTop10Home} onChange={(c) => handleChange('showTop10Home', c)} />
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
+                    <span>عرض في صفحة الأفلام</span>
+                    <ToggleSwitch checked={siteSettings.showTop10Movies} onChange={(c) => handleChange('showTop10Movies', c)} />
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
+                    <span>عرض في صفحة المسلسلات</span>
+                    <ToggleSwitch checked={siteSettings.showTop10Series} onChange={(c) => handleChange('showTop10Series', c)} />
                 </div>
             </div>
 

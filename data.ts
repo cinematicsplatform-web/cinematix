@@ -1,5 +1,4 @@
 
-
 import { Content, ContentType, Server, User, UserRole, Profile, Ad, PinnedContentState, SiteSettings, CarouselRow } from './types';
 
 // Empty initial states for application bootstrapping
@@ -152,4 +151,7 @@ export const initialSiteSettings: SiteSettings = {
     activeTheme: 'default', // Default theme
     isShowRamadanCarousel: false,
     is_maintenance_mode_enabled: false,
+    showTop10Home: true,
+    showTop10Movies: true,
+    showTop10Series: true,
 };

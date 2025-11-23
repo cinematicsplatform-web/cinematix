@@ -42,9 +42,17 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
 
     const scroll = (direction: 'left' | 'right') => {
         if (scrollRef.current) {
-            const { scrollLeft, clientWidth } = scrollRef.current;
-            const scrollTo = direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth;
-            scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+            const { clientWidth } = scrollRef.current;
+            
+            // RTL Scrolling Logic:
+            // 'left' direction (visually pointing Left, meaning "Next Items"): 
+            // Needs NEGATIVE scroll value to move viewport left relative to content start (Right).
+            
+            // 'right' direction (visually pointing Right, meaning "Previous Items"):
+            // Needs POSITIVE scroll value to move viewport right.
+            
+            const scrollAmount = direction === 'left' ? -clientWidth : clientWidth;
+            scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
         }
     };
 
@@ -105,11 +113,12 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
       
       <div className="relative">
         {/* 
-            Left Scroll Button
-            - Positioned in the left gutter/padding area
+            Left Scroll Button (Points Left <)
+            Function: Scroll to show items on the LEFT (Next items in RTL).
+            Action: scroll('left') -> Negative scrollBy
         */}
         <button 
-            onClick={() => scroll('right')} 
+            onClick={() => scroll('left')} 
             className={`
                 hidden md:flex absolute z-50 
                 left-2 md:left-4 top-1/2 -translate-y-1/2
@@ -163,11 +172,12 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
         </div>
         
         {/* 
-            Right Scroll Button
-            - Positioned in the right gutter/padding area
+            Right Scroll Button (Points Right >)
+            Function: Scroll to show items on the RIGHT (Previous items in RTL).
+            Action: scroll('right') -> Positive scrollBy
         */}
          <button 
-            onClick={() => scroll('left')} 
+            onClick={() => scroll('right')} 
             className={`
                 hidden md:flex absolute z-50 
                 right-2 md:right-4 top-1/2 -translate-y-1/2

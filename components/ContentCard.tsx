@@ -28,10 +28,16 @@ const ContentCard: React.FC<ContentCardProps> = ({ content, onSelectContent, isL
   };
 
   // منطق تحديد الشارات (Badges)
+  // Get Latest Season logic
   const latestSeason = content.type === 'series' && content.seasons && content.seasons.length > 0
     ? [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
     : null;
   
+  // Determine Display Poster: Use latest season poster if available, otherwise content poster
+  const displayPoster = (content.type === 'series' && latestSeason?.poster) 
+    ? latestSeason.poster 
+    : content.poster;
+
   const showStandardBadges = !rank;
 
   // 1. Top Left Badge: Only Banner Note
@@ -108,7 +114,7 @@ const ContentCard: React.FC<ContentCardProps> = ({ content, onSelectContent, isL
         
         <div className="aspect-[2/3] w-full relative">
             <img 
-                src={content.poster} 
+                src={displayPoster} 
                 alt={content.title} 
                 className="w-full h-full object-cover transition-transform duration-500" 
                 loading="lazy"

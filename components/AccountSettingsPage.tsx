@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import type { User, Profile } from '../types';
+import type { User, Profile, View } from '../types';
 import ProfileEditModal from './ProfileEditModal';
+import { ChevronRightIcon } from './icons/ChevronRightIcon';
 
 interface AccountSettingsPageProps {
   user: User;
@@ -10,6 +11,7 @@ interface AccountSettingsPageProps {
   // FIX: Changed onUpdatePassword to return a Promise to support async operations.
   onUpdatePassword: (oldPassword: string, newPassword: string) => Promise<boolean>;
   onDeleteAccount: () => void;
+  onSetView: (view: View) => void;
 }
 
 const PasswordChangeModal: React.FC<{
@@ -27,7 +29,7 @@ const PasswordChangeModal: React.FC<{
             return;
         }
         if (newPassword !== confirmPassword) {
-            alert("كلمتا المرور الجديدتين غير متطابقتين.");
+            alert("كلمتا المرور الجديدة غير متطابقة.");
             return;
         }
         const success = await onSave(oldPassword, newPassword);
@@ -57,7 +59,7 @@ const PasswordChangeModal: React.FC<{
 };
 
 
-const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdateProfile, onDeleteProfile, onUpdatePassword, onDeleteAccount }) => {
+const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdateProfile, onDeleteProfile, onUpdatePassword, onDeleteAccount, onSetView }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | 'new' | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -79,13 +81,26 @@ const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdat
 
   return (
     <>
-      {/* Added pb-24 to prevent content from being hidden behind the bottom navigation on mobile */}
-      <div className="min-h-screen bg-[var(--bg-body)] text-white p-4 sm:p-6 lg:p-8 pt-24 pb-24 animate-fade-in-up">
-        <div className="max-w-4xl mx-auto mt-4 md:mt-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-8 border-b border-gray-700 pb-4">إعدادات الحساب</h1>
+      {/* Adjusted padding for non-fixed header layout */}
+      <div className="min-h-screen bg-[var(--bg-body)] text-white p-4 sm:p-6 lg:p-8 pt-8 pb-24 animate-fade-in-up">
+        
+        {/* Navigation Header */}
+        <div className="max-w-4xl mx-auto flex items-center justify-between mb-8">
+             <h1 className="text-3xl md:text-4xl font-bold">إعدادات الحساب</h1>
+             
+             {/* Mobile-style Back Button */}
+             <button 
+                onClick={() => onSetView('profileHub')}
+                className="p-2 bg-gray-800/50 rounded-full hover:bg-gray-700 transition-colors group border border-white/10"
+                aria-label="Back"
+             >
+                <ChevronRightIcon className="w-6 h-6 text-white transform rotate-180 group-hover:-translate-x-1 transition-transform" />
+             </button>
+        </div>
 
+        <div className="max-w-4xl mx-auto">
           {/* Account Details Section */}
-          <div className="bg-gray-800 p-5 md:p-6 rounded-xl mb-6 md:mb-8 shadow-lg">
+          <div className="bg-gray-800 p-5 md:p-6 rounded-xl mb-6 md:mb-8 shadow-lg border border-gray-700/50">
             <h2 className="text-xl font-bold text-[#00FFB0] mb-4">تفاصيل الحساب</h2>
             <form className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -110,7 +125,7 @@ const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdat
           </div>
 
           {/* Profiles Section */}
-          <div className="bg-gray-800 p-5 md:p-6 rounded-xl mb-6 md:mb-8 shadow-lg">
+          <div className="bg-gray-800 p-5 md:p-6 rounded-xl mb-6 md:mb-8 shadow-lg border border-gray-700/50">
             <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-xl font-bold text-[#00FFB0] self-start sm:self-center">الملفات الشخصية</h2>
               <button onClick={handleNewProfile} className="w-full sm:w-auto bg-gray-700 hover:bg-gray-600 border border-gray-600 font-bold py-2 px-4 rounded-lg text-sm transition-all">

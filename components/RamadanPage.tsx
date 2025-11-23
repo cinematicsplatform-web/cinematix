@@ -6,6 +6,7 @@ import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
 import { PlayIcon } from './icons/PlayIcon'; 
 import RamadanRestrictedModal from './RamadanRestrictedModal'; 
+import SEO from './SEO';
 
 interface RamadanPageProps {
   allContent: Content[];
@@ -106,12 +107,12 @@ const RamadanPage: React.FC<RamadanPageProps> = ({ allContent, pinnedContent, on
     if (pinnedContent && pinnedContent.length > 0) {
         return pinnedContent;
     }
-    // Fallback: Latest 1
+    // Fallback: Latest 5 to enable slider
     if (allRamadanContent.length === 0) return [];
     const sorted = [...allRamadanContent].sort((a, b) => 
         new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
     );
-    return sorted.slice(0, 1);
+    return sorted.slice(0, 5);
   }, [pinnedContent, allRamadanContent]);
 
   // 3. Countdown Logic
@@ -230,6 +231,12 @@ const RamadanPage: React.FC<RamadanPageProps> = ({ allContent, pinnedContent, on
   return (
     <div className="min-h-screen bg-black text-white font-sans overflow-x-hidden selection:bg-amber-500 selection:text-black">
         
+        <SEO 
+            title="رمضان 2026 - سينماتيكس" 
+            description="تغطية حصرية لمسلسلات وبرامج رمضان 2026. تابع أحدث الحلقات والبرامج الدينية والترفيهية."
+            type="website"
+        />
+
         {/* Ramadan Decorative Background */}
         <div className="fixed inset-0 z-0 pointer-events-none opacity-30">
             <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] bg-repeat opacity-20"></div>
@@ -244,7 +251,7 @@ const RamadanPage: React.FC<RamadanPageProps> = ({ allContent, pinnedContent, on
                 isLoggedIn={isLoggedIn} 
                 myList={myList} 
                 onToggleMyList={onToggleMyList} 
-                autoSlideInterval={4000}
+                autoSlideInterval={5000}
                 isRamadanTheme={true} 
             />
         </div>

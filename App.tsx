@@ -203,18 +203,8 @@ const App: React.FC = () => {
   
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // Toast Helper with Route Logic
+  // Toast Helper
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    // --- Route-Based Logic ---
-    // Only allow 'success' toasts if we are in the Admin Panel.
-    // We allow 'error' and 'info' everywhere.
-    const currentPath = window.location.pathname;
-    const isAdminView = currentPath.startsWith('/admin');
-
-    if (type === 'success' && !isAdminView) {
-        return; // Silently discard success toasts on frontend
-    }
-
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
@@ -678,11 +668,46 @@ const App: React.FC = () => {
           return <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} />;
       }
 
+      // --- DATA PROCESSING HELPER ---
+      // Merges pinned item configuration (like bannerNote) into the actual content object
+      // UPDATED: For Series, it overrides metadata (Poster, Backdrop, Logo, etc.) with the LATEST SEASON's data if available.
+      const getPinnedContentWithMeta = (page: PageKey) => {
+          return pinnedItems[page].map(p => {
+              const content = allContent.find(c => c.id === p.contentId);
+              if (!content) return null;
+              
+              let finalContent = { ...content };
+
+              // Series Specific Logic: Promote Latest Season Metadata
+              if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
+                  // 1. Find Latest Season (Highest Season Number)
+                  const latestSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
+                  
+                  if (latestSeason) {
+                      // 2. Override properties if they exist in the season
+                      // Note: We check if the string is truthy (not empty)
+                      if (latestSeason.poster) finalContent.poster = latestSeason.poster;
+                      if (latestSeason.backdrop) finalContent.backdrop = latestSeason.backdrop;
+                      if (latestSeason.logoUrl) finalContent.logoUrl = latestSeason.logoUrl;
+                      if (latestSeason.description) finalContent.description = latestSeason.description;
+                      if (latestSeason.releaseYear) finalContent.releaseYear = latestSeason.releaseYear;
+                      if (latestSeason.cast && latestSeason.cast.length > 0) finalContent.cast = latestSeason.cast;
+                  }
+              }
+
+              // Merge bannerNote from pinned item configuration if exists, otherwise use content's default
+              return { 
+                  ...finalContent, 
+                  bannerNote: p.bannerNote || finalContent.bannerNote 
+              };
+          }).filter((c): c is Content => !!c);
+      };
+
       switch (view) {
           case 'home':
               return <HomePage 
                         allContent={allContent} 
-                        pinnedContent={pinnedItems.home.map(p => allContent.find(c => c.id === p.contentId)).filter((c): c is Content => !!c)}
+                        pinnedContent={getPinnedContentWithMeta('home')}
                         onSelectContent={handleSelectContent} 
                         isLoggedIn={!!currentUser} 
                         myList={activeProfile?.myList} 
@@ -698,7 +723,7 @@ const App: React.FC = () => {
           case 'movies':
               return <MoviesPage 
                         allContent={allContent}
-                        pinnedContent={pinnedItems.movies.map(p => allContent.find(c => c.id === p.contentId)).filter((c): c is Content => !!c)}
+                        pinnedContent={getPinnedContentWithMeta('movies')}
                         onSelectContent={handleSelectContent}
                         isLoggedIn={!!currentUser}
                         myList={activeProfile?.myList}
@@ -710,11 +735,12 @@ const App: React.FC = () => {
                         isRamadanTheme={isRamadanTheme}
                         isEidTheme={isEidTheme}
                         isCosmicTealTheme={isCosmicTealTheme}
+                        siteSettings={siteSettings} // Added siteSettings prop
                      />;
           case 'series':
               return <SeriesPage
                         allContent={allContent}
-                        pinnedContent={pinnedItems.series.map(p => allContent.find(c => c.id === p.contentId)).filter((c): c is Content => !!c)}
+                        pinnedContent={getPinnedContentWithMeta('series')}
                         onSelectContent={handleSelectContent}
                         isLoggedIn={!!currentUser}
                         myList={activeProfile?.myList}
@@ -731,7 +757,7 @@ const App: React.FC = () => {
           case 'kids':
               return <KidsPage
                         allContent={allContent}
-                        pinnedContent={pinnedItems.kids.map(p => allContent.find(c => c.id === p.contentId)).filter((c): c is Content => !!c)}
+                        pinnedContent={getPinnedContentWithMeta('kids')}
                         onSelectContent={handleSelectContent}
                         isLoggedIn={!!currentUser}
                         myList={activeProfile?.myList}
@@ -747,7 +773,7 @@ const App: React.FC = () => {
            case 'ramadan':
               return <RamadanPage
                         allContent={allContent}
-                        pinnedContent={pinnedItems.ramadan.map(p => allContent.find(c => c.id === p.contentId)).filter((c): c is Content => !!c)}
+                        pinnedContent={getPinnedContentWithMeta('ramadan')}
                         onSelectContent={handleSelectContent}
                         isLoggedIn={!!currentUser}
                         myList={activeProfile?.myList}
@@ -761,7 +787,7 @@ const App: React.FC = () => {
            case 'soon':
                return <SoonPage
                         allContent={allContent}
-                        pinnedContent={pinnedItems.soon.map(p => allContent.find(c => c.id === p.contentId)).filter((c): c is Content => !!c)}
+                        pinnedContent={getPinnedContentWithMeta('soon')}
                         onSelectContent={handleSelectContent}
                         isLoggedIn={!!currentUser}
                         myList={activeProfile?.myList}
@@ -898,6 +924,7 @@ const App: React.FC = () => {
                                 addToast('تم حذف الحساب', 'info');
                             }
                         }}
+                        onSetView={handleSetView}
                     />
                ) : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} />;
             case 'profileHub':
@@ -923,8 +950,8 @@ const App: React.FC = () => {
 
   const isFullPageLayout = view === 'login' || view === 'register' || view === 'admin' || view === 'profileSelector' || view === 'profileHub';
   const isMaintenanceActive = siteSettings.is_maintenance_mode_enabled && currentUser?.role !== UserRole.Admin && view !== 'login';
-  // UPDATED: Added `view !== 'category'` to logic to hide main header on category page
-  const showHeader = !isFullPageLayout && view !== 'myList' && view !== 'category' && !isMaintenanceActive && !isContentLoading; 
+  // UPDATED: Added `view !== 'accountSettings'` to exclude global header from account settings page
+  const showHeader = !isFullPageLayout && view !== 'myList' && view !== 'category' && view !== 'accountSettings' && !isMaintenanceActive && !isContentLoading; 
   const showFooter = !isFullPageLayout && !isMaintenanceActive;
   const isRamadanTheme = siteSettings.activeTheme === 'ramadan';
   const isEidTheme = siteSettings.activeTheme === 'eid';

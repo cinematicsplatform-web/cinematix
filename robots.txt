@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://cinematex.vercel.app/sitemap.xml

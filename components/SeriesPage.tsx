@@ -5,6 +5,7 @@ import { ContentType } from '../types';
 import Hero from './Hero';
 import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
+import SEO from './SEO';
 
 interface SeriesPageProps {
   allContent: Content[];
@@ -46,15 +47,13 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
         return pinnedContent;
     }
     const sortedSeries = [...allSeries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return sortedSeries.slice(0, 1);
+    // Updated to slice 5 items to enable slider behavior
+    return sortedSeries.slice(0, 5);
   }, [pinnedContent, allSeries]);
 
 
   const carousels = useMemo(() => {
     const limit = (list: Content[]) => list.slice(0, 12);
-
-    const topRatedSeries = limit([...allSeries]
-      .sort((a, b) => b.rating - a.rating));
 
     const recentSeries = limit([...allSeries]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -65,9 +64,6 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
 
     const ramadanSeriesContent = limit(allSeries.filter(c => c.categories.includes('رمضان') || c.categories.includes('مسلسلات رمضان')));
 
-    // Auto-generated (No Rank Badge)
-    const topRatedCarousel = { id: 's1', title: 'الأعلى تقييماً', contents: topRatedSeries, isNew: false, categoryKey: 'top-rated-series', showRanking: false };
-    
     // Top 10 Pinned (Exclusive Ranking)
     const pinnedSeriesCarousel = { 
         id: 's_pinned_top', 
@@ -88,24 +84,20 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
 
     const ramadanCarousel = { id: 's_ramadan', title: ramadanTitle, contents: ramadanSeriesContent, categoryKey: 'مسلسلات رمضان' };
 
-    let firstCarousel;
-    if (siteSettings?.isShowRamadanCarousel) {
-        firstCarousel = ramadanCarousel;
-    } else {
-        firstCarousel = topRatedCarousel;
-    }
-
     const definedCarousels = [
-      pinnedSeriesCarousel,
-      firstCarousel,
+      // Conditionally include Top 10
+      siteSettings?.showTop10Series ? pinnedSeriesCarousel : null,
+      siteSettings?.isShowRamadanCarousel ? ramadanCarousel : null,
       { id: 's_new', title: 'أحدث الإضافات', contents: recentSeries, isNew: true, categoryKey: 'new-series' },
       { id: 's2', title: 'مسلسلات عربية', contents: arabicSeries, isNew: false, categoryKey: 'مسلسلات عربية' },
       { id: 's3', title: 'مسلسلات تركية', contents: turkishSeries, isNew: false, categoryKey: 'مسلسلات تركية' },
       { id: 's4', title: 'مسلسلات أجنبية', contents: foreignSeries, isNew: false, categoryKey: 'مسلسلات اجنبية' },
-    ].filter(carousel => carousel.contents.length > 0);
+    ]
+    .filter(Boolean)
+    .filter(carousel => (carousel as any).contents.length > 0);
 
     return definedCarousels;
-  }, [allSeries, siteSettings?.isShowRamadanCarousel, isRamadanTheme, pinnedContent]); 
+  }, [allSeries, siteSettings?.isShowRamadanCarousel, siteSettings?.showTop10Series, isRamadanTheme, pinnedContent]); 
 
   const handleSeeAll = (categoryKey: string) => {
       onNavigate('category', categoryKey);
@@ -147,6 +139,12 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
   return (
     <div className="min-h-screen bg-[var(--bg-body)] relative overflow-x-hidden">
 
+        <SEO 
+            title="المسلسلات - سينماتيكس" 
+            description="شاهد أفضل المسلسلات العربية والتركية والأجنبية بجودة عالية."
+            type="website"
+        />
+
         <div className="relative z-10">
             <Hero 
                 contents={heroContent} 
@@ -154,7 +152,7 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
                 isLoggedIn={isLoggedIn} 
                 myList={myList} 
                 onToggleMyList={onToggleMyList} 
-                autoSlideInterval={4000}
+                autoSlideInterval={5000}
                 isRamadanTheme={isRamadanTheme}
                 isEidTheme={isEidTheme}
                 isCosmicTealTheme={isCosmicTealTheme}
@@ -177,15 +175,15 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
             {carousels.map((carousel) => {
             return (
                 <ContentCarousel
-                key={carousel.id}
-                title={carousel.title}
-                contents={carousel.contents}
+                key={(carousel as any).id}
+                title={(carousel as any).title}
+                contents={(carousel as any).contents}
                 onSelectContent={onSelectContent}
                 isLoggedIn={isLoggedIn}
                 myList={myList}
                 onToggleMyList={onToggleMyList}
-                isNew={carousel.isNew}
-                onSeeAll={() => handleSeeAll(carousel.categoryKey)}
+                isNew={(carousel as any).isNew}
+                onSeeAll={() => handleSeeAll((carousel as any).categoryKey)}
                 isRamadanTheme={isRamadanTheme}
                 isEidTheme={isEidTheme}
                 isCosmicTealTheme={isCosmicTealTheme}

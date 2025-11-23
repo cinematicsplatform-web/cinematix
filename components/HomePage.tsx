@@ -59,10 +59,6 @@ const HomePage: React.FC<HomePageProps> = (props) => {
             .slice(0, 12);
     };
 
-    const topRated = [...props.allContent]
-      .sort((a, b) => b.rating - a.rating)
-      .slice(0, 12);
-
     const recentAdditions = getLatest([...props.allContent]);
 
     const arabicSeries = getLatest(props.allContent.filter(c => c.type === ContentType.Series && c.categories.includes('مسلسلات عربية')));
@@ -115,10 +111,6 @@ const HomePage: React.FC<HomePageProps> = (props) => {
       { id: 'h11', title: 'البرامج التلفزيونية', contents: tvPrograms, categoryKey: 'برامج تلفزيونية' },
     ];
 
-    // UPDATED: Rank Logic - Exclusive to Pinned Items
-    // 1. Auto-generated "Top Rated" -> No Ranking Badges
-    const topRatedCarousel = { id: 'h1', title: 'الأعلى تقييماً', contents: topRated, isNew: false, categoryKey: 'top-rated-content', showRanking: false };
-    
     // 2. Pinned Items -> Show Ranking Badges (TOP 1-10)
     const pinnedCarousel = { 
         id: 'h_pinned_top', 
@@ -132,23 +124,22 @@ const HomePage: React.FC<HomePageProps> = (props) => {
 
     let finalList = [];
 
-    // Logic: If Pinned Content exists, it is the "TOP 10" list.
-    if (pinnedCarousel.contents.length > 0) {
+    // Logic: If Pinned Content exists AND Setting is enabled, show it.
+    // Check `props.siteSettings.showTop10Home`
+    if (pinnedCarousel.contents.length > 0 && props.siteSettings.showTop10Home) {
         finalList.push(pinnedCarousel);
     }
 
-    // Conditional Logic: Show Ramadan Carousel OR Top Rated Carousel based on settings
+    // Conditional Logic: Show Ramadan Carousel based on settings
     if (props.siteSettings.isShowRamadanCarousel) {
         finalList.push(ramadanCarousel);
-    } else {
-        finalList.push(topRatedCarousel);
     }
 
     finalList.push(newArrivals);
     finalList.push(...restCarousels);
 
     return finalList.filter(carousel => carousel.contents.length > 0);
-  }, [props.allContent, props.pinnedContent, props.siteSettings.isShowRamadanCarousel, isRamadan, isCosmicTeal]);
+  }, [props.allContent, props.pinnedContent, props.siteSettings.isShowRamadanCarousel, props.siteSettings.showTop10Home, isRamadan, isCosmicTeal]);
 
   const handleSeeAll = (carousel: any) => {
       if (carousel.specialRoute) {

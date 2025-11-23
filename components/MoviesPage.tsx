@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import type { Content, Ad, View } from '../types';
+import type { Content, Ad, View, SiteSettings } from '../types';
 import { ContentType } from '../types';
 import Hero from './Hero';
 import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
+import SEO from './SEO';
 
 interface MoviesPageProps {
   allContent: Content[];
@@ -20,6 +21,7 @@ interface MoviesPageProps {
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  siteSettings?: SiteSettings; // Added SiteSettings prop
 }
 
 const MoviesPage: React.FC<MoviesPageProps> = ({ 
@@ -35,7 +37,8 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
   isLoading, 
   isRamadanTheme, 
   isEidTheme,
-  isCosmicTealTheme
+  isCosmicTealTheme,
+  siteSettings
 }) => {
   const allMovies = useMemo(() => allContent.filter(c => c.type === ContentType.Movie), [allContent]);
   
@@ -44,14 +47,12 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
         return pinnedContent;
     }
     const sortedMovies = [...allMovies].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return sortedMovies.slice(0, 1);
+    // Updated to slice 5 items to enable slider behavior like Home Page
+    return sortedMovies.slice(0, 5);
   }, [pinnedContent, allMovies]);
 
   const carousels = useMemo(() => {
     const limit = (list: Content[]) => list.slice(0, 12);
-
-    const topRatedMovies = limit([...allMovies]
-      .sort((a, b) => b.rating - a.rating));
 
     const recentMovies = limit([...allMovies]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -65,24 +66,26 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
     // Top 10 Pinned (Exclusive Ranking Source)
     const pinnedMoviesCarousel = { 
         id: 'm_pinned_top', 
-        title: 'أفضل 10 أفلام (اختيارنا)', 
+        title: 'أفضل 10 أفلام', 
         contents: pinnedContent, 
         showRanking: true 
     };
 
     const definedCarousels = [
-      pinnedMoviesCarousel,
-      { id: 'm4', title: 'الأعلى تقييماً', contents: topRatedMovies, isNew: false, categoryKey: 'top-rated-movies', showRanking: false }, // No rank badge
-      { id: 'm_new', title: 'أحدث الأفلام', contents: recentMovies, isNew: true, categoryKey: 'new-movies' },
+      // Conditionally include Top 10 based on settings
+      siteSettings?.showTop10Movies ? pinnedMoviesCarousel : null,
+      { id: 'm_new', title: 'أحدث الإضافات', contents: recentMovies, isNew: true, categoryKey: 'new-movies' },
       { id: 'm1', title: 'أفلام عربية', contents: arabicMovies, isNew: false, categoryKey: 'افلام عربية' },
       { id: 'm2', title: 'أفلام تركية', contents: turkishMovies, isNew: false, categoryKey: 'افلام تركية' },
       { id: 'm3', title: 'أفلام أجنبية', contents: foreignMovies, isNew: false, categoryKey: 'افلام اجنبية' },
       { id: 'm5', title: 'أفلام هندية', contents: indianMovies, isNew: false, categoryKey: 'افلام هندية' },
       { id: 'm6', title: 'افلام أنميشن', contents: animationMovies, isNew: false, categoryKey: 'افلام أنميشن' },
-    ].filter(carousel => carousel.contents.length > 0);
+    ]
+    .filter(Boolean) // Filter out nulls (if top 10 disabled)
+    .filter(carousel => (carousel as any).contents.length > 0);
 
     return definedCarousels;
-  }, [allMovies, pinnedContent]);
+  }, [allMovies, pinnedContent, siteSettings?.showTop10Movies]);
 
   const handleSeeAll = (categoryKey: string) => {
       onNavigate('category', categoryKey);
@@ -124,6 +127,12 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
   return (
     <div className="min-h-screen bg-[var(--bg-body)] relative overflow-x-hidden">
         
+        <SEO 
+            title="الأفلام - سينماتيكس" 
+            description="تصفح أحدث الأفلام العربية والتركية والأجنبية بجودة عالية على سينماتيكس."
+            type="website"
+        />
+
         <div className="relative z-10">
             <Hero 
                 contents={heroContent} 
@@ -131,7 +140,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
                 isLoggedIn={isLoggedIn} 
                 myList={myList} 
                 onToggleMyList={onToggleMyList} 
-                autoSlideInterval={4000}
+                autoSlideInterval={5000}
                 isRamadanTheme={isRamadanTheme}
                 isEidTheme={isEidTheme}
                 isCosmicTealTheme={isCosmicTealTheme}
@@ -154,9 +163,9 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
             {carousels.map((carousel) => {
             return (
                 <ContentCarousel
-                key={carousel.id}
-                title={carousel.title}
-                contents={carousel.contents}
+                key={(carousel as any).id}
+                title={(carousel as any).title}
+                contents={(carousel as any).contents}
                 onSelectContent={onSelectContent}
                 isLoggedIn={isLoggedIn}
                 myList={myList}

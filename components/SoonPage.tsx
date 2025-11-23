@@ -1,9 +1,11 @@
+
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import type { Content, Ad } from '../types';
 import Hero from './Hero';
 import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
 import SoonRestrictedModal from './SoonRestrictedModal'; 
+import SEO from './SEO';
 
 interface SoonPageProps {
   allContent: Content[];
@@ -51,7 +53,8 @@ const SoonPage: React.FC<SoonPageProps> = ({
         return pinnedContent;
     }
     const sortedContent = [...allSoonContent].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return sortedContent.slice(0, 1);
+    // Updated to slice 5 items to enable slider behavior
+    return sortedContent.slice(0, 5);
   }, [pinnedContent, allSoonContent]);
 
 
@@ -109,6 +112,12 @@ const SoonPage: React.FC<SoonPageProps> = ({
   return (
     <div className="min-h-screen bg-[var(--bg-body)] relative overflow-x-hidden">
 
+      <SEO 
+        title="قريباً - سينماتيكس" 
+        description="تعرف على أحدث الإصدارات القادمة من الأفلام والمسلسلات على سينماتيكس."
+        type="website"
+      />
+
       <div className="relative z-10">
           <Hero 
               contents={heroSoonContents} 
@@ -116,7 +125,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
               isLoggedIn={isLoggedIn} 
               myList={myList} 
               onToggleMyList={onToggleMyList} 
-              autoSlideInterval={4000}
+              autoSlideInterval={5000}
               isRamadanTheme={isRamadanTheme}
               isEidTheme={isEidTheme}
               isCosmicTealTheme={isCosmicTealTheme}
