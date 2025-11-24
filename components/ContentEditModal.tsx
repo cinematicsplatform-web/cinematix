@@ -6,6 +6,7 @@ import { CloseIcon } from './icons/CloseIcon';
 import { PlusIcon } from './icons/PlusIcon';
 import ToggleSwitch from './ToggleSwitch';
 import { generateSlug } from '../firebase';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 // --- ICONS ---
 const ShieldCheckIcon = () => (
@@ -19,6 +20,9 @@ const FaceSmileIcon = () => (
 );
 const CheckSmallIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" /></svg>
+);
+const CloudArrowDownIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
 );
 
 // --- STYLES ---
@@ -137,14 +141,26 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [isManagingMovieServers, setIsManagingMovieServers] = useState<boolean>(false);
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(!!content?.slug);
     const [newActor, setNewActor] = useState('');
-    // Temporary state for adding actors to specific seasons
     const [seasonCastInputs, setSeasonCastInputs] = useState<Record<number, string>>({});
+    
+    // --- Delete Season Modal State ---
+    const [deleteSeasonState, setDeleteSeasonState] = useState<{
+        isOpen: boolean;
+        seasonId: number | null;
+        title: string;
+    }>({ isOpen: false, seasonId: null, title: '' });
+
+    // --- TMDB STATE ---
+    const [tmdbIdInput, setTmdbIdInput] = useState('');
+    const [fetchLoading, setFetchLoading] = useState(false);
+    const API_KEY = 'b8d66e320b334f4d56728d98a7e39697';
 
     useEffect(() => {
         setFormData(getDefaultFormData());
         setSlugManuallyEdited(!!content?.slug);
         setNewActor('');
         setSeasonCastInputs({});
+        setTmdbIdInput('');
     }, [content]);
 
     useEffect(() => {
@@ -152,6 +168,200 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             setFormData(prev => ({ ...prev, slug: generateSlug(prev.title) }));
         }
     }, [formData.title, slugManuallyEdited]);
+
+    // --- TMDB Logic ---
+    const fetchFromTMDB = async () => {
+        if (!tmdbIdInput) return;
+        setFetchLoading(true);
+
+        // Use local variable for current type logic to handle smart switching
+        let currentType = formData.type;
+        const language = 'ar-SA'; 
+
+        try {
+            // Helper to construct URL
+            const getUrl = (type: ContentType) => {
+                const typePath = type === ContentType.Movie ? 'movie' : 'tv';
+                const append = type === ContentType.Movie 
+                    ? 'credits,release_dates' 
+                    : 'content_ratings,credits';
+                return `https://api.themoviedb.org/3/${typePath}/${tmdbIdInput}?api_key=${API_KEY}&language=${language}&append_to_response=${append}`;
+            };
+
+            // 1. Attempt fetch with currently selected type
+            let res = await fetch(getUrl(currentType));
+
+            // 2. Smart Retry: If 404 (Not Found), switch type and try again
+            // This handles cases where user selects "Movie" but pastes a "Series" ID.
+            if (!res.ok && res.status === 404) {
+                const altType = currentType === ContentType.Movie ? ContentType.Series : ContentType.Movie;
+                console.log(`TMDB: ID not found as ${currentType}, retrying as ${altType}...`);
+                
+                const resAlt = await fetch(getUrl(altType));
+                
+                if (resAlt.ok) {
+                    res = resAlt;
+                    currentType = altType; // Switch type for subsequent logic
+                }
+            }
+
+            if (!res.ok) throw new Error('لم يتم العثور على محتوى بهذا الـ ID. تأكد من صحة الرقم.');
+            
+            const details = await res.json();
+
+            // --- MAPPING LOGIC (Using confirmed currentType) ---
+
+            // 1. Basic Info
+            const title = details.title || details.name || '';
+            const description = details.overview || ''; // Arabic overview
+            const poster = details.poster_path ? `https://image.tmdb.org/t/p/w500${details.poster_path}` : '';
+            const backdrop = details.backdrop_path ? `https://image.tmdb.org/t/p/original${details.backdrop_path}` : '';
+            
+            // 2. Rating (TMDB / 2)
+            const rating = details.vote_average ? Number((details.vote_average / 2).toFixed(1)) : 0;
+
+            // 3. Date
+            const releaseDate = details.release_date || details.first_air_date || '';
+            const releaseYear = releaseDate ? new Date(releaseDate).getFullYear() : new Date().getFullYear();
+            
+            // 4. Runtime / Duration
+            let duration = '';
+            if (currentType === ContentType.Movie && details.runtime) {
+                const h = Math.floor(details.runtime / 60);
+                const m = details.runtime % 60;
+                duration = `${h}h ${m}m`;
+            }
+
+            // 5. Age Rating (Certification)
+            let ageRating = '';
+            if (currentType === ContentType.Movie) {
+                const usRelease = details.release_dates?.results?.find((r: any) => r.iso_3166_1 === 'US');
+                if (usRelease?.release_dates) {
+                    const cert = usRelease.release_dates.find((d: any) => d.certification !== '')?.certification;
+                    ageRating = cert || '';
+                }
+            } else {
+                const usRating = details.content_ratings?.results?.find((r: any) => r.iso_3166_1 === 'US');
+                ageRating = usRating?.rating || '';
+            }
+
+            // 6. Genres
+            const mappedGenres: Genre[] = [];
+            details.genres?.forEach((g: any) => {
+                const gName = g.name.toLowerCase();
+                if (gName.includes('action') || gName.includes('أكشن') || gName.includes('حركة')) mappedGenres.push('أكشن');
+                else if (gName.includes('adventure') || gName.includes('مغامرة')) mappedGenres.push('مغامرة');
+                else if (gName.includes('animation') || gName.includes('رسوم متحركة')) mappedGenres.push('أطفال');
+                else if (gName.includes('comedy') || gName.includes('كوميديا')) mappedGenres.push('كوميديا');
+                else if (gName.includes('crime') || gName.includes('جريمة')) mappedGenres.push('جريمة');
+                else if (gName.includes('documentary') || gName.includes('وثائقي')) mappedGenres.push('وثائقي');
+                else if (gName.includes('drama') || gName.includes('دراما')) mappedGenres.push('دراما');
+                else if (gName.includes('family') || gName.includes('عائلي')) mappedGenres.push('عائلي');
+                else if (gName.includes('fantasy') || gName.includes('فانتازيا') || gName.includes('خيال')) mappedGenres.push('فانتازيا');
+                else if (gName.includes('history') || gName.includes('تاريخ')) mappedGenres.push('تاريخي');
+                else if (gName.includes('horror') || gName.includes('رعب')) mappedGenres.push('رعب');
+                else if (gName.includes('romance') || gName.includes('رومانسي')) mappedGenres.push('رومانسي');
+                else if (gName.includes('science fiction') || gName.includes('خيال علمي')) mappedGenres.push('خيال علمي');
+                else if (gName.includes('thriller') || gName.includes('إثارة')) mappedGenres.push('إثارة');
+                else if (gName.includes('war') || gName.includes('حرب')) mappedGenres.push('حربي');
+            });
+
+            // 7. Main Cast
+            const topCast = details.credits?.cast?.slice(0, 7).map((c: any) => c.name) || [];
+
+            // 8. SERIES SPECIFIC LOGIC (Advanced)
+            let newSeasons: Season[] = [];
+            if (currentType === ContentType.Series && details.seasons) {
+                // Fetch Details for EACH Season to get overview, credits, etc.
+                const seasonPromises = details.seasons.map(async (s: any, index: number) => {
+                    // Skip specials (season 0) if desired, but TMDB includes them. Keeping all.
+                    try {
+                        // Fetch detailed season info
+                        const seasonDetailRes = await fetch(`https://api.themoviedb.org/3/tv/${tmdbIdInput}/season/${s.season_number}?api_key=${API_KEY}&append_to_response=credits&language=${language}`);
+                        const seasonData = await seasonDetailRes.json();
+                        
+                        const seasonYear = seasonData.air_date ? new Date(seasonData.air_date).getFullYear() : undefined;
+                        const seasonCast = seasonData.credits?.cast?.slice(0, 5).map((c: any) => c.name) || [];
+                        
+                        // Create EMPTY Episodes List based on count
+                        const episodes: Episode[] = [];
+                        const episodeCount = seasonData.episodes?.length || s.episode_count || 0;
+                        
+                        for (let i = 1; i <= episodeCount; i++) {
+                            // Safe ID generation: timestamp + random
+                            const epId = Date.now() + Math.floor(Math.random() * 1000000) + i;
+                            episodes.push({
+                                id: epId,
+                                title: `الحلقة ${i}`,
+                                thumbnail: '', // Keeping empty as requested, can be populated if needed
+                                duration: 0,
+                                progress: 0,
+                                servers: [] // Empty slots ready for servers
+                            });
+                        }
+
+                        return {
+                            id: s.id, // Use TMDB ID
+                            seasonNumber: s.season_number,
+                            title: s.name, // e.g. "الموسم 1"
+                            description: s.overview || '', // Season specific overview
+                            releaseYear: seasonYear,
+                            poster: s.poster_path ? `https://image.tmdb.org/t/p/w500${s.poster_path}` : '',
+                            backdrop: '', // Usually undefined for seasons in basic API
+                            cast: seasonCast,
+                            episodes: episodes
+                        } as Season;
+
+                    } catch (e) {
+                        console.error(`Failed to fetch details for season ${s.season_number}`, e);
+                        // Fallback to basic info if detailed fetch fails
+                        return {
+                            id: s.id,
+                            seasonNumber: s.season_number,
+                            title: s.name,
+                            episodes: [] // No episodes on error
+                        } as Season;
+                    }
+                });
+
+                const results = await Promise.all(seasonPromises);
+                // Sort by season number
+                newSeasons = results.filter(Boolean).sort((a, b) => a.seasonNumber - b.seasonNumber);
+            }
+
+            // Update State
+            setFormData(prev => ({
+                ...prev,
+                title,
+                description,
+                poster,
+                backdrop,
+                rating,
+                releaseYear,
+                ageRating,
+                type: currentType, // IMPORTANT: Update type based on what was found
+                genres: [...new Set([...prev.genres, ...mappedGenres])],
+                cast: topCast,
+                duration: duration || prev.duration,
+                seasons: currentType === ContentType.Series ? newSeasons : prev.seasons
+            }));
+
+            // Auto-set category
+            if (details.origin_country?.includes('TR')) {
+                handleCategoryChange(currentType === ContentType.Movie ? 'افلام تركية' : 'مسلسلات تركية');
+            } else if (details.origin_country?.includes('EG') || details.origin_country?.includes('SA') || details.original_language === 'ar') {
+                handleCategoryChange(currentType === ContentType.Movie ? 'افلام عربية' : 'مسلسلات عربية');
+            } else if (details.origin_country?.includes('IN')) {
+                handleCategoryChange('افلام هندية');
+            }
+
+        } catch (e: any) {
+            console.error(e);
+            alert(e.message || 'فشل جلب البيانات. تأكد من صحة الـ ID ونوع المحتوى (فيلم/مسلسل).');
+        } finally {
+            setFetchLoading(false);
+        }
+    };
 
     const filteredCategories = useMemo(() => {
         const commonCats: Category[] = ['قريباً'];
@@ -249,10 +459,19 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }));
     };
 
-    const handleDeleteSeason = (seasonId: number) => {
-        if (window.confirm('هل أنت متأكد من حذف هذا الموسم؟')) {
-            setFormData(prev => ({ ...prev, seasons: (prev.seasons || []).filter(s => s.id !== seasonId) }));
+    const requestDeleteSeason = (seasonId: number, seasonTitle: string) => {
+        setDeleteSeasonState({
+            isOpen: true,
+            seasonId,
+            title: seasonTitle
+        });
+    };
+
+    const executeDeleteSeason = () => {
+        if (deleteSeasonState.seasonId) {
+            setFormData(prev => ({ ...prev, seasons: (prev.seasons || []).filter(s => s.id !== deleteSeasonState.seasonId) }));
         }
+        setDeleteSeasonState(prev => ({ ...prev, isOpen: false }));
     };
 
     const handleUpdateSeason = (seasonId: number, field: keyof Season, value: any) => {
@@ -367,6 +586,40 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
+                    {/* 🚀 TMDB Smart Fetch Section (Only for New Content or Manual Trigger) */}
+                    <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl">
+                        <div className="flex flex-col md:flex-row gap-4 items-end md:items-center">
+                            <div className="flex-1 w-full">
+                                <label className="block text-xs font-bold text-blue-300 mb-1">جلب تلقائي (TMDB)</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        value={tmdbIdInput}
+                                        onChange={(e) => setTmdbIdInput(e.target.value)}
+                                        placeholder="أدخل TMDB ID (مثال: 12345)" 
+                                        className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                    />
+                                    <button 
+                                        type="button"
+                                        onClick={fetchFromTMDB}
+                                        disabled={fetchLoading}
+                                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+                                    >
+                                        {fetchLoading ? 'جاري الجلب...' : (
+                                            <>
+                                                <CloudArrowDownIcon />
+                                                جلب البيانات
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="text-xs text-gray-400 hidden md:block max-w-xs">
+                                سيقوم هذا الخيار بملء الحقول أدناه (العنوان، الوصف، الصور، التقييم، طاقم العمل) وبناء هيكل المواسم تلقائياً.
+                            </div>
+                        </div>
+                    </div>
+
                     <form onSubmit={handleSubmit} className="space-y-8">
                         
                         {/* 1. Main Info Section */}
@@ -743,7 +996,13 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <button type="button" onClick={() => handleAddEpisode(season.id)} className="text-green-400 text-xs font-bold bg-green-500/10 px-3 py-1.5 rounded hover:bg-green-500/20 transition-colors">+ حلقة جديدة</button>
-                                                    <button type="button" onClick={() => handleDeleteSeason(season.id)} className="text-red-400 text-xs font-bold bg-red-500/10 px-3 py-1.5 rounded hover:bg-red-500/20 transition-colors">حذف</button>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => requestDeleteSeason(season.id, season.title || `الموسم ${season.seasonNumber}`)} 
+                                                        className="text-red-400 text-xs font-bold bg-red-500/10 px-3 py-1.5 rounded hover:bg-red-500/20 transition-colors"
+                                                    >
+                                                        حذف
+                                                    </button>
                                                 </div>
                                             </div>
                                             
@@ -912,6 +1171,15 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     }}
                 />
             )}
+            
+            {/* Delete Confirmation Modal */}
+            <DeleteConfirmationModal 
+                isOpen={deleteSeasonState.isOpen}
+                onClose={() => setDeleteSeasonState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={executeDeleteSeason}
+                title="حذف الموسم"
+                message={`هل أنت متأكد من حذف ${deleteSeasonState.title}؟ لا يمكن التراجع عن هذا الإجراء.`}
+            />
         </div>
     );
 };

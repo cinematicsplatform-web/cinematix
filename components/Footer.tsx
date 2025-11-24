@@ -17,6 +17,7 @@ const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter
       { name: 'حولنا', action: () => onSetView('about') },
       { name: 'اتصل بنا', action: () => { window.location.href = socialLinks.contactUs } },
       { name: 'سياسة الخصوصية', action: () => onSetView('privacy') },
+      { name: 'حقوق الملكية', action: () => onSetView('copyright') }, // Added
   ];
   
   // Updated: Use var(--bg-body) to match the page background in all themes.

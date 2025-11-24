@@ -34,7 +34,7 @@ export const genres = [
 
 export type Genre = typeof genres[number];
 
-export type View = 'home' | 'movies' | 'series' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance';
+export type View = 'home' | 'movies' | 'series' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance';
 
 export type LoginError = 'none' | 'userNotFound' | 'wrongPassword';
 
@@ -224,6 +224,7 @@ export interface SiteSettings {
     countdownDate: string;
     adsEnabled: boolean;
     privacyPolicy: string;
+    copyrightPolicy: string; // New: Copyright Policy Text
     isCountdownVisible: boolean;
     isRamadanModeEnabled: boolean; // Kept for backward compatibility, synced with activeTheme
     activeTheme: ThemeType; // New: Theme Switcher

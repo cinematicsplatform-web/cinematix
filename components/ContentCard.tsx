@@ -38,10 +38,19 @@ const ContentCard: React.FC<ContentCardProps> = ({ content, onSelectContent, isL
     ? latestSeason.poster 
     : content.poster;
 
+  // Determine Display Year: Use latest season year if available, otherwise content year
+  const displayYear = (content.type === 'series' && latestSeason?.releaseYear) 
+    ? latestSeason.releaseYear 
+    : content.releaseYear;
+
   const showStandardBadges = !rank;
 
   // 1. Top Left Badge: Only Banner Note
   const topLeftBadge = content.bannerNote;
+
+  // 1.5 Season Badge (Only for multi-season series)
+  const showSeasonBadge = content.type === 'series' && content.seasons && content.seasons.length > 1 && latestSeason;
+  const seasonBadgeText = showSeasonBadge ? `الموسم ${latestSeason.seasonNumber}` : null;
   
   // 2. Bottom Right Badge: Only if showLatestBadge is true
   let bottomRightBadge: string | null = null;
@@ -134,16 +143,42 @@ const ContentCard: React.FC<ContentCardProps> = ({ content, onSelectContent, isL
             {/* --- Standard Badges (Hidden if Ranked) --- */}
             {showStandardBadges && (
                 <>
-                    {/* Banner Note (Only if exists) */}
-                    {topLeftBadge && (
-                        <div className={`absolute top-2 left-2 backdrop-blur-sm text-[10px] md:text-xs font-bold px-2 py-1 rounded shadow-md z-20 ${isCosmicTealTheme ? 'bg-[#35F18B]/90 text-black' : 'bg-[#6366f1]/90 text-white'}`}>
-                            {topLeftBadge}
-                        </div>
-                    )}
+                    {/* Top Left Container for Season Badge & Banner Note */}
+                    {/* Updated: Use items-stretch to match width of widest badge, centered text */}
+                    <div className="absolute top-2 left-2 z-20 flex flex-col gap-1 items-stretch pointer-events-none max-w-[80%]">
+                        
+                        {/* 1. Season Badge (Now on TOP) */}
+                        {seasonBadgeText && (
+                            <div className={`
+                                backdrop-blur-md shadow-[0_2px_8px_rgba(0,0,0,0.4)] text-[10px] md:text-xs font-bold px-2 py-1 rounded-md border border-white/10 text-center whitespace-nowrap
+                                ${isRamadanTheme 
+                                    ? 'bg-gradient-to-r from-amber-700 to-amber-600 text-white border-amber-500/30' 
+                                    : isCosmicTealTheme 
+                                        ? 'bg-gradient-to-r from-[#0F766E] to-[#115e59] text-white border-[#2DD4BF]/30' 
+                                        : 'bg-gradient-to-r from-pink-600 to-pink-500 text-white border-pink-400/30'
+                                }
+                            `}>
+                                {seasonBadgeText}
+                            </div>
+                        )}
+
+                        {/* 2. Banner Note / Translation Tag (Now BELOW Season Badge) */}
+                        {topLeftBadge && (
+                            <div className={`
+                                backdrop-blur-md shadow-[0_2px_8px_rgba(0,0,0,0.4)] text-[10px] md:text-xs font-bold px-2 py-1 rounded-md border text-center whitespace-nowrap
+                                ${isCosmicTealTheme 
+                                    ? 'bg-[#35F18B] text-black border-[#35F18B]/50' 
+                                    : 'bg-[#6366f1] text-white border-[#6366f1]/50'
+                                }
+                            `}>
+                                {topLeftBadge}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Release Year (Always visible) */}
                     <div className="absolute top-2 right-2 bg-[#fbbf24]/90 backdrop-blur-sm text-black text-[10px] md:text-xs font-extrabold px-2 py-1 rounded shadow-md z-20">
-                        {content.releaseYear}
+                        {displayYear}
                     </div>
 
                     {/* Update Info (Only for 'New' carousel) */}

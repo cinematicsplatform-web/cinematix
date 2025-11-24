@@ -1,17 +1,16 @@
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 // FIX: Switched to Firebase v8 compatible namespaced imports.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 // Note: firestore is imported via db from ./firebase
 
 import { db, auth, getUserProfile, updateUserProfileInFirestore, createUserProfileInFirestore, deleteUserFromFirestore, getSiteSettings, getAds, getUsers, updateSiteSettings as updateSiteSettingsInDb, addAd, updateAd, deleteAd, getPinnedContent, updatePinnedContentForPage } from './firebase'; 
-import type { Content, User, Profile, Ad, PinnedItem, SiteSettings, View, LoginError, WatchHistoryItem, PinnedContentState, PageKey } from './types';
+import type { Content, User, Profile, Ad, PinnedItem, SiteSettings, View, LoginError, PinnedContentState, PageKey } from './types';
 import { UserRole } from './types';
-import { contentData as initialContent, pinnedContentData as initialPinned, initialSiteSettings, defaultAvatar } from './data';
+import { initialSiteSettings, defaultAvatar, pinnedContentData as initialPinned } from './data';
 
 import Header from './components/Header';
-import Hero from './components/Hero';
 import Footer from './components/Footer';
 import DetailPage from './components/DetailPage';
 import LoginModal from './components/LoginModal';
@@ -25,6 +24,7 @@ import KidsPage from './components/KidsPage';
 import RamadanPage from './components/RamadanPage';
 import SoonPage from './components/SoonPage';
 import PrivacyPolicyPage from './components/PrivacyPolicyPage';
+import CopyrightPage from './components/CopyrightPage';
 import AboutPage from './components/AboutPage';
 import MyListPage from './components/MyListPage';
 import HomePage from './components/HomePage';
@@ -33,6 +33,7 @@ import CategoryPage from './components/CategoryPage';
 import RamadanRestrictedModal from './components/RamadanRestrictedModal';
 import ProfileHubPage from './components/ProfileHubPage';
 import MaintenancePage from './components/MaintenancePage';
+import PWAInstallPrompt from './components/PWAInstallPrompt'; // PWA Component
 
 // --- Toast Notification System ---
 
@@ -62,7 +63,6 @@ interface Toast {
 }
 
 // --- Routing Configuration ---
-// Defined explicitly to ensure strict matching
 const VIEW_PATHS: Record<string, View> = {
     '/': 'home',
     '/movies': 'movies',
@@ -77,6 +77,7 @@ const VIEW_PATHS: Record<string, View> = {
     '/account': 'accountSettings',
     '/profile': 'profileHub',
     '/privacy': 'privacy',
+    '/copyright': 'copyright',
     '/about': 'about',
     '/maintenance': 'maintenance'
 };
@@ -95,22 +96,22 @@ const REVERSE_VIEW_PATHS: Record<string, string> = {
     'accountSettings': '/account',
     'profileHub': '/profile',
     'privacy': '/privacy',
+    'copyright': '/copyright',
     'about': '/about',
-    'detail': '/detail', // NOTE: Detail paths are dynamic, handled in handleSetView
+    'detail': '/detail', 
     'profileSelector': '/profiles',
     'category': '/category',
     'maintenance': '/maintenance'
 };
 
 // --- Safe History Helpers ---
-// Updated: Silently catch errors to avoid spamming console in sandboxed environments (like blob URLs or restricted iframes)
 const safeHistoryPush = (path: string) => {
     try {
         if (window.location.protocol !== 'file:' && window.location.origin !== 'null') {
              window.history.pushState({}, '', path);
         }
     } catch (e) {
-        // Sandbox environment detected, ignoring pushState error
+        // Sandbox environment detected
     }
 };
 
@@ -120,40 +121,34 @@ const safeHistoryReplace = (path: string) => {
             window.history.replaceState({}, '', path);
         }
     } catch (e) {
-        // Sandbox environment detected, ignoring replaceState error
+        // Sandbox environment detected
     }
 };
 
 const App: React.FC = () => {
   
-  // Initialize View based on URL (Strict Matching + Dynamic Slugs)
   const getInitialView = (): View => {
       const path = decodeURIComponent(window.location.pathname);
       const normalizedPath = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
       
-      // 1. Direct Match from Static Map
       if (VIEW_PATHS[normalizedPath]) {
           return VIEW_PATHS[normalizedPath];
       }
-
-      // 2. Check for Category Route
       if (normalizedPath.startsWith('/category/')) {
           return 'category';
       }
-
-      // 3. Check for Semantic Dynamic Routes
-      // Supports: /movie/{slug}, /فيلم/{slug}, /series/{slug}, /مسلسل/{slug}
       if (normalizedPath.match(/^\/(?:series|مسلسل|movie|فيلم)\/([^\/]+)/)) {
           return 'detail';
       }
-
-      // Fallback Legacy Check (if any) or unknown -> Home
       return 'home';
   };
 
   const [view, setView] = useState<View>(getInitialView);
   
-  // Initialize selectedCategory from URL if present
+  // NEW: Refs for Scroll Restoration
+  const scrollPositions = useRef<Record<string, number>>({});
+  const prevViewRef = useRef<View>(getInitialView());
+
   const [selectedCategory, setSelectedCategory] = useState<string>(() => {
       const path = decodeURIComponent(window.location.pathname);
       if (path.startsWith('/category/')) {
@@ -169,7 +164,6 @@ const App: React.FC = () => {
   const [allContent, setAllContent] = useState<Content[]>([]);
   const [pinnedItems, setPinnedItems] = useState<PinnedContentState>(initialPinned);
   
-  // Initialize settings from localStorage if available to prevent theme flashing
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
       let settings = initialSiteSettings;
       try {
@@ -179,7 +173,6 @@ const App: React.FC = () => {
           if (savedTheme) {
               settings = { ...settings, activeTheme: savedTheme as any };
           } else if (savedRamadan !== null) {
-              // Backward compatibility
               settings = { 
                   ...settings, 
                   isRamadanModeEnabled: savedRamadan === 'true',
@@ -191,120 +184,113 @@ const App: React.FC = () => {
   });
 
   const [ads, setAds] = useState<Ad[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]); // For Admin
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   
-  // Explicit Loading States
   const [isContentLoading, setIsContentLoading] = useState(true);
-  const [isAuthLoading, setIsAuthLoading] = useState(true); // New: Prevent login modal flash
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  // Ramadan Restricted Modal State
   const [isRamadanModalOpen, setIsRamadanModalOpen] = useState(false);
   const [restrictedContent, setRestrictedContent] = useState<Content | null>(null);
   
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // Toast Helper
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   }, []);
 
-  // --- Deep Linking Logic: Resolve Content from URL after data fetch ---
-  const resolveContentFromUrl = (path: string, contentList: Content[]) => {
-      // Decode path to handle Arabic slugs correctly (e.g. %D9%81%D9%8A%D9%84%D9%85 -> فيلم)
-      const decodedPath = decodeURIComponent(path);
+  // NEW: Smart Scroll Restoration Logic
+  useLayoutEffect(() => {
+      const prevView = prevViewRef.current;
       
-      // Regex to capture the slug (second segment)
-      // Matches /فيلم/slug or /مسلسل/slug or /movie/slug
+      // 1. If entering Detail page, always scroll to top.
+      if (view === 'detail') {
+          window.scrollTo(0, 0);
+      } 
+      // 2. If RETURNING from Detail page (Back action), restore previous scroll position.
+      else if (prevView === 'detail') {
+          const savedPosition = scrollPositions.current[view];
+          if (savedPosition) {
+              window.scrollTo(0, savedPosition);
+          } else {
+              window.scrollTo(0, 0);
+          }
+      } 
+      // 3. Normal navigation between main pages (e.g. Home -> Movies), typically resets to top.
+      else {
+          window.scrollTo(0, 0);
+      }
+
+      prevViewRef.current = view;
+  }, [view]);
+
+  // FIX: Removed 'view' dependency to prevent circular logic/race condition when navigating
+  const resolveContentFromUrl = useCallback((path: string, contentList: Content[]) => {
+      const decodedPath = decodeURIComponent(path);
       const match = decodedPath.match(/^\/(?:series|مسلسل|movie|فيلم)\/([^\/]+)/);
       
-      let slug = '';
       if (match && match[1]) {
-          slug = match[1];
-      }
+          const slug = match[1];
+          const foundContent = contentList.find(c => (c.slug === slug) || (c.id === slug));
 
-      let foundContent: Content | undefined;
-
-      if (slug) {
-          // Try matching by slug first (Priority), then ID as fallback
-          foundContent = contentList.find(c => (c.slug === slug) || (c.id === slug));
-      }
-
-      if (foundContent) {
-          setSelectedContent(foundContent);
-          // Ensure view is set to detail
-          if(view !== 'detail') setView('detail');
-      } else if (view === 'detail') {
-          // If we are in detail view but can't resolve content (and content is loaded), revert to home
-          if (contentList.length > 0) {
-             setView('home');
-             safeHistoryReplace('/');
+          if (foundContent) {
+              setSelectedContent(foundContent);
+              setView('detail');
+          } else {
+              // URL looks like a detail page, but content not found.
+              // Only redirect to home if we actually have content loaded (not empty list)
+              if (contentList.length > 0) {
+                 setView('home');
+                 safeHistoryReplace('/');
+              }
           }
       }
-  };
+  }, []);
 
-  // --- Browser History Handling (Popstate) ---
   useEffect(() => {
       const handlePopState = () => {
           const newView = getInitialView();
           setView(newView);
           
-          // Handle Category State Update on Back/Forward
           const path = decodeURIComponent(window.location.pathname);
           if (path.startsWith('/category/')) {
               setSelectedCategory(path.split('/category/')[1]);
           }
 
-          // Re-sync content if going back to a detail page
+          // Only attempt to resolve content if we are navigating TO a detail view via Back/Forward
           if (newView === 'detail' && allContent.length > 0) {
               resolveContentFromUrl(window.location.pathname, allContent);
           }
       };
       window.addEventListener('popstate', handlePopState);
       return () => window.removeEventListener('popstate', handlePopState);
-  }, [allContent]);
+  }, [allContent, resolveContentFromUrl]);
 
-  // --- Global Theme Effect ---
   useEffect(() => {
-      // CRITICAL SECURITY: Isolate Admin Panel from themes.
-      // If we are in admin view, remove all theme classes.
       if (view === 'admin') {
           document.body.classList.remove('theme-ramadan', 'theme-ios', 'theme-night-city', 'theme-nature', 'theme-eid', 'theme-cosmic-teal');
           return;
       }
 
-      // Clear all themes first
       document.body.classList.remove('theme-ramadan', 'theme-ios', 'theme-night-city', 'theme-nature', 'theme-eid', 'theme-cosmic-teal');
 
-      // Apply specific theme
       const active = siteSettings.activeTheme;
-      if (active === 'ramadan') {
-          document.body.classList.add('theme-ramadan');
-      } else if (active === 'ios') {
-          document.body.classList.add('theme-ios');
-      } else if (active === 'night-city') {
-          document.body.classList.add('theme-night-city');
-      } else if (active === 'nature') {
-          document.body.classList.add('theme-nature');
-      } else if (active === 'eid') {
-          document.body.classList.add('theme-eid');
-      } else if (active === 'cosmic-teal') {
-          document.body.classList.add('theme-cosmic-teal');
-      }
+      if (active === 'ramadan') document.body.classList.add('theme-ramadan');
+      else if (active === 'ios') document.body.classList.add('theme-ios');
+      else if (active === 'night-city') document.body.classList.add('theme-night-city');
+      else if (active === 'nature') document.body.classList.add('theme-nature');
+      else if (active === 'eid') document.body.classList.add('theme-eid');
+      else if (active === 'cosmic-teal') document.body.classList.add('theme-cosmic-teal');
 
-      // Persistence
       localStorage.setItem('cinematix_active_theme', active);
-      // Backward compatibility sync
       localStorage.setItem('cinematix_theme_ramadan', active === 'ramadan' ? 'true' : 'false');
 
   }, [siteSettings.activeTheme, view]); 
 
-  // Data Fetching
   const fetchData = useCallback(async () => {
       try {
           setIsContentLoading(true);
-          // Execute all fetches in parallel for better performance and synchronization
           const [contentSnap, settings, adsList, pinnedData] = await Promise.all([
               db.collection('content').get(),
               getSiteSettings(),
@@ -312,21 +298,15 @@ const App: React.FC = () => {
               getPinnedContent()
           ]);
 
-          // Process Content
           const contentList = contentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Content));
           setAllContent(contentList);
 
-          // Process Settings
           setSiteSettings(prev => ({
               ...settings,
-              // Ensure we respect locally saved theme preference if valid, otherwise use server setting
               activeTheme: settings.activeTheme || 'default'
           }));
 
-          // Process Ads
           setAds(adsList);
-          
-          // Process Pinned Items
           setPinnedItems(pinnedData);
 
       } catch (error) {
@@ -342,51 +322,44 @@ const App: React.FC = () => {
         const preloader = document.getElementById('preloader');
         if (preloader && !preloader.classList.contains('preloader-hidden')) {
             preloader.classList.add('preloader-hidden');
-            // Remove from DOM after transition for better performance
             setTimeout(() => {
                 if (preloader) preloader.style.display = 'none';
             }, 500);
         }
       };
 
-      // UX IMPROVEMENT: Only show splash screen on Home Page ('/')
-      // On sub-pages, hide immediately to show the page's local loading state
       const isHomePage = window.location.pathname === '/';
 
       if (!isHomePage) {
           hideLoader();
           fetchData();
-          return; // Skip timers
+          return;
       }
 
-      // --- CRITICAL FIX: 3-Second Safety Timeout ---
-      // Prevents infinite loading screen if Firebase connection hangs
       const safetyTimer = setTimeout(() => {
           hideLoader();
       }, 3000);
 
       fetchData().finally(() => {
-          clearTimeout(safetyTimer); // Clear timeout if data loads fast
+          clearTimeout(safetyTimer);
           hideLoader();
       });
 
   }, [fetchData]);
   
-  // Trigger resolution when content loads or view is initialized
   useEffect(() => {
       if (allContent.length > 0) {
+          // Run once on initial load / content load to handle deep linking
           resolveContentFromUrl(window.location.pathname, allContent);
       }
-  }, [allContent]); // Run once when content is populated
+  }, [allContent, resolveContentFromUrl]);
 
-  // Auth Listener
   useEffect(() => {
       const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
           try {
               if (firebaseUser) {
                   const profile = await getUserProfile(firebaseUser.uid);
                   if (profile) {
-                      // Construct full User object
                       const user: User = {
                           id: firebaseUser.uid,
                           email: firebaseUser.email || '',
@@ -397,7 +370,6 @@ const App: React.FC = () => {
                       };
                       setCurrentUser(user);
                       
-                      // UX FIX: Check Local Storage for saved active profile
                       const savedProfileId = localStorage.getItem('cinematix_active_profile');
                       if (savedProfileId) {
                           const savedProfile = user.profiles.find(p => p.id === Number(savedProfileId));
@@ -406,7 +378,6 @@ const App: React.FC = () => {
                           }
                       }
                       
-                      // If admin, fetch users
                       if (user.role === UserRole.Admin) {
                            const usersList = await getUsers();
                            setAllUsers(usersList);
@@ -418,7 +389,6 @@ const App: React.FC = () => {
                   localStorage.removeItem('cinematix_active_profile');
               }
           } finally {
-              // Auth check complete, stop loading to show content or login form
               setIsAuthLoading(false);
           }
       });
@@ -426,22 +396,20 @@ const App: React.FC = () => {
   }, []);
 
 
-  // Handlers
   const handleSetView = (newView: View, category?: string) => {
+      // Save current scroll position before navigating away
+      scrollPositions.current[view] = window.scrollY;
+
       setView(newView);
       if (category) setSelectedCategory(category);
-      window.scrollTo(0, 0);
+      // REMOVED: window.scrollTo(0, 0); (Handled by useLayoutEffect)
 
-      // Update URL History (Deep Linking)
       let path = REVERSE_VIEW_PATHS[newView];
       
-      // Dynamic Category Route Handling
       if (newView === 'category' && category) {
           path = `/category/${category}`;
       }
       
-      // Special case for detail view handled in handleSelectContent, 
-      // but if navigating back from it to a standard view:
       if (path) {
           if (window.location.pathname !== path) {
             safeHistoryPush(path);
@@ -450,27 +418,24 @@ const App: React.FC = () => {
   };
 
   const handleSelectContent = (content: Content) => {
-      // Ramadan Content Locking Logic
       if (siteSettings.isRamadanModeEnabled && content.categories.includes('رمضان')) {
-          // Check current date vs countdown date
           const now = new Date().getTime();
           const countdown = new Date(siteSettings.countdownDate).getTime();
           
           if (now < countdown) {
-              // Content is restricted
               setRestrictedContent(content);
               setIsRamadanModalOpen(true);
-              return; // Stop execution, do not navigate
+              return;
           }
       }
       
-      // Normal selection if not restricted
+      // Save scroll position of the current view (where the list is) before entering detail
+      scrollPositions.current[view] = window.scrollY;
+
       setSelectedContent(content);
       setView('detail');
-      window.scrollTo(0, 0);
+      // REMOVED: window.scrollTo(0, 0); (Handled by useLayoutEffect)
 
-      // Generate Semantic URL
-      // Fallback to ID if slug is missing, but slug should be there.
       const slug = content.slug || content.id; 
       const prefix = content.type === 'series' ? '/مسلسل/' : '/فيلم/';
       const path = `${prefix}${slug}`;
@@ -493,7 +458,6 @@ const App: React.FC = () => {
       try {
           const cred = await auth.createUserWithEmailAndPassword(newUser.email, newUser.password || '');
           if (cred.user) {
-               // Create a default profile automatically
                const defaultProfile: Profile = {
                    id: Date.now(),
                    name: newUser.firstName || 'المستخدم',
@@ -534,7 +498,6 @@ const App: React.FC = () => {
       handleSetView('home');
   };
 
-  // My List Logic
   const handleToggleMyList = async (contentId: string) => {
       if (!currentUser || !activeProfile) {
           handleSetView('login');
@@ -545,25 +508,20 @@ const App: React.FC = () => {
       let newList;
       if (currentList.includes(contentId)) {
           newList = currentList.filter(id => id !== contentId);
-          // Removed toast notification for removal as per user request
       } else {
           newList = [...currentList, contentId];
           addToast('تمت الإضافة إلى القائمة', 'success');
       }
       
-      // Optimistic UI update
       const updatedProfile = { ...activeProfile, myList: newList };
       setActiveProfile(updatedProfile);
       
-      // Update User state
       const updatedProfiles = currentUser.profiles.map(p => p.id === activeProfile.id ? updatedProfile : p);
       setCurrentUser({ ...currentUser, profiles: updatedProfiles });
 
-      // Update Firestore
       await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles });
   };
 
-  // Admin Handlers
   const handleUpdateAd = async (ad: Ad) => {
       try {
           await updateAd(ad.id, ad);
@@ -591,7 +549,6 @@ const App: React.FC = () => {
   
   const handleUpdateSiteSettings = async (newSettings: SiteSettings) => {
       try {
-          // Keep backward compatibility for now
           const compatSettings = {
               ...newSettings,
               isRamadanModeEnabled: newSettings.activeTheme === 'ramadan'
@@ -616,8 +573,8 @@ const App: React.FC = () => {
 
   const handleAddAdmin = async (newAdmin: Omit<User, 'id' | 'role' | 'profiles'>) => {
         try {
-             console.warn("Client-side admin creation not fully supported without re-auth. Implementing mock success.");
-             addToast('يتطلب إضافة مسؤول استخدام وظائف سحابية (Cloud Functions). تم محاكاة العملية.', 'info');
+             console.warn("Client-side admin creation simulated.");
+             addToast('تم محاكاة إضافة المسؤول.', 'info');
              setAllUsers(prev => [...prev, { ...newAdmin, id: 'mock-id-' + Date.now(), role: UserRole.Admin, profiles: [] }]);
         } catch (error: any) {
             addToast(error.message, 'error');
@@ -633,7 +590,6 @@ const App: React.FC = () => {
   };
 
 
-  // Render Logic
   const renderView = () => {
       const isAdmin = currentUser?.role === UserRole.Admin;
       const isMaintenance = siteSettings.is_maintenance_mode_enabled;
@@ -641,14 +597,12 @@ const App: React.FC = () => {
       const isEidTheme = siteSettings.activeTheme === 'eid';
       const isCosmicTealTheme = siteSettings.activeTheme === 'cosmic-teal';
 
-      // Helper for Loading State
       const LoadingSpinner = () => (
           <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
               <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isCosmicTealTheme ? 'border-[#35F18B]' : 'border-[#00A7F8]'}`}></div>
           </div>
       );
 
-      // Maintenance Mode Check
       if (isMaintenance) {
           if (!isAdmin) {
               if (view === 'login') {
@@ -658,19 +612,10 @@ const App: React.FC = () => {
           }
       }
 
-      // Check for Profile Selection
-      // Only show Profile Selector if: 
-      // 1. We have a User 
-      // 2. No Active Profile selected yet
-      // 3. Not in specific auth/admin/account views 
-      // 4. Auth loading is finished (to prevent premature showing)
       if (!isAuthLoading && currentUser && !activeProfile && view !== 'profileSelector' && view !== 'accountSettings' && view !== 'admin') {
           return <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} />;
       }
 
-      // --- DATA PROCESSING HELPER ---
-      // Merges pinned item configuration (like bannerNote) into the actual content object
-      // UPDATED: For Series, it overrides metadata (Poster, Backdrop, Logo, etc.) with the LATEST SEASON's data if available.
       const getPinnedContentWithMeta = (page: PageKey) => {
           return pinnedItems[page].map(p => {
               const content = allContent.find(c => c.id === p.contentId);
@@ -678,14 +623,10 @@ const App: React.FC = () => {
               
               let finalContent = { ...content };
 
-              // Series Specific Logic: Promote Latest Season Metadata
               if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
-                  // 1. Find Latest Season (Highest Season Number)
                   const latestSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
                   
                   if (latestSeason) {
-                      // 2. Override properties if they exist in the season
-                      // Note: We check if the string is truthy (not empty)
                       if (latestSeason.poster) finalContent.poster = latestSeason.poster;
                       if (latestSeason.backdrop) finalContent.backdrop = latestSeason.backdrop;
                       if (latestSeason.logoUrl) finalContent.logoUrl = latestSeason.logoUrl;
@@ -695,7 +636,6 @@ const App: React.FC = () => {
                   }
               }
 
-              // Merge bannerNote from pinned item configuration if exists, otherwise use content's default
               return { 
                   ...finalContent, 
                   bannerNote: p.bannerNote || finalContent.bannerNote 
@@ -735,7 +675,7 @@ const App: React.FC = () => {
                         isRamadanTheme={isRamadanTheme}
                         isEidTheme={isEidTheme}
                         isCosmicTealTheme={isCosmicTealTheme}
-                        siteSettings={siteSettings} // Added siteSettings prop
+                        siteSettings={siteSettings}
                      />;
           case 'series':
               return <SeriesPage
@@ -802,8 +742,8 @@ const App: React.FC = () => {
            case 'detail':
                return selectedContent ? (
                    <DetailPage 
-                        key={window.location.pathname} // Force remount when URL changes (deep linking refresh)
-                        locationPath={window.location.pathname} // Pass current path for deep link parsing
+                        key={window.location.pathname}
+                        locationPath={window.location.pathname}
                         content={selectedContent}
                         ads={ads}
                         adsEnabled={siteSettings.adsEnabled}
@@ -820,7 +760,6 @@ const App: React.FC = () => {
                ) : (isContentLoading ? (
                  <LoadingSpinner />
                ) : (
-                 // If no content found and not loading, 404 fallback to home
                  <HomePage {...{allContent, pinnedContent: [], onSelectContent: handleSelectContent, isLoggedIn: !!currentUser, myList: activeProfile?.myList, onToggleMyList: handleToggleMyList, ads, siteSettings, onNavigate: handleSetView}} isLoading={isContentLoading} />
                ));
            case 'login':
@@ -939,6 +878,8 @@ const App: React.FC = () => {
                 ) : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} />;
             case 'privacy':
                 return <PrivacyPolicyPage content={siteSettings.privacyPolicy} onSetView={handleSetView} />;
+            case 'copyright':
+                return <CopyrightPage content={siteSettings.copyrightPolicy} onSetView={handleSetView} />;
             case 'about':
                 return <AboutPage onSetView={handleSetView} />;
             case 'maintenance':
@@ -950,8 +891,8 @@ const App: React.FC = () => {
 
   const isFullPageLayout = view === 'login' || view === 'register' || view === 'admin' || view === 'profileSelector' || view === 'profileHub';
   const isMaintenanceActive = siteSettings.is_maintenance_mode_enabled && currentUser?.role !== UserRole.Admin && view !== 'login';
-  // UPDATED: Added `view !== 'accountSettings'` to exclude global header from account settings page
-  const showHeader = !isFullPageLayout && view !== 'myList' && view !== 'category' && view !== 'accountSettings' && !isMaintenanceActive && !isContentLoading; 
+  // Exclude 'about', 'privacy', 'copyright' from showing the main header
+  const showHeader = !isFullPageLayout && view !== 'myList' && view !== 'category' && view !== 'accountSettings' && view !== 'about' && view !== 'privacy' && view !== 'copyright' && !isMaintenanceActive && !isContentLoading; 
   const showFooter = !isFullPageLayout && !isMaintenanceActive;
   const isRamadanTheme = siteSettings.activeTheme === 'ramadan';
   const isEidTheme = siteSettings.activeTheme === 'eid';
@@ -960,6 +901,9 @@ const App: React.FC = () => {
   return (
     <div className="bg-[var(--bg-body)] min-h-screen text-white font-sans selection:bg-[var(--color-accent)] selection:text-black transition-colors duration-500">
       
+      {/* PWA Install Prompt Component - Shows on Mobile if not installed */}
+      <PWAInstallPrompt />
+
       {/* Toast Container */}
       <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 w-full max-w-sm px-4">
          {toasts.map(toast => (
@@ -1002,7 +946,6 @@ const App: React.FC = () => {
       
       {showFooter && <Footer socialLinks={siteSettings.socialLinks} onSetView={handleSetView} isRamadanFooter={view === 'ramadan'} />}
       
-      {/* UPDATED: Added !isContentLoading to the condition */}
       {['home', 'movies', 'series', 'kids', 'ramadan', 'soon', 'profileHub'].includes(view) && !isMaintenanceActive && !isContentLoading && (
           <BottomNavigation 
              currentView={view} 

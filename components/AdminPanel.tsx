@@ -1,12 +1,25 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
-import { db } from '../firebase';
-import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, PageKey, ThemeType } from '../types';
+import { db, generateSlug } from '../firebase';
+import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, PageKey, ThemeType, Category, Genre, Season, Episode, Server } from '../types';
 import { ContentType, UserRole, adPlacementLabels } from '../types';
 import ContentEditModal from './ContentEditModal';
 import AdEditModal from './AdEditModal';
 import ToggleSwitch from './ToggleSwitch';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { CloseIcon } from './icons/CloseIcon';
+import * as XLSX from 'xlsx'; // Imported from esm.sh via importmap
+
+// Icons
+const ArrowUpTrayIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" /></svg>
+);
+const DocumentArrowDownIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
+);
+const TableCellsIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25v1.5c0 .621.504 1.125 1.125 1.125m17.25-2.625h-7.5c-.621 0-1.125.504-1.125 1.125" /></svg>
+);
 
 type AdminTab = 'dashboard' | 'content' | 'pinned' | 'users' | 'ads' | 'themes' | 'settings' | 'analytics';
 
@@ -198,6 +211,8 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                             onNew={openContentModalForNew} 
                             onRequestDelete={confirmDeleteContent}
                             isLoading={isLoadingContent}
+                            addToast={props.addToast}
+                            onBulkSuccess={props.onContentChanged}
                         />;
             case 'users':
                 return <UserManagementTab 
@@ -381,24 +396,358 @@ const ContentManagementTab: React.FC<{
     onNew: () => void, 
     onEdit: (c: Content) => void, 
     onRequestDelete: (id: string, title: string) => void,
-    isLoading: boolean 
-}> = ({content, onNew, onEdit, onRequestDelete, isLoading}) => {
+    isLoading: boolean,
+    addToast: (message: string, type: 'success' | 'error' | 'info') => void,
+    onBulkSuccess: () => void
+}> = ({content, onNew, onEdit, onRequestDelete, isLoading, addToast, onBulkSuccess}) => {
     const [searchTerm, setSearchTerm] = useState('');
     const filteredContent = content
       .filter(c => (c.title || '').toLowerCase().includes(searchTerm.toLowerCase()));
 
+    // --- EXCEL IMPORT LOGIC ---
+    const excelInputRef = React.useRef<HTMLInputElement>(null);
+    const [processingExcel, setProcessingExcel] = useState(false);
+    const [progress, setProgress] = useState('');
+
+    // TMDB Constants
+    const API_KEY = 'b8d66e320b334f4d56728d98a7e39697';
+    const LANG = 'ar-SA';
+
+    // Helper: Generate Excel Template using SheetJS
+    const generateExcelTemplate = () => {
+        const moviesHeader = [
+            "TMDB_ID", "Title", "Description", "Year", "Rating", "Genres", 
+            "Poster_URL", "Backdrop_URL", "Logo_URL", 
+            "Watch_Server_1", "Watch_Server_2", "Watch_Server_3", "Watch_Server_4", "Download_Link"
+        ];
+        
+        const episodesHeader = [
+            "Series_TMDB_ID", "Series_Name", "Season_Number", "Episode_Number", 
+            "Episode_Title", "Watch_Server_1", "Watch_Server_2", "Download_Link"
+        ];
+
+        const wb = XLSX.utils.book_new();
+        const wsMovies = XLSX.utils.aoa_to_sheet([moviesHeader]);
+        const wsEpisodes = XLSX.utils.aoa_to_sheet([episodesHeader]);
+
+        XLSX.utils.book_append_sheet(wb, wsMovies, "Movies");
+        XLSX.utils.book_append_sheet(wb, wsEpisodes, "Episodes");
+
+        XLSX.writeFile(wb, "cinematix_import_template.xlsx");
+    };
+
+    // Helper: Fetch TMDB Data
+    const fetchTMDBData = async (id: string, type: 'movie' | 'tv') => {
+        if (!id) return null;
+        try {
+            const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&language=${LANG}&append_to_response=images,credits`);
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (e) {
+            console.error("TMDB Fetch Error:", e);
+            return null;
+        }
+    };
+
+    // Main Excel Import Handler
+    const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setProcessingExcel(true);
+        setProgress('جاري قراءة الملف...');
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                // --- PROCESS MOVIES SHEET ---
+                if (workbook.Sheets['Movies']) {
+                    const movies = XLSX.utils.sheet_to_json<any>(workbook.Sheets['Movies']);
+                    let count = 0;
+                    const batch = db.batch();
+                    let batchCount = 0;
+
+                    for (const row of movies) {
+                        count++;
+                        setProgress(`معالجة الفيلم ${count} من ${movies.length}...`);
+
+                        let movieData: any = {};
+                        
+                        // Logic A: TMDB Fetch
+                        if (row.TMDB_ID) {
+                            const tmdb = await fetchTMDBData(row.TMDB_ID, 'movie');
+                            if (tmdb) {
+                                movieData = {
+                                    title: tmdb.title,
+                                    description: tmdb.overview,
+                                    poster: tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : '',
+                                    backdrop: tmdb.backdrop_path ? `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}` : '',
+                                    rating: tmdb.vote_average ? Number((tmdb.vote_average / 2).toFixed(1)) : 0,
+                                    releaseYear: tmdb.release_date ? new Date(tmdb.release_date).getFullYear() : new Date().getFullYear(),
+                                    genres: tmdb.genres?.map((g: any) => g.name) || [],
+                                    cast: tmdb.credits?.cast?.slice(0, 5).map((c: any) => c.name) || []
+                                };
+                            }
+                        }
+
+                        // Logic B: Excel Override
+                        if (row.Title) movieData.title = row.Title;
+                        if (row.Description) movieData.description = row.Description;
+                        if (row.Year) movieData.releaseYear = parseInt(row.Year);
+                        if (row.Rating) movieData.rating = parseFloat(row.Rating);
+                        if (row.Poster_URL) movieData.poster = row.Poster_URL;
+                        if (row.Backdrop_URL) movieData.backdrop = row.Backdrop_URL;
+                        if (row.Logo_URL) {
+                            movieData.logoUrl = row.Logo_URL;
+                            movieData.isLogoEnabled = true;
+                        }
+                        if (row.Genres) movieData.genres = row.Genres.split(',').map((g: string) => g.trim());
+
+                        // Servers Construction
+                        const servers: Server[] = [];
+                        if (row.Watch_Server_1) servers.push({ id: 1, name: "سيرفر 1", url: row.Watch_Server_1, downloadUrl: "", isActive: true });
+                        if (row.Watch_Server_2) servers.push({ id: 2, name: "سيرفر 2", url: row.Watch_Server_2, downloadUrl: "", isActive: true });
+                        if (row.Watch_Server_3) servers.push({ id: 3, name: "سيرفر 3", url: row.Watch_Server_3, downloadUrl: "", isActive: true });
+                        if (row.Watch_Server_4) servers.push({ id: 4, name: "سيرفر 4", url: row.Watch_Server_4, downloadUrl: "", isActive: true });
+                        if (row.Download_Link) servers.forEach(s => s.downloadUrl = row.Download_Link); // Apply download link to all or specific logic
+
+                        // Final Construction
+                        const finalMovie: Content = {
+                            id: row.TMDB_ID ? String(row.TMDB_ID) : String(Date.now() + Math.random()),
+                            type: ContentType.Movie,
+                            title: movieData.title || 'New Movie',
+                            description: movieData.description || '',
+                            poster: movieData.poster || '',
+                            backdrop: movieData.backdrop || '',
+                            rating: movieData.rating || 0,
+                            releaseYear: movieData.releaseYear || new Date().getFullYear(),
+                            genres: movieData.genres || [],
+                            categories: ['افلام اجنبية'], // Default, can be improved
+                            cast: movieData.cast || [],
+                            visibility: 'general',
+                            ageRating: '',
+                            servers: servers,
+                            seasons: [],
+                            createdAt: new Date().toISOString(),
+                            updatedAt: new Date().toISOString(),
+                            slug: generateSlug(movieData.title || ''),
+                            logoUrl: movieData.logoUrl,
+                            isLogoEnabled: movieData.isLogoEnabled
+                        };
+
+                        const ref = db.collection("content").doc(finalMovie.id);
+                        batch.set(ref, finalMovie, { merge: true });
+                        batchCount++;
+                        if (batchCount >= 400) { await batch.commit(); batchCount = 0; }
+                    }
+                    if (batchCount > 0) await batch.commit();
+                }
+
+                // --- PROCESS EPISODES SHEET ---
+                if (workbook.Sheets['Episodes']) {
+                    const episodes = XLSX.utils.sheet_to_json<any>(workbook.Sheets['Episodes']);
+                    
+                    // Group by Series Name or ID to minimize DB reads
+                    const seriesGroups: Record<string, any[]> = {};
+                    episodes.forEach(ep => {
+                        const key = ep.Series_TMDB_ID || ep.Series_Name || 'Unknown';
+                        if (!seriesGroups[key]) seriesGroups[key] = [];
+                        seriesGroups[key].push(ep);
+                    });
+
+                    const epBatch = db.batch();
+                    let epBatchCount = 0;
+                    let seriesCount = 0;
+
+                    for (const [seriesKey, epRows] of Object.entries(seriesGroups)) {
+                        seriesCount++;
+                        setProgress(`معالجة المسلسل ${seriesCount} من ${Object.keys(seriesGroups).length}...`);
+
+                        // 1. Find or Create Series
+                        // Strategy: ID is best. If ID provided, try fetching TMDB data.
+                        let seriesDoc: any = null;
+                        let seriesId = String(seriesKey);
+                        
+                        // Check if exists in current list (optimization)
+                        const existingSeries = content.find(c => c.id === seriesId || c.title === seriesKey);
+                        
+                        if (existingSeries) {
+                            seriesDoc = { ...existingSeries };
+                            seriesId = existingSeries.id;
+                        } else {
+                            // New Series: Fetch TMDB if ID looks like a number
+                            let tmdbSeries: any = null;
+                            if (!isNaN(Number(seriesKey))) {
+                                tmdbSeries = await fetchTMDBData(seriesKey, 'tv');
+                            }
+
+                            // Construct basic series
+                            seriesDoc = {
+                                id: seriesId,
+                                type: ContentType.Series,
+                                title: tmdbSeries?.name || epRows[0].Series_Name || 'New Series',
+                                description: tmdbSeries?.overview || '',
+                                poster: tmdbSeries?.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbSeries.poster_path}` : '',
+                                backdrop: tmdbSeries?.backdrop_path ? `https://image.tmdb.org/t/p/original${tmdbSeries.backdrop_path}` : '',
+                                rating: tmdbSeries?.vote_average ? Number((tmdbSeries.vote_average / 2).toFixed(1)) : 0,
+                                releaseYear: tmdbSeries?.first_air_date ? new Date(tmdbSeries.first_air_date).getFullYear() : new Date().getFullYear(),
+                                genres: tmdbSeries?.genres?.map((g: any) => g.name) || [],
+                                categories: ['مسلسلات اجنبية'],
+                                seasons: [],
+                                visibility: 'general',
+                                createdAt: new Date().toISOString(),
+                                updatedAt: new Date().toISOString(),
+                                slug: generateSlug(tmdbSeries?.name || epRows[0].Series_Name || '')
+                            };
+                        }
+
+                        // 2. Process Episodes & Seasons
+                        // Ensure seasons array exists
+                        if (!seriesDoc.seasons) seriesDoc.seasons = [];
+
+                        for (const ep of epRows) {
+                            const sNum = parseInt(ep.Season_Number) || 1;
+                            const eNum = parseInt(ep.Episode_Number) || 1;
+
+                            // Find or Create Season
+                            let season = seriesDoc.seasons.find((s: Season) => s.seasonNumber === sNum);
+                            if (!season) {
+                                season = {
+                                    id: Date.now() + Math.random(),
+                                    seasonNumber: sNum,
+                                    title: `الموسم ${sNum}`,
+                                    episodes: []
+                                };
+                                seriesDoc.seasons.push(season);
+                            }
+
+                            // Create Episode Object
+                            // Note: We could fetch episode details from TMDB here, but to keep it fast, we use Excel data primarily.
+                            const episodeObj: Episode = {
+                                id: Date.now() + Math.random(),
+                                title: ep.Episode_Title || `الحلقة ${eNum}`,
+                                thumbnail: seriesDoc.backdrop || '', // Fallback to series backdrop
+                                duration: 45,
+                                progress: 0,
+                                servers: []
+                            };
+
+                            // Add Servers
+                            if (ep.Watch_Server_1) episodeObj.servers.push({ id: 1, name: "سيرفر 1", url: ep.Watch_Server_1, downloadUrl: ep.Download_Link || "", isActive: true });
+                            if (ep.Watch_Server_2) episodeObj.servers.push({ id: 2, name: "سيرفر 2", url: ep.Watch_Server_2, downloadUrl: "", isActive: true });
+
+                            // Check if episode exists (update) or new
+                            const existingEpIndex = season.episodes.findIndex((e: Episode) => e.title?.includes(`${eNum}`) || e.title === ep.Episode_Title);
+                            if (existingEpIndex > -1) {
+                                // Merge/Update
+                                season.episodes[existingEpIndex] = { ...season.episodes[existingEpIndex], ...episodeObj, servers: [...season.episodes[existingEpIndex].servers, ...episodeObj.servers] };
+                            } else {
+                                // Add new
+                                season.episodes.push(episodeObj);
+                            }
+                        }
+
+                        // Sort Seasons & Episodes
+                        seriesDoc.seasons.sort((a: Season, b: Season) => a.seasonNumber - b.seasonNumber);
+                        seriesDoc.seasons.forEach((s: Season) => {
+                            s.episodes.sort((a: Episode, b: Episode) => {
+                                // Try to parse number from title "الحلقة 1"
+                                const numA = parseInt(a.title?.replace(/\D/g, '') || '0');
+                                const numB = parseInt(b.title?.replace(/\D/g, '') || '0');
+                                return numA - numB;
+                            });
+                        });
+
+                        // Add to batch
+                        const ref = db.collection("content").doc(seriesDoc.id);
+                        epBatch.set(ref, seriesDoc, { merge: true });
+                        epBatchCount++;
+                        if (epBatchCount >= 300) { await epBatch.commit(); epBatchCount = 0; }
+                    }
+                    if (epBatchCount > 0) await epBatch.commit();
+                }
+
+                addToast('تم استيراد البيانات من Excel بنجاح!', 'success');
+                onBulkSuccess();
+
+            } catch (err) {
+                console.error("Excel Import Error:", err);
+                addToast('حدث خطأ أثناء معالجة ملف Excel.', 'error');
+            } finally {
+                setProcessingExcel(false);
+                setProgress('');
+                if (excelInputRef.current) excelInputRef.current.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
     return (
         <div>
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-800 p-4 rounded-xl mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-800 p-4 rounded-xl mb-6">
+                {/* Search */}
                 <input 
                     type="text"
                     placeholder="ابحث عن فيلم أو مسلسل..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full sm:w-auto sm:max-w-sm bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] text-white"
+                    className="w-full md:w-auto md:min-w-[300px] bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] text-white"
                 />
-                <button onClick={onNew} className="w-full sm:w-auto bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black font-bold py-2 px-4 rounded-lg hover:bg-white transition-colors">إضافة محتوى</button>
+                
+                {/* Action Buttons */}
+                <div className="flex gap-2 w-full md:w-auto flex-wrap">
+                    {/* Excel Template Download */}
+                    <button 
+                        onClick={generateExcelTemplate}
+                        className="flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm"
+                        title="تحميل نموذج Excel"
+                    >
+                        <TableCellsIcon />
+                        <span className="hidden sm:inline">تحميل نموذج Excel</span>
+                    </button>
+
+                    {/* Excel Import Button */}
+                    <input 
+                        type="file" 
+                        accept=".xlsx, .xls" 
+                        ref={excelInputRef} 
+                        onChange={handleExcelUpload} 
+                        className="hidden" 
+                    />
+                    <button 
+                        onClick={() => excelInputRef.current?.click()}
+                        disabled={processingExcel}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm disabled:opacity-50"
+                        title="استيراد من Excel"
+                    >
+                        <ArrowUpTrayIcon />
+                        <span className="hidden sm:inline">{processingExcel ? 'جاري المعالجة...' : 'استيراد من Excel'}</span>
+                    </button>
+
+                    {/* Add New Button */}
+                    <button onClick={onNew} className="flex-1 md:flex-none bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black font-bold py-2 px-6 rounded-lg hover:bg-white transition-colors whitespace-nowrap">
+                        + إضافة محتوى
+                    </button>
+                </div>
             </div>
+
+            {/* Progress Bar for Excel Import */}
+            {processingExcel && (
+                <div className="mb-6 bg-gray-800 p-4 rounded-xl border border-gray-700 animate-pulse">
+                    <div className="flex justify-between mb-2 text-sm text-blue-400 font-bold">
+                        <span>جاري الاستيراد...</span>
+                        <span>{progress}</span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-2.5">
+                        <div className="bg-blue-600 h-2.5 rounded-full w-2/3 transition-all duration-500"></div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2 text-center">الرجاء عدم إغلاق الصفحة حتى تكتمل العملية.</p>
+                </div>
+            )}
+
             <div className="overflow-x-auto bg-gray-800 rounded-xl">
                 {isLoading ? (
                      <div className="text-center py-20 text-gray-400">
@@ -900,7 +1249,7 @@ const SiteSettingsTab: React.FC<{
         xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n`;
         
         // Static Pages
-        const staticPages = ['', '/movies', '/series', '/kids', '/ramadan', '/soon', '/about', '/privacy'];
+        const staticPages = ['', '/movies', '/series', '/kids', '/ramadan', '/soon', '/about', '/privacy', '/copyright'];
         staticPages.forEach(page => {
             xml += `  <url>\n`;
             xml += `    <loc>${baseUrl}${page}</loc>\n`;
@@ -1090,6 +1439,16 @@ const SiteSettingsTab: React.FC<{
                     value={siteSettings.privacyPolicy}
                     onChange={(e) => handleChange('privacyPolicy', e.target.value)}
                     className="w-full h-40 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-sm"
+                 />
+            </div>
+
+            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mt-4">
+                 <h3 className="text-lg font-bold text-[var(--color-primary-to)] mb-4">سياسة حقوق الملكية</h3>
+                 <textarea 
+                    value={siteSettings.copyrightPolicy || ''}
+                    onChange={(e) => handleChange('copyrightPolicy', e.target.value)}
+                    className="w-full h-40 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-sm"
+                    placeholder="أدخل نص سياسة حقوق الملكية هنا..."
                  />
             </div>
         </div>

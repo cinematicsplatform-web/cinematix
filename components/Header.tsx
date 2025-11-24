@@ -65,6 +65,11 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
   }, [searchQuery, allContent]);
   
   const handleResultClick = (content: Content) => {
+    // Dismiss keyboard on mobile
+    if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+    }
+    
     onSelectContent(content);
     setSearchQuery('');
     setSearchResults([]);
@@ -194,10 +199,10 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                 {/* Results List */}
                 <div className="flex flex-col p-2 gap-2">
                     {searchResults.map((content) => (
-                      <div 
+                      <button 
                         key={content.id} 
-                        onClick={() => handleResultClick(content)}
-                        className="flex flex-row items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-xl cursor-pointer transition-all duration-200 group relative border border-white/5"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleResultClick(content); }}
+                        className="flex flex-row items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-xl cursor-pointer transition-all duration-200 group relative border border-white/5 w-full text-right"
                       >
                         {/* Thumbnail - Right (RTL) - Fixed Size 50x70 */}
                         <img 
@@ -235,7 +240,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                                 {content.type === 'movie' ? 'فيلم' : 'مسلسل'}
                             </span>
                         </div>
-                      </div>
+                      </button>
                     ))}
                 </div>
               </div>

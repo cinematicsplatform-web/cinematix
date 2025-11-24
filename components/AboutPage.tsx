@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import type { View } from '../types';
 
 interface AboutPageProps {
@@ -8,9 +8,14 @@ interface AboutPageProps {
 
 const AboutPage: React.FC<AboutPageProps> = ({ onSetView }) => {
   return (
-    <div className="min-h-screen bg-[var(--bg-body)] text-white p-4 sm:p-6 lg:p-8 pt-24 animate-fade-in-up flex items-center justify-center">
-      <div className="max-w-4xl mx-auto text-center">
-        <div className="bg-gray-900/50 p-8 md:p-12 rounded-2xl border border-gray-800">
+    <div className="min-h-screen bg-[var(--bg-body)] text-white p-4 sm:p-6 lg:p-8 pt-10 animate-fade-in-up">
+      <div className="max-w-4xl mx-auto">
+        <button onClick={() => onSetView('home')} className="text-gray-400 hover:text-white mb-8 transition-colors flex items-center gap-2 font-bold">
+          <span>&rarr;</span>
+          <span>العودة إلى الرئيسية</span>
+        </button>
+
+        <div className="bg-gray-900/50 p-8 md:p-12 rounded-2xl border border-gray-800 text-center">
             <h1 className="text-3xl md:text-5xl font-extrabold mb-6">
                 <span className="text-white">مرحباً بك في سينما</span>
                 <span className="gradient-text font-['Lalezar'] tracking-wide">تيكس</span>
