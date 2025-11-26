@@ -8,6 +8,8 @@ body, h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, select, textarea {
 html, body {
     overflow-y: auto; 
     height: auto;
+    /* Ensure no fixed height constraints */
+    min-height: 100vh;
 }
 #root {
     height: auto;
