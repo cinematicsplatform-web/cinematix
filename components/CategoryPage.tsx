@@ -1,10 +1,11 @@
 
 import React, { useMemo, useState } from 'react';
-import type { Content, Category, View } from '../types';
+import type { Content, Category, View, Ad } from '../types';
 import { ContentType } from '../types';
 import ContentCard from './ContentCard';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
 import { SearchIcon } from './icons/SearchIcon';
+import AdPlacement from './AdPlacement';
 
 interface CategoryPageProps {
   categoryTitle: string;
@@ -18,6 +19,8 @@ interface CategoryPageProps {
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
+  ads?: Ad[];
+  adsEnabled?: boolean;
 }
 
 const CategoryPage: React.FC<CategoryPageProps> = ({ 
@@ -31,7 +34,9 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
     isRamadanTheme,
     isEidTheme,
     isCosmicTealTheme,
-    isNetflixRedTheme
+    isNetflixRedTheme,
+    ads = [],
+    adsEnabled = false
 }) => {
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -194,36 +199,49 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
           </div>
       </div>
 
-      {/* Grid Content */}
-      <div className="p-4 md:p-8 pt-6 md:pt-8 max-w-[1600px] mx-auto pb-24">
-        {filteredContent.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 gap-y-12">
-            {filteredContent.map((content, index) => (
-              <ContentCard 
-                key={content.id} 
-                content={content} 
-                onSelectContent={onSelectContent}
-                isLoggedIn={isLoggedIn}
-                myList={myList}
-                onToggleMyList={onToggleMyList}
-                isGridItem={true}
-                rank={showRank ? index + 1 : undefined}
-                isRamadanTheme={isRamadanTheme}
-                isEidTheme={isEidTheme}
-                isCosmicTealTheme={isCosmicTealTheme}
-                isNetflixRedTheme={isNetflixRedTheme}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-32 text-center opacity-60">
-            <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
-                <SearchIcon className="h-10 w-10 text-gray-400" />
+      {/* Main Layout */}
+      <div className="p-4 md:p-8 pt-6 md:pt-8 max-w-[1600px] mx-auto pb-24 flex flex-col lg:flex-row gap-6">
+        
+        <div className="flex-1 w-full">
+            <AdPlacement ads={ads} placement="listing-top" isEnabled={adsEnabled} />
+
+            {filteredContent.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-4 md:gap-6 gap-y-12">
+                {filteredContent.map((content, index) => (
+                <ContentCard 
+                    key={content.id} 
+                    content={content} 
+                    onSelectContent={onSelectContent}
+                    isLoggedIn={isLoggedIn}
+                    myList={myList}
+                    onToggleMyList={onToggleMyList}
+                    isGridItem={true}
+                    rank={showRank ? index + 1 : undefined}
+                    isRamadanTheme={isRamadanTheme}
+                    isEidTheme={isEidTheme}
+                    isCosmicTealTheme={isCosmicTealTheme}
+                    isNetflixRedTheme={isNetflixRedTheme}
+                />
+                ))}
             </div>
-            <h2 className="text-2xl font-bold text-gray-300 mb-2">لا توجد نتائج</h2>
-            <p className="text-gray-500">لم يتم العثور على محتوى مطابق لبحثك في هذا القسم.</p>
-          </div>
-        )}
+            ) : (
+            <div className="flex flex-col items-center justify-center py-32 text-center opacity-60">
+                <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+                    <SearchIcon className="h-10 w-10 text-gray-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-300 mb-2">لا توجد نتائج</h2>
+                <p className="text-gray-500">لم يتم العثور على محتوى مطابق لبحثك في هذا القسم.</p>
+            </div>
+            )}
+
+            <AdPlacement ads={ads} placement="listing-bottom" isEnabled={adsEnabled} />
+        </div>
+
+        {/* Sidebar (Desktop Only) */}
+        <div className="hidden lg:block w-[300px] flex-shrink-0 sticky top-48 h-fit">
+            <AdPlacement ads={ads} placement="listing-sidebar" isEnabled={adsEnabled} />
+        </div>
+
       </div>
     </div>
   );

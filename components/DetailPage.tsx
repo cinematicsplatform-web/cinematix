@@ -607,7 +607,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                  {/* Player, Servers, Download */}
                  {isContentPlayable ? (
                     <>
-                         {/* A. Servers Row */}
+                         {/* A. Servers Row - Added 'target-server-btn' class for ad engine */}
                          <div className="mb-6 animate-fade-in-up">
                             <SectionTitle title="سيرفرات المشاهدة" />
                             
@@ -618,6 +618,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                         onClick={() => handleServerSelect(server)}
                                         className={`
                                             flex-shrink-0 px-6 py-3 rounded-lg font-bold text-sm transition-all shadow-sm flex items-center gap-2 whitespace-nowrap
+                                            target-server-btn
                                             ${selectedServer?.id === server.id 
                                                 ? (isRamadanTheme 
                                                     ? 'bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)]' 
@@ -660,7 +661,10 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                           )}
                                       </div>
                                       
-                                      <div className="w-full h-full flex items-center justify-center pointer-events-auto" dangerouslySetInnerHTML={{ __html: prerollAd.code }} />
+                                      <div className="w-full h-full flex items-center justify-center pointer-events-auto">
+                                          {/* AD CONTENT RENDERED HERE via dangerouslySetInnerHTML - AdPlacement logic could be used but simple div is fine for overlay logic controlled here */}
+                                          <div dangerouslySetInnerHTML={{ __html: prerollAd.code }} />
+                                      </div>
                                   </div>
                               ) : (
                                   /* Actual Video Player */
@@ -670,8 +674,11 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                   />
                               )}
                          </div>
+                         
+                         {/* New Placement: Below Player */}
+                         <AdPlacement ads={ads} placement="watch-below-player" isEnabled={adsEnabled} />
 
-                         {/* C. Download Button */}
+                         {/* C. Download Button - Added 'target-download-btn' for ad engine */}
                          {downloadUrl && (
                              <div className="mt-8 flex justify-center items-center animate-fade-in-up" style={{ animationDelay: '200ms' }}>
                                  <a 
@@ -684,6 +691,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                         border border-gray-700 hover:border-opacity-50
                                         rounded-full p-1.5 transition-all duration-300
                                         flex items-center justify-center gap-4 shadow-lg min-w-[280px]
+                                        target-download-btn
                                         ${isRamadanTheme 
                                             ? 'hover:border-amber-500/50' 
                                             : isEidTheme
@@ -761,6 +769,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
       {/* --- 4. Recommendations Footer --- */}
       <div className="w-full px-4 md:px-8 pt-8">
+         {/* New Placement: Above Recommendations */}
+         <AdPlacement ads={ads} placement="watch-above-recommendations" isEnabled={adsEnabled} />
+
          <div className={`border-t pt-8 ${isRamadanTheme ? 'border-amber-900/20' : isEidTheme ? 'border-purple-900/20' : 'border-gray-800'}`}>
             <ContentCarousel 
                 title={

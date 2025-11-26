@@ -7,7 +7,7 @@ import 'firebase/compat/auth';
 
 import { db, auth, getUserProfile, updateUserProfileInFirestore, createUserProfileInFirestore, deleteUserFromFirestore, getSiteSettings, getAds, getUsers, updateSiteSettings as updateSiteSettingsInDb, addAd, updateAd, deleteAd, getPinnedContent, updatePinnedContentForPage } from './firebase'; 
 import type { Content, User, Profile, Ad, PinnedItem, SiteSettings, View, LoginError, PinnedContentState, PageKey } from './types';
-import { UserRole } from './types';
+import { UserRole, triggerSelectors } from './types';
 import { initialSiteSettings, defaultAvatar, pinnedContentData as initialPinned } from './data';
 
 import Header from './components/Header';
@@ -33,7 +33,8 @@ import CategoryPage from './components/CategoryPage';
 import RamadanRestrictedModal from './components/RamadanRestrictedModal';
 import ProfileHubPage from './components/ProfileHubPage';
 import MaintenancePage from './components/MaintenancePage';
-import PWAInstallPrompt from './components/PWAInstallPrompt'; // PWA Component
+import PWAInstallPrompt from './components/PWAInstallPrompt';
+import AdPlacement from './components/AdPlacement'; // Import AdPlacement
 
 // --- Toast Notification System ---
 
@@ -202,6 +203,74 @@ const App: React.FC = () => {
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   }, []);
+
+  // --- SMART POPUNDER ENGINE ---
+  useEffect(() => {
+      if (!siteSettings.adsEnabled) return;
+
+      const handleSmartPopunder = (e: MouseEvent) => {
+          // Filter active popunders
+          const activePopunders = ads.filter(a => a.placement === 'global-popunder' && a.status === 'active');
+          
+          // Device check
+          const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+          const isMobile = /android|iPad|iPhone|iPod/i.test(userAgent) || window.innerWidth <= 768;
+
+          activePopunders.forEach(ad => {
+              // 1. Device Target Check
+              const targetDevice = ad.targetDevice || 'all';
+              if (targetDevice === 'mobile' && !isMobile) return;
+              if (targetDevice === 'desktop' && isMobile) return;
+
+              // 2. Frequency Capping Check (24 Hours by default)
+              const lastRun = localStorage.getItem(`popunder_last_run_${ad.id}`);
+              const now = Date.now();
+              const oneDay = 24 * 60 * 60 * 1000;
+
+              if (lastRun && (now - parseInt(lastRun) < oneDay)) {
+                  return; // Too soon
+              }
+
+              // 3. Target Matching Logic (CSS Selector)
+              const triggerKey = ad.triggerTarget || 'all';
+              const selector = triggerSelectors[triggerKey];
+              
+              // Check if the clicked element matches the selector (or is a child of it)
+              const targetElement = (e.target as Element).closest(selector);
+
+              if (targetElement) {
+                  // 4. Execute Script
+                  // Using a dummy container to execute scripts safely
+                  const div = document.createElement('div');
+                  div.style.display = 'none';
+                  div.className = `smart-popunder-${ad.id}`;
+                  
+                  try {
+                      const range = document.createRange();
+                      const fragment = range.createContextualFragment(ad.code);
+                      div.appendChild(fragment);
+                      document.body.appendChild(div);
+                      
+                      // Mark as executed
+                      localStorage.setItem(`popunder_last_run_${ad.id}`, now.toString());
+                      console.log(`Popunder [${ad.title}] triggered on [${triggerKey}]`);
+                      
+                      // Optional: If it's "Watch Now" or "Download", we generally DON'T block the action,
+                      // popunders usually open in a new tab while the user stays on the action.
+                  } catch (err) {
+                      console.error("Smart Popunder Error:", err);
+                  }
+              }
+          });
+      };
+
+      // Use capture phase to catch events before other handlers if necessary, 
+      // but bubble phase is usually safer for 'closest' checks.
+      window.addEventListener('click', handleSmartPopunder); 
+      return () => window.removeEventListener('click', handleSmartPopunder);
+
+  }, [ads, siteSettings.adsEnabled]);
+
 
   // FORCE MANUAL SCROLL RESTORATION
   useEffect(() => {
@@ -824,6 +893,8 @@ const App: React.FC = () => {
                         isEidTheme={isEidTheme}
                         isCosmicTealTheme={isCosmicTealTheme}
                         isNetflixRedTheme={isNetflixRedTheme}
+                        ads={ads}
+                        adsEnabled={siteSettings.adsEnabled}
                       />;
            case 'admin':
                 if (isAuthLoading) return <LoadingSpinner />;
@@ -948,6 +1019,10 @@ const App: React.FC = () => {
             />
         )}
         
+        {/* Global Ads - Social Bar & Sticky Footer */}
+        <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className="fixed z-[90] bottom-20 left-4 right-4 md:bottom-4 md:left-4 md:right-auto md:w-auto pointer-events-auto" />
+        <AdPlacement ads={ads} placement="global-sticky-footer" isEnabled={siteSettings.adsEnabled} className="fixed bottom-0 left-0 w-full z-[1000] bg-black/80" />
+
         {renderView()}
 
         {!isAuthLoading && view !== 'login' && view !== 'register' && view !== 'profileSelector' && view !== 'admin' && view !== 'detail' && !siteSettings.is_maintenance_mode_enabled && (

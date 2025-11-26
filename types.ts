@@ -147,16 +147,21 @@ export interface User {
   profiles: Profile[];
 }
 
-// FIX: Added granular placement controls
 export const adPlacements = [
   'home-top',
-  'home-below-hero', // New: Below Hero Section
+  'home-below-hero',
   'home-middle',
-  'home-carousel-3-4', // New: Between Carousel 3 & 4
+  'home-carousel-3-4',
+  'home-bottom', 
+  'listing-top', 
+  'listing-sidebar', 
+  'listing-bottom', 
   'watch-top',
+  'watch-preroll',
+  'watch-below-player', 
+  'watch-sidebar',
+  'watch-above-recommendations', 
   'watch-bottom',
-  'watch-sidebar', // New: Sidebar in Detail Page
-  'watch-preroll', // New: Before Video Starts
   'movies-page',
   'series-page',
   'ramadan-page',
@@ -167,6 +172,9 @@ export const adPlacements = [
   'ramadan-bottom',
   'soon-page-top',
   'soon-page-bottom',
+  'global-popunder',
+  'global-social-bar', 
+  'global-sticky-footer', 
 ] as const;
 
 export type AdPlacement = typeof adPlacements[number];
@@ -174,24 +182,57 @@ export type AdPlacement = typeof adPlacements[number];
 export const adPlacementLabels: Record<AdPlacement, string> = {
     'home-top': 'الرئيسية - أعلى القائمة',
     'home-below-hero': 'الرئيسية - أسفل الهيرو (Hero)',
-    'home-middle': 'الرئيسية - منتصف (افتراضي)',
+    'home-middle': 'الرئيسية - منتصف الصفحة',
     'home-carousel-3-4': 'الرئيسية - بين القسم 3 و 4',
+    'home-bottom': 'الرئيسية - أسفل الصفحة',
+    'listing-top': 'القوائم (أفلام/مسلسلات) - أعلى',
+    'listing-sidebar': 'القوائم - شريط جانبي (ديسكتوب)',
+    'listing-bottom': 'القوائم - أسفل الصفحة',
     'watch-top': 'المشاهدة - أعلى المشغل',
-    'watch-bottom': 'المشاهدة - أسفل المشغل',
-    'watch-sidebar': 'المشاهدة - الشريط الجانبي',
     'watch-preroll': 'المشاهدة - قبل الفيديو (Pre-roll)',
-    'movies-page': 'صفحة الأفلام',
-    'series-page': 'صفحة المسلسلات',
-    'ramadan-page': 'صفحة رمضان',
-    'soon-page': 'صفحة قريباً',
+    'watch-below-player': 'المشاهدة - أسفل المشغل مباشرة',
+    'watch-sidebar': 'المشاهدة - الشريط الجانبي',
+    'watch-above-recommendations': 'المشاهدة - قبل التوصيات',
+    'watch-bottom': 'المشاهدة - أسفل الصفحة',
+    'movies-page': 'صفحة الأفلام - عام',
+    'series-page': 'صفحة المسلسلات - عام',
+    'ramadan-page': 'صفحة رمضان - عام',
+    'soon-page': 'صفحة قريباً - عام',
     'kids-top': 'صفحة الأطفال - أعلى',
     'kids-bottom': 'صفحة الأطفال - أسفل',
     'ramadan-top': 'صفحة رمضان - أعلى',
     'ramadan-bottom': 'صفحة رمضان - أسفل',
     'soon-page-top': 'صفحة قريباً - أعلى',
     'soon-page-bottom': 'صفحة قريباً - أسفل',
+    'global-popunder': 'إعلان منبثق (Popunder)',
+    'global-social-bar': 'شريط عائم (Social Bar)',
+    'global-sticky-footer': 'ثابت أسفل الشاشة (Sticky Footer)',
 };
 
+// NEW: Device Targeting Type
+export type DeviceTarget = 'all' | 'mobile' | 'desktop';
+
+// NEW: Smart Popunder Triggers
+export type TriggerTarget = 'all' | 'watch-now' | 'play-button' | 'download-button' | 'server-select' | 'navigation';
+
+export const triggerTargetLabels: Record<TriggerTarget, string> = {
+    'all': 'في كل مكان (Global Click)',
+    'watch-now': 'زر "شاهد الآن" (Watch Now Button)',
+    'play-button': 'مشغل الفيديو (Play Button)',
+    'download-button': 'زر التحميل (Download Button)',
+    'server-select': 'اختيار السيرفر (Server Selection)',
+    'navigation': 'القوائم (Navigation Links)'
+};
+
+// CSS Selectors Mapping for the Engine
+export const triggerSelectors: Record<TriggerTarget, string> = {
+    'all': 'body',
+    'watch-now': '.target-watch-btn',
+    'play-button': '.video-player-wrapper',
+    'download-button': '.target-download-btn',
+    'server-select': '.target-server-btn',
+    'navigation': '.target-nav-link'
+};
 
 export interface Ad {
   id: string;
@@ -199,6 +240,8 @@ export interface Ad {
   code: string; // HTML/JS code
   placement: AdPlacement;
   status: 'active' | 'disabled';
+  targetDevice: DeviceTarget;
+  triggerTarget?: TriggerTarget; // NEW: For Smart Popunders
   updatedAt: string; // ISO String
 }
 
@@ -224,13 +267,12 @@ export interface SiteSettings {
     countdownDate: string;
     adsEnabled: boolean;
     privacyPolicy: string;
-    copyrightPolicy: string; // New: Copyright Policy Text
+    copyrightPolicy: string; 
     isCountdownVisible: boolean;
-    isRamadanModeEnabled: boolean; // Kept for backward compatibility, synced with activeTheme
-    activeTheme: ThemeType; // New: Theme Switcher
+    isRamadanModeEnabled: boolean; 
+    activeTheme: ThemeType; 
     isShowRamadanCarousel: boolean; 
     is_maintenance_mode_enabled: boolean;
-    // Top 10 Toggles
     showTop10Home: boolean;
     showTop10Movies: boolean;
     showTop10Series: boolean;

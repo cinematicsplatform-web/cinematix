@@ -175,28 +175,41 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
                                 : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'
                 }`}></div>
 
-            <AdPlacement ads={ads} placement="series-page" isEnabled={adsEnabled} />
-            
-            {carousels.map((carousel) => {
-            return (
-                <ContentCarousel
-                key={(carousel as any).id}
-                title={(carousel as any).title}
-                contents={(carousel as any).contents}
-                onSelectContent={onSelectContent}
-                isLoggedIn={isLoggedIn}
-                myList={myList}
-                onToggleMyList={onToggleMyList}
-                isNew={(carousel as any).isNew}
-                onSeeAll={() => handleSeeAll((carousel as any).categoryKey)}
-                isRamadanTheme={isRamadanTheme}
-                isEidTheme={isEidTheme}
-                isCosmicTealTheme={isCosmicTealTheme}
-                isNetflixRedTheme={isNetflixRedTheme}
-                showRanking={(carousel as any).showRanking}
-                />
-            );
-            })}
+            <div className="flex flex-col lg:flex-row gap-6 px-0 md:px-0">
+                {/* Main Content */}
+                <div className="flex-1 w-full">
+                    <AdPlacement ads={ads} placement="listing-top" isEnabled={adsEnabled} />
+                    <AdPlacement ads={ads} placement="series-page" isEnabled={adsEnabled} />
+                    
+                    {carousels.map((carousel) => {
+                    return (
+                        <ContentCarousel
+                        key={(carousel as any).id}
+                        title={(carousel as any).title}
+                        contents={(carousel as any).contents}
+                        onSelectContent={onSelectContent}
+                        isLoggedIn={isLoggedIn}
+                        myList={myList}
+                        onToggleMyList={onToggleMyList}
+                        isNew={(carousel as any).isNew}
+                        onSeeAll={() => handleSeeAll((carousel as any).categoryKey)}
+                        isRamadanTheme={isRamadanTheme}
+                        isEidTheme={isEidTheme}
+                        isCosmicTealTheme={isCosmicTealTheme}
+                        isNetflixRedTheme={isNetflixRedTheme}
+                        showRanking={(carousel as any).showRanking}
+                        />
+                    );
+                    })}
+
+                    <AdPlacement ads={ads} placement="listing-bottom" isEnabled={adsEnabled} />
+                </div>
+
+                {/* Sidebar (Desktop Only) */}
+                <div className="hidden lg:block w-[300px] flex-shrink-0 pt-4 pl-4 sticky top-24 h-fit">
+                    <AdPlacement ads={ads} placement="listing-sidebar" isEnabled={adsEnabled} />
+                </div>
+            </div>
         </main>
     </div>
   );

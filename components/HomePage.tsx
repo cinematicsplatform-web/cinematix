@@ -240,6 +240,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
             })}
             
             <AdPlacement ads={props.ads} placement="home-middle" isEnabled={props.siteSettings.adsEnabled}/>
+            <AdPlacement ads={props.ads} placement="home-bottom" isEnabled={props.siteSettings.adsEnabled}/>
           </div>
         </main>
     </div>

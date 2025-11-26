@@ -132,7 +132,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                   key={item.name} 
                   href="#" 
                   onClick={(e) => { e.preventDefault(); onSetView(item.view); }} 
-                  className={`font-bold hover-text-accent transition-all duration-200 text-md flex items-center gap-2 ${isCosmicTealTheme ? 'text-gray-200 hover:text-[#35F18B]' : isNetflixRedTheme ? 'text-gray-300 hover:text-[#E50914]' : 'text-white'}`}
+                  className={`font-bold hover-text-accent transition-all duration-200 text-md flex items-center gap-2 target-nav-link ${isCosmicTealTheme ? 'text-gray-200 hover:text-[#35F18B]' : isNetflixRedTheme ? 'text-gray-300 hover:text-[#E50914]' : 'text-white'}`}
                 >
                   {item.view === 'kids' && (
                       <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f423/512.webp" alt="kids" className="w-5 h-5" />

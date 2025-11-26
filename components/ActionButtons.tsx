@@ -58,23 +58,18 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       primaryBtnClass = "bg-[#E50914] text-white hover:bg-[#b20710] border-none shadow-none font-bold";
   }
 
-  // Standard "My List" Button Style - consistently white/glass as requested by user across ALL pages and themes.
-  // Base Class (Inactive): White text, transparent white background, white border.
-  // User override for Netflix Theme: Translucent gray.
+  // Standard "My List" Button Style
   let myListBaseClass = "bg-white/10 border border-white/30 text-white hover:bg-white/20 backdrop-blur-md";
   
   if (isNetflixRedTheme) {
       myListBaseClass = "bg-[rgba(109,109,110,0.7)] border-none text-white hover:bg-[rgba(109,109,110,0.4)] backdrop-blur-md";
   }
   
-  // Active Class: When added to list.
-  // Kept consistent with white theme to maintain shape, but with full white opacity or theme highlight if preferred.
-  // User request: "Keep the shape... it looks white". So active state is solid white with black text.
   const myListActiveClass = "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]";
 
   return (
     <div className="w-full sm:w-auto flex flex-row items-stretch gap-3 mt-2 md:mt-6 z-30 relative action-buttons-container">
-      {/* Watch Button */}
+      {/* Watch Button - Added 'target-watch-btn' class for Popunder targeting */}
       <button 
         onClick={(e) => { e.stopPropagation(); onWatch(); }}
         className={`
@@ -87,6 +82,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           text-base sm:text-lg
           transform hover:scale-105 active:scale-95 
           whitespace-nowrap
+          target-watch-btn
           ${primaryBtnClass}
         `}
       >
@@ -94,7 +90,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         <span>شاهد الآن</span>
       </button>
       
-      {/* My List Button - Consistent White/Glass Style everywhere */}
+      {/* My List Button */}
       {showMyList && onToggleMyList && (
         <button 
           onClick={handleToggle}
