@@ -370,7 +370,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-body)] text-white pb-20">
+    <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0">
       
       {/* Dynamic SEO Tags */}
       <SEO 

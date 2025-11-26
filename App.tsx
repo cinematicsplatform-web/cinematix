@@ -145,9 +145,9 @@ const App: React.FC = () => {
 
   const [view, setView] = useState<View>(getInitialView);
   
-  // 1. تعريف الذاكرة (State) مع مؤشر للرجوع (PopState)
+  // 1. تعريف الذاكرة (State)
   const scrollPositions = useRef<Record<string, number>>({});
-  const isPopState = useRef(false);
+  const prevViewRef = useRef<View>(getInitialView());
   
   // Track previous view for Back Button logic (e.g. returning from Detail to List)
   const [returnView, setReturnView] = useState<View>('home');
@@ -210,24 +210,27 @@ const App: React.FC = () => {
       }
   }, []);
 
-  // 2. تحديث useLayoutEffect لدعم المسارات (Point 1)
+  // 2. تعديل useLayoutEffect
   useLayoutEffect(() => {
-      const currentPath = window.location.pathname;
+      const prevView = prevViewRef.current;
       
-      // إذا كان التنقل ناتجاً عن زر الرجوع (PopState)، نحاول استعادة المكان
-      if (isPopState.current) {
-          const savedPosition = scrollPositions.current[currentPath];
-          if (savedPosition !== undefined) {
-              window.scrollTo(0, savedPosition);
-          } else {
-              window.scrollTo(0, 0);
-          }
-          isPopState.current = false; // Reset flag
-      } else {
-          // تنقل جديد (Push) -> ابدأ من الأعلى دائماً
+      // الحالة 1: نحن الآن في صفحة المشاهدة (سواء دخلنا جديد أو انتقلنا لفيلم آخر)
+      if (view === 'detail') {
+          window.scrollTo(0, 0); // إجبار البدء من الأعلى دائماً
+      } 
+      // الحالة 2: كنا في المشاهدة ورجعنا للقوائم (Home/Movies)
+      else if (prevView === 'detail') {
+          // راجع من فيلم؟ استرجع مكانك القديم
+          const savedPosition = scrollPositions.current[view];
+          window.scrollTo(0, savedPosition || 0); // استرجع المكان القديم
+      } 
+      // الحالة 3: تنقل عادي بين القوائم
+      else {
           window.scrollTo(0, 0);
       }
-  }, [view, window.location.pathname]);
+
+      prevViewRef.current = view;
+  }, [view, selectedContent]); // <--- تمت إضافة selectedContent هنا لضمان تصفير السكرول عند تغيير الفيلم
 
   // FIX: Removed 'view' dependency to prevent circular logic/race condition when navigating
   const resolveContentFromUrl = useCallback((path: string, contentList: Content[]) => {
@@ -254,7 +257,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
       const handlePopState = () => {
-          isPopState.current = true; // Mark as Pop Action (Point 3 Support)
           const newView = getInitialView();
           setView(newView); 
           
@@ -403,10 +405,6 @@ const App: React.FC = () => {
 
 
   const handleSetView = (newView: View, category?: string) => {
-      // Save scroll before changing view (similar to handleSelectContent but for general nav)
-      const currentPath = window.location.pathname;
-      scrollPositions.current[currentPath] = window.scrollY;
-
       setView(newView);
       if (category) setSelectedCategory(category);
 
@@ -419,11 +417,12 @@ const App: React.FC = () => {
       if (path) {
           if (window.location.pathname !== path) {
             safeHistoryPush(path);
-            window.scrollTo(0, 0);
+            // Scroll is handled by useLayoutEffect
           }
       }
   };
 
+  // 3. تعديل دالة handleSelectContent
   const handleSelectContent = (content: Content) => {
       if (siteSettings.isRamadanModeEnabled && content.categories.includes('رمضان')) {
           const now = new Date().getTime();
@@ -436,30 +435,28 @@ const App: React.FC = () => {
           }
       }
       
-      // 1. احفظ سكرول الصفحة الحالية قبل المغادرة (باستخدام الرابط الحالي كمفتاح) (Point 2)
-      const currentPath = window.location.pathname;
-      scrollPositions.current[currentPath] = window.scrollY;
+      // 1. احفظ مكان السكرول للصفحة الحالية (Home, Movies, Series...)
+      // هذا يضمن أننا لو رجعنا لها نجدها في مكانها
+      scrollPositions.current[view] = window.scrollY;
 
       // Keep returnView logic for Back button support in Header
       if (view !== 'detail') {
           setReturnView(view);
       }
 
-      // 2. جهز الرابط الجديد
-      const slug = content.slug || content.id; 
+      // 2. تحديث المحتوى والفيو
+      setSelectedContent(content);
+      setView('detail');
+
+      // 3. التنقل (Push)
+      const slug = content.slug || content.id;
       const prefix = content.type === 'series' ? '/مسلسل/' : '/فيلم/';
       const newPath = `${prefix}${slug}`;
 
-      // 3. تحديث الـ State
-      setSelectedContent(content);
-      setView('detail'); // هذا سيعيد تحميل المكون لأننا نستخدم key={location.pathname}
+      safeHistoryPush(newPath);
 
-      // 4. إضافة الرابط للسجل (Push State)
-      if (window.location.pathname !== newPath) {
-          safeHistoryPush(newPath);
-          // اجبار السكرول للأعلى للصفحة الجديدة
-          window.scrollTo(0, 0);
-      }
+      // 4. (تأكيد إضافي) اجبار السكرول للأعلى فوراً
+      window.scrollTo(0, 0);
   };
 
   const handleLogin = async (email: string, pass: string): Promise<LoginError> => {
@@ -916,7 +913,8 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen text-white font-['Cairo'] pb-16 md:pb-0`}>
+    // FIX: Remove bottom padding (pb-16) when in detail view to avoid empty footer space
+    <div className={`min-h-screen text-white font-['Cairo'] ${view === 'detail' ? '' : 'pb-16 md:pb-0'}`}>
         {/* Toast Container */}
         <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
             {toasts.map(toast => (
