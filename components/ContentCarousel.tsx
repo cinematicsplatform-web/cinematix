@@ -20,6 +20,7 @@ interface ContentCarouselProps {
   isRamadanTheme?: boolean; // New Prop for theming arrows
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
 }
 
 const ContentCarousel: React.FC<ContentCarouselProps> = ({ 
@@ -36,7 +37,8 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
     showRanking,
     isRamadanTheme,
     isEidTheme,
-    isCosmicTealTheme
+    isCosmicTealTheme,
+    isNetflixRedTheme
 }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -74,7 +76,9 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
                                     ? 'bg-purple-500 shadow-[0_0_15px_rgba(147,112,219,0.6)]'
                                     : isCosmicTealTheme
                                         ? 'bg-gradient-to-b from-[#35F18B] to-[#2596be] shadow-[0_0_15px_rgba(53,241,139,0.6)]'
-                                        : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'
+                                        : isNetflixRedTheme
+                                            ? 'bg-[#E50914] shadow-[0_0_15px_rgba(229,9,20,0.6)]'
+                                            : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'
                             }`}></div>
                         <span>{title}</span>
                     </>
@@ -106,7 +110,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
                 "
             >
                 <span>شاهد الكل</span>
-                <ChevronLeftIcon className={`w-3 h-3 md:w-4 md:h-4 opacity-80 ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : 'text-[#00A7F8]'}`} />
+                <ChevronLeftIcon className={`w-3 h-3 md:w-4 md:h-4 opacity-80 ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]'}`} />
             </button>
         )}
       </div>
@@ -135,7 +139,9 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
                         ? 'hover:bg-purple-500 hover:border-purple-500 hover:shadow-[0_0_15px_rgba(147,112,219,0.5)]'
                         : isCosmicTealTheme
                             ? 'hover:bg-[#35F18B] hover:border-[#35F18B] hover:shadow-[0_0_15px_rgba(53,241,139,0.5)]'
-                            : 'hover:bg-[#00A7F8] hover:border-[#00A7F8] hover:shadow-[0_0_15px_rgba(0,167,248,0.5)]'
+                            : isNetflixRedTheme
+                                ? 'hover:bg-[#E50914] hover:border-[#E50914] hover:text-white hover:shadow-[0_0_15px_rgba(229,9,20,0.5)]'
+                                : 'hover:bg-[#00A7F8] hover:border-[#00A7F8] hover:shadow-[0_0_15px_rgba(0,167,248,0.5)]'
                 }
             `}
             aria-label="Scroll Left"
@@ -167,6 +173,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
               isRamadanTheme={isRamadanTheme}
               isEidTheme={isEidTheme}
               isCosmicTealTheme={isCosmicTealTheme}
+              isNetflixRedTheme={isNetflixRedTheme}
             />
           ))}
         </div>
@@ -194,7 +201,9 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
                         ? 'hover:bg-purple-500 hover:border-purple-500 hover:shadow-[0_0_15px_rgba(147,112,219,0.5)]'
                         : isCosmicTealTheme
                             ? 'hover:bg-[#35F18B] hover:border-[#35F18B] hover:shadow-[0_0_15px_rgba(53,241,139,0.5)]'
-                            : 'hover:bg-[#00A7F8] hover:border-[#00A7F8] hover:shadow-[0_0_15px_rgba(0,167,248,0.5)]'
+                            : isNetflixRedTheme
+                                ? 'hover:bg-[#E50914] hover:border-[#E50914] hover:text-white hover:shadow-[0_0_15px_rgba(229,9,20,0.5)]'
+                                : 'hover:bg-[#00A7F8] hover:border-[#00A7F8] hover:shadow-[0_0_15px_rgba(0,167,248,0.5)]'
                 }
             `}
             aria-label="Scroll Right"

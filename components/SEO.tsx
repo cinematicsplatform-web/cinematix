@@ -5,7 +5,7 @@ interface SEOProps {
   title?: string;
   description?: string;
   image?: string;
-  type?: 'website' | 'video.movie' | 'video.tv_show';
+  type?: 'website' | 'video.movie' | 'video.tv_show' | 'video.episode';
   url?: string;
   schema?: Record<string, any>; // JSON-LD Schema
 }
@@ -15,11 +15,10 @@ const SEO: React.FC<SEOProps> = ({
   description = "منصتكم الأولى للترفيه العربي والتركي والأجنبي. شاهدوا أحدث الأفلام والمسلسلات بجودة عالية في أي وقت ومن أي مكان.",
   image = "https://images.unsplash.com/photo-1574267432553-4b4628081c31?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
   type = 'website',
-  url = window.location.href,
+  url = typeof window !== 'undefined' ? window.location.href : '',
   schema
 }) => {
   const siteName = "سينماتيكس | Cinematix";
-  // Updated: Use exact title if provided to allow specific formats like "Movie Name (2025) - Cinematix"
   const fullTitle = title || "سينماتيكس | Cinematix - مشاهدة أفلام ومسلسلات اون لاين";
 
   return (
@@ -44,7 +43,7 @@ const SEO: React.FC<SEOProps> = ({
       <meta property="twitter:description" content={description} />
       <meta property="twitter:image" content={image} />
 
-      {/* Structured Data (JSON-LD) */}
+      {/* Structured Data (JSON-LD) for Rich Snippets */}
       {schema && (
         <script type="application/ld+json">
           {JSON.stringify(schema)}

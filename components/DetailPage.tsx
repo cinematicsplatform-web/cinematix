@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '../types';
 import VideoPlayer from './VideoPlayer';
@@ -24,6 +25,7 @@ interface DetailPageProps {
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
   locationPath?: string; // Passed from App to trigger updates
 }
 
@@ -40,6 +42,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   isRamadanTheme,
   isEidTheme,
   isCosmicTealTheme,
+  isNetflixRedTheme,
   locationPath
 }) => {
   const playerSectionRef = useRef<HTMLDivElement>(null);
@@ -276,7 +279,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     ? 'bg-purple-500 shadow-[0_0_15px_rgba(147,112,219,0.6)]'
                     : isCosmicTealTheme
                         ? 'bg-gradient-to-b from-[#35F18B] to-[#2596be] shadow-[0_0_15px_rgba(53,241,139,0.6)]'
-                        : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'
+                        : isNetflixRedTheme
+                            ? 'bg-[#E50914] shadow-[0_0_15px_rgba(229,9,20,0.6)]'
+                            : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'
             }`}></div>
         <h3 className="text-2xl font-bold text-white">{title}</h3>
     </div>
@@ -287,43 +292,78 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   // --- SEO & SCHEMA MARKUP GENERATION ---
   
-  // 1. Dynamic Title Logic
-  const getSEOTitle = () => {
+  // 1. Dynamic Title & URL Logic
+  const getSEOData = () => {
+      const baseUrl = 'https://cinematix-kappa.vercel.app';
+      const slug = content.slug || content.id;
+      
       if (content.type === 'movie') {
-          return `مشاهدة فيلم ${content.title} (${content.releaseYear}) - سينماتيكس`;
-      } else if (content.type === 'series') {
-          // Calculate Episode Number (Index + 1)
+          return {
+              title: `مشاهدة فيلم ${content.title} (${content.releaseYear}) مترجم | سينماتيكس`,
+              url: `${baseUrl}/فيلم/${slug}`
+          };
+      } else {
+          // Calculate Episode Number
           let epNum = 1;
           if (selectedEpisode && currentSeason) {
               const idx = currentSeason.episodes.findIndex(e => e.id === selectedEpisode.id);
               if (idx !== -1) epNum = idx + 1;
           }
           const sNum = currentSeason?.seasonNumber || 1;
-          return `مسلسل ${content.title} الموسم ${sNum} الحلقة ${epNum} - سينماتيكس`;
+          
+          // Dynamic Series Title
+          const seriesTitle = `مشاهدة مسلسل ${content.title} الموسم ${sNum} الحلقة ${epNum} (${content.releaseYear}) مترجم | سينماتيكس`;
+          const seriesUrl = `${baseUrl}/مسلسل/${slug}/الموسم/${sNum}/الحلقة/${epNum}`;
+          
+          return { title: seriesTitle, url: seriesUrl };
       }
-      return `${content.title} - سينماتيكس`;
   };
 
+  const { title: seoTitle, url: seoUrl } = getSEOData();
+
+  // 2. Schema.org Generation
   const generateSchema = () => {
-    const baseSchema: any = {
+    // Base schema structure
+    const baseSchema: Record<string, any> = {
       "@context": "https://schema.org",
       "@type": content.type === 'movie' ? "Movie" : "TVSeries",
       "name": content.title,
       "image": content.poster,
-      "description": content.description,
-      "datePublished": content.releaseYear ? `${content.releaseYear}-01-01` : undefined,
+      "description": content.description ? content.description.substring(0, 160) : content.title,
+      "datePublished": `${content.releaseYear}-01-01`,
       "aggregateRating": {
         "@type": "AggregateRating",
-        "ratingValue": content.rating ? content.rating.toString() : "0",
-        "bestRating": "5", // Using 5 as per data source scale
-        "ratingCount": "100" // Placeholder
-      }
+        "ratingValue": content.rating > 0 ? content.rating.toString() : "5.0",
+        "bestRating": "5",
+        "ratingCount": "100" // Static placeholder for rich snippet validity
+      },
+      "genre": content.genres,
+      "actor": content.cast?.map(actor => ({
+          "@type": "Person",
+          "name": actor
+      })) || []
     };
 
     if (content.type === 'movie') {
-        // Movie specific fields
+       if (content.duration) {
+           baseSchema["duration"] = content.duration.replace('h', 'H').replace('m', 'M').replace(' ', ''); // ISO 8601 basic fix
+       }
     } else {
-        // Series specific fields
+       // Series specific additions
+       const sNum = currentSeason?.seasonNumber || 1;
+       const epNum = selectedEpisode ? (currentSeason?.episodes.findIndex(e => e.id === selectedEpisode.id) || 0) + 1 : 1;
+       
+       baseSchema["containsSeason"] = {
+           "@type": "TVSeason",
+           "seasonNumber": sNum,
+           "numberOfEpisodes": currentSeason?.episodes.length || 0,
+           "episode": {
+               "@type": "TVEpisode",
+               "episodeNumber": epNum,
+               "name": selectedEpisode?.title || `Episode ${epNum}`,
+               "image": selectedEpisode?.thumbnail || content.backdrop
+           }
+       };
     }
     
     return baseSchema;
@@ -334,10 +374,11 @@ const DetailPage: React.FC<DetailPageProps> = ({
       
       {/* Dynamic SEO Tags */}
       <SEO 
-        title={getSEOTitle()}
+        title={seoTitle}
         description={content.description ? content.description.substring(0, 160) : `مشاهدة ${content.title} اون لاين بجودة عالية`}
         image={content.backdrop}
         type={content.type === 'movie' ? 'video.movie' : 'video.tv_show'}
+        url={seoUrl}
         schema={generateSchema()}
       />
 
@@ -429,7 +470,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     {/* Genres - Show All */}
                     <div className="flex flex-wrap gap-1">
                         {content.genres.map((genre, index) => (
-                            <span key={index} className={`${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : 'text-[#00A7F8]'}`}>
+                            <span key={index} className={`${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]'}`}>
                                 {genre}{index < content.genres.length - 1 ? '، ' : ''}
                             </span>
                         ))}
@@ -445,6 +486,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     isRamadanTheme={isRamadanTheme}
                     isEidTheme={isEidTheme}
                     isCosmicTealTheme={isCosmicTealTheme}
+                    isNetflixRedTheme={isNetflixRedTheme}
                 />
 
             </div>
@@ -493,7 +535,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                     className={`
                                         whitespace-nowrap px-6 py-2.5 rounded-full text-sm md:text-base font-bold transition-all border
                                         ${selectedSeasonId === season.id 
-                                            ? 'bg-white text-black border-white shadow-lg' 
+                                            ? (isNetflixRedTheme 
+                                                ? 'bg-[#E50914] text-white border-[#E50914] shadow-lg'
+                                                : 'bg-white text-black border-white shadow-lg')
                                             : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700 hover:text-white'
                                         }
                                     `}
@@ -519,12 +563,14 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                                         ? 'bg-purple-500/20 border-purple-500 shadow-[0_0_15px_rgba(147,112,219,0.2)]'
                                                         : isCosmicTealTheme
                                                             ? 'bg-[#35F18B]/20 border-[#35F18B] shadow-[0_0_15px_rgba(53,241,139,0.2)]'
-                                                            : 'bg-[#00A7F8]/20 border-[#00A7F8] shadow-[0_0_15px_rgba(0,167,248,0.2)]')
+                                                            : isNetflixRedTheme
+                                                                ? 'bg-[#E50914]/20 border-[#E50914] shadow-[0_0_15px_rgba(229,9,20,0.2)]'
+                                                                : 'bg-[#00A7F8]/20 border-[#00A7F8] shadow-[0_0_15px_rgba(0,167,248,0.2)]')
                                                 : 'bg-gray-800/50 border-gray-700 hover:bg-gray-700 hover:border-gray-500'
                                             }
                                         `}
                                     >
-                                        <span className={`text-lg md:text-xl font-bold mb-1 ${selectedEpisode?.id === ep.id ? (isRamadanTheme ? 'text-amber-500' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : 'text-[#00A7F8]') : 'text-white group-hover:text-white transition-colors'}`}>
+                                        <span className={`text-lg md:text-xl font-bold mb-1 ${selectedEpisode?.id === ep.id ? (isRamadanTheme ? 'text-amber-500' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]') : 'text-white group-hover:text-white transition-colors'}`}>
                                             {index + 1}
                                         </span>
                                         <span className="text-[10px] md:text-xs text-gray-400 truncate max-w-full px-2">
@@ -579,7 +625,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                                         ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(147,112,219,0.4)]'
                                                         : isCosmicTealTheme
                                                             ? 'bg-[#35F18B] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)]'
-                                                            : 'bg-[#00A7F8] text-black scale-105 shadow-[0_0_15px_rgba(0,167,248,0.4)]')
+                                                            : isNetflixRedTheme
+                                                                ? 'bg-[#E50914] text-white shadow-[0_0_15px_rgba(229,9,20,0.4)]'
+                                                                : 'bg-[#00A7F8] text-black scale-105 shadow-[0_0_15px_rgba(0,167,248,0.4)]')
                                                 : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
                                             }
                                         `}
@@ -605,7 +653,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                           {prerollTimer > 0 ? (
                                               <span className="text-white font-bold text-sm">يمكنك التخطي بعد {prerollTimer} ثانية</span>
                                           ) : (
-                                              <button onClick={handleSkipPreroll} className={`font-bold text-sm flex items-center gap-1 transition-colors ${isCosmicTealTheme ? 'text-[#35F18B] hover:text-white' : 'text-[#00A7F8] hover:text-white'}`}>
+                                              <button onClick={handleSkipPreroll} className={`font-bold text-sm flex items-center gap-1 transition-colors ${isCosmicTealTheme ? 'text-[#35F18B] hover:text-white' : isNetflixRedTheme ? 'text-[#E50914] hover:text-white' : 'text-[#00A7F8] hover:text-white'}`}>
                                                   <span>تخطي الإعلان</span>
                                                   <CloseIcon className="w-4 h-4" />
                                               </button>
@@ -642,7 +690,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                                 ? 'hover:border-purple-500/50'
                                                 : isCosmicTealTheme
                                                     ? 'hover:border-[#35F18B]/50'
-                                                    : 'hover:border-[#00A7F8]/50'}
+                                                    : isNetflixRedTheme
+                                                        ? 'hover:border-[#E50914]/50'
+                                                        : 'hover:border-[#00A7F8]/50'}
                                     `}
                                  >
                                     <div className={`bg-gradient-to-br from-gray-800 to-black p-3 rounded-full border border-gray-700 transition-colors 
@@ -652,7 +702,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                                 ? 'group-hover:border-purple-500'
                                                 : isCosmicTealTheme
                                                     ? 'group-hover:border-[#35F18B]'
-                                                    : 'group-hover:border-[#00A7F8]'
+                                                    : isNetflixRedTheme
+                                                        ? 'group-hover:border-[#E50914]'
+                                                        : 'group-hover:border-[#00A7F8]'
                                         }
                                     `}>
                                         <DownloadIcon className={`w-6 h-6 transition-transform group-hover:scale-110 
@@ -662,7 +714,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                                     ? 'text-purple-500'
                                                     : isCosmicTealTheme
                                                         ? 'text-[#35F18B]'
-                                                        : 'text-[#00A7F8]'
+                                                        : isNetflixRedTheme
+                                                            ? 'text-[#E50914]'
+                                                            : 'text-[#00A7F8]'
                                             }
                                         `} />
                                     </div>
@@ -674,7 +728,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                                     ? 'text-white group-hover:text-purple-400'
                                                     : isCosmicTealTheme
                                                         ? 'text-white group-hover:text-[#35F18B]'
-                                                        : 'text-white group-hover:text-[#00A7F8]'
+                                                        : isNetflixRedTheme
+                                                            ? 'text-white group-hover:text-[#E50914]'
+                                                            : 'text-white group-hover:text-[#00A7F8]'
                                             }
                                         `}>
                                             تحميل بجودة عالية
@@ -716,7 +772,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                     ? 'bg-purple-500 shadow-[0_0_15px_rgba(147,112,219,0.6)]'
                                     : isCosmicTealTheme
                                         ? 'bg-gradient-to-b from-[#35F18B] to-[#2596be] shadow-[0_0_15px_rgba(53,241,139,0.6)]'
-                                        : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'
+                                        : isNetflixRedTheme
+                                            ? 'bg-[#E50914] shadow-[0_0_15px_rgba(229,9,20,0.6)]'
+                                            : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'
                             }`}></div>
                         <span>قد يعجبك أيضاً</span>
                     </div>
@@ -729,6 +787,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                 isRamadanTheme={isRamadanTheme}
                 isEidTheme={isEidTheme}
                 isCosmicTealTheme={isCosmicTealTheme}
+                isNetflixRedTheme={isNetflixRedTheme}
             />
          </div>
       </div>

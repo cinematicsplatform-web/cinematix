@@ -11,6 +11,7 @@ interface ActionButtonsProps {
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
   showMyList?: boolean;
 }
 
@@ -21,7 +22,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   showMyList = true,
   isRamadanTheme,
   isEidTheme,
-  isCosmicTealTheme
+  isCosmicTealTheme,
+  isNetflixRedTheme
 }) => {
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -52,11 +54,18 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       primaryBtnClass = "bg-gradient-to-r from-purple-800 to-purple-500 text-white shadow-[0_0_15px_rgba(106,13,173,0.4)] hover:brightness-110 border-none";
   } else if (isCosmicTealTheme) {
       primaryBtnClass = "bg-gradient-to-r from-[#35F18B] to-[#2596be] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)] hover:brightness-110 border-none font-black";
+  } else if (isNetflixRedTheme) {
+      primaryBtnClass = "bg-[#E50914] text-white hover:bg-[#b20710] border-none shadow-none font-bold";
   }
 
   // Standard "My List" Button Style - consistently white/glass as requested by user across ALL pages and themes.
   // Base Class (Inactive): White text, transparent white background, white border.
-  const myListBaseClass = "bg-white/10 border border-white/30 text-white hover:bg-white/20 backdrop-blur-md";
+  // User override for Netflix Theme: Translucent gray.
+  let myListBaseClass = "bg-white/10 border border-white/30 text-white hover:bg-white/20 backdrop-blur-md";
+  
+  if (isNetflixRedTheme) {
+      myListBaseClass = "bg-[rgba(109,109,110,0.7)] border-none text-white hover:bg-[rgba(109,109,110,0.4)] backdrop-blur-md";
+  }
   
   // Active Class: When added to list.
   // Kept consistent with white theme to maintain shape, but with full white opacity or theme highlight if preferred.

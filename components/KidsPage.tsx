@@ -20,6 +20,7 @@ interface KidsPageProps {
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
 }
 
 const KidsPage: React.FC<KidsPageProps> = ({ 
@@ -35,7 +36,8 @@ const KidsPage: React.FC<KidsPageProps> = ({
   isLoading,
   isRamadanTheme,
   isEidTheme,
-  isCosmicTealTheme
+  isCosmicTealTheme,
+  isNetflixRedTheme
 }) => {
 
   const animationContent = useMemo(() =>
@@ -89,7 +91,7 @@ const KidsPage: React.FC<KidsPageProps> = ({
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : 'border-[#00A7F8]'}`}></div>
+        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
       </div>
     );
   }
@@ -98,7 +100,7 @@ const KidsPage: React.FC<KidsPageProps> = ({
     if (!showEmptyMessage) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-                <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : 'border-[#00A7F8]'}`}></div>
+                <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
             </div>
         );
     }
@@ -125,6 +127,7 @@ const KidsPage: React.FC<KidsPageProps> = ({
             isRamadanTheme={isRamadanTheme}
             isEidTheme={isEidTheme}
             isCosmicTealTheme={isCosmicTealTheme}
+            isNetflixRedTheme={isNetflixRedTheme}
           />
       </div>
 
@@ -136,7 +139,9 @@ const KidsPage: React.FC<KidsPageProps> = ({
                     ? 'bg-gradient-to-r from-transparent via-purple-500/50 to-transparent opacity-80'
                     : isCosmicTealTheme
                         ? 'bg-gradient-to-r from-transparent via-[#35F18B]/50 to-transparent opacity-80'
-                        : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'
+                        : isNetflixRedTheme
+                            ? 'bg-gradient-to-r from-transparent via-[#E50914]/50 to-transparent opacity-80'
+                            : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'
             }`}></div>
 
         <AdPlacement ads={ads} placement="kids-top" isEnabled={adsEnabled} />
@@ -156,6 +161,7 @@ const KidsPage: React.FC<KidsPageProps> = ({
               isRamadanTheme={isRamadanTheme}
               isEidTheme={isEidTheme}
               isCosmicTealTheme={isCosmicTealTheme}
+              isNetflixRedTheme={isNetflixRedTheme}
               showRanking={(carousel as any).showRanking}
             />
           );

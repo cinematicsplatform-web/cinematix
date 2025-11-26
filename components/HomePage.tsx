@@ -25,6 +25,7 @@ interface HomePageProps {
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
 }
 
 const HomePage: React.FC<HomePageProps> = (props) => {
@@ -38,6 +39,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
   const isRamadan = props.isRamadanTheme ?? props.siteSettings.isRamadanModeEnabled;
   const isEid = props.isEidTheme ?? props.siteSettings.activeTheme === 'eid';
   const isCosmicTeal = props.isCosmicTealTheme ?? props.siteSettings.activeTheme === 'cosmic-teal';
+  const isNetflixRed = props.isNetflixRedTheme ?? props.siteSettings.activeTheme === 'netflix-red';
 
   // 🎯 Hero Content Logic:
   const heroContent = useMemo(() => {
@@ -80,7 +82,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     // Custom Title for Animation with Chick Emoji
     const animationTitle = (
         <div className="flex items-center gap-3">
-             <div className={`w-1.5 h-6 md:h-8 rounded-full shadow-[0_0_10px_rgba(0,167,248,0.6)] ${isRamadan ? 'bg-[#FFD700] shadow-[0_0_15px_rgba(255,215,0,0.6)]' : isCosmicTeal ? 'bg-gradient-to-b from-[#35F18B] to-[#2596be] shadow-[0_0_15px_rgba(53,241,139,0.6)]' : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'}`}></div>
+             <div className={`w-1.5 h-6 md:h-8 rounded-full shadow-[0_0_10px_rgba(0,167,248,0.6)] ${isRamadan ? 'bg-[#FFD700] shadow-[0_0_15px_rgba(255,215,0,0.6)]' : isCosmicTeal ? 'bg-gradient-to-b from-[#35F18B] to-[#2596be] shadow-[0_0_15px_rgba(53,241,139,0.6)]' : isNetflixRed ? 'bg-[#E50914] shadow-[0_0_15px_rgba(229,9,20,0.6)]' : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'}`}></div>
              <div className="flex items-center gap-2">
                  <span>افلام أنميشن</span>
                  <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f423/512.webp" alt="chick" className="w-6 h-6 md:w-8 md:h-8" />
@@ -139,7 +141,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     finalList.push(...restCarousels);
 
     return finalList.filter(carousel => carousel.contents.length > 0);
-  }, [props.allContent, props.pinnedContent, props.siteSettings.isShowRamadanCarousel, props.siteSettings.showTop10Home, isRamadan, isCosmicTeal]);
+  }, [props.allContent, props.pinnedContent, props.siteSettings.isShowRamadanCarousel, props.siteSettings.showTop10Home, isRamadan, isCosmicTeal, isNetflixRed]);
 
   const handleSeeAll = (carousel: any) => {
       if (carousel.specialRoute) {
@@ -176,6 +178,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                 isRamadanTheme={isRamadan}
                 isEidTheme={isEid}
                 isCosmicTealTheme={isCosmicTeal}
+                isNetflixRedTheme={isNetflixRed}
             />
         </div>
 
@@ -187,7 +190,9 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                     ? 'bg-gradient-to-r from-transparent via-purple-500/50 to-transparent opacity-80' 
                     : isCosmicTeal
                         ? 'bg-gradient-to-r from-transparent via-[#35F18B]/50 to-transparent opacity-80'
-                        : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'
+                        : isNetflixRed
+                            ? 'bg-gradient-to-r from-transparent via-[#E50914]/50 to-transparent opacity-80'
+                            : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'
             }`}></div>
           
           <div className="pt-2">
@@ -198,6 +203,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                         isRamadanTheme={isRamadan}
                         isEidTheme={isEid}
                         isCosmicTealTheme={isCosmicTeal}
+                        isNetflixRedTheme={isNetflixRed}
                     />
                 </div>
             )}
@@ -206,34 +212,34 @@ const HomePage: React.FC<HomePageProps> = (props) => {
             <AdPlacement ads={props.ads} placement="home-top" isEnabled={props.siteSettings.adsEnabled}/>
 
             {carousels.map((carousel, index) => {
-              const middleAd = index === Math.floor(carousels.length / 2) && (
-                  <AdPlacement ads={props.ads} placement="home-middle" isEnabled={props.siteSettings.adsEnabled}/>
-              );
-              const specificAd = index === 2 && (
-                  <AdPlacement ads={props.ads} placement="home-carousel-3-4" isEnabled={props.siteSettings.adsEnabled}/>
-              );
-
-              return (
-                  <React.Fragment key={carousel.id}>
-                      <ContentCarousel
-                        title={carousel.title}
-                        contents={carousel.contents} 
-                        onSelectContent={props.onSelectContent}
-                        isNew={carousel.isNew}
-                        isLoggedIn={props.isLoggedIn}
-                        myList={props.myList}
-                        onToggleMyList={props.onToggleMyList}
-                        onSeeAll={ (carousel.categoryKey || carousel.specialRoute) ? () => handleSeeAll(carousel) : undefined}
-                        isRamadanTheme={isRamadan}
-                        isEidTheme={isEid}
-                        isCosmicTealTheme={isCosmicTeal}
-                        showRanking={(carousel as any).showRanking} // Only true for Pinned Carousel
-                      />
-                      {specificAd}
-                      {middleAd}
-                  </React.Fragment>
-              )
+                // Ad Injection Logic: Between carousel 3 and 4 (index 2 and 3)
+                const showAd = index === 2;
+                
+                return (
+                    <React.Fragment key={(carousel as any).id}>
+                        <ContentCarousel
+                            title={(carousel as any).title}
+                            contents={(carousel as any).contents}
+                            onSelectContent={props.onSelectContent}
+                            isLoggedIn={props.isLoggedIn}
+                            myList={props.myList}
+                            onToggleMyList={props.onToggleMyList}
+                            isNew={(carousel as any).isNew}
+                            onSeeAll={() => handleSeeAll(carousel)}
+                            isRamadanTheme={isRamadan}
+                            isEidTheme={isEid}
+                            isCosmicTealTheme={isCosmicTeal}
+                            isNetflixRedTheme={isNetflixRed}
+                            showRanking={(carousel as any).showRanking}
+                        />
+                        {showAd && (
+                            <AdPlacement ads={props.ads} placement="home-carousel-3-4" isEnabled={props.siteSettings.adsEnabled}/>
+                        )}
+                    </React.Fragment>
+                );
             })}
+            
+            <AdPlacement ads={props.ads} placement="home-middle" isEnabled={props.siteSettings.adsEnabled}/>
           </div>
         </main>
     </div>

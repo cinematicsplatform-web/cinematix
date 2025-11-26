@@ -22,6 +22,10 @@ const PasswordChangeModal: React.FC<{
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
+    const isNetflixRed = document.body.classList.contains('theme-netflix-red');
+    const focusRing = isNetflixRed ? 'focus:ring-[#E50914]' : 'focus:ring-[#00FFB0]';
+    const btnBg = isNetflixRed ? 'bg-[#E50914] text-white' : 'bg-[#00FFB0] text-black';
+
     // FIX: Made handleSave async to correctly await the onSave promise.
     const handleSave = async () => {
         if(newPassword.length < 6) {
@@ -44,13 +48,13 @@ const PasswordChangeModal: React.FC<{
                 <div className="p-8">
                     <h2 className="text-2xl font-bold mb-6 text-center">تغيير كلمة المرور</h2>
                     <div className="space-y-4">
-                        <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} placeholder="كلمة المرور الحالية" className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#00FFB0]"/>
-                        <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="كلمة المرور الجديدة" className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#00FFB0]"/>
-                        <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="تأكيد كلمة المرور الجديدة" className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#00FFB0]"/>
+                        <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} placeholder="كلمة المرور الحالية" className={`w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 ${focusRing}`}/>
+                        <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="كلمة المرور الجديدة" className={`w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 ${focusRing}`}/>
+                        <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="تأكيد كلمة المرور الجديدة" className={`w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 ${focusRing}`}/>
                     </div>
                     <div className="flex justify-end gap-4 mt-8">
                         <button onClick={onClose} className="bg-gray-600 hover:bg-gray-500 font-bold py-2 px-4 rounded-lg">إلغاء</button>
-                        <button onClick={handleSave} className="bg-[#00FFB0] text-black font-bold py-2 px-6 rounded-lg">حفظ</button>
+                        <button onClick={handleSave} className={`${btnBg} font-bold py-2 px-6 rounded-lg`}>حفظ</button>
                     </div>
                 </div>
             </div>
@@ -63,6 +67,15 @@ const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdat
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | 'new' | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  const isNetflixRed = document.body.classList.contains('theme-netflix-red');
+  const accentText = isNetflixRed ? 'text-[#E50914]' : 'text-[#00FFB0]';
+  const focusRing = isNetflixRed ? 'focus:ring-[#E50914]' : 'focus:ring-[#00FFB0]';
+  const primaryBtn = isNetflixRed 
+    ? 'bg-[#E50914] text-white shadow-[0_0_15px_rgba(229,9,20,0.3)]' 
+    : 'bg-[#00FFB0] text-black shadow-[0_0_15px_rgba(0,255,176,0.3)]';
+  const ringHover = isNetflixRed ? 'group-hover:ring-[#E50914]' : 'group-hover:ring-[#00FFB0]';
+  const textHover = isNetflixRed ? 'hover:text-[#E50914]' : 'hover:text-[#00FFB0]';
 
   const handleEditProfile = (profile: Profile) => {
     setEditingProfile(profile);
@@ -101,23 +114,23 @@ const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdat
         <div className="max-w-4xl mx-auto">
           {/* Account Details Section */}
           <div className="bg-gray-800 p-5 md:p-6 rounded-xl mb-6 md:mb-8 shadow-lg border border-gray-700/50">
-            <h2 className="text-xl font-bold text-[#00FFB0] mb-4">تفاصيل الحساب</h2>
+            <h2 className={`text-xl font-bold mb-4 ${accentText}`}>تفاصيل الحساب</h2>
             <form className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">البريد الإلكتروني</label>
-                  <input type="email" defaultValue={user.email} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#00FFB0] text-gray-200 cursor-not-allowed" disabled />
+                  <input type="email" defaultValue={user.email} className={`w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 ${focusRing} text-gray-200 cursor-not-allowed`} disabled />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">كلمة المرور</label>
                   <button type="button" onClick={() => setIsPasswordModalOpen(true)} className="w-full text-right bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 hover:bg-gray-600 hover:border-gray-500 transition-all flex justify-between items-center">
                       <span>********</span>
-                      <span className="text-xs text-[#00FFB0]">تغيير</span>
+                      <span className={`text-xs ${accentText}`}>تغيير</span>
                   </button>
                 </div>
               </div>
               <div className="pt-2">
-                <button type="submit" onClick={(e) => {e.preventDefault(); alert('تم حفظ التغييرات (محاكاة).')}} className="w-full md:w-auto bg-[#00FFB0] text-black font-bold py-3 px-8 rounded-lg hover:bg-white transition-colors shadow-[0_0_15px_rgba(0,255,176,0.3)]">
+                <button type="submit" onClick={(e) => {e.preventDefault(); alert('تم حفظ التغييرات (محاكاة).')}} className={`w-full md:w-auto font-bold py-3 px-8 rounded-lg hover:bg-white transition-colors ${primaryBtn}`}>
                   حفظ التغييرات
                 </button>
               </div>
@@ -127,7 +140,7 @@ const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdat
           {/* Profiles Section */}
           <div className="bg-gray-800 p-5 md:p-6 rounded-xl mb-6 md:mb-8 shadow-lg border border-gray-700/50">
             <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-              <h2 className="text-xl font-bold text-[#00FFB0] self-start sm:self-center">الملفات الشخصية</h2>
+              <h2 className={`text-xl font-bold ${accentText} self-start sm:self-center`}>الملفات الشخصية</h2>
               <button onClick={handleNewProfile} className="w-full sm:w-auto bg-gray-700 hover:bg-gray-600 border border-gray-600 font-bold py-2 px-4 rounded-lg text-sm transition-all">
                   + إضافة ملف شخصي
               </button>
@@ -135,11 +148,11 @@ const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdat
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
               {user.profiles.map(profile => (
                 <div key={profile.id} className="text-center group bg-gray-700/30 p-3 rounded-xl border border-transparent hover:border-gray-600 transition-all">
-                  <div onClick={() => handleEditProfile(profile)} className="w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto overflow-hidden ring-2 ring-transparent group-hover:ring-[#00FFB0] transition-all cursor-pointer shadow-md">
+                  <div onClick={() => handleEditProfile(profile)} className={`w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto overflow-hidden ring-2 ring-transparent ${ringHover} transition-all cursor-pointer shadow-md`}>
                     <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" />
                   </div>
                   <p className="mt-3 text-sm md:text-base font-bold text-gray-300 group-hover:text-white truncate">{profile.name}</p>
-                   <button onClick={() => handleEditProfile(profile)} className="mt-2 text-xs text-gray-500 hover:text-[#00FFB0] transition-colors flex items-center justify-center w-full py-1">
+                   <button onClick={() => handleEditProfile(profile)} className={`mt-2 text-xs text-gray-500 ${textHover} transition-colors flex items-center justify-center w-full py-1`}>
                        <span>تعديل</span>
                    </button>
                 </div>

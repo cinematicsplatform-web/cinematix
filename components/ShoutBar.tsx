@@ -6,9 +6,10 @@ interface ShoutBarProps {
     isRamadanTheme?: boolean;
     isEidTheme?: boolean;
     isCosmicTealTheme?: boolean;
+    isNetflixRedTheme?: boolean;
 }
 
-const ShoutBar: React.FC<ShoutBarProps> = ({ text, isRamadanTheme, isEidTheme, isCosmicTealTheme }) => {
+const ShoutBar: React.FC<ShoutBarProps> = ({ text, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
   let gradientClass = 'bg-gradient-to-r from-[#00A7F8] to-[#00FFB0]'; // Default gradient
 
   if (isRamadanTheme) {
@@ -17,11 +18,13 @@ const ShoutBar: React.FC<ShoutBarProps> = ({ text, isRamadanTheme, isEidTheme, i
       gradientClass = 'bg-gradient-to-r from-purple-800 to-purple-500 text-white shadow-[0_0_15px_rgba(147,112,219,0.4)]';
   } else if (isCosmicTealTheme) {
       gradientClass = 'bg-gradient-to-r from-[#35F18B] to-[#2596be] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)]';
+  } else if (isNetflixRedTheme) {
+      gradientClass = 'bg-[#E50914] text-white shadow-[0_0_15px_rgba(229,9,20,0.4)]';
   }
 
   return (
     <div 
-        className={`${gradientClass} text-black font-bold h-10 flex items-center overflow-hidden mb-8 rounded-lg transition-all duration-500 ${isEidTheme ? 'text-white' : 'text-black'}`}
+        className={`${gradientClass} text-black font-bold h-10 flex items-center overflow-hidden mb-8 rounded-lg transition-all duration-500 ${isEidTheme || isNetflixRedTheme ? 'text-white' : 'text-black'}`}
     >
       <div className="shout-bar-content whitespace-nowrap">
         <span className="px-8">{text}</span>

@@ -16,9 +16,10 @@ interface BottomNavigationProps {
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
 }
 
-const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetView, activeProfile, isLoggedIn, isRamadanTheme, isEidTheme, isCosmicTealTheme }) => {
+const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetView, activeProfile, isLoggedIn, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
   
   // Base Items
   const baseItems = [
@@ -55,7 +56,9 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetV
         ? 'text-purple-500' 
         : isCosmicTealTheme
             ? 'text-[#35F18B]'
-            : 'text-[#00A7F8]';
+            : isNetflixRedTheme
+                ? 'text-[#E50914]'
+                : 'text-[#00A7F8]';
         
   const activeRingColor = isRamadanTheme 
     ? 'ring-[#FFD700]' 
@@ -63,7 +66,9 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetV
         ? 'ring-purple-500'
         : isCosmicTealTheme
             ? 'ring-[#35F18B]'
-            : 'ring-[#00A7F8]';
+            : isNetflixRedTheme
+                ? 'ring-[#E50914]'
+                : 'ring-[#00A7F8]';
 
   // Additional Classes for iOS Glassmorphism
   // .glass-panel is globally defined for iOS theme in index.html
@@ -112,7 +117,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetV
               
               {/* Optional Active Dot Indicator */}
               {isActive && (
-                  <div className={`absolute bottom-1 w-1 h-1 rounded-full ${isRamadanTheme ? 'bg-[#FFD700]' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : 'bg-[#00A7F8]'} animate-pulse`}></div>
+                  <div className={`absolute bottom-1 w-1 h-1 rounded-full ${isRamadanTheme ? 'bg-[#FFD700]' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]'} animate-pulse`}></div>
               )}
             </button>
           );

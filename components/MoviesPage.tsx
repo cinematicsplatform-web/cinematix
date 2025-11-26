@@ -21,6 +21,7 @@ interface MoviesPageProps {
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
   siteSettings?: SiteSettings; // Added SiteSettings prop
 }
 
@@ -38,6 +39,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
   isRamadanTheme, 
   isEidTheme,
   isCosmicTealTheme,
+  isNetflixRedTheme,
   siteSettings
 }) => {
   const allMovies = useMemo(() => allContent.filter(c => c.type === ContentType.Movie), [allContent]);
@@ -108,7 +110,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : 'border-[#00A7F8]'}`}></div>
+        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
       </div>
     );
   }
@@ -117,7 +119,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
     if (!showEmptyMessage) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-                <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : 'border-[#00A7F8]'}`}></div>
+                <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
             </div>
         );
     }
@@ -144,6 +146,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
                 isRamadanTheme={isRamadanTheme}
                 isEidTheme={isEidTheme}
                 isCosmicTealTheme={isCosmicTealTheme}
+                isNetflixRedTheme={isNetflixRedTheme}
             />
         </div>
 
@@ -155,7 +158,9 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
                         ? 'bg-gradient-to-r from-transparent via-purple-500/50 to-transparent opacity-80'
                         : isCosmicTealTheme
                             ? 'bg-gradient-to-r from-transparent via-[#35F18B]/50 to-transparent opacity-80'
-                            : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'
+                            : isNetflixRedTheme
+                                ? 'bg-gradient-to-r from-transparent via-[#E50914]/50 to-transparent opacity-80'
+                                : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'
                 }`}></div>
 
             <AdPlacement ads={ads} placement="movies-page" isEnabled={adsEnabled} />
@@ -175,6 +180,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
                 isRamadanTheme={isRamadanTheme}
                 isEidTheme={isEidTheme}
                 isCosmicTealTheme={isCosmicTealTheme}
+                isNetflixRedTheme={isNetflixRedTheme}
                 showRanking={(carousel as any).showRanking}
                 />
             );

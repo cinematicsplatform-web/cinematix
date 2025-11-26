@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import type { Content, Profile, View } from '../types';
 import ContentCard from './ContentCard';
@@ -13,6 +14,7 @@ interface MyListPageProps {
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
 }
 
 const BackArrowIcon = () => (
@@ -22,7 +24,7 @@ const BackArrowIcon = () => (
 );
 
 const MyListPage: React.FC<MyListPageProps> = (props) => {
-  const { allContent, activeProfile, onSelectContent, onSetView, isRamadanTheme, isEidTheme, isCosmicTealTheme } = props;
+  const { allContent, activeProfile, onSelectContent, onSetView, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme } = props;
   const myListContent = activeProfile.myList
     .map(contentId => allContent.find(c => c.id === contentId))
     .filter((c): c is Content => c !== undefined)
@@ -47,7 +49,9 @@ const MyListPage: React.FC<MyListPageProps> = (props) => {
                             ? 'hover:bg-purple-500'
                             : isCosmicTealTheme
                                 ? 'hover:bg-[#35F18B]'
-                                : 'hover:bg-gradient-to-r hover:from-[#00A7F8] hover:to-[#00FFB0]'}
+                                : isNetflixRedTheme
+                                    ? 'hover:bg-[#E50914] hover:text-white'
+                                    : 'hover:bg-gradient-to-r hover:from-[#00A7F8] hover:to-[#00FFB0]'}
                 `}
             >
                 <span className="transform rotate-180 transition-transform duration-300 group-hover:-translate-x-1">
@@ -71,6 +75,7 @@ const MyListPage: React.FC<MyListPageProps> = (props) => {
                 isRamadanTheme={isRamadanTheme}
                 isEidTheme={isEidTheme}
                 isCosmicTealTheme={isCosmicTealTheme}
+                isNetflixRedTheme={isNetflixRedTheme}
               />
             ))}
           </div>
@@ -83,7 +88,7 @@ const MyListPage: React.FC<MyListPageProps> = (props) => {
             </div>
             <h2 className="text-2xl font-bold text-gray-300 mb-2">قائمتك فارغة</h2>
             <p className="text-gray-500 max-w-md">أضف أفلامك ومسلسلاتك المفضلة هنا لتجدها بسهولة لاحقًا وتشاهدها في أي وقت.</p>
-            <button onClick={() => onSetView('home')} className={`mt-8 px-6 py-3 rounded-lg transition-all border ${isCosmicTealTheme ? 'text-[#35F18B] bg-[#35F18B]/10 border-[#35F18B]/30 hover:bg-[#35F18B] hover:text-black' : 'text-[#00A7F8] bg-[#00A7F8]/10 border-[#00A7F8]/30 hover:bg-[#00A7F8] hover:text-white'}`}>
+            <button onClick={() => onSetView('home')} className={`mt-8 px-6 py-3 rounded-lg transition-all border ${isCosmicTealTheme ? 'text-[#35F18B] bg-[#35F18B]/10 border-[#35F18B]/30 hover:bg-[#35F18B] hover:text-black' : isNetflixRedTheme ? 'text-[#E50914] bg-[#E50914]/10 border-[#E50914]/30 hover:bg-[#E50914] hover:text-white' : 'text-[#00A7F8] bg-[#00A7F8]/10 border-[#00A7F8]/30 hover:bg-[#00A7F8] hover:text-white'}`}>
                 تصفح المحتوى
             </button>
           </div>

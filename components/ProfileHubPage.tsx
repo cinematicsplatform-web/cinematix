@@ -44,20 +44,36 @@ interface ProfileHubPageProps {
 
 const ProfileHubPage: React.FC<ProfileHubPageProps> = ({ user, activeProfile, onSetView, onLogout }) => {
     
+    // Helper to check for Netflix theme presence (basic check based on body class for this specific inline logic if props aren't passed, 
+    // BUT ProfileHubPage DOES NOT receive theme props from App.tsx in the original file.
+    // Let's check App.tsx again. `renderView` -> `ProfileHubPage` props.
+    // App.tsx passes: user, activeProfile, onSetView, onLogout. 
+    // It DOES NOT pass isNetflixRedTheme.
+    // I need to detect it via body class or assume context. 
+    // Since I cannot change App.tsx easily without listing it (and it was not requested to be changed excessively), 
+    // I will use a DOM check or just CSS variable reliance where possible.
+    // However, for the gradient classes, I need JS logic.
+    // Let's check if we can use CSS variables for the gradient?
+    // The gradient is tailwind classes.
+    // I will stick to a safe default or try to read body class.
+    
+    const isNetflixRed = document.body.classList.contains('theme-netflix-red');
+    const isCosmicTeal = document.body.classList.contains('theme-cosmic-teal');
+
     const menuItems = [
         {
             id: 'mylist',
             label: 'قائمتي',
             icon: CheckIcon,
             action: () => onSetView('myList'),
-            color: 'text-[#00FFB0]'
+            color: isNetflixRed ? 'text-[#E50914]' : isCosmicTeal ? 'text-[#35F18B]' : 'text-[#00FFB0]'
         },
         {
             id: 'settings',
             label: 'إدارة الحساب',
             icon: SettingsIcon,
             action: () => onSetView('accountSettings'),
-            color: 'text-[#00A7F8]'
+            color: isNetflixRed ? 'text-white' : isCosmicTeal ? 'text-[#2596be]' : 'text-[#00A7F8]'
         },
         {
             id: 'profiles',
@@ -80,25 +96,12 @@ const ProfileHubPage: React.FC<ProfileHubPageProps> = ({ user, activeProfile, on
         <div className="min-h-screen bg-[var(--bg-body)] text-white animate-fade-in-up pb-20">
             
             {/* Custom Header */}
-            {/* Used flex-row-reverse to position the button on the Left side in RTL mode */}
             <div className="flex items-center justify-between p-6 pt-8 flex-row-reverse">
-                
-                {/* Right Side (visually in flex-reverse): Spacer or Title */}
                 <div className="text-lg font-bold opacity-0">Profile</div>
-
-                {/* Left Side (visually in flex-reverse): Back Button */}
                 <button 
                     onClick={() => onSetView('home')} 
                     className="p-2 bg-gray-800/50 rounded-full hover:bg-gray-700 transition-colors group"
                 >
-                    {/* Chevron points Right in standard font libraries. In RTL, 'Back' is usually Right Arrow. 
-                        But if we want it to look like a Western 'Back' arrow (<), we use ChevronLeft. 
-                        Let's use a simple Arrow pointing RIGHT because in RTL, 'Back' means going towards the starting point (Right).
-                        Wait, typically RTL back arrow points to the Right (->). 
-                        The ChevronLeftIcon (<) points Left. 
-                        If I want a standard RTL back button, I should rotate it 180 to point Right, or use ChevronRight.
-                        Let's use ChevronLeft rotated 180 degrees to point Right (->).
-                    */}
                     <ChevronLeftIcon className="w-6 h-6 text-white transform rotate-180 group-hover:scale-110 transition-transform" /> 
                 </button>
             </div>
@@ -106,7 +109,7 @@ const ProfileHubPage: React.FC<ProfileHubPageProps> = ({ user, activeProfile, on
             <div className="px-6 flex flex-col items-center -mt-4">
                 {/* Avatar Section */}
                 <div className="relative mb-4 group">
-                    <div className="w-28 h-28 rounded-full p-1 bg-gradient-to-tr from-[#00A7F8] to-[#00FFB0]">
+                    <div className={`w-28 h-28 rounded-full p-1 ${isNetflixRed ? 'bg-[#E50914]' : isCosmicTeal ? 'bg-gradient-to-tr from-[#35F18B] to-[#2596be]' : 'bg-gradient-to-tr from-[#00A7F8] to-[#00FFB0]'}`}>
                         <img 
                             src={activeProfile.avatar} 
                             alt={activeProfile.name} 
@@ -137,7 +140,6 @@ const ProfileHubPage: React.FC<ProfileHubPageProps> = ({ user, activeProfile, on
                                 <span className="flex-1 text-right font-bold text-base text-gray-200">
                                     {item.label}
                                 </span>
-                                {/* Small indicator arrow pointing Left (into the content) in RTL */}
                                 <ChevronLeftIcon className="w-5 h-5 text-gray-600" />
                             </button>
                         )

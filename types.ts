@@ -216,7 +216,7 @@ export interface SocialLinks {
   contactUs: string;
 }
 
-export type ThemeType = 'default' | 'ramadan' | 'ios' | 'night-city' | 'nature' | 'eid' | 'cosmic-teal';
+export type ThemeType = 'default' | 'ramadan' | 'ios' | 'night-city' | 'nature' | 'eid' | 'cosmic-teal' | 'netflix-red';
 
 export interface SiteSettings {
     shoutBar: ShoutBar;

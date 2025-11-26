@@ -17,9 +17,10 @@ interface ContentCardProps {
   isRamadanTheme?: boolean; // New Prop for theming buttons
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
 }
 
-const ContentCard: React.FC<ContentCardProps> = ({ content, onSelectContent, isLoggedIn, myList, onToggleMyList, showLatestBadge, isGridItem, rank, isRamadanTheme, isEidTheme, isCosmicTealTheme }) => {
+const ContentCard: React.FC<ContentCardProps> = ({ content, onSelectContent, isLoggedIn, myList, onToggleMyList, showLatestBadge, isGridItem, rank, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
   const isInMyList = !!myList?.includes(content.id);
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -85,6 +86,8 @@ const ContentCard: React.FC<ContentCardProps> = ({ content, onSelectContent, isL
           buttonClass = 'bg-gradient-to-r from-purple-700 to-purple-400 text-white shadow-[0_0_10px_rgba(147,112,219,0.5)]';
       } else if (isCosmicTealTheme) {
           buttonClass = 'bg-gradient-to-r from-[#35F18B] to-[#2596be] text-black shadow-[0_0_10px_rgba(53,241,139,0.5)]';
+      } else if (isNetflixRedTheme) {
+          buttonClass = 'bg-[#E50914] text-white shadow-[0_0_10px_rgba(229,9,20,0.5)]';
       } else {
           buttonClass = 'bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black';
       }
@@ -95,6 +98,8 @@ const ContentCard: React.FC<ContentCardProps> = ({ content, onSelectContent, isL
           buttonClass = 'bg-black/60 text-white border border-purple-500/50 hover:bg-purple-600 hover:text-white';
       } else if (isCosmicTealTheme) {
           buttonClass = 'bg-black/60 text-white border border-[#35F18B]/50 hover:bg-[#35F18B] hover:text-black';
+      } else if (isNetflixRedTheme) {
+          buttonClass = 'bg-black/60 text-white border border-[#E50914]/50 hover:bg-[#E50914] hover:text-white';
       } else {
           buttonClass = 'bg-black/60 text-white border border-white/30 hover:bg-white hover:text-black';
       }
@@ -155,7 +160,9 @@ const ContentCard: React.FC<ContentCardProps> = ({ content, onSelectContent, isL
                                     ? 'bg-gradient-to-r from-amber-700 to-amber-600 text-white border-amber-500/30' 
                                     : isCosmicTealTheme 
                                         ? 'bg-gradient-to-r from-[#0F766E] to-[#115e59] text-white border-[#2DD4BF]/30' 
-                                        : 'bg-gradient-to-r from-pink-600 to-pink-500 text-white border-pink-400/30'
+                                        : isNetflixRedTheme
+                                            ? 'bg-[#E50914] text-white border-[#E50914]/30'
+                                            : 'bg-gradient-to-r from-pink-600 to-pink-500 text-white border-pink-400/30'
                                 }
                             `}>
                                 {seasonBadgeText}
@@ -183,7 +190,7 @@ const ContentCard: React.FC<ContentCardProps> = ({ content, onSelectContent, isL
 
                     {/* Update Info (Only for 'New' carousel) */}
                     {bottomRightBadge && (
-                        <div className={`absolute bottom-2 right-2 backdrop-blur-sm text-[10px] md:text-xs font-bold px-2 py-1 rounded shadow-md z-20 ${isCosmicTealTheme ? 'bg-[#35F18B]/90 text-black' : 'bg-[#8b5cf6]/90 text-white'}`}>
+                        <div className={`absolute bottom-2 right-2 backdrop-blur-sm text-[10px] md:text-xs font-bold px-2 py-1 rounded shadow-md z-20 ${isCosmicTealTheme ? 'bg-[#35F18B]/90 text-black' : isNetflixRedTheme ? 'bg-[#E50914]/90 text-white' : 'bg-[#8b5cf6]/90 text-white'}`}>
                             {bottomRightBadge}
                         </div>
                     )}

@@ -18,9 +18,11 @@ interface HeaderProps {
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
+  returnView?: View;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, onLogout, allContent, onSelectContent, currentView, isRamadanTheme, isEidTheme, isCosmicTealTheme }) => {
+const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, onLogout, allContent, onSelectContent, currentView, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme, returnView }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -106,7 +108,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
               // Mobile: Show Back Button only in Detail View
               <div className="flex md:hidden">
                  <button 
-                    onClick={() => onSetView('home')} 
+                    onClick={() => onSetView(returnView || 'home')} 
                     className="p-2 rounded-full bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-colors"
                  >
                     <ChevronRightIcon className="w-6 h-6 transform rotate-180" /> {/* Icon rotated for RTL back */}
@@ -115,7 +117,11 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
           ) : null}
 
           <h1 onClick={() => onSetView('home')} className={`text-2xl md:text-3xl font-extrabold cursor-pointer ${isDetailView ? 'hidden md:block' : 'block'}`}>
-            <span className="text-white">سينما</span><span className="gradient-text font-['Lalezar'] tracking-wide">تيكس</span>
+            {isNetflixRedTheme ? (
+               <span className="text-[#E50914] font-['Lalezar'] tracking-wide">CINEMATIX</span>
+            ) : (
+               <><span className="text-white">سينما</span><span className="gradient-text font-['Lalezar'] tracking-wide">تيكس</span></>
+            )}
           </h1>
           
           <nav className="hidden lg:flex items-center gap-6">
@@ -126,7 +132,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                   key={item.name} 
                   href="#" 
                   onClick={(e) => { e.preventDefault(); onSetView(item.view); }} 
-                  className={`font-bold hover-text-accent transition-all duration-200 text-md flex items-center gap-2 ${isCosmicTealTheme ? 'text-gray-200 hover:text-[#35F18B]' : 'text-white'}`}
+                  className={`font-bold hover-text-accent transition-all duration-200 text-md flex items-center gap-2 ${isCosmicTealTheme ? 'text-gray-200 hover:text-[#35F18B]' : isNetflixRedTheme ? 'text-gray-300 hover:text-[#E50914]' : 'text-white'}`}
                 >
                   {item.view === 'kids' && (
                       <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f423/512.webp" alt="kids" className="w-5 h-5" />
@@ -163,7 +169,9 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                     ? 'border-purple-500/30 focus-within:border-purple-500 focus-within:shadow-[0_0_15px_rgba(147,112,219,0.4)]'
                     : isCosmicTealTheme
                         ? 'border-[#35F18B]/30 focus-within:border-[#35F18B] focus-within:shadow-[0_0_15px_rgba(53,241,139,0.4)]'
-                        : 'border-white/10 focus-within:border-[#00A7F8]'
+                        : isNetflixRedTheme 
+                            ? 'border-white/20 focus-within:border-[#E50914] focus-within:shadow-[0_0_15px_rgba(229,9,20,0.4)]'
+                            : 'border-white/10 focus-within:border-[#00A7F8]'
                 }
             `}>
                 <input 
@@ -179,7 +187,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                   style={{ backgroundColor: 'transparent' }}
                 />
                 <div className="pointer-events-none">
-                   <SearchIcon className={`w-5 h-5 transition-colors ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : 'text-gray-400 group-focus-within:text-[#00A7F8]'}`} />
+                   <SearchIcon className={`w-5 h-5 transition-colors ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-gray-400 group-focus-within:text-[#E50914]' : 'text-gray-400 group-focus-within:text-[#00A7F8]'}`} />
                 </div>
             </div>
 
@@ -259,14 +267,18 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                             ? 'ring-purple-500 shadow-[0_0_15px_rgba(147,112,219,0.6)]'
                             : isCosmicTealTheme
                                 ? 'ring-[#35F18B] shadow-[0_0_15px_rgba(53,241,139,0.6)]'
-                                : 'ring-[var(--color-accent)] shadow-[0_0_15px_var(--shadow-color)]') 
+                                : isNetflixRedTheme
+                                    ? 'ring-[#E50914] shadow-[0_0_15px_rgba(229,9,20,0.6)]'
+                                    : 'ring-[var(--color-accent)] shadow-[0_0_15px_var(--shadow-color)]') 
                     : (isRamadanTheme 
                         ? 'ring-transparent hover:ring-[#FFD700]' 
                         : isEidTheme 
                             ? 'ring-transparent hover:ring-purple-500'
                             : isCosmicTealTheme
                                 ? 'ring-transparent hover:ring-[#35F18B]'
-                                : 'ring-transparent hover:ring-gray-500')
+                                : isNetflixRedTheme
+                                    ? 'ring-transparent hover:ring-[#E50914]'
+                                    : 'ring-transparent hover:ring-gray-500')
                 }
               `}
             >
@@ -288,11 +300,13 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                                 ? 'border-purple-500/30' 
                                 : isCosmicTealTheme 
                                     ? 'border-[#35F18B]/30'
-                                    : 'border-gray-700/50'}
+                                    : isNetflixRedTheme
+                                        ? 'border-[#E50914]/30'
+                                        : 'border-gray-700/50'}
                     `}>
                         {/* Header Info */}
                         <div className="px-5 py-4 border-b border-white/5 bg-white/5">
-                            <p className={`font-bold text-lg ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : 'text-white'}`}>{activeProfile?.name}</p>
+                            <p className={`font-bold text-lg ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-white'}`}>{activeProfile?.name}</p>
                             <p className="text-xs text-gray-400 font-mono mt-0.5 truncate">{currentUser?.email}</p>
                         </div>
                         

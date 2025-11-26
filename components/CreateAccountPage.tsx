@@ -9,9 +9,10 @@ interface CreateAccountPageProps {
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
 }
 
-const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegister, isRamadanTheme, isEidTheme, isCosmicTealTheme }) => {
+const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegister, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -48,7 +49,9 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
             ? 'text-purple-400 hover:text-purple-300'
             : isCosmicTealTheme
                 ? 'text-[#35F18B] hover:text-[#2596be]'
-                : 'text-[#00A7F8] hover:text-[#00FFB0]';
+                : isNetflixRedTheme
+                    ? 'text-[#E50914] hover:text-[#b20710]'
+                    : 'text-[#00A7F8] hover:text-[#00FFB0]';
 
   return (
     <div className="min-h-screen bg-[var(--bg-body)] flex items-center justify-center p-4 pt-24 relative">

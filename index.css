@@ -4,6 +4,16 @@ body, h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, select, textarea {
     font-family: 'Cairo', sans-serif !important;
 }
 
+/* Ensure window scroll is not blocked */
+html, body {
+    overflow-y: auto; 
+    height: auto;
+}
+#root {
+    height: auto;
+    overflow: visible;
+}
+
 /* --- THEME UTILITY CLASSES --- */
 
 /* Gradient Text */

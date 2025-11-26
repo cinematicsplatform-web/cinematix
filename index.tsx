@@ -4,16 +4,6 @@ import { HelmetProvider } from 'react-helmet-async';
 import App from './App';
 import './index.css';
 
-// Disable browser's default scroll restoration to prevent starting in the middle of the page
-if ('scrollRestoration' in history) {
-  history.scrollRestoration = 'manual';
-}
-
-// Force scroll to top when the page loads
-window.addEventListener('load', () => {
-  window.scrollTo(0, 0);
-});
-
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

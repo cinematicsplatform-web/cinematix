@@ -1131,7 +1131,20 @@ const ThemesTab: React.FC<{
                         {siteSettings.activeTheme === 'default' && <div className="mt-2 text-[#00A7F8] text-xs font-bold">✓ مفعل</div>}
                     </div>
 
-                    {/* Cosmic Teal Theme Card (NEW) */}
+                    {/* Netflix Red Theme Card (NEW) */}
+                    <div 
+                        onClick={() => changeTheme('netflix-red')}
+                        className={`p-4 border rounded-xl cursor-pointer transition-all ${siteSettings.activeTheme === 'netflix-red' ? 'border-[#E50914] bg-[#E50914]/10' : 'border-gray-600 hover:border-gray-500'}`}
+                    >
+                        <div className="h-20 bg-[#141414] rounded-lg mb-4 shadow-lg flex items-center justify-center border-b-4 border-[#E50914]">
+                            <span className="text-[#E50914] text-2xl font-black tracking-tighter">N</span>
+                        </div>
+                        <h4 className="font-bold text-white text-lg">الأحمر الداكن (Netflix)</h4>
+                        <p className="text-xs text-gray-400 mt-2">تصميم سينمائي باللون الأسود والأحمر.</p>
+                        {siteSettings.activeTheme === 'netflix-red' && <div className="mt-2 text-[#E50914] text-xs font-bold">✓ مفعل</div>}
+                    </div>
+
+                    {/* Cosmic Teal Theme Card */}
                     <div 
                         onClick={() => changeTheme('cosmic-teal')}
                         className={`p-4 border rounded-xl cursor-pointer transition-all ${siteSettings.activeTheme === 'cosmic-teal' ? 'border-[#35F18B] bg-[#35F18B]/10' : 'border-gray-600 hover:border-gray-500'}`}
@@ -1226,8 +1239,8 @@ const SiteSettingsTab: React.FC<{
     };
 
     const generateSitemap = () => {
-        // CHANGED: Use hardcoded production URL instead of window.location.origin
-        const baseUrl = 'https://cinematex.vercel.app';
+        // Updated Base URL per user request
+        const baseUrl = 'https://cinematix-kappa.vercel.app';
         const date = new Date().toISOString().split('T')[0];
         
         // Parse duration helper (e.g., "1h 30m" -> 5400 seconds)
@@ -1263,11 +1276,16 @@ const SiteSettingsTab: React.FC<{
         allContent.forEach(item => {
             const slug = item.slug || item.id;
             const prefix = item.type === 'series' ? 'مسلسل' : 'فيلم';
+            // Construct detail URL with correct prefix (Encoded for XML safety if needed, but standard chars are usually fine in modern sitemaps)
             const url = `${baseUrl}/${prefix}/${slug}`;
             const itemDate = item.updatedAt ? item.updatedAt.split('T')[0] : date;
             const thumbnail = item.backdrop || item.poster || '';
-            const desc = (item.description || item.title).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
-            const title = item.title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+            
+            // XML Escape Helper
+            const escapeXml = (unsafe: string) => unsafe.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+            
+            const desc = escapeXml(item.description || item.title);
+            const title = escapeXml(item.title);
 
             xml += `  <url>\n`;
             xml += `    <loc>${url}</loc>\n`;
@@ -1279,7 +1297,7 @@ const SiteSettingsTab: React.FC<{
             if (item.type === ContentType.Movie) {
                 const duration = parseDuration(item.duration);
                 xml += `    <video:video>\n`;
-                xml += `      <video:thumbnail_loc>${thumbnail.replace(/&/g, '&amp;')}</video:thumbnail_loc>\n`;
+                xml += `      <video:thumbnail_loc>${escapeXml(thumbnail)}</video:thumbnail_loc>\n`;
                 xml += `      <video:title>${title}</video:title>\n`;
                 xml += `      <video:description>${desc.substring(0, 2000)}</video:description>\n`;
                 if (duration > 0) xml += `      <video:duration>${duration}</video:duration>\n`;
@@ -1294,7 +1312,7 @@ const SiteSettingsTab: React.FC<{
                 item.seasons.forEach(season => {
                     season.episodes.forEach((ep, index) => {
                         // Construct Deep Link: /مسلسل/slug/الموسم/S/الحلقة/E
-                        // Note: Episode index is 1-based in UI usually, checking logic from DetailPage
+                        // Using index+1 to match UI logic which displays 1-based episode numbers
                         const epNum = index + 1; 
                         const epUrl = `${baseUrl}/مسلسل/${slug}/الموسم/${season.seasonNumber}/الحلقة/${epNum}`;
                         const epTitle = `${title} - الموسم ${season.seasonNumber} الحلقة ${epNum}`;
@@ -1307,9 +1325,9 @@ const SiteSettingsTab: React.FC<{
                         xml += `    <changefreq>weekly</changefreq>\n`;
                         xml += `    <priority>0.6</priority>\n`;
                         xml += `    <video:video>\n`;
-                        xml += `      <video:thumbnail_loc>${epThumb.replace(/&/g, '&amp;')}</video:thumbnail_loc>\n`;
-                        xml += `      <video:title>${epTitle}</video:title>\n`;
-                        xml += `      <video:description>${desc.substring(0, 2000)}</video:description>\n`; // Fallback to series desc if no ep desc
+                        xml += `      <video:thumbnail_loc>${escapeXml(epThumb)}</video:thumbnail_loc>\n`;
+                        xml += `      <video:title>${escapeXml(epTitle)}</video:title>\n`;
+                        xml += `      <video:description>${desc.substring(0, 2000)}</video:description>\n`; 
                         if (epDuration > 0) xml += `      <video:duration>${epDuration}</video:duration>\n`;
                         xml += `      <video:publication_date>${item.releaseYear}-01-01T00:00:00+00:00</video:publication_date>\n`;
                         xml += `    </video:video>\n`;

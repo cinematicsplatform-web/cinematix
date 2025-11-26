@@ -14,9 +14,10 @@ interface HeroProps {
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
 }
 
-const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, onToggleMyList, autoSlideInterval, isRamadanTheme, isEidTheme, isCosmicTealTheme }) => {
+const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, onToggleMyList, autoSlideInterval, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
   // Interaction States
@@ -145,7 +146,9 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
                                 ? 'bg-purple-500 w-6' 
                                 : isCosmicTealTheme
                                     ? 'bg-[#35F18B] w-6 shadow-[0_0_10px_#35F18B]'
-                                    : 'bg-[#00A7F8] w-6') 
+                                    : isNetflixRedTheme
+                                        ? 'bg-[#E50914] w-6 shadow-[0_0_10px_rgba(229,9,20,0.5)]'
+                                        : 'bg-[#00A7F8] w-6') 
                         : 'bg-white/30 hover:bg-white/60 w-2'
                     }`}
                 onClick={(e) => { 
@@ -252,7 +255,9 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
                                     ? 'bg-purple-600/10 text-white border border-purple-500/10 px-3 py-1 rounded-lg backdrop-blur-md'
                                     : isCosmicTealTheme
                                         ? 'bg-[#35F18B]/10 text-white border border-[#35F18B]/10 px-3 py-1 rounded-lg backdrop-blur-md'
-                                        : 'bg-[rgba(15,35,55,0.5)] text-[#00D2FF] border border-[rgba(0,210,255,0.3)] rounded-[6px] px-[12px] py-[4px] backdrop-blur-[4px]'}
+                                        : isNetflixRedTheme
+                                            ? 'bg-[#E50914]/20 text-white border border-[#E50914]/20 px-3 py-1 rounded-lg backdrop-blur-md'
+                                            : 'bg-[rgba(15,35,55,0.5)] text-[#00D2FF] border border-[rgba(0,210,255,0.3)] rounded-[6px] px-[12px] py-[4px] backdrop-blur-[4px]'}
                         `}>
                             {content.bannerNote}
                         </div>
@@ -288,7 +293,7 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
                         </div>
                         <span>{content.releaseYear}</span>
                         {/* Age Rating in Meta is still useful for context, kept but styled subtly */}
-                        <span className={`border px-1.5 py-0.5 rounded ${isRamadanTheme ? 'border-amber-500/50 text-amber-100' : isEidTheme ? 'border-purple-500/50 text-purple-200' : isCosmicTealTheme ? 'border-[#35F18B]/50 text-[#35F18B]' : 'border-gray-500'}`}>{content.ageRating}</span>
+                        <span className={`border px-1.5 py-0.5 rounded ${isRamadanTheme ? 'border-amber-500/50 text-amber-100' : isEidTheme ? 'border-purple-500/50 text-purple-200' : isCosmicTealTheme ? 'border-[#35F18B]/50 text-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]/50 text-white' : 'border-gray-500'}`}>{content.ageRating}</span>
                         
                         <div className="flex items-center">
                             {content.genres.slice(0, 3).map((g, index, arr) => (
@@ -315,6 +320,7 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
                         isRamadanTheme={isRamadanTheme}
                         isEidTheme={isEidTheme}
                         isCosmicTealTheme={isCosmicTealTheme}
+                        isNetflixRedTheme={isNetflixRedTheme}
                         showMyList={isLoggedIn}
                     />
                 </div>
@@ -374,7 +380,9 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
                                         ? 'bg-purple-500 w-6'
                                         : isCosmicTealTheme
                                             ? 'bg-[#35F18B] w-6 shadow-[0_0_10px_#35F18B]'
-                                            : 'bg-[#00A7F8] w-6') 
+                                            : isNetflixRedTheme
+                                                ? 'bg-[#E50914] w-6 shadow-[0_0_10px_rgba(229,9,20,0.5)]'
+                                                : 'bg-[#00A7F8] w-6') 
                                 : 'bg-white/30 hover:bg-white/60 w-2'
                             }`}
                         onClick={(e) => { 

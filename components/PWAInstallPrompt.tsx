@@ -72,7 +72,7 @@ const PWAInstallPrompt: React.FC = () => {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-20 left-4 right-4 md:bottom-6 md:left-auto md:right-6 md:w-96 z-[9999] animate-slide-in-top">
+    <div className="fixed bottom-24 left-4 right-4 md:bottom-6 md:left-auto md:right-6 md:w-96 z-[9999] animate-fade-in-up">
       <div className="bg-[#141b29]/95 backdrop-blur-md border border-[#00A7F8]/30 rounded-2xl shadow-[0_0_25px_rgba(0,167,248,0.3)] p-4 flex items-center gap-4 relative overflow-hidden">
         
         {/* Background Glow */}

@@ -17,6 +17,7 @@ interface CategoryPageProps {
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
 }
 
 const CategoryPage: React.FC<CategoryPageProps> = ({ 
@@ -29,7 +30,8 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
     onSetView,
     isRamadanTheme,
     isEidTheme,
-    isCosmicTealTheme
+    isCosmicTealTheme,
+    isNetflixRedTheme
 }) => {
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,7 +119,9 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
             ? 'text-purple-500' 
             : isCosmicTealTheme
                 ? 'text-[#35F18B]'
-                : 'text-[#00A7F8]';
+                : isNetflixRedTheme
+                    ? 'text-[#E50914]'
+                    : 'text-[#00A7F8]';
 
   const ringColor = isRamadanTheme 
         ? 'focus-within:ring-[#FFD700]' 
@@ -125,7 +129,9 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
             ? 'focus-within:ring-purple-500' 
             : isCosmicTealTheme
                 ? 'focus-within:ring-[#35F18B]'
-                : 'focus-within:ring-[#00A7F8]';
+                : isNetflixRedTheme
+                    ? 'focus-within:ring-[#E50914]'
+                    : 'focus-within:ring-[#00A7F8]';
 
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white animate-fade-in-up">
@@ -158,7 +164,9 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                                 ? 'bg-gradient-to-r from-purple-400 to-purple-600' 
                                 : isCosmicTealTheme
                                     ? 'bg-gradient-to-r from-[#35F18B] to-[#2596be]'
-                                    : 'bg-gradient-to-r from-white to-gray-400'
+                                    : isNetflixRedTheme
+                                        ? 'text-[#E50914]' // Solid red often looks cleaner for Netflix titles than a gradient
+                                        : 'bg-gradient-to-r from-white to-gray-400'
                         }`}>
                         {displayTitle}
                     </h1>
@@ -172,7 +180,9 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                                     ? 'hover:bg-purple-500' 
                                     : isCosmicTealTheme
                                         ? 'hover:bg-[#35F18B]'
-                                        : 'hover:bg-white'
+                                        : isNetflixRedTheme
+                                            ? 'hover:bg-[#E50914] hover:text-white'
+                                            : 'hover:bg-white'
                             }`}
                     >
                         <span className="transform rotate-180 transition-transform duration-300 group-hover:-translate-x-1">
@@ -201,6 +211,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                 isRamadanTheme={isRamadanTheme}
                 isEidTheme={isEidTheme}
                 isCosmicTealTheme={isCosmicTealTheme}
+                isNetflixRedTheme={isNetflixRedTheme}
               />
             ))}
           </div>

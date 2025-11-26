@@ -20,6 +20,7 @@ interface SoonPageProps {
   isRamadanTheme?: boolean; 
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
 }
 
 const SoonPage: React.FC<SoonPageProps> = ({ 
@@ -34,7 +35,8 @@ const SoonPage: React.FC<SoonPageProps> = ({
   isLoading, 
   isRamadanTheme, 
   isEidTheme,
-  isCosmicTealTheme
+  isCosmicTealTheme,
+  isNetflixRedTheme
 }) => {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -92,7 +94,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isCosmicTealTheme ? 'border-[#35F18B]' : 'border-[#00A7F8]'}`}></div>
+        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
       </div>
     );
   }
@@ -101,7 +103,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
     if (!showEmptyMessage) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-                <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isCosmicTealTheme ? 'border-[#35F18B]' : 'border-[#00A7F8]'}`}></div>
+                <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
             </div>
         );
     }
@@ -129,6 +131,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
               isRamadanTheme={isRamadanTheme}
               isEidTheme={isEidTheme}
               isCosmicTealTheme={isCosmicTealTheme}
+              isNetflixRedTheme={isNetflixRedTheme}
           />
       </div>
       
@@ -138,7 +141,9 @@ const SoonPage: React.FC<SoonPageProps> = ({
                 ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent opacity-80' 
                 : isCosmicTealTheme
                     ? 'bg-gradient-to-r from-transparent via-[#35F18B]/50 to-transparent opacity-80'
-                    : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'
+                    : isNetflixRedTheme
+                        ? 'bg-gradient-to-r from-transparent via-[#E50914]/50 to-transparent opacity-80'
+                        : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'
             }`}></div>
 
         <AdPlacement ads={ads} placement="soon-page-top" isEnabled={adsEnabled} />
@@ -156,6 +161,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
                 isRamadanTheme={isRamadanTheme}
                 isEidTheme={isEidTheme}
                 isCosmicTealTheme={isCosmicTealTheme}
+                isNetflixRedTheme={isNetflixRedTheme}
                 />
             );
         })}
