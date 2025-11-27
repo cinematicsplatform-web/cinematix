@@ -1,105 +1,142 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 
 interface VideoPlayerProps {
-  tmdbId?: string;
-  season?: number;
-  episode?: number;
-  type: 'movie' | 'series';
+  poster: string;
   manualSrc?: string; // الرابط اليدوي القادم من لوحة التحكم
-  poster?: string;
+  tmdbId?: string;    // معرف TMDB
+  type?: string;      // نوع المحتوى (فيلم/مسلسل)
+  season?: number;    // رقم الموسم
+  episode?: number;   // رقم الحلقة
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ tmdbId, season, episode, type, manualSrc, poster }) => {
-  const [activeSource, setActiveSource] = useState<string>('server1');
-  const [currentUrl, setCurrentUrl] = useState<string>('');
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, type, season, episode }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeSource, setActiveSource] = useState<string | undefined>(undefined);
 
+  // تحديث مصدر الفيديو: إما يدوي (مباشر) أو تلقائي (عبر العزل)
   useEffect(() => {
-    // 1. الأولوية القصوى: السيرفر اليدوي (إذا اختاره الأدمن)
-    if (manualSrc) {
-      setCurrentUrl(manualSrc);
-      return;
+    let finalUrl = manualSrc;
+    let shouldUseIsolation = false;
+
+    // الخطوة 1: التحقق من وجود رابط يدوي (الأولوية للرابط اليدوي)
+    if (!finalUrl || finalUrl.trim() === '') {
+        // الخطوة 2: توليد رابط تلقائي إذا وجد TMDB ID
+        if (tmdbId) {
+            // توليد روابط Cinematix VIP (vidsrc.vip) كأولوية قصوى
+            if (type === 'movie' || type === 'video.movie') {
+                finalUrl = `https://vidsrc.vip/embed/movie/${tmdbId}`;
+            } else {
+                // افتراضياً مسلسل
+                finalUrl = `https://vidsrc.vip/embed/tv/${tmdbId}/${season || 1}/${episode || 1}`;
+            }
+            // تفعيل العزل للروابط التلقائية فقط لأنها تحتاج Referrer Hiding + AdBlock
+            shouldUseIsolation = true;
+        }
     }
 
-    if (!tmdbId) return;
-
-    // 2. السيرفرات التلقائية (يجب تمريرها عبر صفحة الوسيط لكسر الحماية)
-    // نستخدم encodeURIComponent لضمان سلامة الرابط
-    const proxyBase = '/embed.html?url=';
-
-    // روابط المصادر الأصلية (Raw URLs)
-    const rawSources: Record<string, string> = {
-      'server1': type === 'movie' 
-        ? `https://vidsrc.xyz/embed/movie/${tmdbId}` // .xyz أكثر استقراراً حالياً
-        : `https://vidsrc.xyz/embed/tv/${tmdbId}/${season}/${episode}`,
-      
-      'server2': type === 'movie'
-        ? `https://www.2embed.cc/embed/${tmdbId}`
-        : `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`,
+    if (finalUrl && finalUrl.trim() !== '') {
+        setIsLoading(true);
         
-      'server3': type === 'movie'
-        ? `https://vidsrc.to/embed/movie/${tmdbId}`
-        : `https://vidsrc.to/embed/tv/${tmdbId}/${season}/${episode}`
-    };
+        if (shouldUseIsolation) {
+            // الخطوة 3: تمرير الرابط عبر صفحة العزل
+            const encodedUrl = encodeURIComponent(finalUrl);
+            setActiveSource(`/embed.html?url=${encodedUrl}`);
+        } else {
+            // الروابط اليدوية (مثل ملفات mp4 المباشرة أو روابط خاصة) تعمل مباشرة
+            setActiveSource(finalUrl);
+        }
+    } else {
+        setActiveSource(undefined);
+        setIsLoading(false);
+    }
+  }, [manualSrc, tmdbId, type, season, episode]);
 
-    // تغليف الرابط بصفحة الوسيط
-    const targetRawUrl = rawSources[activeSource];
-    const proxiedUrl = `${proxyBase}${encodeURIComponent(targetRawUrl)}`;
+  const isDirectVideo = useMemo(() => {
+    if (!activeSource) return false;
+    // التحقق مما إذا كان الرابط ملف فيديو مباشر لتشغيله عبر مشغل HTML5
+    // ملاحظة: روابط العزل (/embed.html) ليست ملفات فيديو مباشرة، لذا ستعمل عبر iframe
+    const cleanUrl = activeSource.split('?')[0].toLowerCase();
+    const videoExtensions = ['.mp4', '.m3u8', '.ogg', '.webm', '.ts', '.mov']; 
+    return videoExtensions.some(ext => cleanUrl.endsWith(ext));
+  }, [activeSource]);
 
-    setCurrentUrl(proxiedUrl);
+  // Loading Overlay Component
+  const LoadingOverlay = () => (
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black transition-opacity duration-500">
+        {/* Background Poster with Blur */}
+        <div className="absolute inset-0 z-0">
+            <img src={poster} alt="Loading" className="w-full h-full object-cover opacity-30 blur-md scale-110" />
+        </div>
+        
+        <div className="absolute inset-0 bg-black/40 z-0"></div>
+        
+        {/* Content */}
+        <div className="relative z-10 flex flex-col items-center gap-6">
+             <div className="dots-container scale-125">
+                <div className="dot"></div>
+                <div className="dot"></div>
+                <div className="dot"></div>
+             </div>
+             <p className="text-white font-bold text-lg tracking-wide animate-pulse drop-shadow-lg">جاري تجهيز السيرفر...</p>
+        </div>
+    </div>
+  );
 
-  }, [tmdbId, season, episode, type, manualSrc, activeSource]);
-
-  if (!currentUrl) {
+  if (!activeSource) {
     return (
-      <div className="w-full aspect-video bg-gray-900 flex flex-col items-center justify-center text-gray-500 rounded-xl border border-gray-800">
-        <p>جاري تحميل المشغل...</p>
+      <div className="aspect-video w-full bg-black rounded-xl overflow-hidden relative group flex items-center justify-center p-4 border border-gray-800">
+        {/* Background Poster for Empty State (Blurred) */}
+        <div className="absolute inset-0 z-0">
+            <img src={poster} alt="Poster" className="w-full h-full object-cover opacity-40 blur-md" />
+        </div>
+        
+        <div className="absolute inset-0 bg-black/50 z-10"></div>
+
+        <div className="relative z-20 bg-black/60 backdrop-blur-md p-6 rounded-2xl border border-gray-800 text-center animate-fade-in-up">
+            <h3 className="text-xl md:text-2xl font-bold text-white">جاري البحث عن مصادر...</h3>
+            <p className="text-gray-300 mt-2 text-sm">إذا تأخر التشغيل، يرجى اختيار سيرفر آخر من القائمة.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10">
-        <iframe
-          key={currentUrl}
-          src={currentUrl}
-          title="Video Player"
-          className="absolute top-0 left-0 w-full h-full"
-          frameBorder="0"
-          allowFullScreen
-          // خصائص هامة للسماح بالتشغيل
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          // لا نحتاج sandbox أو referrer هنا لأن embed.html تتولى المهمة، أو لأن الرابط اليدوي موثوق
-        />
-      </div>
+    <div className="aspect-video w-full bg-black rounded-xl overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] relative video-player-wrapper group border border-gray-800">
+      
+      {isLoading && <LoadingOverlay />}
 
-      {/* أزرار التبديل تظهر فقط في الوضع التلقائي */}
-      {!manualSrc && (
-        <div className="flex flex-wrap gap-2 justify-center bg-gray-900/50 p-3 rounded-lg border border-white/5 animate-fade-in-up">
-          <span className="text-xs text-gray-400 self-center ml-2 font-bold">سيرفرات تلقائية (Auto):</span>
-          
-          <button 
-            onClick={() => setActiveSource('server1')}
-            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold ${activeSource === 'server1' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-          >
-            VidSrc (XYZ)
-          </button>
-          
-          <button 
-            onClick={() => setActiveSource('server2')}
-            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold ${activeSource === 'server2' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-          >
-            2Embed (CC)
-          </button>
-          
-           <button 
-            onClick={() => setActiveSource('server3')}
-            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold ${activeSource === 'server3' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-          >
-            VidSrc (TO)
-          </button>
-        </div>
-      )}
+      {/* LAYER 2: The Player */}
+      <div className="absolute inset-0 z-10">
+        {isDirectVideo ? (
+            <video
+                key={activeSource} 
+                controls
+                autoPlay
+                poster={poster}
+                className="w-full h-full bg-black"
+                onLoadedData={() => setIsLoading(false)}
+                onWaiting={() => setIsLoading(true)}
+                onPlaying={() => setIsLoading(false)}
+                playsInline
+            >
+                <source src={activeSource} type={activeSource.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'} />
+                عفواً، متصفحك لا يدعم تشغيل الفيديوهات.
+            </video>
+        ) : (
+            <iframe
+                key={activeSource} // Force re-render on source change
+                src={activeSource}
+                allowFullScreen
+                loading="eager" 
+                referrerPolicy="no-referrer" 
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                className="w-full h-full border-none" 
+                title="مشغل الفيديو"
+                onLoad={() => setIsLoading(false)}
+            />
+        )}
+      </div>
     </div>
   );
 };

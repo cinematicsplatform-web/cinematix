@@ -270,16 +270,26 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
             // A. MOVIE AUTO SERVERS
             if (currentType === ContentType.Movie && enableAutoLinks) {
+                // Priority 1: Cinematix VIP
+                movieServers.push({
+                    id: 9900,
+                    name: 'Cinematix VIP (سريع)',
+                    url: `https://vidsrc.vip/embed/movie/${tmdbIdInput}`,
+                    downloadUrl: '',
+                    isActive: true
+                });
+                // Priority 2: VidSrc.to
                 movieServers.push({
                     id: 9901,
-                    name: 'سيرفر تلقائي (VidSrc)',
+                    name: 'سيرفر VidSrc',
                     url: `https://vidsrc.to/embed/movie/${tmdbIdInput}`,
                     downloadUrl: '',
                     isActive: true
                 });
+                // Priority 3: SuperEmbed
                 movieServers.push({
                     id: 9902,
-                    name: 'سيرفر تلقائي (SuperEmbed)',
+                    name: 'سيرفر SuperEmbed',
                     url: `https://multiembed.mov/directstream.php?video_id=${tmdbIdInput}&tmdb=1`,
                     downloadUrl: '',
                     isActive: true
@@ -307,16 +317,26 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             // AUTO GENERATE EPISODE SERVERS
                             const epServers: Server[] = [];
                             if (enableAutoLinks) {
+                                // Priority 1: Cinematix VIP
+                                epServers.push({
+                                    id: 80000 + i,
+                                    name: 'Cinematix VIP (سريع)',
+                                    url: `https://vidsrc.vip/embed/tv/${tmdbIdInput}/${s.season_number}/${i}`,
+                                    downloadUrl: '',
+                                    isActive: true
+                                });
+                                // Priority 2: VidSrc
                                 epServers.push({
                                     id: 90000 + i,
-                                    name: 'سيرفر تلقائي (VidSrc)',
+                                    name: 'سيرفر VidSrc',
                                     url: `https://vidsrc.to/embed/tv/${tmdbIdInput}/${s.season_number}/${i}`,
                                     downloadUrl: '',
                                     isActive: true
                                 });
+                                // Priority 3: SuperEmbed
                                 epServers.push({
                                     id: 90000 + i + 1000, 
-                                    name: 'سيرفر تلقائي (SuperEmbed)',
+                                    name: 'سيرفر SuperEmbed',
                                     url: `https://multiembed.mov/directstream.php?video_id=${tmdbIdInput}&tmdb=1&s=${s.season_number}&e=${i}`,
                                     downloadUrl: '',
                                     isActive: true
