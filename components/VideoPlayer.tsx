@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 
 interface VideoPlayerProps {
@@ -149,7 +150,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                     referrerPolicy="no-referrer" 
                     allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
                     className="w-full h-full border-none" 
-                    title="مشغل الفيديو"
+                    title="Cinematix Player"
                     onLoad={() => setIsLoading(false)}
                 />
             )}
