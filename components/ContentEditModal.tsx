@@ -24,6 +24,11 @@ const CheckSmallIcon = () => (
 const CloudArrowDownIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
 );
+const ArrowPathIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+  </svg>
+);
 
 // --- STYLES ---
 const MODAL_BG = "bg-gray-800"; 
@@ -150,8 +155,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     }>({ isOpen: false, seasonId: null, title: '' });
 
     // --- TMDB STATE ---
-    const [tmdbIdInput, setTmdbIdInput] = useState('');
+    const [tmdbIdInput, setTmdbIdInput] = useState(content?.id && !isNaN(Number(content.id)) ? content.id : '');
     const [fetchLoading, setFetchLoading] = useState(false);
+    const [refreshLoading, setRefreshLoading] = useState(false);
     const [enableAutoLinks, setEnableAutoLinks] = useState(false); // New Toggle State
     const API_KEY = 'b8d66e320b334f4d56728d98a7e39697';
 
@@ -160,7 +166,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         setSlugManuallyEdited(!!content?.slug);
         setNewActor('');
         setSeasonCastInputs({});
-        setTmdbIdInput('');
+        setTmdbIdInput(content?.id && !isNaN(Number(content.id)) ? content.id : '');
     }, [content]);
 
     useEffect(() => {
@@ -169,7 +175,147 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
     }, [formData.title, slugManuallyEdited]);
 
-    // --- TMDB Logic ---
+    // --- Helper for Generating Links ---
+    const generateEpisodeServers = (tmdbId: string, seasonNum: number, episodeNum: number) => {
+         const epServers: Server[] = [];
+         // FORMULA FOR SERIES: https://dl.vidsrc.vip/tv/{id}/{season}/{episode}
+         const autoDownloadUrl = `https://dl.vidsrc.vip/tv/${tmdbId}/${seasonNum}/${episodeNum}`;
+
+         if (enableAutoLinks) {
+             // Priority 1: Cinematix VIP
+             epServers.push({
+                 id: 80000 + episodeNum,
+                 name: 'Cinematix VIP (سريع)',
+                 url: `https://vidsrc.vip/embed/tv/${tmdbId}/${seasonNum}/${episodeNum}`,
+                 downloadUrl: autoDownloadUrl,
+                 isActive: true
+             });
+             // Priority 2: VidSrc
+             epServers.push({
+                 id: 90000 + episodeNum,
+                 name: 'سيرفر VidSrc',
+                 url: `https://vidsrc.to/embed/tv/${tmdbId}/${seasonNum}/${episodeNum}`,
+                 downloadUrl: autoDownloadUrl,
+                 isActive: true
+             });
+             // Priority 3: SuperEmbed
+             epServers.push({
+                 id: 90000 + episodeNum + 1000, 
+                 name: 'سيرفر SuperEmbed',
+                 url: `https://multiembed.mov/directstream.php?video_id=${tmdbId}&tmdb=1&s=${seasonNum}&e=${episodeNum}`,
+                 downloadUrl: autoDownloadUrl,
+                 isActive: true
+             });
+         }
+         return epServers;
+    }
+
+    // --- SMART REFRESH LOGIC ---
+    const handleRefreshData = async () => {
+        if (!tmdbIdInput) return;
+        if (formData.type !== ContentType.Series) return; // Only for Series for now
+
+        setRefreshLoading(true);
+        const language = 'ar-SA';
+
+        try {
+            // 1. Fetch TV Details
+            const detailsRes = await fetch(`https://api.themoviedb.org/3/tv/${tmdbIdInput}?api_key=${API_KEY}&language=${language}`);
+            if (!detailsRes.ok) throw new Error('فشل الاتصال بـ TMDB. تأكد من الـ ID');
+            const details = await detailsRes.json();
+
+            // 2. Fetch Seasons
+            let newSeasonsFromApi: Season[] = [];
+            if (details.seasons) {
+                const seasonPromises = details.seasons.map(async (s: any) => {
+                    try {
+                        const seasonDetailRes = await fetch(`https://api.themoviedb.org/3/tv/${tmdbIdInput}/season/${s.season_number}?api_key=${API_KEY}&language=${language}`);
+                        const seasonData = await seasonDetailRes.json();
+                        
+                        const episodeCount = seasonData.episodes?.length || s.episode_count || 0;
+                        const episodes: Episode[] = [];
+
+                        for (let i = 1; i <= episodeCount; i++) {
+                            const epId = Date.now() + Math.floor(Math.random() * 1000000) + i;
+                            episodes.push({
+                                id: epId,
+                                title: `الحلقة ${i}`,
+                                thumbnail: '', 
+                                duration: 0,
+                                progress: 0,
+                                servers: generateEpisodeServers(tmdbIdInput, s.season_number, i) // Apply auto links logic to FRESH episodes
+                            });
+                        }
+
+                        return {
+                            id: s.id, // TMDB ID
+                            seasonNumber: s.season_number,
+                            title: s.name,
+                            description: s.overview || '',
+                            releaseYear: seasonData.air_date ? new Date(seasonData.air_date).getFullYear() : undefined,
+                            poster: s.poster_path ? `https://image.tmdb.org/t/p/w500${s.poster_path}` : '',
+                            episodes: episodes
+                        } as Season;
+                    } catch (e) { return null; }
+                });
+                const results = await Promise.all(seasonPromises);
+                newSeasonsFromApi = results.filter(Boolean).sort((a, b) => a.seasonNumber - b.seasonNumber) as Season[];
+            }
+
+            // 3. SMART MERGE STRATEGY
+            const currentSeasons = formData.seasons || [];
+            
+            const mergedSeasons = newSeasonsFromApi.map(newS => {
+                // Find matching existing season (by number)
+                const existingS = currentSeasons.find(s => s.seasonNumber === newS.seasonNumber);
+                
+                if (!existingS) {
+                    // It's a completely new season! Add it whole.
+                    return { ...newS, id: Date.now() + Math.random() }; // Ensure unique ID for app logic
+                }
+
+                // It's an existing season, let's check for new episodes
+                const mergedEpisodes = newS.episodes.map(newEp => {
+                    // Parse episode number from title (Standard: "الحلقة X")
+                    const newEpNum = parseInt(newEp.title?.replace('الحلقة ', '') || '0');
+                    
+                    // Try to find this episode in the existing data
+                    const existingEp = existingS.episodes.find(e => {
+                        const oldEpNum = parseInt(e.title?.replace('الحلقة ', '') || '0');
+                        return oldEpNum === newEpNum;
+                    });
+
+                    if (existingEp) {
+                        // EPISODE EXISTS: Keep the OLD one to preserve Manual Links!
+                        return existingEp; 
+                    } else {
+                        // NEW EPISODE FOUND: Return the new one (which has auto-links if enabled)
+                        return newEp;
+                    }
+                });
+                
+                // Return merged season: New Metadata + Merged Episodes
+                return {
+                    ...existingS, // Keep internal ID
+                    title: newS.title, // Update Metadata
+                    poster: newS.poster, // Update Poster
+                    releaseYear: newS.releaseYear, // Update Year
+                    episodes: mergedEpisodes
+                };
+            });
+
+            setFormData(prev => ({ ...prev, seasons: mergedSeasons }));
+            alert(`تم تحديث البيانات بنجاح! تم فحص ${newSeasonsFromApi.length} موسم.`);
+
+        } catch (e: any) {
+            console.error(e);
+            alert('حدث خطأ أثناء التحديث: ' + e.message);
+        } finally {
+            setRefreshLoading(false);
+        }
+    };
+
+    // --- TMDB Logic (Original Fetch) ---
     const fetchFromTMDB = async () => {
         if (!tmdbIdInput) return;
         setFetchLoading(true);
@@ -270,12 +416,15 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
             // A. MOVIE AUTO SERVERS
             if (currentType === ContentType.Movie && enableAutoLinks) {
+                // FORMULA FOR MOVIES: https://dl.vidsrc.vip/movie/{id}
+                const autoDownloadUrl = `https://dl.vidsrc.vip/movie/${tmdbIdInput}`;
+
                 // Priority 1: Cinematix VIP
                 movieServers.push({
                     id: 9900,
                     name: 'Cinematix VIP (سريع)',
                     url: `https://vidsrc.vip/embed/movie/${tmdbIdInput}`,
-                    downloadUrl: '',
+                    downloadUrl: autoDownloadUrl,
                     isActive: true
                 });
                 // Priority 2: VidSrc.to
@@ -283,7 +432,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     id: 9901,
                     name: 'سيرفر VidSrc',
                     url: `https://vidsrc.to/embed/movie/${tmdbIdInput}`,
-                    downloadUrl: '',
+                    downloadUrl: autoDownloadUrl,
                     isActive: true
                 });
                 // Priority 3: SuperEmbed
@@ -291,7 +440,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     id: 9902,
                     name: 'سيرفر SuperEmbed',
                     url: `https://multiembed.mov/directstream.php?video_id=${tmdbIdInput}&tmdb=1`,
-                    downloadUrl: '',
+                    downloadUrl: autoDownloadUrl,
                     isActive: true
                 });
             } else if (currentType === ContentType.Movie) {
@@ -314,34 +463,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         for (let i = 1; i <= episodeCount; i++) {
                             const epId = Date.now() + Math.floor(Math.random() * 1000000) + i;
                             
-                            // AUTO GENERATE EPISODE SERVERS
-                            const epServers: Server[] = [];
-                            if (enableAutoLinks) {
-                                // Priority 1: Cinematix VIP
-                                epServers.push({
-                                    id: 80000 + i,
-                                    name: 'Cinematix VIP (سريع)',
-                                    url: `https://vidsrc.vip/embed/tv/${tmdbIdInput}/${s.season_number}/${i}`,
-                                    downloadUrl: '',
-                                    isActive: true
-                                });
-                                // Priority 2: VidSrc
-                                epServers.push({
-                                    id: 90000 + i,
-                                    name: 'سيرفر VidSrc',
-                                    url: `https://vidsrc.to/embed/tv/${tmdbIdInput}/${s.season_number}/${i}`,
-                                    downloadUrl: '',
-                                    isActive: true
-                                });
-                                // Priority 3: SuperEmbed
-                                epServers.push({
-                                    id: 90000 + i + 1000, 
-                                    name: 'سيرفر SuperEmbed',
-                                    url: `https://multiembed.mov/directstream.php?video_id=${tmdbIdInput}&tmdb=1&s=${s.season_number}&e=${i}`,
-                                    downloadUrl: '',
-                                    isActive: true
-                                });
-                            }
+                            // Use helper to generate links
+                            const epServers = generateEpisodeServers(String(tmdbIdInput), s.season_number, i);
 
                             episodes.push({
                                 id: epId,
@@ -651,6 +774,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             placeholder="أدخل TMDB ID (مثال: 12345)" 
                                             className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none"
                                         />
+                                        
+                                        {/* Normal Fetch Button */}
                                         <button 
                                             type="button"
                                             onClick={fetchFromTMDB}
@@ -664,6 +789,24 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                 </>
                                             )}
                                         </button>
+
+                                        {/* Smart Refresh Button (Series Only) */}
+                                        {formData.type === ContentType.Series && (
+                                            <button 
+                                                type="button"
+                                                onClick={handleRefreshData}
+                                                disabled={refreshLoading}
+                                                className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center gap-2 whitespace-nowrap shadow-lg shadow-amber-900/20"
+                                                title="تحديث المواسم والحلقات الجديدة فقط مع الحفاظ على الروابط القديمة"
+                                            >
+                                                {refreshLoading ? 'جاري التحديث...' : (
+                                                    <>
+                                                        <ArrowPathIcon />
+                                                        تحديث البيانات
+                                                    </>
+                                                )}
+                                            </button>
+                                        )}
                                     </div>
                                     
                                     {/* AUTO LINKS TOGGLE */}
@@ -679,6 +822,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             </div>
                             <div className="text-xs text-gray-400 hidden md:block max-w-xs">
                                 سيقوم هذا الخيار بملء الحقول أدناه تلقائياً. فعل خيار "توليد روابط" لإضافة سيرفرات مشاهدة VidSrc مباشرة.
+                                <br/>
+                                <span className="text-amber-400 mt-1 block">زر "تحديث البيانات" يضيف الحلقات الجديدة فقط ولا يحذف الروابط القديمة.</span>
                             </div>
                         </div>
                     </div>
@@ -1128,6 +1273,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
                                                     <span className="font-bold text-white">{s.name}</span>
                                                     <span className="text-gray-500 text-xs truncate max-w-[200px] dir-ltr">({s.url})</span>
+                                                    {s.downloadUrl && <span className="text-blue-400 text-xs ml-auto">⬇️ رابط تحميل</span>}
                                                 </li>
                                             ))}
                                         </ul>

@@ -105,8 +105,32 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [showPreroll, setShowPreroll] = useState(false);
   const [prerollTimer, setPrerollTimer] = useState(5);
   
-  // Get Download URL
-  const downloadUrl = selectedServer?.downloadUrl || activeServers[0]?.downloadUrl;
+  // --- Auto Download Link Generation ---
+  const getAutoDownloadUrl = () => {
+      // Assuming content.id corresponds to the TMDB ID used by dl.vidsrc.vip
+      const id = content.id; 
+      
+      if (content.type === 'movie') {
+          // Formula: https://dl.vidsrc.vip/movie/{id}
+          return `https://dl.vidsrc.vip/movie/${id}`;
+      } else if (content.type === 'series') {
+          // Formula: https://dl.vidsrc.vip/tv/{id}/{season}/{episode}
+          const s = currentSeason?.seasonNumber || 1;
+          const e = selectedEpisode 
+            ? (episodes.findIndex(ep => ep.id === selectedEpisode.id) + 1) 
+            : 1;
+          return `https://dl.vidsrc.vip/tv/${id}/${s}/${e}`;
+      }
+      return '';
+  };
+
+  // Priority: Selected Server Manual Link > First Active Server Manual Link > Auto Generated Link
+  // Note: If 'downloadUrl' is empty string from DB, it falls back to next option.
+  const downloadUrl = (selectedServer?.downloadUrl && selectedServer.downloadUrl.trim() !== '') 
+        ? selectedServer.downloadUrl 
+        : (activeServers[0]?.downloadUrl && activeServers[0].downloadUrl.trim() !== '') 
+            ? activeServers[0].downloadUrl 
+            : getAutoDownloadUrl();
 
   const isInMyList = !!myList?.includes(content.id);
   
