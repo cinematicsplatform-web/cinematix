@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- CRITICAL: Hide Referrer to bypass block lists -->
     <meta name="referrer" content="no-referrer">
     <title>Player</title>
     <style>
@@ -12,13 +11,7 @@
     </style>
 </head>
 <body>
-    <!-- Sandbox updated to allow popups as required by VidSrc -->
-    <iframe id="player" src="" 
-        allowfullscreen 
-        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-        sandbox="allow-forms allow-header-enrichment allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-top-navigation">
-    </iframe>
-    
+    <iframe id="player" src="" allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>
     <script>
         const params = new URLSearchParams(window.location.search);
         const url = params.get('url');

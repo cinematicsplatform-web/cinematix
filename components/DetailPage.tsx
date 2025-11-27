@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '../types';
 import VideoPlayer from './VideoPlayer';
@@ -74,7 +73,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const currentSeason = content.seasons?.find(s => s.id === selectedSeasonId);
   const episodes = currentSeason?.episodes || [];
   
-  // Resolve servers based on type (Memoized) and filter out empty URLs
+  // Resolve servers based on type (Memoized)
   const activeServers = useMemo(() => {
       let servers: Server[] = [];
       
@@ -84,8 +83,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
           servers = selectedEpisode.servers || [];
       }
 
-      // Only return servers that have a valid URL
-      return servers.filter(s => s.url && s.url.trim().length > 0);
+      // We only return manual servers here.
+      // If list is empty, VideoPlayer will handle Auto Mode.
+      return servers;
   }, [content, selectedEpisode]);
 
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
@@ -93,7 +93,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
   // Effect to set default server when activeServers changes
   useEffect(() => {
       if (activeServers.length > 0) {
-          // Prefer active server, otherwise first valid server
           const defaultServer = activeServers.find(s => s.isActive) || activeServers[0];
           setSelectedServer(defaultServer);
       } else {
@@ -504,38 +503,40 @@ const DetailPage: React.FC<DetailPageProps> = ({
              <div className="max-w-6xl mx-auto">
                  {isContentPlayable ? (
                     <>
-                         {/* Only show server list if there are valid servers */}
-                         {activeServers.length > 0 && (
-                             <div className="mb-6 animate-fade-in-up">
-                                <SectionTitle title="سيرفرات المشاهدة" />
-                                <div className="flex items-center gap-3 overflow-x-auto rtl-scroll pb-2 no-scrollbar">
-                                    {activeServers.map((server) => (
-                                         <button
-                                            key={server.id}
-                                            onClick={() => handleServerSelect(server)}
-                                            className={`
-                                                flex-shrink-0 px-6 py-3 rounded-lg font-bold text-sm transition-all shadow-sm flex items-center gap-2 whitespace-nowrap target-server-btn
-                                                ${selectedServer?.id === server.id 
-                                                    ? (isRamadanTheme 
-                                                        ? 'bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)]' 
-                                                        : isEidTheme
-                                                            ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(147,112,219,0.4)]'
-                                                            : isCosmicTealTheme
-                                                                ? 'bg-[#35F18B] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)]'
-                                                                : isNetflixRedTheme
-                                                                    ? 'bg-[#E50914] text-white shadow-[0_0_15px_rgba(229,9,20,0.4)]'
-                                                                    : 'bg-[#00A7F8] text-black scale-105 shadow-[0_0_15px_rgba(0,167,248,0.4)]')
-                                                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
-                                                }
-                                            `}
-                                        >
-                                            <PlayIcon className="w-4 h-4" />
-                                            {server.name}
-                                        </button>
-                                    ))}
-                                </div>
-                             </div>
-                         )}
+                         <div className="mb-6 animate-fade-in-up">
+                            <SectionTitle title="سيرفرات المشاهدة" />
+                            <div className="flex items-center gap-3 overflow-x-auto rtl-scroll pb-2 no-scrollbar">
+                                {activeServers.length > 0 ? activeServers.map((server) => (
+                                     <button
+                                        key={server.id}
+                                        onClick={() => handleServerSelect(server)}
+                                        className={`
+                                            flex-shrink-0 px-6 py-3 rounded-lg font-bold text-sm transition-all shadow-sm flex items-center gap-2 whitespace-nowrap target-server-btn
+                                            ${selectedServer?.id === server.id 
+                                                ? (isRamadanTheme 
+                                                    ? 'bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)]' 
+                                                    : isEidTheme
+                                                        ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(147,112,219,0.4)]'
+                                                        : isCosmicTealTheme
+                                                            ? 'bg-[#35F18B] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)]'
+                                                            : isNetflixRedTheme
+                                                                ? 'bg-[#E50914] text-white shadow-[0_0_15px_rgba(229,9,20,0.4)]'
+                                                                : 'bg-[#00A7F8] text-black scale-105 shadow-[0_0_15px_rgba(0,167,248,0.4)]')
+                                                : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
+                                            }
+                                        `}
+                                    >
+                                        <PlayIcon className="w-4 h-4" />
+                                        {server.name}
+                                    </button>
+                                )) : (
+                                    <div className="text-gray-400 text-sm flex items-center gap-2 p-2 bg-gray-900/50 rounded-lg border border-gray-800">
+                                        <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                        <span>المشاهدة التلقائية مفعلة</span>
+                                    </div>
+                                )}
+                            </div>
+                         </div>
 
                          <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.7)] border border-gray-800 bg-black z-10 group animate-fade-in-up" style={{ animationDelay: '100ms' }}>
                               {showPreroll && prerollAd ? (
@@ -562,7 +563,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                       type={content.type}
                                       season={currentSeason?.seasonNumber}
                                       episode={selectedEpisode ? (episodes.findIndex(e => e.id === selectedEpisode.id) + 1) : 1}
-                                      manualSrc={selectedServer?.url} // If null (or undefined), VideoPlayer handles logic (No auto-play)
+                                      manualSrc={selectedServer?.url} // If null (auto mode), this is undefined, triggering VideoPlayer auto-logic
                                       poster={videoPoster} 
                                   />
                               )}
