@@ -1,52 +1,37 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import puppeteer from 'puppeteer';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req.query;
 
-  if (!query) {
-    return res.status(400).json({ error: 'Please provide a movie name (query)' });
-  }
-
-  let browser = null;
+  if (!query) return res.status(400).json({ error: 'Missing query' });
 
   try {
-    browser = await puppeteer.launch({
-      headless: true, // Run in background
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-    const page = await browser.newPage();
+    // 1. Fake a real browser request using Headers
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    };
 
-    // IMPORTANT: Set a real User Agent to look like a human
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
-
-    // 1. Go to Search Page
-    // Note: If this domain is blocked, we will need to update it later.
+    // 2. Search URL
     const searchUrl = `https://m.arabseed.show/find/?find=${encodeURIComponent(query as string)}`;
-    console.log('Searching at:', searchUrl);
+    console.log('Fetching:', searchUrl);
+    const response = await axios.get(searchUrl, { headers });
 
-    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    // 3. Parse HTML
+    const $ = cheerio.load(response.data);
 
-    // 2. Wait for result (Targeting the class '.MovieBlock')
-    // If ArabSeed changes the class name, this part will need update.
-    const movieSelector = '.MovieBlock';
-    
-    await page.waitForSelector(movieSelector, { timeout: 5000 });
+    // 4. Extract first movie link (Looking for .MovieBlock a)
+    // Note: If ArabSeed changes class names, this part returns null.
+    const firstLink = $('.MovieBlock a').attr('href');
 
-    // 3. Get the link of the first item
-    const pageLink = await page.evaluate((selector) => {
-      const element = document.querySelector(selector);
-      return element ? element.getAttribute('href') : null;
-    }, movieSelector);
-
-    if (!pageLink) throw new Error('No results found');
-
-    res.status(200).json({ status: 'Found', pageUrl: pageLink });
-
+    if (!firstLink) {
+      return res.status(404).json({ status: 'Not Found', message: 'Could not find movie link via selector' });
+    }
+    res.status(200).json({ status: 'Success', url: firstLink });
   } catch (error: any) {
     console.error('Scraping Error:', error.message);
     res.status(500).json({ status: 'Error', error: error.message });
-  } finally {
-    if (browser) await browser.close();
   }
 }
