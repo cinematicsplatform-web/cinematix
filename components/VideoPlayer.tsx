@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 
 interface VideoPlayerProps {
@@ -28,15 +27,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ tmdbId, season, episode, type
     const proxyBase = '/embed.html?url=';
 
     // روابط المصادر الأصلية (Raw URLs)
-    // تم تغيير الترتيب لجعل 2Embed هو الأول لتقليل الإعلانات
     const rawSources: Record<string, string> = {
-      'server1': type === 'movie'
+      'server1': type === 'movie' 
+        ? `https://vidsrc.xyz/embed/movie/${tmdbId}` // .xyz أكثر استقراراً حالياً
+        : `https://vidsrc.xyz/embed/tv/${tmdbId}/${season}/${episode}`,
+      
+      'server2': type === 'movie'
         ? `https://www.2embed.cc/embed/${tmdbId}`
         : `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`,
-      
-      'server2': type === 'movie' 
-        ? `https://vidsrc.xyz/embed/movie/${tmdbId}` // .xyz بديل قوي
-        : `https://vidsrc.xyz/embed/tv/${tmdbId}/${season}/${episode}`,
         
       'server3': type === 'movie'
         ? `https://vidsrc.to/embed/movie/${tmdbId}`
@@ -71,9 +69,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ tmdbId, season, episode, type
           allowFullScreen
           // خصائص هامة للسماح بالتشغيل
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          // تطبيق Sandbox لمنع النوافذ المنبثقة (Popups)
-          // تم إزالة allow-popups و allow-popups-to-escape-sandbox
-          sandbox="allow-forms allow-header-enrichment allow-presentation allow-same-origin allow-scripts allow-top-navigation"
+          // لا نحتاج sandbox أو referrer هنا لأن embed.html تتولى المهمة، أو لأن الرابط اليدوي موثوق
         />
       </div>
 
@@ -84,16 +80,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ tmdbId, season, episode, type
           
           <button 
             onClick={() => setActiveSource('server1')}
-            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold ${activeSource === 'server1' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold ${activeSource === 'server1' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
           >
-            2Embed (CC)
+            VidSrc (XYZ)
           </button>
           
           <button 
             onClick={() => setActiveSource('server2')}
-            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold ${activeSource === 'server2' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold ${activeSource === 'server2' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
           >
-            VidSrc (XYZ)
+            2Embed (CC)
           </button>
           
            <button 
