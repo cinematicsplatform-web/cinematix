@@ -106,19 +106,11 @@ export const getSiteSettings = async (): Promise<SiteSettings> => {
             };
         } else {
             console.log("No site settings found, creating from initial data...");
-            // Attempt to write initial data, but don't block if offline/permission denied
-            try {
-                await db.collection("settings").doc("site").set(initialSiteSettings);
-            } catch (e) { /* ignore write errors on init */ }
+            await db.collection("settings").doc("site").set(initialSiteSettings);
             return initialSiteSettings;
         }
-    } catch (error: any) {
-        // Gracefully handle offline or network errors
-        if (error?.message?.includes("offline") || error?.code === 'unavailable') {
-             console.warn("App is offline, using default site settings.");
-        } else {
-             console.error("Error fetching site settings:", error);
-        }
+    } catch (error) {
+        console.error("Error fetching site settings:", error);
         // Return default settings so the app doesn't crash
         return initialSiteSettings;
     }
@@ -131,25 +123,27 @@ export const updateSiteSettings = async (settings: SiteSettings): Promise<void> 
 // ---- Pinned Content (New Implementation) ----
 export const getPinnedContent = async (): Promise<PinnedContentState> => {
     try {
-        // Removed explicit { source: 'server' } to allow fallback to cache or standard behavior
-        const docSnap = await db.collection("settings").doc("pinned").get();
+        // FIX: Force fetch from server to avoid stale cache issues (Point 3 in user request)
+        const docSnap = await db.collection("settings").doc("pinned").get({ source: 'server' });
         
         if (docSnap.exists) {
             // Return existing data merged with initial structure to ensure all keys exist
             return { ...initialPinnedData, ...docSnap.data() };
         } else {
             // Initialize if not exists
-            try {
-                await db.collection("settings").doc("pinned").set(initialPinnedData);
-            } catch (e) { /* ignore write errors on init */ }
+            await db.collection("settings").doc("pinned").set(initialPinnedData);
             return initialPinnedData;
         }
-    } catch (error: any) {
-         // Gracefully handle offline or network errors
-        if (error?.message?.includes("offline") || error?.code === 'unavailable') {
-            console.warn("App is offline, using default pinned content.");
-        } else {
-            console.error("Error fetching pinned content:", error);
+    } catch (error) {
+        console.warn("Error fetching pinned content from server, attempting cache fallback:", error);
+        try {
+             // Fallback to default get (cache or server) if forced server fetch fails
+             const docSnap = await db.collection("settings").doc("pinned").get();
+             if (docSnap.exists) {
+                return { ...initialPinnedData, ...docSnap.data() };
+             }
+        } catch(e) {
+            console.error("Error fetching pinned content:", e);
         }
         return initialPinnedData;
     }
@@ -173,12 +167,8 @@ export const getAds = async (): Promise<Ad[]> => {
             id: d.id,
             updatedAt: safeGetTimestamp(d.data().updatedAt),
         }));
-    } catch (error: any) {
-        if (error?.message?.includes("offline") || error?.code === 'unavailable') {
-            console.warn("App is offline, ads disabled.");
-        } else {
-            console.error("Error fetching ads:", error);
-        }
+    } catch (error) {
+        console.error("Error fetching ads:", error);
         return [];
     }
 };
