@@ -4,32 +4,58 @@ import React, { useState, useEffect, useMemo } from 'react';
 interface VideoPlayerProps {
   poster: string;
   manualSrc?: string; // الرابط اليدوي القادم من لوحة التحكم
-  tmdbId?: string;    // معرف TMDB (تم تعطيل المشاهدة التلقائية بناءً على الطلب)
+  tmdbId?: string;    // معرف TMDB
   type?: string;      // نوع المحتوى (فيلم/مسلسل)
   season?: number;    // رقم الموسم
   episode?: number;   // رقم الحلقة
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, type, season, episode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [activeSource, setActiveSource] = useState<string | undefined>(undefined);
 
-  // تحديث مصدر الفيديو بناءً على المدخلات (إلغاء التحميل التلقائي)
+  // تحديث مصدر الفيديو: إما يدوي (مباشر) أو تلقائي (عبر العزل)
   useEffect(() => {
-    // إذا وجد رابط يدوي (سيرفر مضاف)، استخدمه فوراً
-    if (manualSrc && manualSrc.trim() !== '') {
+    let finalUrl = manualSrc;
+    let shouldUseIsolation = false;
+
+    // الخطوة 1: التحقق من وجود رابط يدوي (الأولوية للرابط اليدوي)
+    if (!finalUrl || finalUrl.trim() === '') {
+        // الخطوة 2: توليد رابط تلقائي إذا وجد TMDB ID
+        if (tmdbId) {
+            // توليد روابط VidSrc Pro
+            if (type === 'movie' || type === 'video.movie') {
+                finalUrl = `https://vidsrc.to/embed/movie/${tmdbId}`;
+            } else {
+                // افتراضياً مسلسل
+                finalUrl = `https://vidsrc.to/embed/tv/${tmdbId}/${season || 1}/${episode || 1}`;
+            }
+            // تفعيل العزل للروابط التلقائية فقط لأنها تحتاج Referrer Hiding + AdBlock
+            shouldUseIsolation = true;
+        }
+    }
+
+    if (finalUrl && finalUrl.trim() !== '') {
         setIsLoading(true);
-        setActiveSource(manualSrc);
+        
+        if (shouldUseIsolation) {
+            // الخطوة 3: تمرير الرابط عبر صفحة العزل
+            const encodedUrl = encodeURIComponent(finalUrl);
+            setActiveSource(`/embed.html?url=${encodedUrl}`);
+        } else {
+            // الروابط اليدوية (مثل ملفات mp4 المباشرة أو روابط خاصة) تعمل مباشرة
+            setActiveSource(finalUrl);
+        }
     } else {
-        // في حالة عدم وجود رابط، لا تقم بالتحميل التلقائي
         setActiveSource(undefined);
         setIsLoading(false);
     }
-  }, [manualSrc]);
+  }, [manualSrc, tmdbId, type, season, episode]);
 
   const isDirectVideo = useMemo(() => {
     if (!activeSource) return false;
     // التحقق مما إذا كان الرابط ملف فيديو مباشر لتشغيله عبر مشغل HTML5
+    // ملاحظة: روابط العزل (/embed.html) ليست ملفات فيديو مباشرة، لذا ستعمل عبر iframe
     const cleanUrl = activeSource.split('?')[0].toLowerCase();
     const videoExtensions = ['.mp4', '.m3u8', '.ogg', '.webm', '.ts', '.mov']; 
     return videoExtensions.some(ext => cleanUrl.endsWith(ext));
@@ -52,7 +78,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc }) => {
                 <div className="dot"></div>
                 <div className="dot"></div>
              </div>
-             <p className="text-white font-bold text-lg tracking-wide animate-pulse drop-shadow-lg">جاري تحميل السيرفر...</p>
+             <p className="text-white font-bold text-lg tracking-wide animate-pulse drop-shadow-lg">جاري تجهيز السيرفر...</p>
         </div>
     </div>
   );
@@ -68,8 +94,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc }) => {
         <div className="absolute inset-0 bg-black/50 z-10"></div>
 
         <div className="relative z-20 bg-black/60 backdrop-blur-md p-6 rounded-2xl border border-gray-800 text-center animate-fade-in-up">
-            <h3 className="text-xl md:text-2xl font-bold text-white">الرجاء اختيار سيرفر للمشاهدة</h3>
-            <p className="text-gray-300 mt-2 text-sm">اختر أحد السيرفرات من القائمة أعلاه لبدء العرض</p>
+            <h3 className="text-xl md:text-2xl font-bold text-white">جاري البحث عن مصادر...</h3>
+            <p className="text-gray-300 mt-2 text-sm">إذا تأخر التشغيل، يرجى اختيار سيرفر آخر من القائمة.</p>
         </div>
       </div>
     );

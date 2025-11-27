@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- CRITICAL: Hide Referrer to bypass block lists -->
     <meta name="referrer" content="no-referrer">
     <title>Player</title>
     <style>
@@ -11,7 +12,13 @@
     </style>
 </head>
 <body>
-    <iframe id="player" src="" allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>
+    <!-- Strict Sandbox: Removed 'allow-popups' and 'allow-top-navigation' to kill ads and redirects -->
+    <iframe id="player" src="" 
+        allowfullscreen 
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+        sandbox="allow-forms allow-header-enrichment allow-presentation allow-same-origin allow-scripts">
+    </iframe>
+    
     <script>
         const params = new URLSearchParams(window.location.search);
         const url = params.get('url');
