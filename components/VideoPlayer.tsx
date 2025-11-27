@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 
 interface VideoPlayerProps {
@@ -130,7 +129,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                 allowFullScreen
                 loading="eager" 
                 referrerPolicy="no-referrer" 
-                sandbox="allow-scripts allow-same-origin allow-presentation allow-pointer-lock allow-forms"
+                sandbox="allow-forms allow-header-enrichment allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-top-navigation"
                 allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
                 className="w-full h-full border-none" 
                 title="مشغل الفيديو"

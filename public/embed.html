@@ -12,11 +12,11 @@
     </style>
 </head>
 <body>
-    <!-- Strict Sandbox: Removed 'allow-popups' and 'allow-top-navigation' to kill ads and redirects -->
+    <!-- Sandbox updated to allow popups as required by VidSrc -->
     <iframe id="player" src="" 
         allowfullscreen 
         allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-        sandbox="allow-forms allow-header-enrichment allow-presentation allow-same-origin allow-scripts">
+        sandbox="allow-forms allow-header-enrichment allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-top-navigation">
     </iframe>
     
     <script>
