@@ -145,12 +145,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                 <iframe
                     key={activeSource}
                     src={activeSource}
-                    allowFullScreen
+                    allowFullScreen={true}
                     loading="eager" 
                     referrerPolicy="no-referrer" 
-                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                     className="w-full h-full border-none" 
-                    title="Cinematix Player"
+                    title="مشغل الفيديو"
                     onLoad={() => setIsLoading(false)}
                 />
             )}
