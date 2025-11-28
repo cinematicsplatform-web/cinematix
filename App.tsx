@@ -1002,7 +1002,7 @@ const App: React.FC = () => {
             ))}
         </div>
 
-        {!isAuthLoading && view !== 'login' && view !== 'register' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && !siteSettings.is_maintenance_mode_enabled && (
+        {!isAuthLoading && view !== 'login' && view !== 'register' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && !siteSettings.is_maintenance_mode_enabled && (
             <Header 
                 onSetView={handleSetView} 
                 currentUser={currentUser} 
