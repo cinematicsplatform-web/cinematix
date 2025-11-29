@@ -153,8 +153,8 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
             <div className={`flex items-center bg-black/30 backdrop-blur-sm border rounded-full py-2 px-4 
                 transition-all duration-300 ease-out
                 
-                /* Mobile: Viewport Width Percentage */
-                w-[35vw] focus-within:w-[50vw] mr-4 md:mr-0
+                /* Mobile: Viewport Width Percentage - Increased from 35vw to 45vw */
+                w-[45vw] focus-within:w-[55vw] mr-4 md:mr-0
                 
                 /* Desktop: Default Width */
                 md:w-64 

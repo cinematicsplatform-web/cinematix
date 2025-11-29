@@ -105,8 +105,10 @@ export const getSiteSettings = async (): Promise<SiteSettings> => {
                 socialLinks: { ...initialSiteSettings.socialLinks, ...(data.socialLinks || {}) }
             };
         } else {
-            console.log("No site settings found, creating from initial data...");
-            await db.collection("settings").doc("site").set(initialSiteSettings);
+            // Attempt to create if possible, but don't fail if permission denied (e.g. public user)
+            try {
+                await db.collection("settings").doc("site").set(initialSiteSettings);
+            } catch(e) { /* ignore write errors for public */ }
             return initialSiteSettings;
         }
     } catch (error) {
@@ -123,28 +125,21 @@ export const updateSiteSettings = async (settings: SiteSettings): Promise<void> 
 // ---- Pinned Content (New Implementation) ----
 export const getPinnedContent = async (): Promise<PinnedContentState> => {
     try {
-        // FIX: Force fetch from server to avoid stale cache issues (Point 3 in user request)
-        const docSnap = await db.collection("settings").doc("pinned").get({ source: 'server' });
+        // FIX: Removed forced server fetch { source: 'server' } to prevent offline/connection failures
+        const docSnap = await db.collection("settings").doc("pinned").get();
         
         if (docSnap.exists) {
             // Return existing data merged with initial structure to ensure all keys exist
             return { ...initialPinnedData, ...docSnap.data() };
         } else {
-            // Initialize if not exists
-            await db.collection("settings").doc("pinned").set(initialPinnedData);
+             // Attempt to create if possible
+             try {
+                await db.collection("settings").doc("pinned").set(initialPinnedData);
+             } catch(e) { /* ignore write errors */ }
             return initialPinnedData;
         }
     } catch (error) {
-        console.warn("Error fetching pinned content from server, attempting cache fallback:", error);
-        try {
-             // Fallback to default get (cache or server) if forced server fetch fails
-             const docSnap = await db.collection("settings").doc("pinned").get();
-             if (docSnap.exists) {
-                return { ...initialPinnedData, ...docSnap.data() };
-             }
-        } catch(e) {
-            console.error("Error fetching pinned content:", e);
-        }
+        console.warn("Error fetching pinned content:", error);
         return initialPinnedData;
     }
 };
@@ -165,21 +160,66 @@ export const getAds = async (): Promise<Ad[]> => {
         return querySnapshot.docs.map(d => ({
             ...(d.data() as Omit<Ad, 'id' | 'updatedAt'>),
             id: d.id,
+            // Ensure we map 'position' to 'placement' for backward compatibility if needed
+            placement: d.data().placement || d.data().position || 'home-top',
+            // Map new fields with defaults
+            timerDuration: d.data().timerDuration || 0,
             updatedAt: safeGetTimestamp(d.data().updatedAt),
-        }));
+        })) as Ad[];
     } catch (error) {
         console.error("Error fetching ads:", error);
         return [];
     }
 };
 
+export const getAdByPosition = async (position: string): Promise<Ad | null> => {
+  try {
+    // Try 'placement' first as it's the main field in types
+    let q = db.collection("ads")
+        .where("placement", "==", position)
+        .where("status", "==", "active")
+        .limit(1);
+    
+    let snap = await q.get();
+    if (!snap.empty) {
+        const doc = snap.docs[0];
+        return { id: doc.id, ...doc.data() } as Ad;
+    }
+    
+    // Fallback query for 'position' field (backward compat)
+    const q2 = db.collection("ads")
+        .where("position", "==", position)
+        .where("status", "==", "active")
+        .limit(1);
+        
+    const snap2 = await q2.get();
+    if(!snap2.empty) {
+         const doc = snap2.docs[0];
+        return { id: doc.id, ...doc.data() } as Ad;
+    }
+
+    return null;
+  } catch (e) {
+    console.error(`Error fetching ad by position [${position}]:`, e);
+    return null;
+  }
+};
+
 export const addAd = async (adData: Omit<Ad, 'id' | 'updatedAt'>): Promise<string> => {
-    const docRef = await db.collection("ads").add({ ...adData, updatedAt: serverTimestamp() });
+    // Map properties for storage if needed, but Ad interface should align
+    const docRef = await db.collection("ads").add({ 
+        ...adData, 
+        position: adData.placement, // Store both for compatibility
+        updatedAt: serverTimestamp() 
+    });
     return docRef.id;
 };
 
 export const updateAd = async (adId: string, adData: Partial<Omit<Ad, 'id'>>): Promise<void> => {
-    await db.collection("ads").doc(adId).update({ ...adData, updatedAt: serverTimestamp() });
+    const data: any = { ...adData, updatedAt: serverTimestamp() };
+    if (adData.placement) data.position = adData.placement; // Sync position field
+    
+    await db.collection("ads").doc(adId).update(data);
 };
 
 export const deleteAd = async (adId: string): Promise<void> => {

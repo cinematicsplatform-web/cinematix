@@ -7,6 +7,7 @@ import AdPlacement from './AdPlacement';
 import { PlayIcon } from './icons/PlayIcon'; 
 import RamadanRestrictedModal from './RamadanRestrictedModal'; 
 import SEO from './SEO';
+import AdZone from './AdZone';
 
 interface RamadanPageProps {
   allContent: Content[];
@@ -261,6 +262,9 @@ const RamadanPage: React.FC<RamadanPageProps> = ({ allContent, pinnedContent, on
              
             {/* Horizontal Divider - Gold Gradient (#FFD700) - COMPACT UPDATE */}
             <div className="w-full h-px bg-gradient-to-r from-transparent via-[#FFD700] to-transparent opacity-60 mt-0 mb-2 md:my-4"></div>
+            
+            {/* NEW: Page Specific Banner */}
+            {adsEnabled && <AdZone position="page_ramadan_top" />}
 
             <AdPlacement ads={ads} placement="ramadan-top" isEnabled={adsEnabled} />
             

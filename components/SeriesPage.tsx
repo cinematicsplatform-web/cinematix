@@ -6,6 +6,7 @@ import Hero from './Hero';
 import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
 import SEO from './SEO';
+import AdZone from './AdZone';
 
 interface SeriesPageProps {
   allContent: Content[];
@@ -178,6 +179,9 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
             <div className="flex flex-col lg:flex-row gap-6 px-0 md:px-0">
                 {/* Main Content */}
                 <div className="flex-1 w-full">
+                    {/* NEW: Page Specific Banner */}
+                    {adsEnabled && <AdZone position="page_series_top" />}
+
                     <AdPlacement ads={ads} placement="listing-top" isEnabled={adsEnabled} />
                     <AdPlacement ads={ads} placement="series-page" isEnabled={adsEnabled} />
                     

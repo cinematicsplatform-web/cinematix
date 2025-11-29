@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '../types';
 import VideoPlayer from './VideoPlayer';
 import ContentCarousel from './ContentCarousel';
@@ -11,6 +11,8 @@ import { DownloadIcon } from './icons/DownloadIcon';
 import { ClockIcon } from './icons/ClockIcon';
 import { CloseIcon } from './icons/CloseIcon'; 
 import SEO from './SEO';
+import AdZone from './AdZone';
+import AdWaiterModal from './AdWaiterModal';
 
 interface DetailPageProps {
   content: Content;
@@ -105,32 +107,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [showPreroll, setShowPreroll] = useState(false);
   const [prerollTimer, setPrerollTimer] = useState(5);
   
-  // --- Auto Download Link Generation ---
-  const getAutoDownloadUrl = () => {
-      // Assuming content.id corresponds to the TMDB ID used by dl.vidsrc.vip
-      const id = content.id; 
-      
-      if (content.type === 'movie') {
-          // Formula: https://dl.vidsrc.vip/movie/{id}
-          return `https://dl.vidsrc.vip/movie/${id}`;
-      } else if (content.type === 'series') {
-          // Formula: https://dl.vidsrc.vip/tv/{id}/{season}/{episode}
-          const s = currentSeason?.seasonNumber || 1;
-          const e = selectedEpisode 
-            ? (episodes.findIndex(ep => ep.id === selectedEpisode.id) + 1) 
-            : 1;
-          return `https://dl.vidsrc.vip/tv/${id}/${s}/${e}`;
-      }
-      return '';
-  };
-
-  // Priority: Selected Server Manual Link > First Active Server Manual Link > Auto Generated Link
-  // Note: If 'downloadUrl' is empty string from DB, it falls back to next option.
-  const downloadUrl = (selectedServer?.downloadUrl && selectedServer.downloadUrl.trim() !== '') 
-        ? selectedServer.downloadUrl 
-        : (activeServers[0]?.downloadUrl && activeServers[0].downloadUrl.trim() !== '') 
-            ? activeServers[0].downloadUrl 
-            : getAutoDownloadUrl();
+  // Get Download URL
+  const downloadUrl = selectedServer?.downloadUrl || activeServers[0]?.downloadUrl;
 
   const isInMyList = !!myList?.includes(content.id);
   
@@ -145,32 +123,48 @@ const DetailPage: React.FC<DetailPageProps> = ({
     const decodedPath = decodeURIComponent(locationPath || window.location.pathname);
     
     if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
-        const seasonMatch = decodedPath.match(/\/الموسم\/(\d+)/);
-        const episodeMatch = decodedPath.match(/\/الحلقة\/(\d+)/);
+        // Parse Season and Episode numbers from URL (Support both Arabic and English segments)
+        const seasonMatch = decodedPath.match(/\/(?:الموسم|season)\/(\d+)/i);
+        const episodeMatch = decodedPath.match(/\/(?:الحلقة|episode)\/(\d+)/i);
 
         if (seasonMatch && seasonMatch[1]) {
             const sNum = parseInt(seasonMatch[1]);
             const foundS = content.seasons.find(s => s.seasonNumber === sNum);
-            if (foundS && foundS.id !== selectedSeasonId) {
-                setSelectedSeasonId(foundS.id);
+            
+            if (foundS) {
+                // 1. Update Season if URL differs from current state
+                // Note: We do this check to avoid unnecessary state updates, but we allow flow to continue to check episodes
+                if (foundS.id !== selectedSeasonId) {
+                    setSelectedSeasonId(foundS.id);
+                }
                 
+                // 2. Update Episode if URL specified
                 if (episodeMatch && episodeMatch[1]) {
                     const eNum = parseInt(episodeMatch[1]);
-                    // Find episode by title number or index
-                    const foundE = foundS.episodes.find(e => e.title?.includes(`${eNum}`)) || foundS.episodes[eNum - 1];
+                    
+                    // Try finding episode by title (e.g. "الحلقة 5") or fallback to array index
+                    let foundE = foundS.episodes.find(e => {
+                        const titleDigits = e.title?.match(/\d+/);
+                        return titleDigits ? parseInt(titleDigits[0]) === eNum : false;
+                    });
+
+                    if (!foundE) {
+                         // Fallback: Assume ordered list (Episode 1 is at index 0)
+                         foundE = foundS.episodes[eNum - 1];
+                    }
+                    
                     if (foundE) {
-                        setSelectedEpisode(foundE);
+                         setSelectedEpisode(foundE);
                     }
-                } else {
+                } else if (foundS.id !== selectedSeasonId) {
+                    // If Season changed but no Episode in URL, reset to first episode of that season
                     const firstEp = foundS.episodes[0];
-                    if (firstEp) {
-                        setSelectedEpisode(firstEp);
-                    }
+                    if (firstEp) setSelectedEpisode(firstEp);
                 }
             }
         }
     } 
-  }, [content.id, locationPath]); 
+  }, [content.id, locationPath]); // Re-run when content loads or URL changes
 
   // --- Pre-roll Effect ---
   useEffect(() => {
@@ -193,6 +187,33 @@ const DetailPage: React.FC<DetailPageProps> = ({
           setShowPreroll(false);
       }
   }, [content.id, selectedEpisode?.id, prerollAd, isContentPlayable]);
+
+  // --- ACTION AD WAITER LOGIC ---
+  const [waiterAdState, setWaiterAdState] = useState<{ isOpen: boolean, ad: Ad | null, onComplete: () => void }>({ isOpen: false, ad: null, onComplete: () => {} });
+
+  const triggerActionWithAd = useCallback((callback: () => void, adPosition: string) => {
+      if (!adsEnabled) {
+          callback();
+          return;
+      }
+
+      // Find active action ad
+      const actionAd = ads.find(a => (a.placement === adPosition || a.position === adPosition) && a.isActive);
+
+      if (actionAd) {
+          setWaiterAdState({
+              isOpen: true,
+              ad: actionAd,
+              onComplete: () => {
+                  setWaiterAdState(prev => ({ ...prev, isOpen: false }));
+                  callback();
+              }
+          });
+      } else {
+          // No ad, execute immediately
+          callback();
+      }
+  }, [ads, adsEnabled]);
 
 
   // --- Handlers ---
@@ -224,17 +245,24 @@ const DetailPage: React.FC<DetailPageProps> = ({
   };
 
   const handleEpisodeSelect = (episode: Episode, seasonNum?: number, episodeIndex?: number) => {
-      setSelectedEpisode(episode);
-      
-      if (content.type === 'series') {
-          const sNum = seasonNum ?? currentSeason?.seasonNumber ?? 1;
-          let eNum = episodeIndex;
-          if (!eNum && currentSeason) {
-              const idx = currentSeason.episodes.findIndex(e => e.id === episode.id);
-              eNum = idx + 1;
+      // WRAP EPISODE SELECTION IN AD TRIGGER
+      const performSelect = () => {
+          setSelectedEpisode(episode);
+          if (content.type === 'series') {
+              const sNum = seasonNum ?? currentSeason?.seasonNumber ?? 1;
+              let eNum = episodeIndex;
+              if (!eNum && currentSeason) {
+                  const idx = currentSeason.episodes.findIndex(e => e.id === episode.id);
+                  eNum = idx + 1;
+              }
+              if(eNum) updateUrlForEpisode(sNum, eNum);
           }
-          if(eNum) updateUrlForEpisode(sNum, eNum);
-      }
+          // Also scroll to player if changing episodes
+          playerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+
+      // Trigger 'action_next_episode' ad logic
+      triggerActionWithAd(performSelect, 'action_next_episode');
   };
 
   const handleServerSelect = (server: Server) => {
@@ -243,6 +271,15 @@ const DetailPage: React.FC<DetailPageProps> = ({
   
   const handleSkipPreroll = () => {
       setShowPreroll(false);
+  };
+
+  const handleDownloadClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (!downloadUrl) return;
+      
+      triggerActionWithAd(() => {
+          window.open(downloadUrl, '_blank');
+      }, 'action_download');
   };
 
   const similarContent = useMemo(() => {
@@ -514,7 +551,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
               <div className="lg:col-span-1 mt-8 lg:mt-0">
                   <div className="sticky top-24">
-                       <AdPlacement ads={ads} placement="watch-sidebar" isEnabled={adsEnabled} />
+                       {/* New Ad Zone: Details Sidebar */}
+                       {adsEnabled && <AdZone position="details_sidebar" />}
                   </div>
               </div>
           </div>
@@ -588,6 +626,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                       episode={selectedEpisode ? (episodes.findIndex(e => e.id === selectedEpisode.id) + 1) : 1}
                                       manualSrc={selectedServer?.url} // If null (or undefined), VideoPlayer handles logic (No auto-play)
                                       poster={videoPoster} 
+                                      ads={ads} // Pass ads for VideoPlayer overlay/bottom logic
+                                      adsEnabled={adsEnabled}
                                   />
                               )}
                          </div>
@@ -596,10 +636,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
                          {downloadUrl && (
                              <div className="mt-8 flex justify-center items-center animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-                                 <a 
-                                    href={downloadUrl} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
+                                 <button 
+                                    onClick={handleDownloadClick}
                                     className={`relative overflow-hidden group w-full md:w-auto bg-[#151515] hover:bg-[#202020] border border-gray-700 hover:border-opacity-50 rounded-full p-1.5 transition-all duration-300 flex items-center justify-center gap-4 shadow-lg min-w-[280px] target-download-btn`}
                                  >
                                     <div className={`bg-gradient-to-br from-gray-800 to-black p-3 rounded-full border border-gray-700 transition-colors group-hover:border-[#00A7F8]`}>
@@ -613,7 +651,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                             رابط مباشر وسريع
                                         </span>
                                     </div>
-                                 </a>
+                                 </button>
                              </div>
                          )}
                     </>
@@ -653,6 +691,16 @@ const DetailPage: React.FC<DetailPageProps> = ({
             />
          </div>
       </div>
+
+      {/* AD WAITER MODAL */}
+      {waiterAdState.isOpen && waiterAdState.ad && (
+          <AdWaiterModal 
+              isOpen={waiterAdState.isOpen}
+              ad={waiterAdState.ad}
+              onComplete={waiterAdState.onComplete}
+              onClose={() => setWaiterAdState(prev => ({ ...prev, isOpen: false }))}
+          />
+      )}
 
     </div>
   );

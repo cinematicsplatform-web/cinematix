@@ -7,6 +7,7 @@ import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
 import ShoutBarComponent from './ShoutBar';
 import SEO from './SEO';
+import AdZone from './AdZone';
 
 interface HomePageProps {
   allContent: Content[];
@@ -206,6 +207,11 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                         isNetflixRedTheme={isNetflixRed}
                     />
                 </div>
+            )}
+            
+            {/* New Ad Zone: Home Top */}
+            {props.siteSettings.adsEnabled && (
+                <AdZone position="home-top" />
             )}
             
             <AdPlacement ads={props.ads} placement="home-below-hero" isEnabled={props.siteSettings.adsEnabled}/>

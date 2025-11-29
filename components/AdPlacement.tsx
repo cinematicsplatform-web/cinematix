@@ -37,7 +37,7 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
     return false; 
   });
 
-  // Execute Ad Code (Manual Injection)
+  // Execute Ad Code (Manual Injection) - Only for CODE type
   useEffect(() => {
     const container = containerRef.current;
     
@@ -47,23 +47,24 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
     }
 
     if (!isEnabled || !activeAd || !container) return;
+    
+    // If it's a banner, we render via JSX below, don't inject.
+    if (activeAd.type === 'banner') return;
 
-    try {
-        // Native Script Injection using createContextualFragment
-        // This executes standard JS tags and renders HTML strings safely without external dependencies
-        const range = document.createRange();
-        range.selectNode(container);
-        const documentFragment = range.createContextualFragment(activeAd.code);
-        container.appendChild(documentFragment);
-        
-        // console.log(`✅ Ad injected successfully at: ${placement}`);
-    } catch (e) {
-        console.error('Ad Injection Error:', e);
+    // Legacy support: if type is undefined, treat as code
+    if (activeAd.type === 'code' || !activeAd.type) {
+        try {
+            const range = document.createRange();
+            range.selectNode(container);
+            const documentFragment = range.createContextualFragment(activeAd.code);
+            container.appendChild(documentFragment);
+        } catch (e) {
+            console.error('Ad Injection Error:', e);
+        }
     }
   }, [activeAd, isEnabled, isMobile, placement]);
 
-  // 3. Root Cause Fix for White Space:
-  // If no suitable ad is found for this device, return null.
+  // 3. If no suitable ad is found for this device, return null.
   if (!isEnabled || !activeAd) {
       return null; 
   }
@@ -71,12 +72,33 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
   const defaultClasses = "ad-container w-full flex justify-center items-center my-4 overflow-hidden";
   const finalClasses = className ? `${defaultClasses} ${className}` : defaultClasses;
 
+  // RENDER BANNER TYPE
+  if (activeAd.type === 'banner' && activeAd.imageUrl) {
+      return (
+          <div className={finalClasses}>
+              <a 
+                href={activeAd.destinationUrl || '#'} 
+                target="_blank" 
+                rel="nofollow noopener noreferrer"
+                className="block transition-transform hover:scale-[1.01] max-w-full"
+              >
+                  <img 
+                    src={activeAd.imageUrl} 
+                    alt={activeAd.title} 
+                    className="max-w-full h-auto rounded-xl shadow-md object-contain"
+                    style={{ maxHeight: '250px' }}
+                  />
+              </a>
+          </div>
+      );
+  }
+
+  // RENDER CODE TYPE (Container for injection)
   return (
     <div 
       ref={containerRef} 
       id={`ad-${placement}`}
       className={finalClasses}
-      // Dynamic height to prevent fixed gaps
       style={{ minHeight: 'auto' }} 
     />
   );

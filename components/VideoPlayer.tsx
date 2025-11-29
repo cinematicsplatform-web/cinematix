@@ -8,6 +8,8 @@ interface VideoPlayerProps {
   type?: string;      
   season?: number;    
   episode?: number;   
+  ads?: any[];
+  adsEnabled?: boolean;
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, type, season, episode }) => {
@@ -91,7 +93,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                 <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                 <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
              </div>
-             <p className="text-white font-bold text-lg tracking-wide animate-pulse drop-shadow-lg mt-4">جاري تجهيز السيرفر...</p>
+             <p className="text-white font-bold text-lg tracking-wide animate-pulse drop-shadow-lg mt-4">جاري تحميل السيرفر يرجي الانتظار</p>
         </div>
     </div>
   );
@@ -145,12 +147,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                 <iframe
                     key={activeSource}
                     src={activeSource}
-                    allowFullScreen={true}
+                    allowFullScreen
                     loading="eager" 
                     referrerPolicy="no-referrer" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
                     className="w-full h-full border-none" 
-                    title="مشغل الفيديو"
+                    title="Cinematix Player"
                     onLoad={() => setIsLoading(false)}
                 />
             )}

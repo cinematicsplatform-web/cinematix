@@ -5,6 +5,7 @@ import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
 import Hero from './Hero';
 import SEO from './SEO';
+import AdZone from './AdZone';
 
 interface KidsPageProps {
   allContent: Content[];
@@ -143,6 +144,9 @@ const KidsPage: React.FC<KidsPageProps> = ({
                             ? 'bg-gradient-to-r from-transparent via-[#E50914]/50 to-transparent opacity-80'
                             : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'
             }`}></div>
+        
+        {/* NEW: Page Specific Banner */}
+        {adsEnabled && <AdZone position="page_kids_top" />}
 
         <AdPlacement ads={ads} placement="kids-top" isEnabled={adsEnabled} />
 

@@ -34,7 +34,8 @@ import RamadanRestrictedModal from './components/RamadanRestrictedModal';
 import ProfileHubPage from './components/ProfileHubPage';
 import MaintenancePage from './components/MaintenancePage';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
-import AdPlacement from './components/AdPlacement'; // Import AdPlacement
+import AdPlacement from './components/AdPlacement';
+import AdZone from './components/AdZone'; 
 
 // --- Toast Notification System ---
 
@@ -247,7 +248,7 @@ const App: React.FC = () => {
                   
                   try {
                       const range = document.createRange();
-                      const fragment = range.createContextualFragment(ad.code);
+                      const fragment = range.createContextualFragment(ad.code || '');
                       div.appendChild(fragment);
                       document.body.appendChild(div);
                       
@@ -1001,6 +1002,9 @@ const App: React.FC = () => {
                 </div>
             ))}
         </div>
+
+        {/* Global Head Injection (e.g., Pop-unders) */}
+        {siteSettings.adsEnabled && <AdZone position="global_head" />}
 
         {!isAuthLoading && view !== 'login' && view !== 'register' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && !siteSettings.is_maintenance_mode_enabled && (
             <Header 

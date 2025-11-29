@@ -174,7 +174,18 @@ export const adPlacements = [
   'soon-page-bottom',
   'global-popunder',
   'global-social-bar', 
-  'global-sticky-footer', 
+  'global-sticky-footer',
+  'global_head',
+  'details_sidebar',
+  'player_overlay',
+  'player_bottom',
+  // NEW POSITIONS
+  'action_download',
+  'action_next_episode',
+  'page_movies_top',
+  'page_series_top',
+  'page_kids_top',
+  'page_ramadan_top'
 ] as const;
 
 export type AdPlacement = typeof adPlacements[number];
@@ -185,19 +196,19 @@ export const adPlacementLabels: Record<AdPlacement, string> = {
     'home-middle': 'الرئيسية - منتصف الصفحة',
     'home-carousel-3-4': 'الرئيسية - بين القسم 3 و 4',
     'home-bottom': 'الرئيسية - أسفل الصفحة',
-    'listing-top': 'القوائم (أفلام/مسلسلات) - أعلى',
-    'listing-sidebar': 'القوائم - شريط جانبي (ديسكتوب)',
-    'listing-bottom': 'القوائم - أسفل الصفحة',
+    'listing-top': 'القوائم (عام) - أعلى',
+    'listing-sidebar': 'القوائم (عام) - شريط جانبي (ديسكتوب)',
+    'listing-bottom': 'القوائم (عام) - أسفل الصفحة',
     'watch-top': 'المشاهدة - أعلى المشغل',
     'watch-preroll': 'المشاهدة - قبل الفيديو (Pre-roll)',
     'watch-below-player': 'المشاهدة - أسفل المشغل مباشرة',
     'watch-sidebar': 'المشاهدة - الشريط الجانبي',
     'watch-above-recommendations': 'المشاهدة - قبل التوصيات',
     'watch-bottom': 'المشاهدة - أسفل الصفحة',
-    'movies-page': 'صفحة الأفلام - عام',
-    'series-page': 'صفحة المسلسلات - عام',
-    'ramadan-page': 'صفحة رمضان - عام',
-    'soon-page': 'صفحة قريباً - عام',
+    'movies-page': 'صفحة الأفلام - وسط',
+    'series-page': 'صفحة المسلسلات - وسط',
+    'ramadan-page': 'صفحة رمضان - وسط',
+    'soon-page': 'صفحة قريباً - وسط',
     'kids-top': 'صفحة الأطفال - أعلى',
     'kids-bottom': 'صفحة الأطفال - أسفل',
     'ramadan-top': 'صفحة رمضان - أعلى',
@@ -207,6 +218,17 @@ export const adPlacementLabels: Record<AdPlacement, string> = {
     'global-popunder': 'إعلان منبثق (Popunder)',
     'global-social-bar': 'شريط عائم (Social Bar)',
     'global-sticky-footer': 'ثابت أسفل الشاشة (Sticky Footer)',
+    'global_head': 'سكربتات عامة (Head)',
+    'details_sidebar': 'التفاصيل - شريط جانبي',
+    'player_overlay': 'المشغل - طبقة شفافة (Overlay)',
+    'player_bottom': 'المشغل - أسفل الفيديو',
+    // NEW LABELS
+    'action_download': 'إجراء - عند التحميل (Wait Timer)',
+    'action_next_episode': 'إجراء - الحلقة التالية (Wait Timer)',
+    'page_movies_top': 'صفحة الأفلام - بانر علوي',
+    'page_series_top': 'صفحة المسلسلات - بانر علوي',
+    'page_kids_top': 'صفحة الأطفال - بانر علوي',
+    'page_ramadan_top': 'صفحة رمضان - بانر علوي',
 };
 
 // NEW: Device Targeting Type
@@ -234,14 +256,29 @@ export const triggerSelectors: Record<TriggerTarget, string> = {
     'navigation': '.target-nav-link'
 };
 
+export type AdType = 'banner' | 'code';
+export type AdPosition = AdPlacement; // Alias for backward compatibility
+
 export interface Ad {
   id: string;
   title: string;
-  code: string; // HTML/JS code
+  code?: string; // HTML/JS code - OPTIONAL for Banner ads
+  // Re-adding banner props for backward/forward compatibility with new system requests
+  imageUrl?: string;
+  destinationUrl?: string;
+  scriptCode?: string; // Alternate for 'code' in some contexts, unifying to 'code' is better but keeping consistent
+  type?: AdType; // Optional in old schema, mandatory in new, handled via defaults
+  
   placement: AdPlacement;
+  position?: AdPlacement; // Alias for placement
   status: 'active' | 'disabled';
+  isActive?: boolean; // Alias for status
+  
   targetDevice: DeviceTarget;
-  triggerTarget?: TriggerTarget; // NEW: For Smart Popunders
+  triggerTarget?: TriggerTarget; 
+  
+  timerDuration?: number; // New: Duration in seconds for action ads
+  
   updatedAt: string; // ISO String
 }
 
