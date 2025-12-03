@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '../types';
 import VideoPlayer from './VideoPlayer';
@@ -142,7 +141,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
             
             if (foundS) {
                 // 1. Update Season if URL differs from current state
-                // Note: We do this check to avoid unnecessary state updates, but we allow flow to continue to check episodes
                 if (foundS.id !== selectedSeasonId) {
                     setSelectedSeasonId(foundS.id);
                 }
@@ -297,30 +295,20 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
 
   // UI Helpers
-  
-  // 🎯 DYNAMIC BACKDROP LOGIC
-  // 1. Determine base desktop backdrop (Season Specific or Fallback)
   let displayBackdrop = (content.type === 'series' && currentSeason?.backdrop) ? currentSeason.backdrop : content.backdrop;
-  
-  // 2. Initialize default style
   let imgStyle: React.CSSProperties | undefined = undefined;
 
-  // 3. Mobile Specific Overrides
   if (isMobile) {
       if (content.type === 'series' && currentSeason) {
           if (currentSeason.useCustomMobileImage && currentSeason.mobileImageUrl) {
-              // Case A: Custom Mobile Image Enabled -> Use the new URL, reset position to center
               displayBackdrop = currentSeason.mobileImageUrl;
               imgStyle = { objectPosition: 'center' };
           } else {
-              // Case B: No Custom Image, use custom cropping if available
-              // Prefer new X/Y fields, fallback to old X field, default to 50%
               const posX = currentSeason.mobileCropPositionX ?? currentSeason.mobileCropPosition ?? 50;
               const posY = currentSeason.mobileCropPositionY ?? 50;
               imgStyle = { objectPosition: `${posX}% ${posY}%` };
           }
       } else {
-          // Fallback for Movies (Content Level)
           if (content.enableMobileCrop) {
               const posX = content.mobileCropPositionX ?? content.mobileCropPosition ?? 50;
               const posY = content.mobileCropPositionY ?? 50;
@@ -351,18 +339,116 @@ const DetailPage: React.FC<DetailPageProps> = ({
     </div>
   );
   
-  // --- SEO Optimization ---
+  // --- SEO Optimization & Structured Data (JSON-LD) ---
+  const generateSchema = () => {
+    const baseUrl = 'https://cinematix-kappa.vercel.app';
+    const slug = content.slug || content.id;
+    const desc = content.description ? content.description.substring(0, 300) : content.title;
+    const actors = content.cast?.map(actor => ({ "@type": "Person", "name": actor })) || [];
+    const director = { "@type": "Person", "name": "غير محدد" }; 
+    const ratingVal = content.rating > 0 ? content.rating.toFixed(1) : "5.0";
+
+    const aggregateRating = {
+        "@type": "AggregateRating",
+        "ratingValue": ratingVal,
+        "bestRating": "5",
+        "ratingCount": "100" 
+    };
+
+    // --- SCHEMA FOR MOVIE ---
+    if (content.type === 'movie') {
+        return {
+            "@context": "https://schema.org",
+            "@type": "Movie",
+            "name": content.title,
+            "url": `${baseUrl}/فيلم/${slug}`,
+            "image": content.poster,
+            "description": desc,
+            "datePublished": `${content.releaseYear}-01-01`,
+            "aggregateRating": aggregateRating,
+            "genre": content.genres,
+            "actor": actors,
+            "director": director,
+            "duration": content.duration ? `PT${content.duration.replace('h', 'H').replace('m', 'M').replace(' ', '')}` : undefined,
+            "offers": {
+                "@type": "Offer",
+                "availability": "https://schema.org/InStock",
+                "price": "0",
+                "priceCurrency": "USD"
+            }
+        };
+    }
+
+    // --- SCHEMA FOR SERIES ---
+    if (content.type === 'series') {
+        const seriesUrl = `${baseUrl}/مسلسل/${slug}`;
+        
+        const seriesSchema: any = {
+            "@context": "https://schema.org",
+            "@type": "TVSeries",
+            "name": content.title,
+            "url": seriesUrl,
+            "image": content.poster,
+            "description": desc,
+            "startDate": `${content.releaseYear}-01-01`,
+            "aggregateRating": aggregateRating,
+            "genre": content.genres,
+            "actor": actors,
+            "numberOfSeasons": content.seasons?.length || 1,
+        };
+
+        // If a specific season is selected but not an episode (less common view state for SEO, but possible)
+        if (currentSeason && !selectedEpisode) {
+             return {
+                "@context": "https://schema.org",
+                "@type": "TVSeason",
+                "name": currentSeason.title,
+                "url": `${seriesUrl}/الموسم/${currentSeason.seasonNumber}`,
+                "numberOfEpisodes": currentSeason.episodes.length,
+                "seasonNumber": currentSeason.seasonNumber,
+                "partOfSeries": seriesSchema
+             }
+        }
+
+        // If watching a specific episode, wrap it in TVEpisode
+        if (selectedEpisode && currentSeason) {
+            const idx = currentSeason.episodes.findIndex(e => e.id === selectedEpisode.id);
+            const epNum = idx + 1;
+            const episodeUrl = `${seriesUrl}/الموسم/${currentSeason.seasonNumber}/الحلقة/${epNum}`;
+            
+            return {
+                "@context": "https://schema.org",
+                "@type": "TVEpisode",
+                "name": selectedEpisode.title || `Episode ${epNum}`,
+                "url": episodeUrl,
+                "image": selectedEpisode.thumbnail || currentSeason.poster,
+                "episodeNumber": epNum,
+                "description": desc,
+                "partOfSeason": {
+                    "@type": "TVSeason",
+                    "seasonNumber": currentSeason.seasonNumber,
+                    "name": currentSeason.title,
+                    "partOfSeries": seriesSchema
+                }
+            };
+        }
+        
+        return seriesSchema;
+    }
+    
+    return {};
+  };
+
   const getSEOData = () => {
       const baseUrl = 'https://cinematix-kappa.vercel.app';
       const slug = content.slug || content.id;
-      const titleSuffix = " | مشاهدة وتحميل - سينماتيكس";
       
       // MOVIE SEO
       if (content.type === 'movie') {
           return {
-              title: `${content.title} (${content.releaseYear})${titleSuffix}`,
-              description: content.description?.substring(0, 160),
-              image: content.poster, // Use Poster for OG Image
+              title: `مشاهدة فيلم ${content.title} مترجم - ${content.releaseYear} | سينماتيكس`,
+              description: `مشاهدة وتحميل فيلم ${content.title} ${content.releaseYear} مترجم بجودة عالية. قصة الفيلم: ${content.description?.substring(0, 150)}...`,
+              image: content.poster,
               url: `${baseUrl}/فيلم/${slug}`,
               type: 'video.movie' as const
           };
@@ -371,29 +457,19 @@ const DetailPage: React.FC<DetailPageProps> = ({
       else {
           const sNum = currentSeason?.seasonNumber || 1;
           
-          // Case 1: Specific Episode Selected
           if (selectedEpisode) {
               const idx = currentSeason?.episodes.findIndex(e => e.id === selectedEpisode.id) ?? 0;
               const epNum = idx + 1;
-              
-              const title = `مسلسل ${content.title} الموسم ${sNum} الحلقة ${epNum}${titleSuffix}`;
-              
-              // Dynamic Description for Episode
-              const descStart = `مشاهدة وتحميل مسلسل ${content.title} الحلقة ${epNum} من الموسم ${sNum} مترجم/مدبلج بجودة عالية.`;
-              const plot = content.description ? ` القصة: ${content.description.substring(0, 100)}...` : '';
-              const description = `${descStart}${plot}`;
-              
-              // Priority: Ep Thumb -> Season Poster -> Content Poster
+              const title = `مسلسل ${content.title} – الموسم ${sNum} – الحلقة ${epNum} | سينماتيكس`;
+              const description = `مشاهدة مسلسل ${content.title} الموسم ${sNum} الحلقة ${epNum} مترجمة. تفاصيل الحلقة: ${content.description ? content.description.substring(0, 150) : ''}...`;
               const image = selectedEpisode.thumbnail || currentSeason?.poster || content.poster;
               const url = `${baseUrl}/مسلسل/${slug}/الموسم/${sNum}/الحلقة/${epNum}`;
               
               return { title, description, image, url, type: 'video.episode' as const };
-          } 
-          // Case 2: Series Overview (No episode selected)
-          else {
+          } else {
               return {
-                  title: `مسلسل ${content.title} (${content.releaseYear})${titleSuffix}`,
-                  description: content.description?.substring(0, 160),
+                  title: `مسلسل ${content.title} (${content.releaseYear}) - جميع الحلقات | سينماتيكس`,
+                  description: `مشاهدة جميع حلقات مسلسل ${content.title} بجودة عالية. قصة المسلسل: ${content.description?.substring(0, 150)}...`,
                   image: currentSeason?.poster || content.poster,
                   url: `${baseUrl}/مسلسل/${slug}`,
                   type: 'video.tv_show' as const
@@ -403,57 +479,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
   };
 
   const { title: seoTitle, description: seoDesc, image: seoImage, url: seoUrl, type: seoType } = getSEOData();
-
-  const generateSchema = () => {
-    // Basic Truncated Description
-    const desc = content.description ? content.description.substring(0, 150) + (content.description.length > 150 ? "..." : "") : content.title;
-    
-    // Shared Rating Object
-    const baseRating = {
-        "@type": "AggregateRating",
-        "ratingValue": content.rating > 0 ? content.rating.toString() : "5.0",
-        "bestRating": "10",
-        "ratingCount": "100" 
-    };
-
-    // --- SCHEMA FOR EPISODE ---
-    if (content.type === 'series' && selectedEpisode) {
-        const sNum = currentSeason?.seasonNumber || 1;
-        const idx = currentSeason?.episodes.findIndex(e => e.id === selectedEpisode.id) ?? 0;
-        const epNum = idx + 1;
-
-        return {
-            "@context": "https://schema.org",
-            "@type": "TVEpisode",
-            "name": `${content.title}: Season ${sNum} Episode ${epNum}`,
-            "image": seoImage,
-            "episodeNumber": epNum.toString(),
-            "seasonNumber": sNum.toString(),
-            "datePublished": `${content.releaseYear}-01-01`, 
-            "description": desc,
-            "partOfSeries": {
-                "@type": "TVSeries",
-                "name": content.title,
-                "startDate": content.releaseYear?.toString(),
-                "image": content.poster
-            },
-            "aggregateRating": baseRating
-        };
-    }
-
-    // --- SCHEMA FOR MOVIE OR SERIES OVERVIEW ---
-    return {
-      "@context": "https://schema.org",
-      "@type": content.type === 'movie' ? "Movie" : "TVSeries",
-      "name": content.title,
-      "image": content.poster,
-      "description": desc,
-      "datePublished": `${content.releaseYear}-01-01`,
-      "aggregateRating": baseRating,
-      "genre": content.genres,
-      "actor": content.cast?.map(actor => ({ "@type": "Person", "name": actor })) || []
-    };
-  };
 
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0">
@@ -489,6 +514,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                 alt={content.title} 
                 className={`w-full h-full object-cover ${!isMobile ? 'md:object-top' : ''}`}
                 style={imgStyle} 
+                loading="eager"
             />
             {/* UPDATED GRADIENT: Stronger fade at bottom (via-80%) to simulate merge, ensuring smooth transition to content */}
             <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/80 via-20% to-transparent z-10"></div>
@@ -566,7 +592,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       </div>
 
       {/* --- 2. Info & Lists Section --- */}
-      {/* Reduced Top Padding on Mobile (pt-4) to make Story text 'peek' right after hero */}
       <div className="w-full px-4 md:px-8 pt-4 pb-10 md:py-10">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
               <div className="lg:col-span-3 space-y-12">
@@ -670,7 +695,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
              <div className="max-w-6xl mx-auto">
                  {isContentPlayable ? (
                     <>
-                         {/* Only show server list if there are valid servers */}
                          {activeServers.length > 0 && (
                              <div className="mb-6 animate-fade-in-up">
                                 <SectionTitle title="سيرفرات المشاهدة" />
@@ -719,7 +743,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                           )}
                                       </div>
                                       <div className="w-full h-full flex items-center justify-center pointer-events-auto">
-                                          <div dangerouslySetInnerHTML={{ __html: prerollAd.code }} />
+                                          <div dangerouslySetInnerHTML={{ __html: prerollAd.code || '' }} />
                                       </div>
                                   </div>
                               ) : (
@@ -728,9 +752,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                       type={content.type}
                                       season={currentSeason?.seasonNumber}
                                       episode={selectedEpisode ? (episodes.findIndex(e => e.id === selectedEpisode.id) + 1) : 1}
-                                      manualSrc={selectedServer?.url} // If null (or undefined), VideoPlayer handles logic (No auto-play)
+                                      manualSrc={selectedServer?.url} 
                                       poster={videoPoster} 
-                                      ads={ads} // Pass ads for VideoPlayer overlay/bottom logic
+                                      ads={ads}
                                       adsEnabled={adsEnabled}
                                   />
                               )}
@@ -796,7 +820,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
          </div>
       </div>
 
-      {/* AD WAITER MODAL */}
       {waiterAdState.isOpen && waiterAdState.ad && (
           <AdWaiterModal 
               isOpen={waiterAdState.isOpen}
