@@ -3,10 +3,11 @@
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
+import "firebase/compat/messaging"; // Import Messaging
 // FIX: Import Modular SDK functions for modern persistence initialization
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 
-import type { Ad, SiteSettings, User, PinnedContentState, PinnedItem, PageKey } from './types';
+import type { Ad, SiteSettings, User, PinnedContentState, PinnedItem, PageKey, ContentRequest } from './types';
 import { initialSiteSettings, pinnedContentData as initialPinnedData } from './data';
 import { UserRole } from './types';
 
@@ -42,9 +43,6 @@ if (!firebase.apps.length) {
 const app = firebase.app();
 
 // --- CRITICAL FIX: Modern Firestore Initialization ---
-// We use initializeFirestore from the Modular SDK to configure persistence and settings.
-// This replaces the deprecated enableMultiTabIndexedDbPersistence and separate db.settings() calls.
-// experimentalAutoDetectLongPolling is passed here to resolve connection issues.
 initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()
@@ -54,13 +52,20 @@ initializeFirestore(app, {
 });
 
 // Export Compat instance for the rest of the app
-// Since initializeFirestore was called on the app instance above, app.firestore() will return
-// the initialized instance with the correct settings.
 export const db = app.firestore();
 export const auth = app.auth();
 export const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
 export const Timestamp = firebase.firestore.Timestamp;
 
+// --- Messaging Initialization ---
+export let messaging: firebase.messaging.Messaging | null = null;
+try {
+  if (firebase.messaging.isSupported()) {
+    messaging = firebase.messaging();
+  }
+} catch (e) {
+  console.warn("Firebase Messaging not supported in this environment (e.g. Safari non-PWA or http)");
+}
 
 // --- Helpers ---
 const safeGetTimestamp = (timestamp: any): string => {
@@ -75,7 +80,6 @@ const safeGetTimestamp = (timestamp: any): string => {
 };
 
 // --- Helper: Slug Generator (SEO) ---
-// Generates clean, SEO-friendly slugs for Arabic and English
 export const generateSlug = (title: string): string => {
     if (!title) return '';
     
@@ -125,14 +129,11 @@ export const updateSiteSettings = async (settings: SiteSettings): Promise<void> 
 // ---- Pinned Content (New Implementation) ----
 export const getPinnedContent = async (): Promise<PinnedContentState> => {
     try {
-        // FIX: Removed forced server fetch { source: 'server' } to prevent offline/connection failures
         const docSnap = await db.collection("settings").doc("pinned").get();
         
         if (docSnap.exists) {
-            // Return existing data merged with initial structure to ensure all keys exist
             return { ...initialPinnedData, ...docSnap.data() };
         } else {
-             // Attempt to create if possible
              try {
                 await db.collection("settings").doc("pinned").set(initialPinnedData);
              } catch(e) { /* ignore write errors */ }
@@ -145,8 +146,6 @@ export const getPinnedContent = async (): Promise<PinnedContentState> => {
 };
 
 export const updatePinnedContentForPage = async (pageKey: PageKey, items: PinnedItem[]): Promise<void> => {
-    // Update only the specific page key using merge: true
-    // This ensures we don't overwrite other pages' pinned items
     await db.collection("settings").doc("pinned").set({
         [pageKey]: items
     }, { merge: true });
@@ -160,9 +159,7 @@ export const getAds = async (): Promise<Ad[]> => {
         return querySnapshot.docs.map(d => ({
             ...(d.data() as Omit<Ad, 'id' | 'updatedAt'>),
             id: d.id,
-            // Ensure we map 'position' to 'placement' for backward compatibility if needed
             placement: d.data().placement || d.data().position || 'home-top',
-            // Map new fields with defaults
             timerDuration: d.data().timerDuration || 0,
             updatedAt: safeGetTimestamp(d.data().updatedAt),
         })) as Ad[];
@@ -174,7 +171,6 @@ export const getAds = async (): Promise<Ad[]> => {
 
 export const getAdByPosition = async (position: string): Promise<Ad | null> => {
   try {
-    // Try 'placement' first as it's the main field in types
     let q = db.collection("ads")
         .where("placement", "==", position)
         .where("status", "==", "active")
@@ -206,10 +202,9 @@ export const getAdByPosition = async (position: string): Promise<Ad | null> => {
 };
 
 export const addAd = async (adData: Omit<Ad, 'id' | 'updatedAt'>): Promise<string> => {
-    // Map properties for storage if needed, but Ad interface should align
     const docRef = await db.collection("ads").add({ 
         ...adData, 
-        position: adData.placement, // Store both for compatibility
+        position: adData.placement, 
         updatedAt: serverTimestamp() 
     });
     return docRef.id;
@@ -241,7 +236,6 @@ export const getUsers = async (): Promise<User[]> => {
     }
 };
 
-// FIX: Updated return type to include 'role' which is used in App.tsx
 export const getUserProfile = async (uid: string): Promise<Omit<User, 'password'> | null> => {
     try {
         const docSnap = await db.collection("users").doc(uid).get();
@@ -256,17 +250,75 @@ export const getUserProfile = async (uid: string): Promise<Omit<User, 'password'
 };
 
 export const createUserProfileInFirestore = async (uid: string, data: Omit<User, 'id' | 'role' | 'password'>): Promise<void> => {
-    await db.collection("users").doc(uid).set({ ...data, role: UserRole.User }); // Default role
+    await db.collection("users").doc(uid).set({ ...data, role: UserRole.User });
 };
 
 export const updateUserProfileInFirestore = async (userId: string, userData: Partial<User>): Promise<void> => {
     const dataToUpdate = { ...userData };
     delete dataToUpdate.id;
     delete dataToUpdate.password;
-    // Don't delete role if it's being explicitly updated (e.g. by admin), but here we mostly update profiles
     await db.collection("users").doc(userId).update(dataToUpdate);
 };
 
 export const deleteUserFromFirestore = async (userId: string): Promise<void> => {
     await db.collection("users").doc(userId).delete();
+};
+
+// --- Push Notifications Logic ---
+export const requestNotificationPermission = async (userId: string) => {
+    if (!messaging) return;
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            // Get token - VAPID key is often required for web push.
+            // Replace with your actual VAPID key if you have generated one in Firebase Console -> Project Settings -> Cloud Messaging -> Web Configuration
+            const token = await messaging.getToken({
+                vapidKey: 'BM_s__YOUR_VAPID_KEY_IF_NEEDED__HERE' 
+            });
+            
+            if (token && userId) {
+                console.log('FCM Token Generated:', token);
+                
+                // Save token to user document in Firestore using set with merge
+                // using arrayUnion to avoid duplicates if the token already exists
+                await db.collection('users').doc(userId).set({
+                    fcmTokens: firebase.firestore.FieldValue.arrayUnion(token)
+                }, { merge: true });
+                
+                console.log('Token saved to DB successfully!');
+            }
+        }
+    } catch (error) {
+        console.error('Unable to get permission to notify.', error);
+    }
+};
+
+// ---- Content Requests ----
+export const addContentRequest = async (request: Omit<ContentRequest, 'id' | 'createdAt' | 'status'>): Promise<void> => {
+    // Sanitize data: Ensure userId is null if undefined to avoid Firestore "Unsupported field value: undefined" error
+    const sanitizedData = {
+        ...request,
+        userId: request.userId || null,
+        status: 'pending',
+        createdAt: serverTimestamp()
+    };
+    await db.collection('content_requests').add(sanitizedData);
+};
+
+export const getContentRequests = async (): Promise<ContentRequest[]> => {
+    try {
+        const snapshot = await db.collection('content_requests').orderBy('createdAt', 'desc').get();
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeGetTimestamp(doc.data().createdAt)
+        })) as ContentRequest[];
+    } catch (e) {
+        console.error("Error fetching requests:", e);
+        return [];
+    }
+};
+
+export const deleteContentRequest = async (requestId: string): Promise<void> => {
+    await db.collection('content_requests').doc(requestId).delete();
 };

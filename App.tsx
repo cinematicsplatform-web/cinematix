@@ -5,7 +5,7 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 // Note: firestore is imported via db from ./firebase
 
-import { db, auth, getUserProfile, updateUserProfileInFirestore, createUserProfileInFirestore, deleteUserFromFirestore, getSiteSettings, getAds, getUsers, updateSiteSettings as updateSiteSettingsInDb, addAd, updateAd, deleteAd, getPinnedContent, updatePinnedContentForPage } from './firebase'; 
+import { db, auth, getUserProfile, updateUserProfileInFirestore, createUserProfileInFirestore, deleteUserFromFirestore, getSiteSettings, getAds, getUsers, updateSiteSettings as updateSiteSettingsInDb, addAd, updateAd, deleteAd, getPinnedContent, updatePinnedContentForPage, requestNotificationPermission } from './firebase'; 
 import type { Content, User, Profile, Ad, PinnedItem, SiteSettings, View, LoginError, PinnedContentState, PageKey } from './types';
 import { UserRole, triggerSelectors } from './types';
 import { initialSiteSettings, defaultAvatar, pinnedContentData as initialPinned } from './data';
@@ -36,6 +36,7 @@ import MaintenancePage from './components/MaintenancePage';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AdPlacement from './components/AdPlacement';
 import AdZone from './components/AdZone'; 
+import RequestContentModal from './components/RequestContentModal';
 
 // --- Toast Notification System ---
 
@@ -197,6 +198,8 @@ const App: React.FC = () => {
   const [isRamadanModalOpen, setIsRamadanModalOpen] = useState(false);
   const [restrictedContent, setRestrictedContent] = useState<Content | null>(null);
   
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -436,6 +439,9 @@ const App: React.FC = () => {
       const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
           try {
               if (firebaseUser) {
+                  // Request Notification Permission on Login
+                  requestNotificationPermission(firebaseUser.uid);
+
                   const profile = await getUserProfile(firebaseUser.uid);
                   if (profile) {
                       const user: User = {
@@ -896,6 +902,7 @@ const App: React.FC = () => {
                         isNetflixRedTheme={isNetflixRedTheme}
                         ads={ads}
                         adsEnabled={siteSettings.adsEnabled}
+                        onRequestOpen={() => setIsRequestModalOpen(true)} // Pass request handler
                       />;
            case 'admin':
                 if (isAuthLoading) return <LoadingSpinner />;
@@ -1035,6 +1042,7 @@ const App: React.FC = () => {
                     socialLinks={siteSettings.socialLinks} 
                     onSetView={handleSetView} 
                     isRamadanFooter={siteSettings.activeTheme === 'ramadan'}
+                    onRequestOpen={() => setIsRequestModalOpen(true)} // Pass request modal handler
                 />
                 <BottomNavigation 
                     currentView={view} 
@@ -1049,6 +1057,14 @@ const App: React.FC = () => {
                 <PWAInstallPrompt />
             </>
         )}
+
+        {/* Global Request Content Modal */}
+        <RequestContentModal 
+            isOpen={isRequestModalOpen}
+            onClose={() => setIsRequestModalOpen(false)}
+            currentUser={currentUser}
+            addToast={addToast}
+        />
     </div>
   );
 };

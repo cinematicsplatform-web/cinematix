@@ -9,15 +9,18 @@ import type { SocialLinks, View } from '../types';
 interface FooterProps {
   socialLinks: SocialLinks;
   onSetView: (view: View) => void;
-  isRamadanFooter?: boolean; 
+  isRamadanFooter?: boolean;
+  onRequestOpen?: () => void; // New Handler for Request Modal 
 }
 
-const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter }) => {
+const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter, onRequestOpen }) => {
   const footerLinks: {name: string, action: () => void}[] = [
       { name: 'حولنا', action: () => onSetView('about') },
       { name: 'اتصل بنا', action: () => { window.location.href = socialLinks.contactUs } },
       { name: 'سياسة الخصوصية', action: () => onSetView('privacy') },
-      { name: 'حقوق الملكية', action: () => onSetView('copyright') }, // Added
+      { name: 'حقوق الملكية', action: () => onSetView('copyright') },
+      // Added Request Content Link
+      ...(onRequestOpen ? [{ name: 'طلبات المحتوى', action: onRequestOpen }] : []),
   ];
   
   // Updated: Use var(--bg-body) to match the page background in all themes.
@@ -43,7 +46,7 @@ const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter
             <h3 className="text-white font-bold text-lg mb-4">روابط سريعة</h3>
             <ul className="space-y-2">
               {footerLinks.map(link => (
-                <li key={link.name}><a href="#" onClick={(e) => {e.preventDefault(); link.action()}} className="hover-text-accent transition-colors">{link.name}</a></li>
+                <li key={link.name}><button onClick={(e) => {e.preventDefault(); link.action()}} className="hover-text-accent transition-colors text-left">{link.name}</button></li>
               ))}
             </ul>
           </div>

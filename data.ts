@@ -1,4 +1,5 @@
 
+
 import { Content, ContentType, Server, User, UserRole, Profile, Ad, PinnedContentState, SiteSettings, CarouselRow } from './types';
 
 // Empty initial states for application bootstrapping
@@ -178,4 +179,5 @@ export const initialSiteSettings: SiteSettings = {
     showTop10Home: true,
     showTop10Movies: true,
     showTop10Series: true,
+    serviceAccountJson: '', // Initialized empty
 };

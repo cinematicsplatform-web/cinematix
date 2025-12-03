@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '../types';
 import VideoPlayer from './VideoPlayer';
 import ContentCarousel from './ContentCarousel';
@@ -117,6 +117,15 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const prerollAd = useMemo(() => {
       return adsEnabled ? ads.find(ad => ad.placement === 'watch-preroll' && ad.status === 'active') : null;
   }, [ads, adsEnabled]);
+
+  // Mobile Detection for Background Logic
+  const [isMobile, setIsMobile] = useState(false);
+  useLayoutEffect(() => {
+      const checkMobile = () => setIsMobile(window.innerWidth < 768);
+      checkMobile();
+      window.addEventListener('resize', checkMobile);
+      return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // --- Logic: Deep Link Parsing & Sync on Load/Change ---
   useEffect(() => {
@@ -288,8 +297,39 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
 
   // UI Helpers
+  
+  // 🎯 DYNAMIC BACKDROP LOGIC
+  // 1. Determine base desktop backdrop (Season Specific or Fallback)
+  let displayBackdrop = (content.type === 'series' && currentSeason?.backdrop) ? currentSeason.backdrop : content.backdrop;
+  
+  // 2. Initialize default style
+  let imgStyle: React.CSSProperties | undefined = undefined;
+
+  // 3. Mobile Specific Overrides
+  if (isMobile) {
+      if (content.type === 'series' && currentSeason) {
+          if (currentSeason.useCustomMobileImage && currentSeason.mobileImageUrl) {
+              // Case A: Custom Mobile Image Enabled -> Use the new URL, reset position to center
+              displayBackdrop = currentSeason.mobileImageUrl;
+              imgStyle = { objectPosition: 'center' };
+          } else {
+              // Case B: No Custom Image, use custom cropping if available
+              // Prefer new X/Y fields, fallback to old X field, default to 50%
+              const posX = currentSeason.mobileCropPositionX ?? currentSeason.mobileCropPosition ?? 50;
+              const posY = currentSeason.mobileCropPositionY ?? 50;
+              imgStyle = { objectPosition: `${posX}% ${posY}%` };
+          }
+      } else {
+          // Fallback for Movies (Content Level)
+          if (content.enableMobileCrop) {
+              const posX = content.mobileCropPositionX ?? content.mobileCropPosition ?? 50;
+              const posY = content.mobileCropPositionY ?? 50;
+              imgStyle = { objectPosition: `${posX}% ${posY}%` };
+          }
+      }
+  }
+
   const videoPoster = content.type === 'movie' ? content.backdrop : (selectedEpisode?.thumbnail || content.backdrop);
-  const displayBackdrop = (content.type === 'series' && currentSeason?.backdrop) ? currentSeason.backdrop : content.backdrop;
   const displayLogo = (content.type === 'series' && currentSeason?.logoUrl) ? currentSeason.logoUrl : content.logoUrl;
   const displayDescription = (content.type === 'series' && currentSeason?.description) ? currentSeason.description : content.description;
   const displayCast = (content.type === 'series' && currentSeason?.cast && currentSeason.cast.length > 0) ? currentSeason.cast : content.cast;
@@ -311,52 +351,108 @@ const DetailPage: React.FC<DetailPageProps> = ({
     </div>
   );
   
-  const mobilePos = content.mobileCropPosition ?? 50;
-  const imgStyle = content.enableMobileCrop ? { objectPosition: `${mobilePos}% center` } : undefined;
-
-  // --- SEO ---
+  // --- SEO Optimization ---
   const getSEOData = () => {
       const baseUrl = 'https://cinematix-kappa.vercel.app';
       const slug = content.slug || content.id;
+      const titleSuffix = " | مشاهدة وتحميل - سينماتيكس";
       
+      // MOVIE SEO
       if (content.type === 'movie') {
           return {
-              title: `مشاهدة فيلم ${content.title} (${content.releaseYear}) مترجم | سينماتيكس`,
-              url: `${baseUrl}/فيلم/${slug}`
+              title: `${content.title} (${content.releaseYear})${titleSuffix}`,
+              description: content.description?.substring(0, 160),
+              image: content.poster, // Use Poster for OG Image
+              url: `${baseUrl}/فيلم/${slug}`,
+              type: 'video.movie' as const
           };
-      } else {
-          let epNum = 1;
-          if (selectedEpisode && currentSeason) {
-              const idx = currentSeason.episodes.findIndex(e => e.id === selectedEpisode.id);
-              if (idx !== -1) epNum = idx + 1;
-          }
+      } 
+      // SERIES SEO
+      else {
           const sNum = currentSeason?.seasonNumber || 1;
-          const seriesTitle = `مشاهدة مسلسل ${content.title} الموسم ${sNum} الحلقة ${epNum} (${content.releaseYear}) مترجم | سينماتيكس`;
-          const seriesUrl = `${baseUrl}/مسلسل/${slug}/الموسم/${sNum}/الحلقة/${epNum}`;
-          return { title: seriesTitle, url: seriesUrl };
+          
+          // Case 1: Specific Episode Selected
+          if (selectedEpisode) {
+              const idx = currentSeason?.episodes.findIndex(e => e.id === selectedEpisode.id) ?? 0;
+              const epNum = idx + 1;
+              
+              const title = `مسلسل ${content.title} الموسم ${sNum} الحلقة ${epNum}${titleSuffix}`;
+              
+              // Dynamic Description for Episode
+              const descStart = `مشاهدة وتحميل مسلسل ${content.title} الحلقة ${epNum} من الموسم ${sNum} مترجم/مدبلج بجودة عالية.`;
+              const plot = content.description ? ` القصة: ${content.description.substring(0, 100)}...` : '';
+              const description = `${descStart}${plot}`;
+              
+              // Priority: Ep Thumb -> Season Poster -> Content Poster
+              const image = selectedEpisode.thumbnail || currentSeason?.poster || content.poster;
+              const url = `${baseUrl}/مسلسل/${slug}/الموسم/${sNum}/الحلقة/${epNum}`;
+              
+              return { title, description, image, url, type: 'video.episode' as const };
+          } 
+          // Case 2: Series Overview (No episode selected)
+          else {
+              return {
+                  title: `مسلسل ${content.title} (${content.releaseYear})${titleSuffix}`,
+                  description: content.description?.substring(0, 160),
+                  image: currentSeason?.poster || content.poster,
+                  url: `${baseUrl}/مسلسل/${slug}`,
+                  type: 'video.tv_show' as const
+              };
+          }
       }
   };
 
-  const { title: seoTitle, url: seoUrl } = getSEOData();
+  const { title: seoTitle, description: seoDesc, image: seoImage, url: seoUrl, type: seoType } = getSEOData();
 
   const generateSchema = () => {
-    const baseSchema: Record<string, any> = {
+    // Basic Truncated Description
+    const desc = content.description ? content.description.substring(0, 150) + (content.description.length > 150 ? "..." : "") : content.title;
+    
+    // Shared Rating Object
+    const baseRating = {
+        "@type": "AggregateRating",
+        "ratingValue": content.rating > 0 ? content.rating.toString() : "5.0",
+        "bestRating": "10",
+        "ratingCount": "100" 
+    };
+
+    // --- SCHEMA FOR EPISODE ---
+    if (content.type === 'series' && selectedEpisode) {
+        const sNum = currentSeason?.seasonNumber || 1;
+        const idx = currentSeason?.episodes.findIndex(e => e.id === selectedEpisode.id) ?? 0;
+        const epNum = idx + 1;
+
+        return {
+            "@context": "https://schema.org",
+            "@type": "TVEpisode",
+            "name": `${content.title}: Season ${sNum} Episode ${epNum}`,
+            "image": seoImage,
+            "episodeNumber": epNum.toString(),
+            "seasonNumber": sNum.toString(),
+            "datePublished": `${content.releaseYear}-01-01`, 
+            "description": desc,
+            "partOfSeries": {
+                "@type": "TVSeries",
+                "name": content.title,
+                "startDate": content.releaseYear?.toString(),
+                "image": content.poster
+            },
+            "aggregateRating": baseRating
+        };
+    }
+
+    // --- SCHEMA FOR MOVIE OR SERIES OVERVIEW ---
+    return {
       "@context": "https://schema.org",
       "@type": content.type === 'movie' ? "Movie" : "TVSeries",
       "name": content.title,
       "image": content.poster,
-      "description": content.description ? content.description.substring(0, 160) : content.title,
+      "description": desc,
       "datePublished": `${content.releaseYear}-01-01`,
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": content.rating > 0 ? content.rating.toString() : "5.0",
-        "bestRating": "5",
-        "ratingCount": "100"
-      },
+      "aggregateRating": baseRating,
       "genre": content.genres,
       "actor": content.cast?.map(actor => ({ "@type": "Person", "name": actor })) || []
     };
-    return baseSchema;
   };
 
   return (
@@ -364,9 +460,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
       
       <SEO 
         title={seoTitle}
-        description={content.description ? content.description.substring(0, 160) : `مشاهدة ${content.title} اون لاين بجودة عالية`}
-        image={content.backdrop}
-        type={content.type === 'movie' ? 'video.movie' : 'video.tv_show'}
+        description={seoDesc}
+        image={seoImage}
+        type={seoType}
         url={seoUrl}
         schema={generateSchema()}
       />
@@ -391,32 +487,39 @@ const DetailPage: React.FC<DetailPageProps> = ({
             <img 
                 src={displayBackdrop} 
                 alt={content.title} 
-                className={`w-full h-full object-cover ${content.enableMobileCrop ? 'md:!object-top' : 'object-top'}`}
-                style={imgStyle}
+                className={`w-full h-full object-cover ${!isMobile ? 'md:object-top' : ''}`}
+                style={imgStyle} 
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/20 to-transparent"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-body)]/80 via-transparent to-transparent"></div>
+            {/* UPDATED GRADIENT: Stronger fade at bottom (via-80%) to simulate merge, ensuring smooth transition to content */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/80 via-20% to-transparent z-10"></div>
+            {/* Side gradient for desktop text readability */}
+            <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-body)]/80 via-transparent to-transparent z-10 hidden md:block"></div>
         </div>
 
-        <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 pb-12 flex flex-col justify-end items-start z-10">
+        {/* 
+            MOBILE ADJUSTMENT: 
+            Changed pb to 4 (bottom-4) to push content extremely low on mobile.
+            Z-index increased to sit above the stronger gradient.
+        */}
+        <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 pb-4 md:pb-12 flex flex-col justify-end items-start z-20">
             <div className="max-w-4xl w-full animate-fade-in-up flex flex-col items-center md:items-start text-center md:text-right">
                 {content.isLogoEnabled && displayLogo ? (
                     <img 
                         src={displayLogo} 
                         alt={content.title} 
-                        className="w-auto h-auto max-w-[250px] md:max-w-[500px] mb-6 object-contain drop-shadow-2xl mx-auto md:mx-0"
+                        className="w-auto h-auto max-w-[250px] md:max-w-[500px] mb-2 md:mb-6 object-contain drop-shadow-2xl mx-auto md:mx-0"
                         draggable={false}
                     />
                 ) : (
-                    <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-4 leading-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-300 drop-shadow-lg">
+                    <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-2 md:mb-4 leading-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-300 drop-shadow-lg">
                         {content.title}
                         {content.type === 'series' && currentSeason && (
-                            <span className="block text-2xl md:text-4xl mt-2 text-white/80 font-normal">{currentSeason.title}</span>
+                            <span className="block text-2xl md:text-4xl mt-1 md:mt-2 text-white/80 font-normal">{currentSeason.title}</span>
                         )}
                     </h1>
                 )}
 
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-6 mb-8 text-sm md:text-lg font-medium text-gray-200 w-full">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-6 mb-4 md:mb-8 text-sm md:text-lg font-medium text-gray-200 w-full">
                      <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
                         <StarIcon className="w-5 h-5" />
                         <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
@@ -463,7 +566,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
       </div>
 
       {/* --- 2. Info & Lists Section --- */}
-      <div className="w-full px-4 md:px-8 py-10">
+      {/* Reduced Top Padding on Mobile (pt-4) to make Story text 'peek' right after hero */}
+      <div className="w-full px-4 md:px-8 pt-4 pb-10 md:py-10">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
               <div className="lg:col-span-3 space-y-12">
                   <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>

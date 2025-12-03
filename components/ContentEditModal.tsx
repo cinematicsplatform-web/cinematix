@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Content, Server, Season, Episode, Category, Genre } from '../types';
 import { ContentType, categories, genres } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
@@ -7,6 +7,7 @@ import { PlusIcon } from './icons/PlusIcon';
 import ToggleSwitch from './ToggleSwitch';
 import { generateSlug } from '../firebase';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
+import * as XLSX from 'xlsx';
 
 // --- ICONS ---
 const ShieldCheckIcon = () => (
@@ -29,6 +30,9 @@ const ArrowPathIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
   </svg>
 );
+const ExcelIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
+);
 
 // --- STYLES ---
 const MODAL_BG = "bg-gray-800"; 
@@ -39,6 +43,90 @@ const FOCUS_RING = "focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[
 const inputClass = `w-full ${INPUT_BG} border ${BORDER_COLOR} rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none ${FOCUS_RING} transition-all duration-300`;
 const labelClass = "block text-sm font-bold text-gray-400 mb-2";
 const sectionBoxClass = "bg-[#1a2230] p-6 rounded-2xl border border-gray-700/50 shadow-lg";
+
+// --- COMPONENT: Mobile Simulator ---
+interface MobileSimulatorProps {
+    imageUrl: string;
+    posX: number;
+    posY: number;
+    onUpdateX: (val: number) => void;
+    onUpdateY: (val: number) => void;
+}
+
+const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY, onUpdateX, onUpdateY }) => {
+    return (
+        <div className="flex flex-col md:flex-row gap-8 items-start p-6 bg-black/40 rounded-xl border border-gray-700 mt-2">
+            {/* 1. Phone Frame Simulator */}
+            <div className="relative mx-auto md:mx-0 flex-shrink-0">
+                <div 
+                    className="relative overflow-hidden border-4 border-gray-800 rounded-[2.5rem] shadow-2xl bg-black"
+                    style={{ width: '260px', height: '462px' }} // ~9:16 Aspect Ratio
+                >
+                    {/* Image */}
+                    <div 
+                        className="w-full h-full bg-no-repeat bg-cover transition-all duration-100 ease-out"
+                        style={{ 
+                            backgroundImage: `url(${imageUrl || 'https://placehold.co/1080x1920/101010/101010/png'})`, 
+                            backgroundPosition: `${posX}% ${posY}%` 
+                        }}
+                    />
+                    
+                    {/* Notch */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gray-800 rounded-b-xl z-20"></div>
+                    
+                    {/* Status Bar Fake Items (Optional) */}
+                    <div className="absolute top-1 right-4 w-4 h-4 bg-gray-700 rounded-full opacity-50 z-20"></div>
+                </div>
+                <div className="text-center text-xs text-gray-500 mt-2 font-mono">Mobile Preview (9:16)</div>
+            </div>
+
+            {/* 2. Controls */}
+            <div className="flex flex-col gap-6 flex-1 w-full pt-4">
+                <div>
+                    <h3 className="text-lg font-bold text-white mb-1">ضبط كادر الموبايل</h3>
+                    <p className="text-xs text-gray-400">حرك المؤشرات لضبط الجزء الظاهر من الصورة داخل إطار الهاتف.</p>
+                </div>
+                
+                {/* Horizontal X */}
+                <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
+                    <label className="flex justify-between text-sm mb-3 font-bold text-gray-300">
+                        <span className="flex items-center gap-2">↔️ تحريك أفقي (X-Axis)</span>
+                        <span className="font-mono text-[var(--color-accent)]">{posX}%</span>
+                    </label>
+                    <input 
+                        type="range" min="0" max="100" step="1"
+                        value={posX}
+                        onChange={(e) => onUpdateX(Number(e.target.value))}
+                        className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-[var(--color-accent)]"
+                    />
+                    <div className="flex justify-between text-[10px] text-gray-500 mt-1 uppercase tracking-wider">
+                        <span>Left</span>
+                        <span>Right</span>
+                    </div>
+                </div>
+
+                {/* Vertical Y */}
+                <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
+                    <label className="flex justify-between text-sm mb-3 font-bold text-gray-300">
+                        <span className="flex items-center gap-2">↕️ تحريك عمودي (Y-Axis)</span>
+                        <span className="font-mono text-[var(--color-accent)]">{posY}%</span>
+                    </label>
+                    <input 
+                        type="range" min="0" max="100" step="1"
+                        value={posY}
+                        onChange={(e) => onUpdateY(Number(e.target.value))}
+                        className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-[var(--color-accent)]"
+                    />
+                    <div className="flex justify-between text-[10px] text-gray-500 mt-1 uppercase tracking-wider">
+                        <span>Top</span>
+                        <span>Bottom</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 // --- NESTED MODAL (Server Management) ---
 interface ServerManagementModalProps {
@@ -136,7 +224,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         id: '', title: '', description: '', type: ContentType.Movie, poster: '', backdrop: '',
         rating: 0, ageRating: '', categories: [], genres: [], releaseYear: new Date().getFullYear(), cast: [],
         visibility: 'general', seasons: [], servers: [], bannerNote: '', createdAt: '',
-        logoUrl: '', isLogoEnabled: false, duration: '', enableMobileCrop: false, mobileCropPosition: 50,
+        logoUrl: '', isLogoEnabled: false, duration: '', enableMobileCrop: false, 
+        mobileCropPositionX: 50, mobileCropPositionY: 50, // Default Centers
         slug: '',
         ...content,
     });
@@ -148,6 +237,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [newActor, setNewActor] = useState('');
     const [seasonCastInputs, setSeasonCastInputs] = useState<Record<number, string>>({});
     
+    // File input refs for Excel Import
+    const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+    
     const [deleteSeasonState, setDeleteSeasonState] = useState<{
         isOpen: boolean;
         seasonId: number | null;
@@ -158,15 +250,22 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [tmdbIdInput, setTmdbIdInput] = useState(content?.id && !isNaN(Number(content.id)) ? content.id : '');
     const [fetchLoading, setFetchLoading] = useState(false);
     const [refreshLoading, setRefreshLoading] = useState(false);
-    const [enableAutoLinks, setEnableAutoLinks] = useState(false); // New Toggle State
+    const [enableAutoLinks, setEnableAutoLinks] = useState(false); 
     const API_KEY = 'b8d66e320b334f4d56728d98a7e39697';
 
     useEffect(() => {
-        setFormData(getDefaultFormData());
+        // Initialize form data with fallback for mobileCropPosition (old X) if new X isn't set
+        const initData = getDefaultFormData();
+        if (initData.mobileCropPosition !== undefined && initData.mobileCropPositionX === undefined) {
+            initData.mobileCropPositionX = initData.mobileCropPosition;
+        }
+        
+        setFormData(initData);
         setSlugManuallyEdited(!!content?.slug);
         setNewActor('');
         setSeasonCastInputs({});
         setTmdbIdInput(content?.id && !isNaN(Number(content.id)) ? content.id : '');
+        fileInputRefs.current = {};
     }, [content]);
 
     useEffect(() => {
@@ -175,14 +274,88 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
     }, [formData.title, slugManuallyEdited]);
 
-    // --- Helper for Generating Links ---
+    // --- EXCEL IMPORT LOGIC ---
+    const handleSeasonExcelImport = async (e: React.ChangeEvent<HTMLInputElement>, seasonId: number, seasonNumber: number) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonRows: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+            if (jsonRows.length === 0) {
+                alert('الملف فارغ أو لا يحتوي على بيانات صالحة.');
+                return;
+            }
+
+            const newEpisodes: Episode[] = [];
+            const tmdbId = formData.id; 
+            const language = 'ar-SA';
+
+            for (let i = 0; i < jsonRows.length; i++) {
+                const row = jsonRows[i];
+                const epNum = i + 1;
+                let title = `الحلقة ${epNum}`;
+                let thumbnail = '';
+                
+                if (tmdbId && !isNaN(Number(tmdbId))) {
+                    try {
+                        const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdbId}/season/${seasonNumber}/episode/${epNum}?api_key=${API_KEY}&language=${language}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.name) title = data.name;
+                            if (data.still_path) thumbnail = `https://image.tmdb.org/t/p/w500${data.still_path}`;
+                        }
+                    } catch (err) {
+                        console.warn(`Failed to fetch metadata for S${seasonNumber}E${epNum}`);
+                    }
+                }
+
+                const primaryServer: Server = {
+                    id: 1,
+                    name: "سيرفر أساسي",
+                    url: row['url'] || '',
+                    downloadUrl: row['downloadUrl'] || '',
+                    isActive: true
+                };
+
+                newEpisodes.push({
+                    id: Date.now() + i + Math.random(), 
+                    title: title,
+                    thumbnail: thumbnail, 
+                    duration: 0,
+                    progress: 0,
+                    servers: [primaryServer]
+                });
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                seasons: (prev.seasons || []).map(s => {
+                    if (s.id === seasonId) {
+                        return { ...s, episodes: newEpisodes }; 
+                    }
+                    return s;
+                })
+            }));
+
+            alert(`تم استيراد ${newEpisodes.length} حلقة بنجاح!`);
+
+        } catch (error) {
+            console.error("Excel Import Error", error);
+            alert("حدث خطأ أثناء قراءة ملف Excel. تأكد من الأعمدة: url, downloadUrl");
+        }
+    };
+
     const generateEpisodeServers = (tmdbId: string, seasonNum: number, episodeNum: number) => {
          const epServers: Server[] = [];
-         // FORMULA FOR SERIES: https://dl.vidsrc.vip/tv/{id}/{season}/{episode}
          const autoDownloadUrl = `https://dl.vidsrc.vip/tv/${tmdbId}/${seasonNum}/${episodeNum}`;
 
          if (enableAutoLinks) {
-             // Priority 1: Cinematix VIP
              epServers.push({
                  id: 80000 + episodeNum,
                  name: 'Cinematix VIP (سريع)',
@@ -190,7 +363,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                  downloadUrl: autoDownloadUrl,
                  isActive: true
              });
-             // Priority 2: VidSrc
              epServers.push({
                  id: 90000 + episodeNum,
                  name: 'سيرفر VidSrc',
@@ -198,7 +370,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                  downloadUrl: autoDownloadUrl,
                  isActive: true
              });
-             // Priority 3: SuperEmbed
              epServers.push({
                  id: 90000 + episodeNum + 1000, 
                  name: 'سيرفر SuperEmbed',
@@ -210,21 +381,18 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
          return epServers;
     }
 
-    // --- SMART REFRESH LOGIC ---
     const handleRefreshData = async () => {
         if (!tmdbIdInput) return;
-        if (formData.type !== ContentType.Series) return; // Only for Series for now
+        if (formData.type !== ContentType.Series) return; 
 
         setRefreshLoading(true);
         const language = 'ar-SA';
 
         try {
-            // 1. Fetch TV Details
             const detailsRes = await fetch(`https://api.themoviedb.org/3/tv/${tmdbIdInput}?api_key=${API_KEY}&language=${language}`);
             if (!detailsRes.ok) throw new Error('فشل الاتصال بـ TMDB. تأكد من الـ ID');
             const details = await detailsRes.json();
 
-            // 2. Fetch Seasons
             let newSeasonsFromApi: Season[] = [];
             if (details.seasons) {
                 const seasonPromises = details.seasons.map(async (s: any) => {
@@ -243,12 +411,12 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 thumbnail: '', 
                                 duration: 0,
                                 progress: 0,
-                                servers: generateEpisodeServers(tmdbIdInput, s.season_number, i) // Apply auto links logic to FRESH episodes
+                                servers: generateEpisodeServers(tmdbIdInput, s.season_number, i) 
                             });
                         }
 
                         return {
-                            id: s.id, // TMDB ID
+                            id: s.id, 
                             seasonNumber: s.season_number,
                             title: s.name,
                             description: s.overview || '',
@@ -262,44 +430,34 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 newSeasonsFromApi = results.filter(Boolean).sort((a, b) => a.seasonNumber - b.seasonNumber) as Season[];
             }
 
-            // 3. SMART MERGE STRATEGY
             const currentSeasons = formData.seasons || [];
             
             const mergedSeasons = newSeasonsFromApi.map(newS => {
-                // Find matching existing season (by number)
                 const existingS = currentSeasons.find(s => s.seasonNumber === newS.seasonNumber);
                 
                 if (!existingS) {
-                    // It's a completely new season! Add it whole.
-                    return { ...newS, id: Date.now() + Math.random() }; // Ensure unique ID for app logic
+                    return { ...newS, id: Date.now() + Math.random() }; 
                 }
 
-                // It's an existing season, let's check for new episodes
                 const mergedEpisodes = newS.episodes.map(newEp => {
-                    // Parse episode number from title (Standard: "الحلقة X")
                     const newEpNum = parseInt(newEp.title?.replace('الحلقة ', '') || '0');
-                    
-                    // Try to find this episode in the existing data
                     const existingEp = existingS.episodes.find(e => {
                         const oldEpNum = parseInt(e.title?.replace('الحلقة ', '') || '0');
                         return oldEpNum === newEpNum;
                     });
 
                     if (existingEp) {
-                        // EPISODE EXISTS: Keep the OLD one to preserve Manual Links!
                         return existingEp; 
                     } else {
-                        // NEW EPISODE FOUND: Return the new one (which has auto-links if enabled)
                         return newEp;
                     }
                 });
                 
-                // Return merged season: New Metadata + Merged Episodes
                 return {
-                    ...existingS, // Keep internal ID
-                    title: newS.title, // Update Metadata
-                    poster: newS.poster, // Update Poster
-                    releaseYear: newS.releaseYear, // Update Year
+                    ...existingS, 
+                    title: newS.title, 
+                    poster: newS.poster, 
+                    releaseYear: newS.releaseYear, 
                     episodes: mergedEpisodes
                 };
             });
@@ -315,17 +473,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
     };
 
-    // --- TMDB Logic (Original Fetch) ---
     const fetchFromTMDB = async () => {
         if (!tmdbIdInput) return;
         setFetchLoading(true);
 
-        // Use local variable for current type logic to handle smart switching
         let currentType = formData.type;
         const language = 'ar-SA'; 
 
         try {
-            // Helper to construct URL
             const getUrl = (type: ContentType) => {
                 const typePath = type === ContentType.Movie ? 'movie' : 'tv';
                 const append = type === ContentType.Movie 
@@ -334,19 +489,15 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 return `https://api.themoviedb.org/3/${typePath}/${tmdbIdInput}?api_key=${API_KEY}&language=${language}&append_to_response=${append}`;
             };
 
-            // 1. Attempt fetch with currently selected type
             let res = await fetch(getUrl(currentType));
 
-            // 2. Smart Retry: If 404 (Not Found), switch type and try again
             if (!res.ok && res.status === 404) {
                 const altType = currentType === ContentType.Movie ? ContentType.Series : ContentType.Movie;
-                console.log(`TMDB: ID not found as ${currentType}, retrying as ${altType}...`);
-                
                 const resAlt = await fetch(getUrl(altType));
                 
                 if (resAlt.ok) {
                     res = resAlt;
-                    currentType = altType; // Switch type for subsequent logic
+                    currentType = altType; 
                 }
             }
 
@@ -354,9 +505,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             
             const details = await res.json();
 
-            // --- MAPPING LOGIC ---
-
-            // 1. Basic Info
             const title = details.title || details.name || '';
             const description = details.overview || ''; 
             const poster = details.poster_path ? `https://image.tmdb.org/t/p/w500${details.poster_path}` : '';
@@ -365,7 +513,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             const releaseDate = details.release_date || details.first_air_date || '';
             const releaseYear = releaseDate ? new Date(releaseDate).getFullYear() : new Date().getFullYear();
             
-            // 4. Runtime / Duration
             let duration = '';
             if (currentType === ContentType.Movie && details.runtime) {
                 const h = Math.floor(details.runtime / 60);
@@ -373,7 +520,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 duration = `${h}h ${m}m`;
             }
 
-            // 5. Age Rating
             let ageRating = '';
             if (currentType === ContentType.Movie) {
                 const usRelease = details.release_dates?.results?.find((r: any) => r.iso_3166_1 === 'US');
@@ -386,7 +532,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 ageRating = usRating?.rating || '';
             }
 
-            // 6. Genres
             const mappedGenres: Genre[] = [];
             details.genres?.forEach((g: any) => {
                 const gName = g.name.toLowerCase();
@@ -407,19 +552,13 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 else if (gName.includes('war') || gName.includes('حرب')) mappedGenres.push('حربي');
             });
 
-            // 7. Main Cast
             const topCast = details.credits?.cast?.slice(0, 7).map((c: any) => c.name) || [];
 
-            // --- 8. SERIES SPECIFIC LOGIC (Advanced) & Auto Link Gen ---
             let newSeasons: Season[] = [];
             let movieServers: Server[] = [];
 
-            // A. MOVIE AUTO SERVERS
             if (currentType === ContentType.Movie && enableAutoLinks) {
-                // FORMULA FOR MOVIES: https://dl.vidsrc.vip/movie/{id}
                 const autoDownloadUrl = `https://dl.vidsrc.vip/movie/${tmdbIdInput}`;
-
-                // Priority 1: Cinematix VIP
                 movieServers.push({
                     id: 9900,
                     name: 'Cinematix VIP (سريع)',
@@ -427,7 +566,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     downloadUrl: autoDownloadUrl,
                     isActive: true
                 });
-                // Priority 2: VidSrc.to
                 movieServers.push({
                     id: 9901,
                     name: 'سيرفر VidSrc',
@@ -435,7 +573,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     downloadUrl: autoDownloadUrl,
                     isActive: true
                 });
-                // Priority 3: SuperEmbed
                 movieServers.push({
                     id: 9902,
                     name: 'سيرفر SuperEmbed',
@@ -447,7 +584,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 movieServers = formData.servers || [];
             }
 
-            // B. SERIES LOGIC
             if (currentType === ContentType.Series && details.seasons) {
                 const seasonPromises = details.seasons.map(async (s: any, index: number) => {
                     try {
@@ -462,8 +598,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         
                         for (let i = 1; i <= episodeCount; i++) {
                             const epId = Date.now() + Math.floor(Math.random() * 1000000) + i;
-                            
-                            // Use helper to generate links
                             const epServers = generateEpisodeServers(String(tmdbIdInput), s.season_number, i);
 
                             episodes.push({
@@ -489,7 +623,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         } as Season;
 
                     } catch (e) {
-                        console.error(`Failed to fetch details for season ${s.season_number}`, e);
                         return {
                             id: s.id,
                             seasonNumber: s.season_number,
@@ -503,7 +636,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 newSeasons = results.filter(Boolean).sort((a, b) => a.seasonNumber - b.seasonNumber);
             }
 
-            // Update State
             setFormData(prev => ({
                 ...prev,
                 id: String(tmdbIdInput),
@@ -522,7 +654,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 servers: movieServers
             }));
 
-            // Auto-set category
             if (details.origin_country?.includes('TR')) {
                 handleCategoryChange(currentType === ContentType.Movie ? 'افلام تركية' : 'مسلسلات تركية');
             } else if (details.origin_country?.includes('EG') || details.origin_country?.includes('SA') || details.original_language === 'ar') {
@@ -590,23 +721,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 : [...currentGenres, genre];
             return { ...prev, genres: newGenres };
         });
-    };
-
-    const handleAddActor = () => {
-        if (newActor.trim()) {
-            setFormData(prev => ({
-                ...prev,
-                cast: [...(prev.cast || []), newActor.trim()]
-            }));
-            setNewActor('');
-        }
-    };
-
-    const handleRemoveActor = (index: number) => {
-        setFormData(prev => ({
-            ...prev,
-            cast: (prev.cast || []).filter((_, i) => i !== index)
-        }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -820,11 +934,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     </div>
                                 </div>
                             </div>
-                            <div className="text-xs text-gray-400 hidden md:block max-w-xs">
-                                سيقوم هذا الخيار بملء الحقول أدناه تلقائياً. فعل خيار "توليد روابط" لإضافة سيرفرات مشاهدة VidSrc مباشرة.
-                                <br/>
-                                <span className="text-amber-400 mt-1 block">زر "تحديث البيانات" يضيف الحلقات الجديدة فقط ولا يحذف الروابط القديمة.</span>
-                            </div>
                         </div>
                     </div>
 
@@ -881,7 +990,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 <div>
                                     <label className={labelClass}>جمهور المشاهدة</label>
                                     <div className="grid grid-cols-1 gap-3">
-                                        {/* General Card */}
                                         <button 
                                             type="button"
                                             onClick={() => setFormData(prev => ({...prev, visibility: 'general'}))}
@@ -901,7 +1009,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             </div>
                                         </button>
 
-                                        {/* Adults Card */}
                                         <button 
                                             type="button"
                                             onClick={() => setFormData(prev => ({...prev, visibility: 'adults'}))}
@@ -921,7 +1028,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             </div>
                                         </button>
 
-                                        {/* Kids Card */}
                                         <button 
                                             type="button"
                                             onClick={() => setFormData(prev => ({...prev, visibility: 'kids'}))}
@@ -1103,27 +1209,18 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 
                                 <div className="bg-black/30 p-5 rounded-xl border border-gray-700 transition-all duration-300">
                                      <div className="flex items-center justify-between mb-4">
-                                        <h4 className="text-sm font-bold text-white flex items-center gap-2">📱 تخصيص للموبايل (قص الصورة)</h4>
+                                        <h4 className="text-sm font-bold text-white flex items-center gap-2">📱 تخصيص للموبايل (قص الخلفية)</h4>
                                         <ToggleSwitch checked={formData.enableMobileCrop || false} onChange={(c) => setFormData(prev => ({...prev, enableMobileCrop: c}))} className="scale-90"/>
                                     </div>
                                     
-                                    <div className={`transition-all duration-500 ease-in-out overflow-hidden ${formData.enableMobileCrop ? 'max-h-40 opacity-100' : 'max-h-0 opacity-50'}`}>
-                                        <label className="block text-xs text-gray-400 mb-3 font-medium">حدد نقطة التركيز (Center Point)</label>
-                                        <div className="relative pt-2 pb-4 px-2">
-                                            <input 
-                                                type="range" 
-                                                min="0" 
-                                                max="100" 
-                                                value={formData.mobileCropPosition || 50} 
-                                                onChange={(e) => setFormData(prev => ({...prev, mobileCropPosition: parseInt(e.target.value)}))}
-                                                className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-[var(--color-accent)]"
-                                            />
-                                            <div className="flex justify-between text-[10px] text-gray-500 mt-2 font-mono uppercase tracking-wider">
-                                                <span>Left (0%)</span>
-                                                <span className="text-[var(--color-accent)] font-bold text-base">{formData.mobileCropPosition || 50}%</span>
-                                                <span>Right (100%)</span>
-                                            </div>
-                                        </div>
+                                    <div className={`transition-all duration-500 ease-in-out overflow-hidden ${formData.enableMobileCrop ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-50'}`}>
+                                        <MobileSimulator 
+                                            imageUrl={formData.backdrop} 
+                                            posX={formData.mobileCropPositionX ?? 50} 
+                                            posY={formData.mobileCropPositionY ?? 50}
+                                            onUpdateX={(val) => setFormData(prev => ({...prev, mobileCropPositionX: val}))}
+                                            onUpdateY={(val) => setFormData(prev => ({...prev, mobileCropPositionY: val}))}
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -1161,6 +1258,26 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     />
                                                 </div>
                                                 <div className="flex items-center gap-3">
+                                                    {/* EXCEL IMPORT BUTTON */}
+                                                    <div className="relative">
+                                                        <input 
+                                                            type="file"
+                                                            accept=".xlsx, .xls"
+                                                            onChange={(e) => handleSeasonExcelImport(e, season.id, season.seasonNumber)}
+                                                            className="hidden"
+                                                            ref={(el) => { fileInputRefs.current[season.id] = el; }}
+                                                        />
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => fileInputRefs.current[season.id]?.click()}
+                                                            className="text-blue-400 bg-blue-500/10 px-3 py-1.5 rounded hover:bg-blue-500/20 transition-colors flex items-center gap-1.5 text-xs font-bold"
+                                                            title="استيراد الحلقات من ملف Excel"
+                                                        >
+                                                            <ExcelIcon />
+                                                            استيراد Excel
+                                                        </button>
+                                                    </div>
+
                                                     <button type="button" onClick={() => handleAddEpisode(season.id)} className="text-green-400 text-xs font-bold bg-green-500/10 px-3 py-1.5 rounded hover:bg-green-500/20 transition-colors">+ حلقة جديدة</button>
                                                     <button 
                                                         type="button" 
@@ -1224,105 +1341,138 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                 </div>
                                             </div>
 
+                                            {/* NEW: Mobile Override Settings */}
+                                            <div className="bg-black/30 p-3 rounded-lg mt-4 mb-4 border border-gray-700">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <h4 className="text-xs font-bold text-gray-300 flex items-center gap-2">📱 تخصيص للموبايل (موسم {season.seasonNumber})</h4>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] text-gray-400">استخدام صورة مخصصة؟</span>
+                                                        <ToggleSwitch 
+                                                            checked={season.useCustomMobileImage || false} 
+                                                            onChange={(c) => handleUpdateSeason(season.id, 'useCustomMobileImage', c)} 
+                                                            className="scale-75"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {season.useCustomMobileImage ? (
+                                                    <div className="animate-fade-in-up">
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="رابط صورة الموبايل (Portrait / Custom)" 
+                                                            value={season.mobileImageUrl || ''} 
+                                                            onChange={(e) => handleUpdateSeason(season.id, 'mobileImageUrl', e.target.value)}
+                                                            className={`bg-gray-800 border border-gray-600 rounded px-3 py-2 text-xs text-white w-full ${FOCUS_RING}`}
+                                                        />
+                                                        <p className="text-[10px] text-gray-500 mt-1">سيتم استخدام هذه الصورة بدلاً من الخلفية عند التصفح من الموبايل.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="animate-fade-in-up">
+                                                        <MobileSimulator 
+                                                            imageUrl={season.backdrop || ''} 
+                                                            posX={season.mobileCropPositionX ?? 50} 
+                                                            posY={season.mobileCropPositionY ?? 50}
+                                                            onUpdateX={(val) => handleUpdateSeason(season.id, 'mobileCropPositionX', val)}
+                                                            onUpdateY={(val) => handleUpdateSeason(season.id, 'mobileCropPositionY', val)}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+
                                             {/* Episodes List */}
-                                            <div className="space-y-2 pl-2 border-r-2 border-gray-700/50">
-                                                {season.episodes.length === 0 && <p className="text-gray-500 text-sm italic p-2">لم يتم إضافة حلقات لهذا الموسم.</p>}
-                                                {season.episodes.map((ep, eIndex) => (
-                                                    <div key={ep.id} className="flex items-center gap-3 bg-gray-800 p-2.5 rounded-lg hover:bg-gray-750 transition-colors group">
-                                                        <span className="text-gray-500 text-xs font-mono w-6 text-center">{eIndex + 1}</span>
+                                            <div className="space-y-2 pl-2 border-r-2 border-gray-700/50 mr-2 pr-2">
+                                                <h4 className="text-xs font-bold text-gray-500 mb-2">الحلقات ({season.episodes?.length || 0})</h4>
+                                                {season.episodes?.map((ep) => (
+                                                    <div key={ep.id} className="flex items-center gap-2 bg-gray-800 p-2 rounded-lg border border-gray-700">
+                                                        <span className="text-gray-500 font-mono text-xs w-6">{ep.title.replace(/\D/g, '')}</span>
                                                         <input 
                                                             type="text" 
                                                             value={ep.title} 
                                                             onChange={(e) => handleUpdateEpisodeTitle(season.id, ep.id, e.target.value)}
-                                                            className="bg-transparent border-b border-transparent focus:border-[var(--color-accent)] text-sm text-white flex-1 outline-none placeholder-gray-600 transition-colors"
-                                                            placeholder={`عنوان الحلقة ${eIndex + 1}`}
+                                                            className="bg-transparent border-none text-sm text-white focus:ring-0 w-full"
                                                         />
                                                         <button 
-                                                            type="button"
+                                                            type="button" 
                                                             onClick={() => setEditingServersForEpisode(ep)}
-                                                            className={`text-xs px-3 py-1.5 rounded font-medium transition-all ${ep.servers?.some(s=>s.url) ? 'bg-[var(--color-accent)] text-black' : 'bg-gray-700 text-[var(--color-accent)] hover:bg-gray-600'}`}
+                                                            className={`text-xs px-3 py-1 rounded transition-colors ${ep.servers?.some(s => s.url) ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
                                                         >
-                                                            {ep.servers?.some(s=>s.url) ? `تم الربط (${ep.servers.filter(s=>s.url).length})` : 'إدارة السيرفرات'}
+                                                            {ep.servers?.length || 0} سيرفرات
                                                         </button>
-                                                        <button type="button" onClick={() => handleDeleteEpisode(season.id, ep.id)} className="text-gray-500 hover:text-red-400 p-1"><CloseIcon className="w-4 h-4"/></button>
+                                                        <button type="button" onClick={() => handleDeleteEpisode(season.id, ep.id)} className="text-red-400 hover:text-red-300 p-1"><CloseIcon className="w-4 h-4"/></button>
                                                     </div>
                                                 ))}
+                                                {season.episodes?.length === 0 && (
+                                                    <div className="text-gray-500 text-xs text-center py-2">لا توجد حلقات. اضغط "حلقة جديدة" أو "استيراد Excel".</div>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
+                                    {formData.seasons?.length === 0 && <div className="text-center text-gray-500 py-10">لا توجد مواسم. أضف موسماً جديداً.</div>}
                                 </div>
                             </div>
                         )}
 
                         {formData.type === ContentType.Movie && (
-                            <div className="sectionBoxClass">
-                                 <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
-                                    <h3 className="text-lg font-bold text-[var(--color-accent)] flex items-center gap-2">
-                                        <span>🎬</span> سيرفرات المشاهدة
+                            <div className={sectionBoxClass}>
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-lg font-bold text-[var(--color-primary-to)] flex items-center gap-2">
+                                        <span>🎬</span> سيرفرات الفيلم
                                     </h3>
-                                    <button type="button" onClick={() => setIsManagingMovieServers(true)} className="bg-[var(--color-accent)] text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-white transition-colors shadow-lg">إدارة الروابط</button>
+                                    <button type="button" onClick={() => setIsManagingMovieServers(true)} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">إدارة السيرفرات ({formData.servers?.length || 0})</button>
                                 </div>
-                                <div className="bg-black/20 rounded-lg p-4 border border-gray-700">
-                                    <p className="text-gray-400 text-sm mb-2">السيرفرات الحالية:</p>
-                                    {formData.servers?.length === 0 ? (
-                                        <p className="text-red-400 text-sm font-bold">لم يتم إضافة أي سيرفر للمشاهدة.</p>
-                                    ) : (
-                                        <ul className="space-y-2">
-                                            {formData.servers?.map((s, i) => s.url && (
-                                                <li key={i} className="flex items-center gap-3 text-sm text-gray-300 bg-gray-800 p-2 rounded border border-gray-700">
-                                                    <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
-                                                    <span className="font-bold text-white">{s.name}</span>
-                                                    <span className="text-gray-500 text-xs truncate max-w-[200px] dir-ltr">({s.url})</span>
-                                                    {s.downloadUrl && <span className="text-blue-400 text-xs ml-auto">⬇️ رابط تحميل</span>}
-                                                </li>
+                                <div className="text-sm text-gray-400 bg-gray-900/50 p-4 rounded-xl border border-gray-700/50">
+                                    {formData.servers && formData.servers.length > 0 ? (
+                                        <ul className="list-disc list-inside space-y-1">
+                                            {formData.servers.filter(s => s.url).map((s, i) => (
+                                                <li key={i} className="text-white"><span className="text-gray-500">{s.name}:</span> <span className="text-[var(--color-accent)] font-mono text-xs">{s.url.substring(0, 40)}...</span></li>
                                             ))}
                                         </ul>
+                                    ) : (
+                                        "لا توجد سيرفرات مضافة حالياً."
                                     )}
                                 </div>
                             </div>
                         )}
 
+                        <div className="flex justify-end items-center pt-6 border-t border-gray-700 gap-4">
+                            <button type="button" onClick={onClose} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full transition-colors text-sm">إلغاء</button>
+                            <button type="submit" className="bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black font-bold py-3 px-10 rounded-full hover:bg-white transition-all shadow-[0_0_20px_var(--shadow-color)] transform hover:scale-105">حفظ التغييرات</button>
+                        </div>
                     </form>
                 </div>
-
-                {/* Footer Actions */}
-                <div className="p-6 border-t border-gray-700 bg-black/20 rounded-b-2xl backdrop-blur-xl flex justify-between items-center">
-                    <div className="text-xs text-gray-600 font-mono">
-                        {formData.id ? `ID: ${formData.id}` : 'New Entry'}
-                    </div>
-                    <div className="flex gap-4">
-                        <button onClick={onClose} className="px-6 py-3 rounded-full font-bold text-gray-300 bg-gray-700 hover:bg-gray-600 transition-colors">إلغاء</button>
-                        <button onClick={handleSubmit} className="px-10 py-3 rounded-full font-bold bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-[0_0_20px_var(--shadow-color)] hover:shadow-[0_0_30px_var(--shadow-color)] hover:scale-105 transition-all transform">
-                            {isNewContent ? 'نشر المحتوى' : 'حفظ التعديلات'}
-                        </button>
-                    </div>
-                </div>
-
             </div>
 
-            {(editingServersForEpisode || isManagingMovieServers) && (
+            {/* Nested Modals */}
+            {editingServersForEpisode && (
                 <ServerManagementModal 
-                    episode={editingServersForEpisode || { id: 0, title: formData.title, thumbnail: '', duration: 0, progress: 0, servers: formData.servers || [] }} 
-                    onClose={() => {
-                         setEditingServersForEpisode(null);
-                         setIsManagingMovieServers(false);
-                    }}
-                    onSave={(servers) => {
-                        if (isManagingMovieServers) {
-                            handleUpdateMovieServers(servers);
-                        } else {
-                            handleUpdateEpisodeServers(servers);
-                        }
-                    }}
+                    episode={editingServersForEpisode} 
+                    onClose={() => setEditingServersForEpisode(null)} 
+                    onSave={handleUpdateEpisodeServers} 
                 />
             )}
-            
+
+            {isManagingMovieServers && (
+                <ServerManagementModal 
+                    episode={{ 
+                        id: 0, 
+                        title: formData.title, 
+                        thumbnail: formData.poster, 
+                        duration: 0, 
+                        progress: 0, 
+                        servers: formData.servers 
+                    }} 
+                    onClose={() => setIsManagingMovieServers(false)} 
+                    onSave={handleUpdateMovieServers} 
+                />
+            )}
+
+            {/* Delete Season Modal */}
             <DeleteConfirmationModal 
                 isOpen={deleteSeasonState.isOpen}
-                onClose={() => setDeleteSeasonState(prev => ({ ...prev, isOpen: false }))}
+                onClose={() => setDeleteSeasonState(prev => ({...prev, isOpen: false}))}
                 onConfirm={executeDeleteSeason}
                 title="حذف الموسم"
-                message={`هل أنت متأكد من حذف ${deleteSeasonState.title}؟ لا يمكن التراجع عن هذا الإجراء.`}
+                message={`هل أنت متأكد من حذف "${deleteSeasonState.title}"؟ سيتم حذف جميع الحلقات داخله.`}
             />
         </div>
     );

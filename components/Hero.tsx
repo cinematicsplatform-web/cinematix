@@ -200,12 +200,11 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
         ? { background: 'linear-gradient(to top, #0b1116 0%, rgba(11, 17, 22, 0.8) 10%, rgba(11, 17, 22, 0) 60%)' }
         : {};
 
-      // Custom Logic for Mobile Crop
-      // Default to 50% (Center) if not defined
-      const mobilePos = content.mobileCropPosition ?? 50;
-      // If enabled, set inline style to override default object-position.
-      // The class 'md:!object-center' ensures desktop always centers, overriding this inline style due to !important.
-      const imgStyle = content.enableMobileCrop ? { objectPosition: `${mobilePos}% center` } : undefined;
+      // Custom Logic for Mobile Crop via CSS Variables
+      const cropStyle: React.CSSProperties = content.enableMobileCrop ? {
+          '--mob-x': `${content.mobileCropPositionX ?? content.mobileCropPosition ?? 50}%`,
+          '--mob-y': `${content.mobileCropPositionY ?? 50}%`,
+      } as React.CSSProperties : {};
 
       return (
         <div 
@@ -218,8 +217,8 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
                 <img 
                     src={content.backdrop} 
                     alt={content.title} 
-                    className={`w-full h-full object-cover ${content.enableMobileCrop ? 'md:!object-center' : 'object-top md:object-center'}`}
-                    style={imgStyle}
+                    className={`w-full h-full object-cover object-top md:object-center ${content.enableMobileCrop ? 'mobile-custom-crop' : ''}`}
+                    style={cropStyle}
                     draggable={false}
                 />
                 <div className="absolute inset-0 bg-black/20"></div>

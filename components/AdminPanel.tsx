@@ -1,7 +1,8 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
-import { db, generateSlug } from '../firebase';
-import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, PageKey, ThemeType, Category, Genre, Season, Episode, Server } from '../types';
+import { db, generateSlug, getContentRequests, deleteContentRequest, getUserProfile } from '../firebase';
+import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, PageKey, ThemeType, Category, Genre, Season, Episode, Server, ContentRequest } from '../types';
 import { ContentType, UserRole, adPlacementLabels } from '../types';
 import ContentEditModal from './ContentEditModal';
 import AdEditModal from './AdEditModal';
@@ -9,6 +10,7 @@ import ToggleSwitch from './ToggleSwitch';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { CloseIcon } from './icons/CloseIcon';
 import * as XLSX from 'xlsx'; // Imported from esm.sh via importmap
+import * as jsrsasign from 'jsrsasign'; // JWT Signing library
 
 // Icons
 const ArrowUpTrayIcon = () => (
@@ -20,8 +22,88 @@ const DocumentArrowDownIcon = () => (
 const TableCellsIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25v1.5c0 .621.504 1.125 1.125 1.125m17.25-2.625h-7.5c-.621 0-1.125.504-1.125 1.125" /></svg>
 );
+const PaperAirplaneIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+);
+const InboxIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H6.911a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661Z" /></svg>
+);
 
-type AdminTab = 'dashboard' | 'content' | 'pinned' | 'users' | 'ads' | 'themes' | 'settings' | 'analytics';
+type AdminTab = 'dashboard' | 'content' | 'pinned' | 'users' | 'requests' | 'ads' | 'themes' | 'settings' | 'analytics' | 'notifications';
+
+// --- AUTH HELPER (Client Side Service Account Token Generation) ---
+// WARNING: Storing private keys on client side is insecure. 
+// This is implemented per user request for a serverless client-only solution.
+const getAccessToken = async (serviceAccountJson: string): Promise<string | null> => {
+    try {
+        const serviceAccount = JSON.parse(serviceAccountJson);
+        const { private_key, client_email } = serviceAccount;
+        
+        if (!private_key || !client_email) throw new Error("Invalid Service Account JSON");
+
+        const now = Math.floor(Date.now() / 1000);
+        const header = { alg: 'RS256', typ: 'JWT' };
+        const claim = {
+            iss: client_email,
+            scope: 'https://www.googleapis.com/auth/firebase.messaging',
+            aud: 'https://oauth2.googleapis.com/token',
+            exp: now + 3600,
+            iat: now,
+        };
+
+        // Use jsrsasign to sign
+        const sJWS = jsrsasign.KJUR.jws.JWS.sign(null, header, claim, private_key);
+
+        const body = new URLSearchParams();
+        body.append('grant_type', 'urn:ietf:params:oauth:grant-type:jwt-bearer');
+        body.append('assertion', sJWS);
+
+        const response = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        });
+
+        const data = await response.json();
+        return data.access_token;
+    } catch (e) {
+        console.error("Failed to generate Access Token:", e);
+        return null;
+    }
+};
+
+const sendFCMv1Message = async (token: string, notification: any, accessToken: string, projectId: string) => {
+    const url = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+    
+    // Construct V1 Message
+    const message = {
+        message: {
+            token: token,
+            notification: {
+                title: notification.title,
+                body: notification.body,
+                image: notification.image
+            },
+            data: notification.data || {}
+        }
+    };
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(message)
+    });
+
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(JSON.stringify(err));
+    }
+    return response.json();
+};
+
 
 interface AdminPanelProps {
   allUsers: User[];
@@ -221,6 +303,8 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                             onRequestDelete={confirmDeleteUser} 
                             addToast={props.addToast} 
                         />;
+            case 'requests':
+                return <RequestsTab addToast={props.addToast} serviceAccountJson={props.siteSettings.serviceAccountJson} />;
             case 'ads':
                 return <AdsManagementTab 
                             ads={props.allAds} 
@@ -239,6 +323,8 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 return <ThemesTab siteSettings={props.siteSettings} onSetSiteSettings={props.onSetSiteSettings} />;
             case 'settings':
                 return <SiteSettingsTab siteSettings={props.siteSettings} onSetSiteSettings={props.onSetSiteSettings} allContent={allContent} />;
+            case 'notifications':
+                return <NotificationTab addToast={props.addToast} serviceAccountJson={props.siteSettings.serviceAccountJson} />;
             case 'analytics':
                 return <AnalyticsTab allContent={allContent} allUsers={props.allUsers}/>;
             case 'dashboard':
@@ -259,13 +345,13 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
 
                 <div className="border-b border-gray-700 mb-8">
                   <div className="flex overflow-x-auto rtl-scroll">
-                    {(['dashboard', 'content', 'pinned', 'users', 'ads', 'themes', 'settings', 'analytics'] as AdminTab[]).map(tab => (
+                    {(['dashboard', 'content', 'pinned', 'users', 'requests', 'ads', 'themes', 'settings', 'analytics', 'notifications'] as AdminTab[]).map(tab => (
                         <button 
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`flex-shrink-0 px-4 md:px-6 py-3 font-semibold transition-colors ${activeTab === tab ? 'text-[var(--color-accent)] border-b-2 border-[var(--color-accent)]' : 'text-gray-400 hover:text-white'}`}
                         >
-                           { {dashboard: 'نظرة عامة', content: 'المحتوى', pinned: 'المحتوى المثبت', users: 'المستخدمون', ads: 'إدارة الإعلانات', themes: 'المظهر (Themes)', settings: 'إعدادات الموقع', analytics: 'الإحصائيات'}[tab] }
+                           { {dashboard: 'نظرة عامة', content: 'المحتوى', pinned: 'المحتوى المثبت', users: 'المستخدمون', requests: 'الطلبات', ads: 'إدارة الإعلانات', themes: 'المظهر (Themes)', settings: 'إعدادات الموقع', analytics: 'الإحصائيات', notifications: 'إرسال إشعار'}[tab] }
                         </button>
                     ))}
                   </div>
@@ -400,9 +486,7 @@ const ContentManagementTab: React.FC<{
     addToast: (message: string, type: 'success' | 'error' | 'info') => void,
     onBulkSuccess: () => void
 }> = ({content, onNew, onEdit, onRequestDelete, isLoading, addToast, onBulkSuccess}) => {
-    // ... Existing code ...
-    // No Changes needed here for Ad filtering, just keeping structure.
-    // Keeping minimal return for XML brevity, as this part wasn't requested to change.
+    // ... Content management logic ...
     const [searchTerm, setSearchTerm] = useState('');
     const filteredContent = content
       .filter(c => (c.title || '').toLowerCase().includes(searchTerm.toLowerCase()));
@@ -633,6 +717,141 @@ const ContentManagementTab: React.FC<{
     );
 };
 
+// --- Requests Tab ---
+const RequestsTab: React.FC<{ addToast: (msg: string, type: 'success' | 'error') => void, serviceAccountJson?: string }> = ({ addToast, serviceAccountJson }) => {
+    const [requests, setRequests] = useState<ContentRequest[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchRequests();
+    }, []);
+
+    const fetchRequests = async () => {
+        setLoading(true);
+        const data = await getContentRequests();
+        setRequests(data);
+        setLoading(false);
+    };
+
+    const handleFulfillRequest = async (req: ContentRequest) => {
+        if (confirm(`هل أنت متأكد من تحديد طلب "${req.title}" كمكتمل؟ سيتم إرسال إشعار للمستخدم وحذف الطلب.`)) {
+            try {
+                let notificationSent = false;
+
+                // 1. Send Notification using HTTP v1 if User ID exists and Service Account JSON is available
+                if (req.userId && serviceAccountJson) {
+                    try {
+                        const accessToken = await getAccessToken(serviceAccountJson);
+                        if (!accessToken) throw new Error("Could not generate access token");
+
+                        const userProfile = await getUserProfile(req.userId);
+                        const tokens = userProfile?.fcmTokens || [];
+                        
+                        if (tokens.length > 0) {
+                            const parsedServiceAccount = JSON.parse(serviceAccountJson);
+                            const projectId = parsedServiceAccount.project_id;
+
+                            const notificationData = {
+                                title: 'تم تلبية طلبك! 🎉',
+                                body: `تمت إضافة "${req.title}" إلى الموقع. مشاهدة ممتعة!`,
+                                image: '/icon-192.png',
+                                data: { url: '/' }
+                            };
+
+                            await Promise.all(tokens.map(async (token: string) => {
+                                await sendFCMv1Message(token, notificationData, accessToken, projectId);
+                            }));
+                            notificationSent = true;
+                            console.log('HTTP v1 Notification sent.');
+                        }
+                    } catch (notifyErr) {
+                        console.error("Failed to send notification:", notifyErr);
+                        addToast('فشل إرسال الإشعار، لكن سيتم إكمال الطلب.', 'error');
+                    }
+                } else if (req.userId && !serviceAccountJson) {
+                    addToast('لم يتم إرسال الإشعار لعدم وجود ملف الخدمة (Service Account) في الإعدادات.', 'error');
+                }
+
+                // 2. Delete Request
+                await deleteContentRequest(req.id);
+                setRequests(prev => prev.filter(r => r.id !== req.id));
+                addToast(notificationSent ? 'تمت تلبية الطلب وإشعار المستخدم.' : 'تمت تلبية الطلب (بدون إشعار).', 'success');
+
+            } catch (error) {
+                console.error(error);
+                addToast('حدث خطأ أثناء معالجة الطلب.', 'error');
+            }
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            {!serviceAccountJson && (
+                <div className="bg-yellow-900/20 border border-yellow-500/30 p-4 rounded-xl text-yellow-200 text-sm flex items-center gap-3">
+                    <span className="text-xl">⚠️</span>
+                    <span>تنبيه: يجب إضافة "ملف الخدمة (Service Account JSON)" في تبويب "إعدادات الموقع" لتفعيل الإشعارات التلقائية عند تلبية الطلبات.</span>
+                </div>
+            )}
+
+            <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+                    <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                        <InboxIcon />
+                        طلبات المحتوى ({requests.length})
+                    </h3>
+                    <button onClick={fetchRequests} className="text-sm text-blue-400 hover:underline">تحديث</button>
+                </div>
+                
+                {loading ? (
+                    <div className="text-center py-12 text-gray-500">جاري التحميل...</div>
+                ) : requests.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">لا يوجد طلبات جديدة حالياً.</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-right text-gray-300 whitespace-nowrap">
+                            <thead className="bg-gray-700/50 text-xs uppercase">
+                                <tr>
+                                    <th className="px-6 py-3">العنوان</th>
+                                    <th className="px-6 py-3">النوع</th>
+                                    <th className="px-6 py-3">ملاحظات</th>
+                                    <th className="px-6 py-3">التاريخ</th>
+                                    <th className="px-6 py-3">إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {requests.map(req => (
+                                    <tr key={req.id} className="border-b border-gray-700 hover:bg-gray-700/50">
+                                        <td className="px-6 py-4 font-bold text-white">{req.title}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 rounded text-xs ${req.type === 'movie' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                                                {req.type === 'movie' ? 'فيلم' : 'مسلسل'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 max-w-xs truncate text-gray-400" title={req.notes}>
+                                            {req.notes || '-'}
+                                        </td>
+                                        <td className="px-6 py-4 dir-ltr text-right text-xs">
+                                            {new Date(req.createdAt).toLocaleDateString('en-GB')}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <button 
+                                                onClick={() => handleFulfillRequest(req)}
+                                                className="bg-green-600 hover:bg-green-500 text-white font-bold py-1.5 px-4 rounded text-xs transition-colors shadow-sm"
+                                            >
+                                                ✓ تمت الإضافة
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 const UserManagementTab: React.FC<{
     users: User[], 
     onAddAdmin: (admin: Omit<User, 'id' | 'role' | 'profiles'>) => Promise<void>, 
@@ -808,8 +1027,209 @@ const SiteSettingsTab: React.FC<{
             <div className="bg-gray-800 p-6 rounded-xl border border-gray-700"><div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-[var(--color-primary-to)]">شريط الإعلانات العلوي (ShoutBar)</h3><ToggleSwitch checked={siteSettings.shoutBar.isVisible} onChange={(c) => handleNestedChange('shoutBar', 'isVisible', c)} /></div><input value={siteSettings.shoutBar.text} onChange={(e) => handleNestedChange('shoutBar', 'text', e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" placeholder="نص الشريط المتحرك..."/></div>
             <div className="bg-gray-800 p-6 rounded-xl border border-gray-700"><h3 className="text-lg font-bold text-[var(--color-primary-to)] mb-4">روابط التواصل الاجتماعي</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{Object.keys(siteSettings.socialLinks).map((key) => (<div key={key}><label className="block text-xs text-gray-400 mb-1 capitalize">{key}</label><input value={(siteSettings.socialLinks as any)[key]} onChange={(e) => handleNestedChange('socialLinks', key, e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm"/></div>))}</div></div>
              <div className="bg-gray-800 p-6 rounded-xl border border-gray-700"><div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-[var(--color-primary-to)]">العد التنازلي (رمضان / مناسبات)</h3><ToggleSwitch checked={siteSettings.isCountdownVisible} onChange={(c) => handleChange('isCountdownVisible', c)} /></div><label className="block text-xs text-gray-400 mb-1">تاريخ الانتهاء</label><input type="datetime-local" value={siteSettings.countdownDate.substring(0, 16)} onChange={(e) => handleChange('countdownDate', e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"/></div>
+            
+            {/* Added: Service Account JSON Input */}
+            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                <h3 className="text-lg font-bold text-[var(--color-primary-to)] mb-4">إعدادات الإشعارات (Firebase Cloud Messaging)</h3>
+                <div className="bg-gray-700/30 p-4 rounded-lg border border-gray-600">
+                    <label className="block text-xs font-bold text-gray-300 mb-2">Service Account JSON (مطلوب لـ FCM HTTP v1)</label>
+                    <textarea 
+                        value={siteSettings.serviceAccountJson || ''}
+                        onChange={(e) => handleChange('serviceAccountJson', e.target.value)}
+                        className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white font-mono text-xs focus:border-[var(--color-accent)] focus:outline-none h-40"
+                        placeholder='{ "type": "service_account", "project_id": "...", ... }'
+                    />
+                    <p className="text-[10px] text-gray-400 mt-2">
+                        انسخ محتوى ملف JSON الخاص بـ Service Account هنا. هذا مطلوب لإرسال الإشعارات عبر API v1 الجديد.
+                        <br/>
+                        <span className="text-red-400 font-bold">تحذير أمني:</span> هذا المفتاح يمنح صلاحيات كاملة. لا تشاركه مع أحد.
+                    </p>
+                </div>
+            </div>
+
             <div className="bg-gray-800 p-6 rounded-xl border border-gray-700"><h3 className="text-lg font-bold text-[var(--color-primary-to)] mb-4">سياسة الخصوصية</h3><textarea value={siteSettings.privacyPolicy} onChange={(e) => handleChange('privacyPolicy', e.target.value)} className="w-full h-40 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-sm"/></div>
             <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mt-4"><h3 className="text-lg font-bold text-[var(--color-primary-to)] mb-4">سياسة حقوق الملكية</h3><textarea value={siteSettings.copyrightPolicy || ''} onChange={(e) => handleChange('copyrightPolicy', e.target.value)} className="w-full h-40 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-sm" placeholder="أدخل نص سياسة حقوق الملكية هنا..."/></div>
+        </div>
+    );
+};
+
+// --- Notifications Tab ---
+const NotificationTab: React.FC<{ addToast: AdminPanelProps['addToast'], serviceAccountJson?: string }> = ({ addToast, serviceAccountJson }) => {
+    const [title, setTitle] = useState('');
+    const [body, setBody] = useState('');
+    const [image, setImage] = useState('');
+    const [url, setUrl] = useState('');
+    const [isSending, setIsSending] = useState(false);
+
+    const handleSend = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        if (!title || !body) {
+            addToast('الرجاء تعبئة العنوان والرسالة.', 'error');
+            return;
+        }
+
+        if (!serviceAccountJson) {
+            addToast('يجب إدخال Service Account JSON في الإعدادات أولاً.', 'error');
+            return;
+        }
+
+        setIsSending(true);
+
+        try {
+            // 1. Generate Access Token
+            const accessToken = await getAccessToken(serviceAccountJson);
+            if (!accessToken) {
+                addToast('فشل في إنشاء رمز الوصول (Access Token). تأكد من صحة ملف JSON.', 'error');
+                setIsSending(false);
+                return;
+            }
+
+            const parsedServiceAccount = JSON.parse(serviceAccountJson);
+            const projectId = parsedServiceAccount.project_id;
+
+            // 2. Fetch all users to get tokens
+            const usersSnapshot = await db.collection('users').get();
+            const tokens: string[] = [];
+
+            usersSnapshot.forEach(doc => {
+                const userData = doc.data();
+                if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
+                    userData.fcmTokens.forEach((token: string) => {
+                        if (token && !tokens.includes(token)) {
+                            tokens.push(token);
+                        }
+                    });
+                }
+            });
+
+            if (tokens.length === 0) {
+                addToast('لم يتم العثور على أي مستخدمين مسجلين للإشعارات.', 'info');
+                setIsSending(false);
+                return;
+            }
+
+            console.log(`Sending notification to ${tokens.length} devices...`);
+
+            // 3. Send using HTTP v1 API
+            const results = await Promise.all(tokens.map(async (token) => {
+                try {
+                    const notification = {
+                        title,
+                        body,
+                        image: image || undefined,
+                        data: { url: url || '/' }
+                    };
+                    
+                    await sendFCMv1Message(token, notification, accessToken, projectId);
+                    return true;
+                } catch (error) {
+                    console.error('FCM Error:', error);
+                    return false;
+                }
+            }));
+
+            const successCount = results.filter(Boolean).length;
+            
+            if (successCount > 0) {
+                addToast(`تم إرسال الإشعار بنجاح إلى ${successCount} جهاز!`, 'success');
+                setTitle('');
+                setBody('');
+                setImage('');
+                setUrl('');
+            } else {
+                addToast('فشل إرسال الإشعار لجميع الأجهزة.', 'error');
+            }
+
+        } catch (error) {
+            console.error(error);
+            addToast('حدث خطأ غير متوقع.', 'error');
+        } finally {
+            setIsSending(false);
+        }
+    };
+
+    return (
+        <div className="max-w-2xl mx-auto bg-gray-800 p-8 rounded-xl border border-gray-700 animate-fade-in-up">
+            <div className="flex items-center gap-3 mb-6 border-b border-gray-700 pb-4">
+                <PaperAirplaneIcon />
+                <h3 className="text-xl font-bold text-white">إرسال إشعار للمستخدمين</h3>
+            </div>
+
+            {!serviceAccountJson && (
+                <div className="mb-6 bg-red-900/20 border border-red-500/30 p-4 rounded-xl text-red-200 text-sm">
+                    ⚠️ لم يتم إعداد <strong>Service Account JSON</strong>. يرجى إضافته من تبويب "إعدادات الموقع" لتفعيل الإرسال.
+                </div>
+            )}
+
+            <form onSubmit={handleSend} className="space-y-5">
+                <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">عنوان الإشعار</label>
+                    <input 
+                        type="text" 
+                        value={title} 
+                        onChange={e => setTitle(e.target.value)} 
+                        className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] text-white" 
+                        placeholder="مثال: نزل الآن!"
+                        required
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">نص الرسالة</label>
+                    <textarea 
+                        value={body} 
+                        onChange={e => setBody(e.target.value)} 
+                        className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] text-white h-24 resize-none" 
+                        placeholder="مثال: الحلقة 5 من المؤسس عثمان متاحة بجودة عالية"
+                        required
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-bold text-gray-400 mb-2">رابط الصورة (اختياري)</label>
+                        <input 
+                            type="text" 
+                            value={image} 
+                            onChange={e => setImage(e.target.value)} 
+                            className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] text-white dir-ltr" 
+                            placeholder="https://..."
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-400 mb-2">رابط التوجيه (Deep Link)</label>
+                        <input 
+                            type="text" 
+                            value={url} 
+                            onChange={e => setUrl(e.target.value)} 
+                            className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] text-white dir-ltr" 
+                            placeholder="/movie/inception"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1">المسار النسبي للفيلم أو المسلسل (مثال: /series/game-of-thrones)</p>
+                    </div>
+                </div>
+
+                <div className="pt-4">
+                    <button 
+                        type="submit" 
+                        disabled={isSending || !serviceAccountJson}
+                        className={`w-full bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 ${isSending || !serviceAccountJson ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg'}`}
+                    >
+                        {isSending ? (
+                            <>
+                                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                                <span>جاري الإرسال...</span>
+                            </>
+                        ) : (
+                            <>
+                                <PaperAirplaneIcon />
+                                <span>إرسال الإشعار الآن</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </form>
         </div>
     );
 };

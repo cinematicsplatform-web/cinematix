@@ -117,3 +117,10 @@ input:-webkit-autofill:active {
     /* Optional: Set a box shadow to match the dark theme if transition fails */
     -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
 }
+
+/* --- Mobile Custom Crop Utility --- */
+@media (max-width: 768px) {
+  .mobile-custom-crop {
+    object-position: var(--mob-x, 50%) var(--mob-y, 50%) !important;
+  }
+}

@@ -1,4 +1,5 @@
 
+
 export const ContentType = {
   Movie: 'movie',
   Series: 'series',
@@ -66,6 +67,13 @@ export interface Season {
   releaseYear?: number; // New: Optional release year for the season
   description?: string; // New: Optional description/plot for the season
   cast?: string[]; // New: Optional cast specific to the season
+  
+  // Mobile Specifics
+  mobileImageUrl?: string; // Optional custom image for mobile (Portrait/Custom Crop)
+  useCustomMobileImage?: boolean; // Toggle to use the custom image
+  mobileCropPosition?: number; // Legacy X
+  mobileCropPositionX?: number; // 0-100 percentage X
+  mobileCropPositionY?: number; // 0-100 percentage Y
 }
 
 export interface Content {
@@ -92,7 +100,9 @@ export interface Content {
   isLogoEnabled?: boolean; // New: Toggle to show logo instead of text
   duration?: string; // New: Movie duration (e.g., "1h 30m")
   enableMobileCrop?: boolean; // New: Toggle for mobile image cropping
-  mobileCropPosition?: number; // New: Percentage (0-100) for object-position-x on mobile
+  mobileCropPosition?: number; // Legacy X
+  mobileCropPositionX?: number; // New: Percentage (0-100) X
+  mobileCropPositionY?: number; // New: Percentage (0-100) Y
   slug?: string; // New: SEO friendly URL slug
 }
 
@@ -145,6 +155,7 @@ export interface User {
   password?: string; // In a real app, this would be a hash
   role: UserRole;
   profiles: Profile[];
+  fcmTokens?: string[]; // For notifications
 }
 
 export const adPlacements = [
@@ -313,4 +324,16 @@ export interface SiteSettings {
     showTop10Home: boolean;
     showTop10Movies: boolean;
     showTop10Series: boolean;
+    serviceAccountJson?: string; // Replaced fcmServerKey with this
+}
+
+// New Interface for Content Requests
+export interface ContentRequest {
+    id: string;
+    title: string;
+    type: 'movie' | 'series';
+    notes?: string;
+    userId?: string | null; // Allow null
+    status: 'pending' | 'completed';
+    createdAt: string; // ISO String
 }

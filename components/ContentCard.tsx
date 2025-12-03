@@ -114,6 +114,12 @@ const ContentCard: React.FC<ContentCardProps> = ({ content, onSelectContent, isL
   const rankNumColor = 'text-black';
   const rankLabelColor = 'text-black/80';
 
+  // Custom Logic for Mobile Crop via CSS Variables
+  const cropStyle: React.CSSProperties = content.enableMobileCrop ? {
+      '--mob-x': `${content.mobileCropPositionX ?? content.mobileCropPosition ?? 50}%`,
+      '--mob-y': `${content.mobileCropPositionY ?? 50}%`,
+  } as React.CSSProperties : {};
+
   return (
     <div 
         onClick={() => onSelectContent(content)} 
@@ -130,7 +136,8 @@ const ContentCard: React.FC<ContentCardProps> = ({ content, onSelectContent, isL
             <img 
                 src={displayPoster} 
                 alt={content.title} 
-                className="w-full h-full object-cover transition-transform duration-500" 
+                className={`w-full h-full object-cover transition-transform duration-500 ${content.enableMobileCrop ? 'mobile-custom-crop' : ''}`} 
+                style={cropStyle}
                 loading="lazy"
             />
 

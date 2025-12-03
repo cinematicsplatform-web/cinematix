@@ -206,7 +206,14 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                 
                 {/* Results List */}
                 <div className="flex flex-col p-2 gap-2">
-                    {searchResults.map((content) => (
+                    {searchResults.map((content) => {
+                      // Custom Logic for Mobile Crop via CSS Variables
+                      const cropStyle: React.CSSProperties = content.enableMobileCrop ? {
+                          '--mob-x': `${content.mobileCropPositionX ?? content.mobileCropPosition ?? 50}%`,
+                          '--mob-y': `${content.mobileCropPositionY ?? 50}%`,
+                      } as React.CSSProperties : {};
+
+                      return (
                       <button 
                         key={content.id} 
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleResultClick(content); }}
@@ -216,7 +223,8 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                         <img 
                             src={content.poster} 
                             alt={content.title} 
-                            className="w-[50px] h-[70px] rounded-lg object-cover shadow-lg flex-shrink-0 bg-gray-800" 
+                            className={`w-[50px] h-[70px] rounded-lg object-cover shadow-lg flex-shrink-0 bg-gray-800 ${content.enableMobileCrop ? 'mobile-custom-crop' : ''}`}
+                            style={cropStyle} 
                         />
 
                         {/* Content Info - Middle */}
@@ -249,7 +257,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                             </span>
                         </div>
                       </button>
-                    ))}
+                    )})}
                 </div>
               </div>
             )}

@@ -21,6 +21,7 @@ interface CategoryPageProps {
   isNetflixRedTheme?: boolean;
   ads?: Ad[];
   adsEnabled?: boolean;
+  onRequestOpen?: () => void; // Handler for request modal
 }
 
 const CategoryPage: React.FC<CategoryPageProps> = ({ 
@@ -36,7 +37,8 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
     isCosmicTealTheme,
     isNetflixRedTheme,
     ads = [],
-    adsEnabled = false
+    adsEnabled = false,
+    onRequestOpen
 }) => {
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -225,12 +227,37 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                 ))}
             </div>
             ) : (
-            <div className="flex flex-col items-center justify-center py-32 text-center opacity-60">
+            <div className="flex flex-col items-center justify-center py-20 text-center opacity-80 animate-fade-in-up">
                 <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
                     <SearchIcon className="h-10 w-10 text-gray-400" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-300 mb-2">لا توجد نتائج</h2>
-                <p className="text-gray-500">لم يتم العثور على محتوى مطابق لبحثك في هذا القسم.</p>
+                <p className="text-gray-500 mb-8 max-w-sm mx-auto">لم يتم العثور على محتوى مطابق لبحثك في هذا القسم.</p>
+                
+                {/* Request Feature Entry Point */}
+                {onRequestOpen && (
+                    <div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700 max-w-md w-full">
+                        <h3 className="text-lg font-bold text-white mb-2">لم تجد ما تبحث عنه؟</h3>
+                        <p className="text-sm text-gray-400 mb-4">يمكنك طلب إضافة الفيلم أو المسلسل الذي تريده.</p>
+                        <button 
+                            onClick={onRequestOpen}
+                            className={`w-full py-3 rounded-xl font-bold text-black transition-all hover:scale-[1.02] shadow-lg
+                                ${isRamadanTheme 
+                                    ? 'bg-[#FFD700] hover:bg-amber-400' 
+                                    : isEidTheme 
+                                        ? 'bg-purple-500 text-white hover:bg-purple-400' 
+                                        : isCosmicTealTheme
+                                            ? 'bg-[#35F18B] hover:bg-[#2596be]'
+                                            : isNetflixRedTheme
+                                                ? 'bg-[#E50914] text-white hover:bg-[#b20710]'
+                                                : 'bg-[#00A7F8] hover:bg-[#00FFB0]'
+                                }
+                            `}
+                        >
+                            اطلبه الآن
+                        </button>
+                    </div>
+                )}
             </div>
             )}
 
