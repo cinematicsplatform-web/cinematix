@@ -1,0 +1,54 @@
+
+{
+  "name": "سينماتيكس | Cinematix",
+  "short_name": "Cinematix",
+  "description": "منصتكم الأولى للترفيه العربي والتركي والأجنبي. شاهدوا أحدث الأفلام والمسلسلات بجودة عالية.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "gcm_sender_id": "103953800507",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300A7F8'/%3E%3Cstop offset='100%25' stop-color='%2300FFB0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='120' fill='%23141b29'/%3E%3Ctext x='50%25' y='50%25' dy='.35em' fill='url(%23g)' font-family='sans-serif' font-weight='900' font-size='320' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E",
+      "type": "image/svg+xml",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300A7F8'/%3E%3Cstop offset='100%25' stop-color='%2300FFB0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='120' fill='%23141b29'/%3E%3Ctext x='50%25' y='50%25' dy='.35em' fill='url(%23g)' font-family='sans-serif' font-weight='900' font-size='320' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300A7F8'/%3E%3Cstop offset='100%25' stop-color='%2300FFB0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='120' fill='%23141b29'/%3E%3Ctext x='50%25' y='50%25' dy='.35em' fill='url(%23g)' font-family='sans-serif' font-weight='900' font-size='320' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E",
+      "type": "image/svg+xml",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300A7F8'/%3E%3Cstop offset='100%25' stop-color='%2300FFB0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='120' fill='%23141b29'/%3E%3Ctext x='50%25' y='50%25' dy='.35em' fill='url(%23g)' font-family='sans-serif' font-weight='900' font-size='320' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["entertainment", "movies", "series"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "الأفلام",
+      "url": "/movies",
+      "description": "تصفح أحدث الأفلام"
+    },
+    {
+      "name": "المسلسلات",
+      "url": "/series",
+      "description": "تصفح أحدث المسلسلات"
+    }
+  ]
+}
