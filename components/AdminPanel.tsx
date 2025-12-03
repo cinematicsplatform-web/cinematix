@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { db, generateSlug, getContentRequests, deleteContentRequest, getUserProfile } from '../firebase';
 import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, PageKey, ThemeType, Category, Genre, Season, Episode, Server, ContentRequest } from '../types';
@@ -169,7 +170,21 @@ const SiteSettingsTab: React.FC<{
     const generateSpecificSitemap = (type: 'index' | 'movies' | 'series' | 'seasons' | 'episodes') => {
         const baseUrl = 'https://cinematix-kappa.vercel.app';
         const date = new Date().toISOString().split('T')[0];
-        const escapeXml = (unsafe: string) => unsafe.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+        
+        // --- SAFE URL ESCAPING FUNCTION ---
+        // Prevents Fatal XML Parse Error (EntityRef: expecting ';')
+        const escapeXml = (unsafe: string) => {
+            return unsafe.replace(/[<>&'"]/g, function (c) {
+                switch (c) {
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '&': return '&amp;';
+                    case '\'': return '&apos;';
+                    case '"': return '&quot;';
+                    default: return c;
+                }
+            });
+        };
 
         let xmlContent = '';
         let fileName = '';
@@ -179,19 +194,19 @@ const SiteSettingsTab: React.FC<{
             xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
-    <loc>${baseUrl}/movie-sitemap.xml</loc>
+    <loc>${escapeXml(`${baseUrl}/movie-sitemap.xml`)}</loc>
     <lastmod>${date}</lastmod>
   </sitemap>
   <sitemap>
-    <loc>${baseUrl}/series-sitemap.xml</loc>
+    <loc>${escapeXml(`${baseUrl}/series-sitemap.xml`)}</loc>
     <lastmod>${date}</lastmod>
   </sitemap>
   <sitemap>
-    <loc>${baseUrl}/season-sitemap.xml</loc>
+    <loc>${escapeXml(`${baseUrl}/season-sitemap.xml`)}</loc>
     <lastmod>${date}</lastmod>
   </sitemap>
   <sitemap>
-    <loc>${baseUrl}/episode-sitemap.xml</loc>
+    <loc>${escapeXml(`${baseUrl}/episode-sitemap.xml`)}</loc>
     <lastmod>${date}</lastmod>
   </sitemap>
 </sitemapindex>`;
@@ -210,7 +225,8 @@ const SiteSettingsTab: React.FC<{
                     const title = escapeXml(item.title);
                     const thumbnail = item.poster || '';
 
-                    xmlContent += `  <url>\n    <loc>${url}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.9</priority>\n`;
+                    // Apply escapeXml to URL to fix EntityRef errors
+                    xmlContent += `  <url>\n    <loc>${escapeXml(url)}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.9</priority>\n`;
                     xmlContent += `    <video:video>\n      <video:thumbnail_loc>${escapeXml(thumbnail)}</video:thumbnail_loc>\n      <video:title>${title}</video:title>\n      <video:description>${desc.substring(0, 1000)}</video:description>\n      <video:publication_date>${item.releaseYear}-01-01T00:00:00+00:00</video:publication_date>\n    </video:video>\n`;
                     xmlContent += `  </url>\n`;
                 });
@@ -221,7 +237,8 @@ const SiteSettingsTab: React.FC<{
                     const slug = item.slug || item.id;
                     const url = `${baseUrl}/مسلسل/${slug}`;
                     const itemDate = item.updatedAt ? item.updatedAt.split('T')[0] : date;
-                    xmlContent += `  <url>\n    <loc>${url}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n`;
+                    // Apply escapeXml to URL
+                    xmlContent += `  <url>\n    <loc>${escapeXml(url)}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n`;
                 });
             } else if (type === 'seasons') {
                 fileName = 'season-sitemap.xml';
@@ -231,7 +248,8 @@ const SiteSettingsTab: React.FC<{
                     const itemDate = item.updatedAt ? item.updatedAt.split('T')[0] : date;
                     item.seasons?.forEach(season => {
                         const url = `${baseUrl}/مسلسل/${slug}/الموسم/${season.seasonNumber}`;
-                        xmlContent += `  <url>\n    <loc>${url}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+                        // Apply escapeXml to URL
+                        xmlContent += `  <url>\n    <loc>${escapeXml(url)}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
                     });
                 });
             } else if (type === 'episodes') {
@@ -250,7 +268,8 @@ const SiteSettingsTab: React.FC<{
                             const epThumb = ep.thumbnail || item.poster || '';
                             const desc = escapeXml(item.description || item.title);
 
-                            xmlContent += `  <url>\n    <loc>${url}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n`;
+                            // Apply escapeXml to URL
+                            xmlContent += `  <url>\n    <loc>${escapeXml(url)}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n`;
                             xmlContent += `    <video:video>\n      <video:thumbnail_loc>${escapeXml(epThumb)}</video:thumbnail_loc>\n      <video:title>${escapeXml(epTitle)}</video:title>\n      <video:description>${desc.substring(0, 1000)}</video:description>\n      <video:publication_date>${item.releaseYear}-01-01T00:00:00+00:00</video:publication_date>\n    </video:video>\n`;
                             xmlContent += `  </url>\n`;
                         });
