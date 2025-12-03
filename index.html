@@ -4,29 +4,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="google-site-verification" content="EXH46Rn7mAAL5WJwovaVgk4ZYk82r0gINqGVdfFgeqM" />
-    <!-- Custom Favicon: Dark Theme Gradient C -->
-    <link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300A7F8'/%3E%3Cstop offset='100%25' stop-color='%2300FFB0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='120' fill='%23141b29'/%3E%3Ctext x='50%25' y='50%25' dy='.35em' fill='url(%23g)' font-family='sans-serif' font-weight='900' font-size='320' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E" />
-    <link rel="apple-touch-icon" href="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300A7F8'/%3E%3Cstop offset='100%25' stop-color='%2300FFB0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='120' fill='%23141b29'/%3E%3Ctext x='50%25' y='50%25' dy='.35em' fill='url(%23g)' font-family='sans-serif' font-weight='900' font-size='320' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E" />
     
-    <!-- PWA Manifest -->
+    <!-- --- PWA Setup & Favicons --- -->
+    <!-- Manifest File -->
     <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Standard Favicon (Using Data URI for portability) -->
+    <link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300A7F8'/%3E%3Cstop offset='100%25' stop-color='%2300FFB0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='120' fill='%23141b29'/%3E%3Ctext x='50%25' y='50%25' dy='.35em' fill='url(%23g)' font-family='sans-serif' font-weight='900' font-size='320' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E" />
+    
+    <!-- iOS Touch Icon -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300A7F8'/%3E%3Cstop offset='100%25' stop-color='%2300FFB0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='120' fill='%23141b29'/%3E%3Ctext x='50%25' y='50%25' dy='.35em' fill='url(%23g)' font-family='sans-serif' font-weight='900' font-size='320' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E" />
 
+    <!-- Mobile Viewport -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <!-- iOS PWA Capable -->
+    <!-- iOS PWA Config -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Cinematix">
+
+    <!-- Theme Colors (Default to Black for Cinematic feel) -->
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 
     <!-- Primary Meta Tags will be managed by React Helmet, keeping defaults here for fallback -->
     <title>سينماتيكس | Cinematix - مشاهدة أفلام ومسلسلات اون لاين</title>
     <meta name="title" content="سينماتيكس | Cinematix - مشاهدة أفلام ومسلسلات اون لاين">
     <meta name="description" content="منصتكم الأولى للترفيه العربي والتركي والأجنبي. شاهدوا أحدث الأفلام والمسلسلات بجودة عالية في أي وقت ومن أي مكان.">
     
-    <!-- Theme Color for Mobile Browsers -->
-    <meta name="theme-color" content="#141b29" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#141b29" media="(prefers-color-scheme: dark)">
-
     <!-- Import Map MUST be before any module scripts -->
     <script type="importmap">
     {
@@ -339,11 +344,16 @@
           document.body.classList.add('theme-netflix-red');
         }
         
+        // Update Theme Color Meta Tag dynamically
         const metaThemeColor = document.querySelector('meta[name="theme-color"]');
         if(metaThemeColor) {
-            if (themeToApply === 'netflix-red') metaThemeColor.setAttribute('content', '#141414');
-            else if (themeToApply !== 'default') metaThemeColor.setAttribute('content', '#000000');
-            else metaThemeColor.setAttribute('content', '#141b29');
+            if (themeToApply !== 'default') {
+                // If special theme, usually black or dark background is preferred for status bar
+                metaThemeColor.setAttribute('content', '#000000');
+            } else {
+                // Default theme color
+                metaThemeColor.setAttribute('content', '#141b29');
+            }
         }
 
       } catch (e) {}
