@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://cinematix-kappa.vercel.app/sitemap.xml
