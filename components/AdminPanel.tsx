@@ -10,7 +10,7 @@ import ToggleSwitch from './ToggleSwitch';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { CloseIcon } from './icons/CloseIcon';
 import * as XLSX from 'xlsx'; // Imported from esm.sh via importmap
-import * as jsrsasign from 'jsrsasign'; // JWT Signing library
+import * as jsrsasign from 'jsrsasign'; // JWT Signing library - Ensure installed via npm
 
 // Icons
 const ArrowUpTrayIcon = () => (
@@ -52,6 +52,7 @@ const getAccessToken = async (serviceAccountJson: string): Promise<string | null
         };
 
         // Use jsrsasign to sign
+        // Note: KJUR is a namespace in jsrsasign. If import * as jsrsasign fails, check node_modules/jsrsasign installation.
         const sJWS = jsrsasign.KJUR.jws.JWS.sign(null, header, claim, private_key);
 
         const body = new URLSearchParams();
