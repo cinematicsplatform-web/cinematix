@@ -602,9 +602,19 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   // --- TRAILER URL (FIXED MUTE ISSUE) ---
   // Always initialize mute=1 so URL doesn't change on mute toggle
-  const heroEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}` : '';
+  const heroEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playlist=${trailerVideoId}&playsinline=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}` : '';
   
   const modalEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=0&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1` : '';
+
+  const containerBgColor = isRamadanTheme 
+    ? 'bg-[#1a1000]' 
+    : isEidTheme 
+        ? 'bg-[#1a0b2e]' 
+        : isCosmicTealTheme
+            ? 'bg-[#0b1116]' 
+            : isNetflixRedTheme
+                ? 'bg-[#141414]' 
+                : 'bg-black';
 
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0">
@@ -633,8 +643,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
       })}
 
       {/* --- 1. Hero Section (Updated) --- */}
-      <div className="relative h-[80vh] w-full overflow-hidden group">
-        <div className="absolute inset-0 bg-black">
+      <div className={`relative h-[80vh] md:h-[85vh] w-full overflow-hidden group ${containerBgColor}`}>
+        <div className="absolute inset-0 bg-transparent">
             {/* 1.1 Poster Image (Transition Out) */}
             <img 
                 src={displayBackdrop} 
@@ -651,7 +661,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         <iframe 
                             ref={heroIframeRef}
                             src={heroEmbedUrl}
-                            className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none" 
+                            className="absolute top-1/2 left-1/2 w-[100vw] h-[56.25vw] min-h-[100vh] min-w-[177.77vh] -translate-x-1/2 -translate-y-1/2 object-cover pointer-events-none"
                             allow="autoplay; encrypted-media; picture-in-picture" 
                             title="Trailer"
                             frameBorder="0"
@@ -666,8 +676,10 @@ const DetailPage: React.FC<DetailPageProps> = ({
         </div>
 
         {/* Content Layer */}
-        <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 pb-4 md:pb-12 flex flex-col justify-end items-start z-20">
-            <div className="max-w-4xl w-full animate-fade-in-up flex flex-col items-center md:items-start text-center md:text-right">
+        {/* UPDATE: Removed animate-fade-in-up class here for immediate appearance */}
+        {/* UPDATE: Reduced pb-4 to pb-1 on mobile to push content down near the separator */}
+        <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 pb-1 md:pb-12 flex flex-col justify-end items-start z-20">
+            <div className="max-w-4xl w-full flex flex-col items-center md:items-start text-center md:text-right">
                 
                 {/* Logo/Title */}
                 {content.isLogoEnabled && displayLogo ? (
@@ -720,15 +732,10 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     </div>
                 </div>
 
-                {/* Description (Fade Out on Video) */}
-                <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${showVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-6'}`}>
-                    <p className="text-gray-300 text-base md:text-lg line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-2xl">
-                        {content.description}
-                    </p>
-                </div>
+                {/* --- DESCRIPTION REMOVED FROM HERO SECTION TO AVOID DUPLICATION ON WATCH PAGE --- */}
 
                 {/* Action Buttons Row */}
-                <div className="flex items-center justify-center md:justify-start gap-4 w-full md:w-auto relative z-40 mt-1 md:mt-2">
+                <div className={`flex items-center justify-center md:justify-start gap-4 w-full md:w-auto relative z-40 transition-all duration-500 ${showVideo ? 'mt-6' : 'mt-2'}`}>
                     
                     <div className="flex items-center gap-3 w-full md:w-auto">
                         <ActionButtons 
@@ -740,7 +747,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             isEidTheme={isEidTheme}
                             isCosmicTealTheme={isCosmicTealTheme}
                             isNetflixRedTheme={isNetflixRedTheme}
-                            className="flex-1 md:flex-none"
                         />
 
                         {/* 2. Mute/Replay Button - Visible if video is playing OR ended */}

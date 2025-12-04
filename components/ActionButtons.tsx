@@ -71,29 +71,16 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   return (
     <div className={`w-full md:w-auto flex flex-row items-stretch gap-4 z-30 relative action-buttons-container ${className}`}>
-      {/* Watch Button - Updated Style: Rounded Full, Bold Font, Scaled up 5% */}
+      {/* Watch Button - Updated Style: Scaling restricted to md (desktop) to prevent overflow on mobile */}
       <button 
         onClick={(e) => { e.stopPropagation(); onWatch(); }}
-        className={`
-          flex-grow md:flex-none
-          min-w-fit
-          flex items-center justify-center gap-3
-          font-bold 
-          py-3.5 px-8 md:py-4 md:px-10
-          rounded-full
-          text-base md:text-lg
-          transform scale-[1.05] hover:scale-[1.10] active:scale-[0.98] 
-          transition-all duration-300
-          whitespace-nowrap
-          target-watch-btn
-          ${primaryBtnClass}
-        `}
+        className={`flex-grow md:flex-none min-w-fit flex items-center justify-center gap-3 font-bold py-3.5 px-8 md:py-4 md:px-10 rounded-full text-base md:text-lg transform md:scale-[1.05] md:hover:scale-[1.10] active:scale-[0.98] transition-all duration-300 whitespace-nowrap target-watch-btn ${primaryBtnClass}`}
       >
         <PlayIcon className="w-6 h-6 md:w-7 md:h-7 fill-current" />
         <span>شاهد الآن</span>
       </button>
       
-      {/* My List Button - Updated Style: Rounded Full, Bold Font, Scaled up 5% */}
+      {/* My List Button - Updated Style: Scaling restricted to md (desktop) */}
       {showMyList && onToggleMyList && (
         <button 
           onClick={handleToggle}
@@ -105,7 +92,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
             py-3.5 px-8 md:py-4 md:px-10
             rounded-full
             text-base md:text-lg
-            transition-all duration-300 transform scale-[1.05] hover:scale-[1.10] active:scale-[0.98] whitespace-nowrap
+            transition-all duration-300 transform md:scale-[1.05] md:hover:scale-[1.10] active:scale-[0.98] whitespace-nowrap
             ${isInMyList 
               ? myListActiveClass 
               : myListBaseClass

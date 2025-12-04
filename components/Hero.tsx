@@ -17,6 +17,7 @@ interface HeroProps {
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
+  hideDescription?: boolean; // New Prop to control description visibility
 }
 
 const Hero: React.FC<HeroProps> = ({ 
@@ -29,7 +30,8 @@ const Hero: React.FC<HeroProps> = ({
     isRamadanTheme,
     isEidTheme,
     isCosmicTealTheme,
-    isNetflixRedTheme
+    isNetflixRedTheme,
+    hideDescription = false // Default to showing description
 }) => {
     // --- Internal State ---
     const [unboundedIndex, setUnboundedIndex] = useState(0);
@@ -103,24 +105,29 @@ const Hero: React.FC<HeroProps> = ({
 
     // 4. Video Playback Logic (Initial Load & Visibility)
     useEffect(() => {
-        // Don't auto-play if not in view or dragging
-        if (!isInView || isDragging) return;
+        // INTERACTION FIX: Decoupled isDragging from reset logic.
+        // We only stop the video if isInView is false (Scroll rule).
+        // We do NOT stop it just because drag started.
+        
+        if (!isInView) {
+            setShowVideo(false);
+            return;
+        }
 
-        // Reset video state initially
-        setShowVideo(false);
-        setIsMuted(true);
+        // If video is already playing, don't restart it just because of re-renders/clicks
+        if (showVideo) return;
 
         if (!activeContent || !activeContent.trailerUrl || isMobile) return;
 
         const trailerTimer = setTimeout(() => {
-            // Double check visibility before playing
+            // Only start if we are not actively dragging and still in view
             if (!isDragging && isInView) {
                 setShowVideo(true);
             }
         }, 3500); 
 
         return () => clearTimeout(trailerTimer);
-    }, [activeIndex, activeContent?.id, isInView, isMobile, isDragging]);
+    }, [activeIndex, activeContent?.id, isInView, isMobile, isDragging, showVideo]);
 
     // 5. Auto Slider Logic
     useEffect(() => {
@@ -320,15 +327,22 @@ const Hero: React.FC<HeroProps> = ({
                         }}
                     >
                         {/* 1. Background Layer */}
-                        <div className="absolute inset-0 w-full h-full">
+                        <div className="absolute inset-0 w-full h-full overflow-hidden">
                             {shouldShowVideo && (
                                 <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in-up pointer-events-none"> 
                                     <div className="relative w-full h-full pointer-events-none">
-                                        {/* Visual Rule: w-full h-full object-cover ensures it fills width and allows cropping height */}
+                                        {/* 
+                                            ASPECT RATIO FIX: 
+                                            - Simulates object-fit: cover for iframe to force horizontal fill.
+                                            - w-[100vw] + h-[56.25vw]: Standard 16:9 based on viewport width.
+                                            - min-h-full: Ensures it covers height if screen is tall.
+                                            - min-w-[177.77vh]: Ensures it covers width if screen is wide/standard (based on 16:9 of height).
+                                            - centered via translate
+                                        */}
                                         <iframe 
                                             ref={iframeRef}
                                             src={embedUrl} 
-                                            className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none" 
+                                            className="absolute top-1/2 left-1/2 w-[100vw] h-[56.25vw] min-h-[100vh] min-w-[177.77vh] -translate-x-1/2 -translate-y-1/2 object-cover pointer-events-none"
                                             allow="autoplay; encrypted-media; picture-in-picture" 
                                             title="Trailer"
                                             frameBorder="0"
@@ -356,7 +370,7 @@ const Hero: React.FC<HeroProps> = ({
 
                         {/* 2. Content Overlay Layer */}
                         <div className={`
-                            absolute inset-0 z-30 flex flex-col justify-end px-4 md:px-12 pb-12 md:pb-32 text-white pointer-events-none 
+                            absolute inset-0 z-30 flex flex-col justify-end px-4 md:px-12 pb-4 md:pb-32 text-white pointer-events-none 
                             transition-opacity duration-500 ease-in-out
                             ${textOpacityClass}
                         `}>
@@ -434,15 +448,15 @@ const Hero: React.FC<HeroProps> = ({
                                     )}
                                 </div>
 
-                                <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-1 md:mb-2'}`}>
-                                    <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-2 md:line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-xl font-medium">
-                                        {content.description}
-                                    </p>
-                                </div>
+                                {!hideDescription && (
+                                    <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-1 md:mb-2'}`}>
+                                        <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-2 md:line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-xl font-medium">
+                                            {content.description}
+                                        </p>
+                                    </div>
+                                )}
 
-                                {hasMultiple && renderDots("mb-2 md:hidden")}
-
-                                <div className="flex items-center gap-4 w-full justify-center md:justify-start relative z-40 mt-1">
+                                <div className={`flex items-center gap-4 w-full justify-center md:justify-start relative z-40 transition-all duration-500 ${shouldShowVideo ? 'mt-6' : 'mt-4'}`}>
                                     <ActionButtons 
                                         onWatch={() => onWatchNow(content)}
                                         onToggleMyList={() => onToggleMyList(content.id)}
@@ -466,6 +480,10 @@ const Hero: React.FC<HeroProps> = ({
                                         </button>
                                     )}
                                 </div>
+
+                                {/* Mobile Dots - Moved below Action Buttons */}
+                                {hasMultiple && renderDots("mt-4 md:hidden")} 
+
                             </div>
                         </div>
                     </div>
