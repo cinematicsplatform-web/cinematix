@@ -64,6 +64,7 @@ export interface Season {
   poster?: string; // New: Season specific poster
   backdrop?: string; // New: Season specific backdrop
   logoUrl?: string; // New: Season specific logo (transparent)
+  trailerUrl?: string; // New: Season specific trailer URL (Optional)
   releaseYear?: number; // New: Optional release year for the season
   description?: string; // New: Optional description/plot for the season
   cast?: string[]; // New: Optional cast specific to the season

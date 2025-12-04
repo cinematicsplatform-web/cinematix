@@ -103,7 +103,7 @@ const RamadanPage: React.FC<RamadanPageProps> = ({ allContent, pinnedContent, on
     allContent.filter(c => c.categories.includes('رمضان'))
   , [allContent]);
   
-  // 🎯 2. Hero Content Logic
+  // 🎯 Master Hero Logic: Ensure 5 items for Infinite Loop
   const heroContents = useMemo(() => {
     if (pinnedContent && pinnedContent.length > 0) {
         return pinnedContent;
@@ -230,7 +230,8 @@ const RamadanPage: React.FC<RamadanPageProps> = ({ allContent, pinnedContent, on
   }
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans overflow-x-hidden selection:bg-amber-500 selection:text-black">
+    // CRITICAL FIX: Clean Container Structure - Absolutely NO overflow-x-hidden here to allow sticky/drag gestures
+    <div className="relative min-h-screen bg-black text-white font-sans selection:bg-amber-500 selection:text-black">
         
         <SEO 
             title="رمضان 2026 - سينماتيكس" 
@@ -238,7 +239,7 @@ const RamadanPage: React.FC<RamadanPageProps> = ({ allContent, pinnedContent, on
             type="website"
         />
 
-        {/* Ramadan Decorative Background */}
+        {/* Ramadan Decorative Background - Fixed and low z-index */}
         <div className="fixed inset-0 z-0 pointer-events-none opacity-30">
             <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] bg-repeat opacity-20"></div>
              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-600/10 rounded-full blur-[100px] animate-pulse"></div>
@@ -257,13 +258,11 @@ const RamadanPage: React.FC<RamadanPageProps> = ({ allContent, pinnedContent, on
             />
         </div>
 
-        {/* Main Content */}
-        <main className="pb-24 z-30 relative bg-black">
+        <main className="relative z-30 pb-24 bg-black">
              
             {/* Horizontal Divider - Gold Gradient (#FFD700) - COMPACT UPDATE */}
             <div className="w-full h-px bg-gradient-to-r from-transparent via-[#FFD700] to-transparent opacity-60 mt-0 mb-2 md:my-4"></div>
             
-            {/* NEW: Page Specific Banner */}
             {adsEnabled && <AdZone position="page_ramadan_top" />}
 
             <AdPlacement ads={ads} placement="ramadan-top" isEnabled={adsEnabled} />

@@ -208,6 +208,21 @@ const App: React.FC = () => {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   }, []);
 
+  // --- FORCE KIDS MODE LOGIC ---
+  useEffect(() => {
+      if (activeProfile?.isKid) {
+          // List of allowed views for Kids
+          const allowedKidsViews: View[] = ['kids', 'detail', 'profileSelector', 'accountSettings', 'profileHub', 'myList', 'maintenance'];
+          
+          if (!allowedKidsViews.includes(view)) {
+              // Redirect to Kids Home if user tries to access an adult view
+              console.log("Blocking adult view for Kid profile, redirecting to Kids Home");
+              setView('kids');
+              safeHistoryReplace('/kids');
+          }
+      }
+  }, [activeProfile, view]);
+
   // --- SMART POPUNDER ENGINE ---
   useEffect(() => {
       if (!siteSettings.adsEnabled) return;
@@ -552,7 +567,12 @@ const App: React.FC = () => {
   const handleProfileSelect = (profile: Profile) => {
       localStorage.setItem('cinematix_active_profile', String(profile.id));
       setActiveProfile(profile);
-      handleSetView('home');
+      // Determine correct landing page based on profile type
+      if (profile.isKid) {
+          handleSetView('kids');
+      } else {
+          handleSetView('home');
+      }
   };
 
   const handleToggleMyList = async (contentId: string) => {
@@ -718,6 +738,7 @@ const App: React.FC = () => {
                         isEidTheme={isEidTheme}
                         isCosmicTealTheme={isCosmicTealTheme}
                         isNetflixRedTheme={isNetflixRedTheme}
+                        activeProfile={activeProfile}
                      />;
           case 'movies':
               return <MoviesPage 
@@ -824,7 +845,7 @@ const App: React.FC = () => {
                ) : (isContentLoading ? (
                  <LoadingSpinner />
                ) : (
-                 <HomePage {...{allContent, pinnedContent: [], onSelectContent: handleSelectContent, isLoggedIn: !!currentUser, myList: activeProfile?.myList, onToggleMyList: handleToggleMyList, ads, siteSettings, onNavigate: handleSetView}} isLoading={isContentLoading} />
+                 <HomePage {...{allContent, pinnedContent: [], onSelectContent: handleSelectContent, isLoggedIn: !!currentUser, myList: activeProfile?.myList, onToggleMyList: handleToggleMyList, ads, siteSettings, onNavigate: handleSetView, activeProfile}} isLoading={isContentLoading} />
                ));
            case 'login':
                if (isAuthLoading) return <LoadingSpinner />;
@@ -888,7 +909,7 @@ const App: React.FC = () => {
                         onContentChanged={fetchData}
                         addToast={addToast}
                     />
-                ) : <HomePage {...{allContent, pinnedContent: [], onSelectContent: handleSelectContent, isLoggedIn: !!currentUser, myList: activeProfile?.myList, onToggleMyList: handleToggleMyList, ads, siteSettings, onNavigate: handleSetView}} isLoading={isContentLoading} />;
+                ) : <HomePage {...{allContent, pinnedContent: [], onSelectContent: handleSelectContent, isLoggedIn: !!currentUser, myList: activeProfile?.myList, onToggleMyList: handleToggleMyList, ads, siteSettings, onNavigate: handleSetView, activeProfile}} isLoading={isContentLoading} />;
            case 'accountSettings':
                if (isAuthLoading) return <LoadingSpinner />;
                return currentUser ? (
@@ -960,7 +981,7 @@ const App: React.FC = () => {
             case 'about':
                 return <AboutPage onSetView={handleSetView} />;
           default:
-              return <HomePage {...{allContent, pinnedContent: [], onSelectContent: handleSelectContent, isLoggedIn: !!currentUser, myList: activeProfile?.myList, onToggleMyList: handleToggleMyList, ads, siteSettings, onNavigate: handleSetView}} isLoading={isContentLoading} />;
+              return <HomePage {...{allContent, pinnedContent: [], onSelectContent: handleSelectContent, isLoggedIn: !!currentUser, myList: activeProfile?.myList, onToggleMyList: handleToggleMyList, ads, siteSettings, onNavigate: handleSetView, activeProfile}} isLoading={isContentLoading} />;
       }
   };
 
@@ -997,6 +1018,7 @@ const App: React.FC = () => {
                 isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'}
                 isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'}
                 returnView={returnView}
+                isKidProfile={activeProfile?.isKid}
             />
         )}
         

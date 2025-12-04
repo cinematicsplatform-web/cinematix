@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import type { Content, Category, Ad, SiteSettings, View } from '../types';
+import type { Content, Category, Ad, SiteSettings, View, Profile } from '../types';
 import { ContentType } from '../types'; 
 import Hero from './Hero';
 import ContentCarousel from './ContentCarousel';
@@ -27,6 +27,7 @@ interface HomePageProps {
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
+  activeProfile?: Profile | null;
 }
 
 const HomePage: React.FC<HomePageProps> = (props) => {
@@ -36,21 +37,56 @@ const HomePage: React.FC<HomePageProps> = (props) => {
       return <div className="min-h-screen bg-[var(--bg-body)]" />;
   }
 
+  // Check for Kids Mode
+  const isKidMode = props.activeProfile?.isKid || false;
+
   // Themes are passed from parent now, or fallbacks calculated here if needed (but prefer props)
   const isRamadan = props.isRamadanTheme ?? props.siteSettings.isRamadanModeEnabled;
   const isEid = props.isEidTheme ?? props.siteSettings.activeTheme === 'eid';
   const isCosmicTeal = props.isCosmicTealTheme ?? props.siteSettings.activeTheme === 'cosmic-teal';
   const isNetflixRed = props.isNetflixRedTheme ?? props.siteSettings.activeTheme === 'netflix-red';
 
+  // -------------------------------------------------------------------------
+  // KIDS MODE FILTERING LOGIC
+  // -------------------------------------------------------------------------
+  
+  // Filter ALL content globally for this view if kid mode is on
+  const safeContent = useMemo(() => {
+      if (!isKidMode) return props.allContent;
+      
+      // Strict filtering for kids
+      return props.allContent.filter(c => 
+          c.visibility === 'kids' || 
+          c.categories.includes('افلام أنميشن') || 
+          c.genres.includes('أطفال') || 
+          c.genres.includes('عائلي')
+      );
+  }, [props.allContent, isKidMode]);
+
+  // Filter PINNED content based on kid mode
+  const safePinnedContent = useMemo(() => {
+      if (!isKidMode) return props.pinnedContent;
+      
+      return props.pinnedContent.filter(c => 
+          c.visibility === 'kids' || 
+          c.categories.includes('افلام أنميشن') || 
+          c.genres.includes('أطفال') || 
+          c.genres.includes('عائلي')
+      );
+  }, [props.pinnedContent, isKidMode]);
+
+
   // 🎯 Hero Content Logic:
   const heroContent = useMemo(() => {
-    if (props.pinnedContent && props.pinnedContent.length > 0) {
-      return props.pinnedContent;
+    // If pinned content exists and is safe/filtered, use it
+    if (safePinnedContent && safePinnedContent.length > 0) {
+      return safePinnedContent;
     }
-    return [...props.allContent]
+    // Fallback to safe content sorted by date
+    return [...safeContent]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 5);
-  }, [props.pinnedContent, props.allContent]);
+  }, [safePinnedContent, safeContent]);
 
 
   const carousels = useMemo(() => {
@@ -61,6 +97,53 @@ const HomePage: React.FC<HomePageProps> = (props) => {
             .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
             .slice(0, 12);
     };
+
+    if (isKidMode) {
+        // --- KIDS MODE CAROUSELS ---
+        // Completely replace standard carousels with kids-friendly structure
+        
+        const recentKids = getLatest([...safeContent]);
+        const animationMovies = getLatest(safeContent.filter(c => c.categories.includes('افلام أنميشن')));
+        const familyContent = getLatest(safeContent.filter(c => c.genres.includes('عائلي')));
+        const kidsSeries = getLatest(safeContent.filter(c => c.type === ContentType.Series));
+
+        // Custom Title for Animation with Chick Emoji
+        const animationTitle = (
+            <div className="flex items-center gap-3">
+                <div className={`w-1.5 h-6 md:h-8 rounded-full shadow-[0_0_10px_rgba(0,167,248,0.6)] ${isRamadan ? 'bg-[#FFD700]' : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'}`}></div>
+                <div className="flex items-center gap-2">
+                    <span>افلام أنميشن</span>
+                    <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f423/512.webp" alt="chick" className="w-6 h-6 md:w-8 md:h-8" />
+                </div>
+            </div>
+        );
+
+        // Top 10 Pinned (Kids Only)
+        const pinnedCarousel = { 
+            id: 'h_pinned_top_kids', 
+            title: 'أفضل 10 للأطفال', 
+            contents: safePinnedContent, 
+            showRanking: true 
+        };
+
+        let kidsList = [];
+        
+        // Show Top 10 if allowed and content exists
+        if (pinnedCarousel.contents.length > 0 && props.siteSettings.showTop10Home) {
+            kidsList.push(pinnedCarousel);
+        }
+
+        kidsList.push(
+            { id: 'k_new', title: 'أحدث الإضافات', contents: recentKids, isNew: true, categoryKey: 'new-kids' },
+            { id: 'k_anim', title: animationTitle, contents: animationMovies, specialRoute: 'kids' },
+            { id: 'k_series', title: 'مسلسلات كرتون', contents: kidsSeries },
+            { id: 'k_family', title: 'أفلام عائلية', contents: familyContent }
+        );
+
+        return kidsList.filter(carousel => carousel.contents.length > 0);
+    }
+
+    // --- STANDARD MODE CAROUSELS ---
 
     const recentAdditions = getLatest([...props.allContent]);
 
@@ -142,7 +225,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     finalList.push(...restCarousels);
 
     return finalList.filter(carousel => carousel.contents.length > 0);
-  }, [props.allContent, props.pinnedContent, props.siteSettings.isShowRamadanCarousel, props.siteSettings.showTop10Home, isRamadan, isCosmicTeal, isNetflixRed]);
+  }, [props.allContent, props.pinnedContent, props.siteSettings.isShowRamadanCarousel, props.siteSettings.showTop10Home, isRamadan, isCosmicTeal, isNetflixRed, isKidMode, safeContent, safePinnedContent]);
 
   const handleSeeAll = (carousel: any) => {
       if (carousel.specialRoute) {
@@ -154,6 +237,16 @@ const HomePage: React.FC<HomePageProps> = (props) => {
       }
   };
 
+  // Special Empty State for Kids
+  if (isKidMode && safeContent.length === 0) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--bg-body)] text-gray-500 animate-fade-in-up">
+              <p className="text-xl font-bold">مرحباً يا بطل!</p>
+              <p className="text-sm mt-2">لا يوجد محتوى للأطفال حالياً. اطلب من والديك إضافة بعض الكرتون!</p>
+          </div>
+      );
+  }
+
   if (props.allContent.length === 0) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--bg-body)] text-gray-500 animate-fade-in-up">
@@ -164,10 +257,12 @@ const HomePage: React.FC<HomePageProps> = (props) => {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-body)] relative overflow-x-hidden">
+    // CRITICAL FIX: Clean Container Structure - Absolutely NO overflow-x-hidden here to allow sticky/drag gestures
+    <div className="relative min-h-screen bg-[var(--bg-body)]">
         
         <SEO /> {/* Standard Home Page SEO */}
 
+        {/* Clean Hero Wrapper */}
         <div className="relative z-10">
              <Hero 
                 contents={heroContent} 

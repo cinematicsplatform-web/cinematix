@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Content, Server, Season, Episode, Category, Genre } from '../types';
 import { ContentType, categories, genres } from '../types';
@@ -11,43 +12,43 @@ import * as XLSX from 'xlsx';
 import UqloadSearchModal from './UqloadSearchModal';
 
 // --- ICONS ---
-const ShieldCheckIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" /></svg>
+const ShieldCheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" /></svg>
 );
-const AdultIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+const AdultIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
 );
-const FaceSmileIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75Zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75z" /></svg>
+const FaceSmileIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75Zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75z" /></svg>
 );
-const CheckSmallIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" /></svg>
+const CheckSmallIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" {...props}><path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" /></svg>
 );
-const CloudArrowDownIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+const CloudArrowDownIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
 );
-const ArrowPathIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+const ArrowPathIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
   </svg>
 );
-const ExcelIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
+const ExcelIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
 );
-const SearchIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+const SearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
 );
-const PlayIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" /></svg>
+const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" /></svg>
 );
 
-// --- STYLES ---
-const MODAL_BG = "bg-gray-800"; 
-const INPUT_BG = "bg-gray-900"; 
-const BORDER_COLOR = "border-gray-600";
+// --- STYLES (UPDATED FOR DARK MODERN THEME) ---
+const MODAL_BG = "bg-[#151922]"; 
+const INPUT_BG = "bg-[#0f1014]"; 
+const BORDER_COLOR = "border-gray-700";
 const FOCUS_RING = "focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]";
 
-const inputClass = `w-full ${INPUT_BG} border ${BORDER_COLOR} rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none ${FOCUS_RING} transition-all duration-300`;
+const inputClass = `w-full ${INPUT_BG} border ${BORDER_COLOR} rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none ${FOCUS_RING} transition-all duration-300`;
 const labelClass = "block text-sm font-bold text-gray-400 mb-2";
 const sectionBoxClass = "bg-[#1a2230] p-6 rounded-2xl border border-gray-700/50 shadow-lg";
 
@@ -920,11 +921,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center md:bg-black/70 md:backdrop-blur-[6px] md:p-4 bg-gray-900" onClick={onClose}>
-            <div className="bg-gray-800 w-full h-full md:h-auto md:max-h-[95vh] md:max-w-5xl md:rounded-2xl md:border border-gray-700 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.8)] text-white flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center md:bg-black/80 md:backdrop-blur-sm md:p-4 bg-[#0f1014]" onClick={onClose}>
+            <div className={`bg-[#151922] w-full h-full md:h-auto md:max-h-[95vh] md:max-w-5xl md:rounded-2xl md:border border-gray-700 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.9)] text-white flex flex-col overflow-hidden`} onClick={e => e.stopPropagation()}>
                 
                 {/* Header */}
-                <div className="px-6 md:px-8 py-4 md:py-6 border-b border-gray-700 flex justify-between items-center bg-black/20 backdrop-blur-md sticky top-0 z-10">
+                <div className="px-6 md:px-8 py-4 md:py-6 border-b border-gray-700 flex justify-between items-center bg-black/30 backdrop-blur-md sticky top-0 z-10">
                     <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300">
                          {isNewContent ? <PlusIcon className="w-6 h-6 md:w-8 md:h-8 text-[var(--color-primary-to)]"/> : <span className="text-[var(--color-accent)]">✎</span>}
                          {isNewContent ? 'إضافة محتوى جديد' : 'تعديل المحتوى'}
@@ -932,12 +933,12 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     <button onClick={onClose} className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-colors"><CloseIcon /></button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar space-y-6 md:space-y-8">
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar space-y-6 md:space-y-8 bg-[#151922]">
                     {/* 🚀 TMDB Smart Fetch Section */}
-                    <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl">
+                    <div className="bg-blue-900/10 border border-blue-500/20 p-6 rounded-2xl shadow-inner">
                         <div className="flex flex-col md:flex-row gap-4 items-end md:items-center">
                             <div className="flex-1 w-full">
-                                <label className="block text-xs font-bold text-blue-300 mb-1">جلب تلقائي (TMDB)</label>
+                                <label className="block text-xs font-bold text-blue-400 mb-2 uppercase tracking-wider">جلب تلقائي (TMDB)</label>
                                 <div className="flex flex-col sm:flex-row gap-4">
                                     <div className="flex gap-2 flex-1">
                                         <input 
@@ -945,7 +946,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             value={tmdbIdInput}
                                             onChange={(e) => setTmdbIdInput(e.target.value)}
                                             placeholder="أدخل TMDB ID (مثال: 12345)" 
-                                            className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                            className="w-full bg-[#0f1014] border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                                         />
                                         
                                         {/* Normal Fetch Button */}
@@ -953,7 +954,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             type="button"
                                             onClick={fetchFromTMDB}
                                             disabled={fetchLoading}
-                                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+                                            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50 flex items-center gap-2 whitespace-nowrap shadow-lg hover:shadow-blue-500/30 transform hover:scale-105"
                                         >
                                             {fetchLoading ? 'جاري الجلب...' : (
                                                 <>
@@ -969,7 +970,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                 type="button"
                                                 onClick={handleRefreshData}
                                                 disabled={refreshLoading}
-                                                className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center gap-2 whitespace-nowrap shadow-lg shadow-amber-900/20"
+                                                className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50 flex items-center gap-2 whitespace-nowrap shadow-lg hover:shadow-amber-500/30 transform hover:scale-105"
                                                 title="تحديث المواسم والحلقات الجديدة فقط مع الحفاظ على الروابط القديمة"
                                             >
                                                 {refreshLoading ? 'جاري التحديث...' : (
@@ -983,11 +984,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     </div>
                                     
                                     {/* AUTO LINKS TOGGLE */}
-                                    <div className="flex items-center gap-2 bg-blue-800/30 px-3 py-2 rounded-lg border border-blue-500/30">
+                                    <div className="flex items-center gap-3 bg-blue-900/20 px-4 py-2 rounded-xl border border-blue-500/20">
                                         <ToggleSwitch 
                                             checked={enableAutoLinks} 
                                             onChange={setEnableAutoLinks} 
-                                            className="scale-75"
+                                            className="scale-90"
                                         />
                                         <span className="text-xs text-gray-300 font-bold whitespace-nowrap select-none">توليد روابط تلقائية</span>
                                     </div>
@@ -1017,7 +1018,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             value={formData.slug || ''} 
                                             onChange={handleChange} 
                                             placeholder="auto-generated"
-                                            className="w-full bg-transparent border-none px-2 py-3 focus:ring-0 outline-none text-sm dir-ltr text-left text-[var(--color-primary-to)]" 
+                                            className="w-full bg-transparent border-none px-2 py-3 focus:ring-0 outline-none text-sm dir-ltr text-left text-[var(--color-primary-to)] font-mono" 
                                         />
                                     </div>
                                 </div>
@@ -1027,7 +1028,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     <textarea name="description" value={formData.description} onChange={handleChange} rows={4} className={inputClass} placeholder="اكتب نبذة مختصرة عن القصة..." required />
                                 </div>
 
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                     <div>
                                         <label className={labelClass}>سنة الإصدار</label>
                                         <input type="number" name="releaseYear" value={formData.releaseYear} onChange={handleChange} className={inputClass} required />
@@ -1040,6 +1041,12 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         <label className={labelClass}>التصنيف العمري</label>
                                         <input type="text" name="ageRating" value={formData.ageRating} onChange={handleChange} className={inputClass} placeholder="+13" />
                                     </div>
+                                    {formData.type === ContentType.Movie && (
+                                        <div>
+                                            <label className={labelClass}>مدة الفيلم</label>
+                                            <input type="text" name="duration" value={formData.duration || ''} onChange={handleChange} placeholder="مثال: 1h 45m" className={inputClass}/>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -1115,7 +1122,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             type="button"
                                             onClick={() => setFormData(prev => ({...prev, type: ContentType.Movie}))}
                                             className={`
-                                                flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300 border
+                                                flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all duration-300 border w-full justify-center
                                                 ${formData.type === ContentType.Movie
                                                     ? 'bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black border-transparent shadow-[0_0_15px_var(--shadow-color)] scale-105'
                                                     : `${INPUT_BG} border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white`
@@ -1136,7 +1143,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                 }));
                                             }}
                                             className={`
-                                                flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300 border
+                                                flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all duration-300 border w-full justify-center
                                                 ${formData.type === ContentType.Series
                                                     ? 'bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black border-transparent shadow-[0_0_15px_var(--shadow-color)] scale-105'
                                                     : `${INPUT_BG} border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white`
@@ -1148,13 +1155,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         </button>
                                     </div>
                                 </div>
-                                
-                                {formData.type === ContentType.Movie && (
-                                    <div>
-                                        <label className={labelClass}>مدة الفيلم</label>
-                                        <input type="text" name="duration" value={formData.duration || ''} onChange={handleChange} placeholder="مثال: 1h 45m" className={inputClass}/>
-                                    </div>
-                                )}
                             </div>
                         </div>
 
@@ -1414,6 +1414,17 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                 </div>
                                             </div>
                                             
+                                            {/* Season Details: Trailer Input (NEW) */}
+                                            <div className="mb-4">
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="رابط تريلر الموسم (اختياري - يوتيوب)" 
+                                                    value={season.trailerUrl || ''} 
+                                                    onChange={(e) => handleUpdateSeason(season.id, 'trailerUrl', e.target.value)} 
+                                                    className={`bg-gray-800 border border-gray-600 rounded px-3 py-2 text-xs text-white w-full ${FOCUS_RING}`}
+                                                />
+                                            </div>
+
                                             {/* Season Images & Logo */}
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                                 <div className="space-y-2">

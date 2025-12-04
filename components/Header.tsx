@@ -20,9 +20,10 @@ interface HeaderProps {
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
   returnView?: View;
+  isKidProfile?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, onLogout, allContent, onSelectContent, currentView, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme, returnView }) => {
+const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, onLogout, allContent, onSelectContent, currentView, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme, returnView, isKidProfile }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -77,7 +78,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
     setSearchResults([]);
   };
 
-  const menuItems: { name: string; view: View, loggedIn?: boolean }[] = [
+  const baseMenuItems: { name: string; view: View, loggedIn?: boolean }[] = [
     { name: 'الرئيسية', view: 'home' },
     { name: 'المسلسلات', view: 'series' },
     { name: 'الأفلام', view: 'movies' },
@@ -85,6 +86,11 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
     { name: 'رمضان', view: 'ramadan' },
     { name: 'قريباً', view: 'soon' },
   ];
+
+  // Logic to show simplified menu for kids
+  const menuItems = isKidProfile 
+    ? [{ name: 'الرئيسية', view: 'kids' as View }] 
+    : baseMenuItems;
 
   const isLoggedIn = !!currentUser;
   const isAdmin = currentUser?.role === UserRole.Admin;
@@ -108,7 +114,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
               // Mobile: Show Back Button only in Detail View
               <div className="flex md:hidden">
                  <button 
-                    onClick={() => onSetView(returnView || 'home')} 
+                    onClick={() => onSetView(returnView || (isKidProfile ? 'kids' : 'home'))} 
                     className="p-2 rounded-full bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-colors"
                  >
                     <ChevronRightIcon className="w-6 h-6 transform rotate-180" /> {/* Icon rotated for RTL back */}
@@ -116,7 +122,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
               </div>
           ) : null}
 
-          <h1 onClick={() => onSetView('home')} className={`text-2xl md:text-3xl font-extrabold cursor-pointer ${isDetailView ? 'hidden md:block' : 'block'}`}>
+          <h1 onClick={() => onSetView(isKidProfile ? 'kids' : 'home')} className={`text-2xl md:text-3xl font-extrabold cursor-pointer ${isDetailView ? 'hidden md:block' : 'block'}`}>
             {isNetflixRedTheme ? (
                <span className="text-[#E50914] font-['Lalezar'] tracking-wide">CINEMATIX</span>
             ) : (

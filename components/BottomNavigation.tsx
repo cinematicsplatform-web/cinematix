@@ -7,6 +7,7 @@ import { FilmIcon } from './icons/FilmIcon';
 import { SmileIcon } from './icons/SmileIcon';
 import { MoonIcon } from './icons/MoonIcon';
 import { UserIcon } from './icons/UserIcon';
+import { CheckIcon } from './CheckIcon';
 
 interface BottomNavigationProps {
   currentView: View;
@@ -21,14 +22,27 @@ interface BottomNavigationProps {
 
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetView, activeProfile, isLoggedIn, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
   
-  // Base Items
-  const baseItems = [
-    { id: 'home', label: 'الرئيسية', view: 'home', icon: HomeIcon },
-    { id: 'series', label: 'المسلسلات', view: 'series', icon: TvIcon },
-    { id: 'movies', label: 'الأفلام', view: 'movies', icon: FilmIcon },
-    { id: 'kids', label: 'الأطفال', view: 'kids', icon: SmileIcon },
-    { id: 'ramadan', label: 'رمضان', view: 'ramadan', icon: MoonIcon },
-  ] as const;
+  // Logic to switch nav items if Kid Profile
+  const isKid = activeProfile?.isKid;
+
+  let baseItems;
+
+  if (isKid) {
+      // Kids Items: Home (Kids), My List, Account
+      baseItems = [
+          { id: 'kids', label: 'الرئيسية', view: 'kids' as View, icon: SmileIcon },
+          { id: 'mylist', label: 'قائمتي', view: 'myList' as View, icon: CheckIcon },
+      ];
+  } else {
+      // Adult Items
+      baseItems = [
+        { id: 'home', label: 'الرئيسية', view: 'home' as View, icon: HomeIcon },
+        { id: 'series', label: 'المسلسلات', view: 'series' as View, icon: TvIcon },
+        { id: 'movies', label: 'الأفلام', view: 'movies' as View, icon: FilmIcon },
+        { id: 'kids', label: 'الأطفال', view: 'kids' as View, icon: SmileIcon },
+        { id: 'ramadan', label: 'رمضان', view: 'ramadan' as View, icon: MoonIcon },
+      ];
+  }
 
   // Dynamic Item (Last Item)
   const accountItem = isLoggedIn

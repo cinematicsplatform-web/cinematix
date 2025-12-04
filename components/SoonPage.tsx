@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import type { Content, Ad } from '../types';
+import type { Content, Ad, View } from '../types';
 import Hero from './Hero';
 import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
@@ -21,6 +21,7 @@ interface SoonPageProps {
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
+  onNavigate?: (view: View, category?: string) => void;
 }
 
 const SoonPage: React.FC<SoonPageProps> = ({ 
@@ -50,12 +51,14 @@ const SoonPage: React.FC<SoonPageProps> = ({
     return { allSoonContent: allSoon, soonAndRamadan, soonOnly };
   }, [allContent]);
   
+  // 🎯 Master Hero Logic: Ensure 5 items for Infinite Loop
   const heroSoonContents = useMemo(() => {
     if (pinnedContent && pinnedContent.length > 0) {
         return pinnedContent;
     }
+    // Fallback: Latest 5 sorted by date
     const sortedContent = [...allSoonContent].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    // Updated to slice 5 items to enable slider behavior
+    // Slice 5 items to enable slider behavior
     return sortedContent.slice(0, 5);
   }, [pinnedContent, allSoonContent]);
 
@@ -112,7 +115,8 @@ const SoonPage: React.FC<SoonPageProps> = ({
 
 
   return (
-    <div className="min-h-screen bg-[var(--bg-body)] relative overflow-x-hidden">
+    // CRITICAL FIX: Clean Container Structure - Absolutely NO overflow-x-hidden here to allow sticky/drag gestures
+    <div className="relative min-h-screen bg-[var(--bg-body)]">
 
       <SEO 
         title="قريباً - سينماتيكس" 
@@ -121,21 +125,21 @@ const SoonPage: React.FC<SoonPageProps> = ({
       />
 
       <div className="relative z-10">
-          <Hero 
-              contents={heroSoonContents} 
-              onWatchNow={handleSelectContentRestricted} 
-              isLoggedIn={isLoggedIn} 
-              myList={myList} 
-              onToggleMyList={onToggleMyList} 
-              autoSlideInterval={5000}
-              isRamadanTheme={isRamadanTheme}
-              isEidTheme={isEidTheme}
-              isCosmicTealTheme={isCosmicTealTheme}
-              isNetflixRedTheme={isNetflixRedTheme}
-          />
+        <Hero 
+            contents={heroSoonContents} 
+            onWatchNow={handleSelectContentRestricted} 
+            isLoggedIn={isLoggedIn} 
+            myList={myList} 
+            onToggleMyList={onToggleMyList} 
+            autoSlideInterval={5000}
+            isRamadanTheme={isRamadanTheme}
+            isEidTheme={isEidTheme}
+            isCosmicTealTheme={isCosmicTealTheme}
+            isNetflixRedTheme={isNetflixRedTheme}
+        />
       </div>
       
-      <main className="pb-24 z-30 relative text-right bg-[var(--bg-body)]">
+      <main className="relative z-30 pb-24 text-right bg-[var(--bg-body)]">
         <div className={`w-full h-px mt-0 mb-2 md:my-4 
             ${isRamadanTheme 
                 ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent opacity-80' 

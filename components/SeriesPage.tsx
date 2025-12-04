@@ -39,18 +39,25 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
   isLoading, 
   isRamadanTheme, 
   isEidTheme, 
-  isCosmicTealTheme,
+  isCosmicTealTheme, 
   isNetflixRedTheme,
   siteSettings 
 }) => {
+  
+  // Filter for Series Type
   const allSeries = useMemo(() => allContent.filter(c => c.type === ContentType.Series), [allContent]);
   
+  // 🎯 Master Hero Logic: Ensure 5 items for Infinite Loop
   const heroContent = useMemo(() => {
+    // If pinned content exists for this page, use it
     if (pinnedContent && pinnedContent.length > 0) {
         return pinnedContent;
     }
-    const sortedSeries = [...allSeries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    // Updated to slice 5 items to enable slider behavior
+    // Fallback: Latest 5 series sorted by createdAt (Newest First)
+    const sortedSeries = [...allSeries].sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    // Slice 5 items to enable slider behavior
     return sortedSeries.slice(0, 5);
   }, [pinnedContent, allSeries]);
 
@@ -59,7 +66,7 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
     const limit = (list: Content[]) => list.slice(0, 12);
 
     const recentSeries = limit([...allSeries]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()));
 
     const arabicSeries = limit(allSeries.filter(c => c.categories.includes('مسلسلات عربية')));
     const turkishSeries = limit(allSeries.filter(c => c.categories.includes('مسلسلات تركية')));
@@ -138,16 +145,18 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
     }
     return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500 animate-fade-in-up">لا يوجد مسلسلات لعرضها حالياً.</div>
   }
-  
-  return (
-    <div className="min-h-screen bg-[var(--bg-body)] relative overflow-x-hidden">
 
+  return (
+    // CRITICAL FIX: Clean Container Structure - Absolutely NO overflow-x-hidden here to allow sticky/drag gestures
+    <div className="relative min-h-screen bg-[var(--bg-body)]">
+        
         <SEO 
             title="المسلسلات - سينماتيكس" 
-            description="شاهد أفضل المسلسلات العربية والتركية والأجنبية بجودة عالية."
+            description="تصفح أحدث المسلسلات العربية والتركية والأجنبية بجودة عالية على سينماتيكس."
             type="website"
         />
 
+        {/* Wrapped Hero in z-10 for consistent stacking */}
         <div className="relative z-10">
             <Hero 
                 contents={heroContent} 
@@ -163,7 +172,7 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
             />
         </div>
 
-        <main className="pb-24 z-30 relative bg-[var(--bg-body)]">
+        <main className="relative z-30 pb-24 bg-[var(--bg-body)]">
             <div className={`w-full h-px mt-0 mb-2 md:my-4 
                 ${isRamadanTheme 
                     ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent opacity-80' 
@@ -177,39 +186,35 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
                 }`}></div>
 
             <div className="flex flex-col lg:flex-row gap-6 px-0 md:px-0">
-                {/* Main Content */}
                 <div className="flex-1 w-full">
-                    {/* NEW: Page Specific Banner */}
                     {adsEnabled && <AdZone position="page_series_top" />}
-
                     <AdPlacement ads={ads} placement="listing-top" isEnabled={adsEnabled} />
                     <AdPlacement ads={ads} placement="series-page" isEnabled={adsEnabled} />
                     
                     {carousels.map((carousel) => {
-                    return (
-                        <ContentCarousel
-                        key={(carousel as any).id}
-                        title={(carousel as any).title}
-                        contents={(carousel as any).contents}
-                        onSelectContent={onSelectContent}
-                        isLoggedIn={isLoggedIn}
-                        myList={myList}
-                        onToggleMyList={onToggleMyList}
-                        isNew={(carousel as any).isNew}
-                        onSeeAll={() => handleSeeAll((carousel as any).categoryKey)}
-                        isRamadanTheme={isRamadanTheme}
-                        isEidTheme={isEidTheme}
-                        isCosmicTealTheme={isCosmicTealTheme}
-                        isNetflixRedTheme={isNetflixRedTheme}
-                        showRanking={(carousel as any).showRanking}
-                        />
-                    );
+                        return (
+                            <ContentCarousel
+                                key={(carousel as any).id}
+                                title={(carousel as any).title}
+                                contents={(carousel as any).contents}
+                                onSelectContent={onSelectContent}
+                                isLoggedIn={isLoggedIn}
+                                myList={myList}
+                                onToggleMyList={onToggleMyList}
+                                isNew={(carousel as any).isNew}
+                                onSeeAll={(carousel as any).categoryKey ? () => handleSeeAll((carousel as any).categoryKey) : undefined}
+                                isRamadanTheme={isRamadanTheme}
+                                isEidTheme={isEidTheme}
+                                isCosmicTealTheme={isCosmicTealTheme}
+                                isNetflixRedTheme={isNetflixRedTheme}
+                                showRanking={(carousel as any).showRanking}
+                            />
+                        );
                     })}
-
+                    
                     <AdPlacement ads={ads} placement="listing-bottom" isEnabled={adsEnabled} />
                 </div>
 
-                {/* Sidebar (Desktop Only) */}
                 <div className="hidden lg:block w-[300px] flex-shrink-0 pt-4 pl-4 sticky top-24 h-fit">
                     <AdPlacement ads={ads} placement="listing-sidebar" isEnabled={adsEnabled} />
                 </div>

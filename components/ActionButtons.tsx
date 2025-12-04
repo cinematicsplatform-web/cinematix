@@ -13,6 +13,7 @@ interface ActionButtonsProps {
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
   showMyList?: boolean;
+  className?: string;
 }
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({ 
@@ -23,7 +24,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   isRamadanTheme,
   isEidTheme,
   isCosmicTealTheme,
-  isNetflixRedTheme
+  isNetflixRedTheme,
+  className = ""
 }) => {
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -46,16 +48,16 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       }
   };
 
-  // Explicit styling for the primary button to override global class if needed
+  // Explicit styling for the primary button
   let primaryBtnClass = "btn-primary";
   if (isRamadanTheme) {
       primaryBtnClass = "bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)] hover:brightness-110 border-none";
   } else if (isEidTheme) {
       primaryBtnClass = "bg-gradient-to-r from-purple-800 to-purple-500 text-white shadow-[0_0_15px_rgba(106,13,173,0.4)] hover:brightness-110 border-none";
   } else if (isCosmicTealTheme) {
-      primaryBtnClass = "bg-gradient-to-r from-[#35F18B] to-[#2596be] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)] hover:brightness-110 border-none font-black";
+      primaryBtnClass = "bg-gradient-to-r from-[#35F18B] to-[#2596be] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)] hover:brightness-110 border-none";
   } else if (isNetflixRedTheme) {
-      primaryBtnClass = "bg-[#E50914] text-white hover:bg-[#b20710] border-none shadow-none font-bold";
+      primaryBtnClass = "bg-[#E50914] text-white hover:bg-[#b20710] border-none shadow-none";
   }
 
   // Standard "My List" Button Style
@@ -68,48 +70,49 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   const myListActiveClass = "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]";
 
   return (
-    <div className="w-full sm:w-auto flex flex-row items-stretch gap-3 mt-2 md:mt-6 z-30 relative action-buttons-container">
-      {/* Watch Button - Added 'target-watch-btn' class for Popunder targeting */}
+    <div className={`w-full md:w-auto flex flex-row items-stretch gap-4 z-30 relative action-buttons-container ${className}`}>
+      {/* Watch Button - Updated Style: Rounded Full, Bold Font, Scaled up 5% */}
       <button 
         onClick={(e) => { e.stopPropagation(); onWatch(); }}
         className={`
-          flex-grow sm:flex-none
+          flex-grow md:flex-none
           min-w-fit
-          flex items-center justify-center gap-2 
-          font-bold tracking-wide
-          py-3.5 px-6 sm:px-8 sm:py-4 
-          rounded-full 
-          text-base sm:text-lg
-          transform hover:scale-105 active:scale-95 
+          flex items-center justify-center gap-3
+          font-bold 
+          py-3.5 px-8 md:py-4 md:px-10
+          rounded-full
+          text-base md:text-lg
+          transform scale-[1.05] hover:scale-[1.10] active:scale-[0.98] 
+          transition-all duration-300
           whitespace-nowrap
           target-watch-btn
           ${primaryBtnClass}
         `}
       >
-        <PlayIcon className="w-5 h-5 md:w-6 md:h-6 fill-current" />
+        <PlayIcon className="w-6 h-6 md:w-7 md:h-7 fill-current" />
         <span>شاهد الآن</span>
       </button>
       
-      {/* My List Button */}
+      {/* My List Button - Updated Style: Rounded Full, Bold Font, Scaled up 5% */}
       {showMyList && onToggleMyList && (
         <button 
           onClick={handleToggle}
           className={`
-            flex-grow sm:flex-none
+            flex-grow md:flex-none
             min-w-fit
-            flex items-center justify-center gap-2 
-            font-bold tracking-wide
-            py-3.5 px-6 sm:px-8 sm:py-4 
-            rounded-full 
-            text-sm sm:text-lg
-            transition-all duration-300 transform hover:scale-105 active:scale-95 whitespace-nowrap
+            flex items-center justify-center gap-3
+            font-bold
+            py-3.5 px-8 md:py-4 md:px-10
+            rounded-full
+            text-base md:text-lg
+            transition-all duration-300 transform scale-[1.05] hover:scale-[1.10] active:scale-[0.98] whitespace-nowrap
             ${isInMyList 
               ? myListActiveClass 
               : myListBaseClass
             }
           `}
         >
-          {isInMyList ? <CheckIcon className="w-5 h-5" /> : <PlusIcon className="w-5 h-5" />}
+          {isInMyList ? <CheckIcon className="w-6 h-6 md:w-7 md:h-7" /> : <PlusIcon className="w-6 h-6 md:w-7 md:h-7" />}
           <span>{showFeedback ? 'تمت الإضافة' : 'قائمتي'}</span>
         </button>
       )}

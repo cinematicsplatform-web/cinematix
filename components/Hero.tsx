@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Content } from '../types';
-import { StarIcon } from './icons/StarIcon';
 import ActionButtons from './ActionButtons';
 import { SpeakerIcon } from './icons/SpeakerIcon';
+import { StarIcon } from './icons/StarIcon';
+import { ClockIcon } from './icons/ClockIcon';
 
 interface HeroProps {
   contents: Content[];
@@ -18,184 +19,173 @@ interface HeroProps {
   isNetflixRedTheme?: boolean;
 }
 
-const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, onToggleMyList, autoSlideInterval, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  
-  // Interaction States
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState<number>(0);
-  const [dragOffset, setDragOffset] = useState<number>(0); // in pixels
-  const [isAnimating, setIsAnimating] = useState(false);
-  
-  // Video Background States
-  const [showVideo, setShowVideo] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
-  const [videoLoaded, setVideoLoaded] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  
-  const containerRef = useRef<HTMLDivElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const videoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+const Hero: React.FC<HeroProps> = ({ 
+    contents, 
+    onWatchNow, 
+    isLoggedIn, 
+    myList, 
+    onToggleMyList, 
+    autoSlideInterval = 6000, // Increased default slightly for better reading time
+    isRamadanTheme,
+    isEidTheme,
+    isCosmicTealTheme,
+    isNetflixRedTheme
+}) => {
+    // --- Internal State (Fully Encapsulated) ---
+    // Parent components have NO control over these variables
+    const [unboundedIndex, setUnboundedIndex] = useState(0);
+    const [isDirectJump, setIsDirectJump] = useState(false);
+    const [showVideo, setShowVideo] = useState(false);
+    const [isMuted, setIsMuted] = useState(true);
+    const [isPaused, setIsPaused] = useState(false); // New: Pause on hover
+    
+    // Touch/Drag State
+    const [isDragging, setIsDragging] = useState(false);
+    const [startPos, setStartPos] = useState(0);
+    const [dragOffset, setDragOffset] = useState(0);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [isMobile, setIsMobile] = useState(false);
 
-  // --- Helpers ---
-  const getPrevIndex = (idx: number) => (idx === 0 ? contents.length - 1 : idx - 1);
-  const getNextIndex = (idx: number) => (idx === contents.length - 1 ? 0 : idx + 1);
+    // --- Derived Values ---
+    const len = contents.length;
+    // Normalized active index (0 to length-1) ensuring proper wrapping
+    const activeIndex = len > 0 ? ((unboundedIndex % len) + len) % len : 0;
+    const activeContent = contents[activeIndex];
+    const hasMultiple = len > 1;
 
-  // We need at least 2 items to slide effectively. If 1, we just show it static.
-  const hasMultiple = contents.length > 1;
+    // --- Self-Management Effects ---
 
-  // --- Video Logic ---
-  const extractVideoID = (url?: string) => {
-      if (!url) return null;
-      const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-      const match = url.match(regExp);
-      return (match && match[7].length === 11) ? match[7] : null;
-  };
+    // 1. Mobile Detection
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile(); 
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
-  const toggleMute = () => {
-      if (iframeRef.current && iframeRef.current.contentWindow) {
-          const newMuteState = !isMuted;
-          const command = newMuteState ? 'mute' : 'unMute';
-          iframeRef.current.contentWindow.postMessage(JSON.stringify({
-              event: 'command',
-              func: command,
-              args: []
-          }), '*');
-          setIsMuted(newMuteState);
-      }
-  };
+    // 2. Auto-Reset: Detect content change (Navigation) and reset slider state
+    // This allows the component to "refresh" itself when you navigate from Movies to Series
+    useEffect(() => {
+        setUnboundedIndex(0);
+        setIsDirectJump(false);
+        setShowVideo(false);
+        setIsMuted(true);
+        setIsPaused(false);
+    }, [contents[0]?.id, contents.length]); // Dependency on the first item's ID effectively detects "Page Change"
 
-  // --- Auto Slide Logic ---
-  const startTimer = useCallback(() => {
-      if (!hasMultiple || !autoSlideInterval) return;
-      stopTimer(); 
-      intervalRef.current = setInterval(() => {
-          handleSlide('next');
-      }, autoSlideInterval);
-  }, [hasMultiple, autoSlideInterval]);
+    // 3. Video Playback Logic
+    useEffect(() => {
+        // Always reset video state when slide changes
+        setShowVideo(false);
+        setIsMuted(true);
 
-  const stopTimer = () => {
-      if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-      }
-  };
+        if (!activeContent || !activeContent.trailerUrl) return;
 
-  // Handle slide change video logic reset
-  useEffect(() => {
-      // 1. Reset Video State
-      setShowVideo(false);
-      setVideoLoaded(false);
-      setIsMuted(true);
-      if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
+        // Delay video start to allow user to see the poster first
+        const trailerTimer = setTimeout(() => {
+            // Don't play if dragging or if explicit pause logic required (optional)
+            if (!isDragging) {
+                setShowVideo(true);
+            }
+        }, 3500); // 3.5 seconds delay
 
-      // 2. Setup Video Timer if applicable
-      const currentContent = contents[currentIndex];
-      const videoId = extractVideoID(currentContent?.trailerUrl);
-      
-      // Simple Mobile Check to avoid burning data
-      const isMobile = window.innerWidth < 768; 
+        return () => clearTimeout(trailerTimer);
+    }, [unboundedIndex, activeContent?.id, isDragging]); 
 
-      if (videoId && !isMobile) {
-          // Delay showing the video to allow poster to be seen first and improve perceived speed
-          videoTimeoutRef.current = setTimeout(() => {
-              setShowVideo(true);
-          }, 3000); // 3 seconds delay
-      }
+    // 4. Auto Slider Logic
+    useEffect(() => {
+        if (!hasMultiple) return;
+        if (isDragging) return; 
+        if (showVideo) return; // Stop sliding if video is playing
+        if (isPaused) return;  // Stop sliding if mouse is hovering
 
-      return () => {
-          if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
-      };
-  }, [currentIndex, contents]);
+        const slideInterval = setInterval(() => {
+            setIsDirectJump(false);
+            setUnboundedIndex(prev => prev + 1);
+        }, autoSlideInterval);
 
-  useEffect(() => {
-    startTimer();
-    return () => stopTimer();
-  }, [startTimer]);
+        return () => clearInterval(slideInterval);
+    }, [hasMultiple, autoSlideInterval, showVideo, isDragging, isPaused]);
 
-  // --- Slide Action ---
-  const handleSlide = (direction: 'next' | 'prev') => {
-      if (isAnimating || !containerRef.current) return;
-      
-      stopTimer();
-      setIsAnimating(true);
-      
-      const width = containerRef.current.offsetWidth;
-      const targetOffset = direction === 'next' ? -width : width;
+    // --- Internal Handlers ---
 
-      setDragOffset(targetOffset);
+    const getVideoId = (url: string | undefined) => {
+        if (!url) return null;
+        try {
+            if (url.includes('youtu.be/')) return url.split('youtu.be/')[1].split('?')[0];
+            if (url.includes('v=')) return url.split('v=')[1].split('&')[0];
+            if (url.includes('embed/')) return url.split('embed/')[1].split('?')[0];
+            return null;
+        } catch (e) { return null; }
+    };
 
-      setTimeout(() => {
-          // After animation completes:
-          setCurrentIndex(prev => direction === 'next' ? getNextIndex(prev) : getPrevIndex(prev));
-          setIsAnimating(false); 
-          setDragOffset(0);
-          startTimer();
-      }, 300); // Match CSS transition duration
-  };
+    const handleManualSlide = useCallback((targetIndex: number) => {
+        if (targetIndex === activeIndex) return;
+        
+        setIsDirectJump(true); // Enable fade transition for click-jumps
 
-  // --- Interaction Handlers ---
-  const handleStart = (clientX: number) => {
-      if (isAnimating || !hasMultiple) return;
-      stopTimer();
-      setIsDragging(true);
-      setDragStart(clientX);
-  };
+        // Smart Path Finding: Go the shortest direction
+        const currentMod = activeIndex;
+        let diff = targetIndex - currentMod;
+        
+        // Adjust diff to wrap around correctly if closer
+        if (diff > len / 2) diff -= len;
+        else if (diff < -len / 2) diff += len;
 
-  const handleMove = (clientX: number) => {
-      if (!isDragging) return;
-      const diff = clientX - dragStart;
-      setDragOffset(diff);
-  };
+        setUnboundedIndex(prev => prev + diff);
+    }, [activeIndex, len]);
 
-  const handleEnd = () => {
-      if (!isDragging || !containerRef.current) return;
-      setIsDragging(false);
+    const handleStart = (clientX: number) => {
+        if (!hasMultiple) return;
+        setIsDragging(true);
+        setStartPos(clientX);
+        setDragOffset(0);
+        setIsDirectJump(false);
+        setShowVideo(false); // Stop video immediately on interaction
+    };
 
-      const width = containerRef.current.offsetWidth;
-      const threshold = width * 0.20; // Reduced threshold for easier swiping
+    const handleMove = (clientX: number) => {
+        if (!isDragging) return;
+        const diff = clientX - startPos;
+        setDragOffset(diff);
+    };
 
-      if (dragOffset < -threshold) {
-          // User dragged left -> Go Next
-          setIsAnimating(true);
-          setDragOffset(-width);
-          setTimeout(() => {
-              setCurrentIndex(prev => getNextIndex(prev));
-              setIsAnimating(false);
-              setDragOffset(0);
-              startTimer();
-          }, 300);
-      } else if (dragOffset > threshold) {
-          // User dragged right -> Go Prev
-          setIsAnimating(true);
-          setDragOffset(width);
-          setTimeout(() => {
-              setCurrentIndex(prev => getPrevIndex(prev));
-              setIsAnimating(false);
-              setDragOffset(0);
-              startTimer();
-          }, 300);
-      } else {
-          // Snap back to 0 (Cancel)
-          setIsAnimating(true);
-          setDragOffset(0);
-          setTimeout(() => {
-              setIsAnimating(false);
-              startTimer();
-          }, 300);
-      }
-  };
+    const handleEnd = () => {
+        if (!isDragging) return;
+        setIsDragging(false);
+        
+        const threshold = window.innerWidth * 0.2; // 20% swipe width required
+        
+        if (dragOffset > threshold) {
+            setUnboundedIndex(prev => prev - 1); // Swipe Right -> Prev
+        } else if (dragOffset < -threshold) {
+            setUnboundedIndex(prev => prev + 1); // Swipe Left -> Next
+        }
+        setDragOffset(0);
+    };
 
+    if (!contents || contents.length === 0) return null;
 
-  // --- Render Helper ---
-  const renderDots = (className: string) => (
+    // --- Render Helpers ---
+
+    const containerBgColor = isRamadanTheme 
+        ? 'bg-[#1a1000]' 
+        : isEidTheme 
+            ? 'bg-[#1a0b2e]' 
+            : isCosmicTealTheme
+                ? 'bg-[#0b1116]' 
+                : isNetflixRedTheme
+                    ? 'bg-[#141414]' 
+                    : 'bg-black';    
+
+    // Dots Indicator
+    const renderDots = (className: string) => (
       <div className={`flex gap-2 pointer-events-none justify-center w-full ${className}`} dir="rtl">
         {contents.map((_, idx) => (
             <button 
                 key={idx}
-                // pointer-events-auto allows clicking the dots
-                className={`h-1.5 md:h-2 rounded-full transition-all duration-300 pointer-events-auto cursor-pointer 
-                    ${currentIndex === idx 
+                className={`h-1.5 transition-all duration-300 pointer-events-auto cursor-pointer rounded-full
+                    ${activeIndex === idx 
                         ? (isRamadanTheme 
                             ? 'bg-amber-500 w-6' 
                             : isEidTheme 
@@ -208,287 +198,263 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
                         : 'bg-white/30 hover:bg-white/60 w-2'
                     }`}
                 onClick={(e) => { 
-                    e.stopPropagation(); // Prevent triggering drag logic
-                    if (currentIndex === idx || isAnimating) return;
-                    const dir = idx > currentIndex ? 'next' : 'prev';
-                    handleSlide(dir);
-                    setCurrentIndex(idx);
+                    e.stopPropagation(); 
+                    if (activeIndex === idx) return;
+                    handleManualSlide(idx);
                 }}
                 aria-label={`Go to slide ${idx + 1}`}
             />
         ))}
-    </div>
-  );
-
-  const renderSlide = (content: Content, position: 'prev' | 'curr' | 'next') => {
-      if (!content) return null;
-      
-      let baseTranslate = 0;
-      if (position === 'prev') baseTranslate = -100;
-      if (position === 'next') baseTranslate = 100;
-
-      const style: React.CSSProperties = {
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          transform: `translateX(calc(${baseTranslate}% + ${dragOffset}px))`,
-          transition: isAnimating ? 'transform 300ms ease-out' : 'none',
-          // Ensure current slide is on top during transitions
-          zIndex: position === 'curr' ? 20 : 10 
-      };
-
-      const isActive = position === 'curr';
-      const videoID = extractVideoID(content.trailerUrl);
-      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-      
-      // Determine if we should attempt to show video for this slide
-      // Only show if it's the current slide, video exists, showVideo is true, and NOT animating/dragging
-      const shouldPlayVideo = isActive && videoID && showVideo && !isAnimating && !isDragging && !isMobile;
-
-      // Use global CSS variable for background to allow theme switching (Black/Blue)
-      // UPDATED: Cosmic Teal now uses a specific inline style for the precise gradient requirement.
-      const gradientClass = isRamadanTheme 
-          ? "bg-gradient-to-t from-black via-black/80 via-25% to-transparent" 
-          : isCosmicTealTheme
-            ? "" // Handled by style prop
-            : "bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/60 via-40% to-transparent";
-
-      // Custom Gradient Style for Cosmic Teal to match precise spec
-      // Modified to be solid #0b1116 at 0% to blend seamlessly with the new body background
-      // Shifted stop points down to allow more image visibility (transparency extends longer)
-      const gradientStyle: React.CSSProperties = isCosmicTealTheme 
-        ? { background: 'linear-gradient(to top, #0b1116 0%, rgba(11, 17, 22, 0.8) 10%, rgba(11, 17, 22, 0) 60%)' }
-        : {};
-
-      // Custom Logic for Mobile Crop via CSS Variables
-      const cropStyle: React.CSSProperties = content.enableMobileCrop ? {
-          '--mob-x': `${content.mobileCropPositionX ?? content.mobileCropPosition ?? 50}%`,
-          '--mob-y': `${content.mobileCropPositionY ?? 50}%`,
-      } as React.CSSProperties : {};
-
-      return (
-        <div 
-            key={`${content.id}-${position}`}
-            style={style}
-            dir="rtl" 
-        >
-            {/* Background Image - Z-Index 0 */}
-            <div className="absolute inset-0 z-0">
-                <img 
-                    src={content.backdrop} 
-                    alt={content.title} 
-                    className={`w-full h-full object-cover object-top md:object-center ${content.enableMobileCrop ? 'mobile-custom-crop' : ''}`}
-                    style={cropStyle}
-                    draggable={false}
-                />
-                <div className="absolute inset-0 bg-black/20"></div>
-            </div>
-
-            {/* Video Background Layer - Z-Index 5 (Above Image, Below Gradient) */}
-            {shouldPlayVideo && (
-                <div className={`absolute inset-0 z-5 overflow-hidden transition-opacity duration-1000 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}>
-                    <div className="relative w-full h-full pointer-events-none scale-[1.35]"> {/* Scale to remove black bars */}
-                        <iframe
-                            ref={iframeRef}
-                            src={`https://www.youtube.com/embed/${videoID}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoID}&rel=0&showinfo=0&iv_load_policy=3&modestbranding=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
-                            className="absolute top-1/2 left-1/2 w-[100vw] h-[56.25vw] min-h-[100vh] min-w-[177.77vh] -translate-x-1/2 -translate-y-1/2 object-cover pointer-events-none"
-                            title="Hero Video"
-                            frameBorder="0"
-                            allow="autoplay; encrypted-media"
-                            onLoad={() => setVideoLoaded(true)}
-                        />
-                    </div>
-                </div>
-            )}
-
-            {/* 
-                Gradient Overlay
-                Adjusted dynamically to blend with the correct page background
-            */}
-            <div className={`absolute inset-0 z-10 ${gradientClass}`} style={gradientStyle}></div>
-             
-            {isRamadanTheme && (
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-950/40 via-transparent to-transparent mix-blend-multiply pointer-events-none z-10"></div>
-            )}
-            {isEidTheme && (
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-950/40 via-transparent to-transparent mix-blend-multiply pointer-events-none z-10"></div>
-            )}
-            {/* Cosmic Teal: Removed horizontal gradient to ensure purely vertical flow */}
-
-            {/* Content Info - Z-Index 30 (Moved above gradient) */}
-            {/* FIX: Enforced px-4 and pb-8 specifically for Mobile */}
-            <div className="absolute inset-0 z-30 flex flex-col justify-end px-4 md:px-16 pb-8 md:pb-10 text-white pointer-events-none">
-                {/* FIX: Enforced items-center and text-center specifically for Mobile */}
-                <div className={`max-w-2xl w-full transition-opacity duration-300 pointer-events-auto flex flex-col items-center md:items-start text-center md:text-right relative ${isActive ? 'opacity-100' : 'opacity-100'}`}>
-                    
-                    {/* Banner Note - Featured Text */}
-                    {content.bannerNote && (
-                        <div className={`
-                            mb-2 text-sm font-bold shadow-sm w-fit
-                            ${isRamadanTheme 
-                                ? 'bg-[#D4AF37]/10 text-white border border-[#D4AF37]/10 px-3 py-1 rounded-lg backdrop-blur-md' 
-                                : isEidTheme
-                                    ? 'bg-purple-600/10 text-white border border-purple-500/10 px-3 py-1 rounded-lg backdrop-blur-md'
-                                    : isCosmicTealTheme
-                                        ? 'bg-[#35F18B]/10 text-white border border-[#35F18B]/10 px-3 py-1 rounded-lg backdrop-blur-md'
-                                        : isNetflixRedTheme
-                                            ? 'bg-[#E50914]/20 text-white border border-[#E50914]/20 px-3 py-1 rounded-lg backdrop-blur-md'
-                                            : 'bg-[rgba(15,35,55,0.5)] text-[#00D2FF] border border-[rgba(0,210,255,0.3)] rounded-[6px] px-[12px] py-[4px] backdrop-blur-[4px]'}
-                        `}>
-                            {content.bannerNote}
-                        </div>
-                    )}
-
-                    {/* Title Logic: Logo vs Text */}
-                    {content.isLogoEnabled && content.logoUrl ? (
-                        <img 
-                            src={content.logoUrl} 
-                            alt={content.title} 
-                            className="w-auto h-auto max-w-[200px] md:max-w-[450px] mb-2 md:mb-4 object-contain drop-shadow-xl mx-auto md:mx-0"
-                            draggable={false}
-                        />
-                    ) : (
-                        <h1 className={`text-3xl sm:text-5xl md:text-7xl font-extrabold mb-1 md:mb-4 leading-tight 
-                            ${isRamadanTheme 
-                                ? 'text-transparent bg-clip-text bg-gradient-to-b from-amber-100 to-amber-400 drop-shadow-lg' 
-                                : isEidTheme 
-                                    ? 'text-transparent bg-clip-text bg-gradient-to-b from-purple-100 to-purple-400 drop-shadow-lg' 
-                                    : isCosmicTealTheme
-                                        ? 'text-white drop-shadow-[0_0_10px_rgba(53,241,139,0.3)]'
-                                        : 'text-white'
-                            }`}>
-                            {content.title}
-                        </h1>
-                    )}
-
-                    {/* Meta: Reduced gap and margin on mobile */}
-                    <div className="flex items-center justify-center md:justify-start gap-2 md:gap-6 mb-1 md:mb-5 text-gray-300 text-xs md:text-base font-medium w-full">
-                        <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-sm px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/10">
-                        <StarIcon className="text-[#FFD700] w-3 h-3 md:w-5 md:h-5" />
-                        <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
-                        </div>
-                        <span>{content.releaseYear}</span>
-                        {/* Age Rating in Meta is still useful for context, kept but styled subtly */}
-                        <span className={`border px-1.5 py-0.5 rounded ${isRamadanTheme ? 'border-amber-500/50 text-amber-100' : isEidTheme ? 'border-purple-500/50 text-purple-200' : isCosmicTealTheme ? 'border-[#35F18B]/50 text-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]/50 text-white' : 'border-gray-500'}`}>{content.ageRating}</span>
-                        
-                        <div className="flex items-center">
-                            {content.genres.slice(0, 3).map((g, index, arr) => (
-                                <React.Fragment key={g}>
-                                    <span className="text-gray-400">{g}</span>
-                                    {index < arr.length - 1 && <span className="mx-1.5 md:mx-2 text-gray-500">|</span>}
-                                </React.Fragment>
-                            ))}
-                        </div>
-                    </div>
-                    
-                    {/* Description: Limit to 2 lines on mobile for better visibility of image */}
-                    <p className="text-gray-100 text-xs sm:text-lg md:text-xl mb-2 md:mb-8 line-clamp-2 md:line-clamp-3 leading-relaxed max-w-xl opacity-90 drop-shadow-md mx-auto md:mx-0">
-                        {content.description}
-                    </p>
-
-                    {/* Mobile Dots: Placed BEFORE buttons */}
-                    {hasMultiple && renderDots("mb-2 md:hidden")}
-
-                    <div className="flex items-center gap-4 w-full justify-center md:justify-start">
-                        <ActionButtons 
-                            onWatch={() => onWatchNow(content)}
-                            onToggleMyList={() => onToggleMyList(content.id)}
-                            isInMyList={!!myList?.includes(content.id)}
-                            isRamadanTheme={isRamadanTheme}
-                            isEidTheme={isEidTheme}
-                            isCosmicTealTheme={isCosmicTealTheme}
-                            isNetflixRedTheme={isNetflixRedTheme}
-                            showMyList={isLoggedIn}
-                        />
-                        
-                        {/* Mute Toggle Button (Visible only when video is active) */}
-                        {shouldPlayVideo && videoLoaded && (
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); toggleMute(); }}
-                                className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group mt-2 md:mt-6"
-                                title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
-                            >
-                                <SpeakerIcon isMuted={isMuted} className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
-      );
-  };
-
-  if (contents.length === 0) {
-    return (
-      <div className="relative h-[80vh] md:h-[85vh] w-full bg-black flex items-center justify-center">
-        <p className="text-gray-500">لا يوجد محتوى مميز لعرضه حالياً.</p>
       </div>
     );
-  }
 
-  return (
-    <div 
-        ref={containerRef}
-        // FIX: Enforced 80vh on mobile and 90vh on desktop exactly as requested
-        className="relative h-[80vh] sm:h-[80vh] md:h-[90vh] w-full overflow-hidden bg-black select-none touch-pan-y group"
-        onTouchStart={(e) => handleStart(e.targetTouches[0].clientX)}
-        onTouchMove={(e) => handleMove(e.targetTouches[0].clientX)}
-        onTouchEnd={handleEnd}
-        onMouseDown={(e) => {
-             if ((e.target as HTMLElement).closest('button, a, .action-buttons-container')) return;
-             e.preventDefault();
-             handleStart(e.clientX);
-        }}
-        onMouseMove={(e) => handleMove(e.clientX)}
-        onMouseUp={handleEnd}
-        onMouseLeave={() => { if(isDragging) handleEnd() }}
-        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-        dir="ltr" 
-    >
-        {hasMultiple ? (
-            <>
-                {renderSlide(contents[getPrevIndex(currentIndex)], 'prev')}
-                {renderSlide(contents[currentIndex], 'curr')}
-                {renderSlide(contents[getNextIndex(currentIndex)], 'next')}
-            </>
-        ) : (
-             renderSlide(contents[0], 'curr')
-        )}
+    return (
+        <div 
+            ref={containerRef}
+            className={`relative h-[80vh] md:h-[85vh] w-full overflow-hidden group ${containerBgColor} select-none touch-pan-y`}
+            onMouseDown={(e) => handleStart(e.clientX)}
+            onMouseMove={(e) => handleMove(e.clientX)}
+            onMouseUp={handleEnd}
+            onMouseLeave={(e) => { handleEnd(); setIsPaused(false); }}
+            onMouseEnter={() => setIsPaused(true)}
+            onTouchStart={(e) => handleStart(e.targetTouches[0].clientX)}
+            onTouchMove={(e) => handleMove(e.targetTouches[0].clientX)}
+            onTouchEnd={handleEnd}
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        >
+            
+            {contents.map((content, index) => {
+                const isActive = index === activeIndex;
+                
+                // Smart Crop Logic for Mobile
+                const posX = content.mobileCropPositionX ?? content.mobileCropPosition ?? 50;
+                const posY = content.mobileCropPositionY ?? 50;
 
-        {/* Desktop Dots: Bottom Absolute Position */}
-        {hasMultiple && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 hidden md:flex gap-2 pointer-events-none" dir="rtl">
-                {contents.map((_, idx) => (
-                    <button 
-                        key={idx}
-                        className={`h-2 rounded-full transition-all duration-300 pointer-events-auto cursor-pointer 
-                            ${currentIndex === idx 
-                                ? (isRamadanTheme 
-                                    ? 'bg-amber-500 w-6' 
-                                    : isEidTheme
-                                        ? 'bg-purple-500 w-6'
-                                        : isCosmicTealTheme
-                                            ? 'bg-[#35F18B] w-6 shadow-[0_0_10px_#35F18B]'
-                                            : isNetflixRedTheme
-                                                ? 'bg-[#E50914] w-6 shadow-[0_0_10px_rgba(229,9,20,0.5)]'
-                                                : 'bg-[#00A7F8] w-6') 
-                                : 'bg-white/30 hover:bg-white/60 w-2'
-                            }`}
-                        onClick={(e) => { 
-                            e.stopPropagation(); 
-                            if (currentIndex === idx || isAnimating) return;
-                            const dir = idx > currentIndex ? 'next' : 'prev';
-                            handleSlide(dir);
-                            setCurrentIndex(idx);
+                const imgStyle: React.CSSProperties = {
+                    objectPosition: isMobile && content.enableMobileCrop 
+                        ? `${posX}% ${posY}%` 
+                        : 'top center',
+                    '--mob-x': `${posX}%`,
+                    '--mob-y': `${posY}%`,
+                } as React.CSSProperties;
+
+                // Video Logic
+                let embedUrl = '';
+                if (isActive && content.trailerUrl) {
+                    const videoId = getVideoId(content.trailerUrl);
+                    if (videoId) {
+                        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&showinfo=0&rel=0&modestbranding=1&loop=1&playlist=${videoId}&playsinline=1&enablejsapi=1&origin=${origin}`;
+                    }
+                }
+                const shouldShowVideo = isActive && showVideo && embedUrl && !isMobile;
+
+                // Infinite Loop Calculation (Modulo Arithmetic)
+                let offset = (index - unboundedIndex) % len;
+                if (offset < 0) offset += len; 
+                // Adjust to center the active item (0) and have neighbors at 1 and -1 (conceptually)
+                if (offset > len / 2) offset -= len;
+                
+                const baseTranslate = offset * 100;
+                
+                // Transitions: Snap if dragging, Ease if auto/click
+                const transitionStyle = isDragging ? 'none' : 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
+                
+                // Fade effect for text to prevent clashing during fast slides
+                const textOpacityClass = isDirectJump 
+                    ? (isActive ? 'opacity-100' : 'opacity-0') 
+                    : 'opacity-100';
+
+                return (
+                    <div 
+                        key={`${content.id}-${index}`} // Composite key to ensure uniqueness in some rendering cases
+                        className="absolute top-0 left-0 w-full h-full will-change-transform"
+                        style={{ 
+                            transform: `translateX(calc(${baseTranslate}% + ${dragOffset}px))`,
+                            transition: transitionStyle,
+                            zIndex: isActive ? 20 : 10 
                         }}
-                    />
-                ))}
-            </div>
-        )}
-    </div>
-  );
+                    >
+                        {/* 1. Background Layer */}
+                        <div className="absolute inset-0 w-full h-full">
+                            {shouldShowVideo && (
+                                <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in-up pointer-events-none"> 
+                                    <div className="relative w-full h-full pointer-events-none">
+                                        <iframe 
+                                            src={embedUrl} 
+                                            className="absolute top-0 left-0 w-full h-full pointer-events-none" 
+                                            allow="autoplay; encrypted-media; picture-in-picture" 
+                                            title="Trailer"
+                                            frameBorder="0"
+                                        ></iframe>
+                                    </div>
+                                </div>
+                            )}
+
+                            <img 
+                                src={content.backdrop} 
+                                alt={content.title} 
+                                className={`absolute inset-0 w-full h-full object-cover z-10 pointer-events-none transition-opacity duration-1000 ${shouldShowVideo ? 'opacity-0' : 'opacity-100'} ${content.enableMobileCrop ? 'mobile-custom-crop' : ''}`}
+                                style={imgStyle}
+                                draggable={false}
+                            />
+
+                            {/* Gradient Overlays */}
+                            <div className={`absolute inset-0 z-20 pointer-events-none
+                                ${isRamadanTheme 
+                                    ? "bg-gradient-to-t from-black via-black/80 via-25% to-transparent"
+                                    : "bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/60 via-40% to-transparent"
+                                }`}>
+                            </div>
+                            <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-body)]/90 via-[var(--bg-body)]/40 via-50% to-transparent z-20 hidden md:block pointer-events-none"></div>
+                        </div>
+
+                        {/* 2. Content Overlay Layer */}
+                        <div className={`
+                            absolute inset-0 z-30 flex flex-col justify-end px-4 md:px-12 pb-12 md:pb-32 text-white pointer-events-none 
+                            transition-opacity duration-500 ease-in-out
+                            ${textOpacityClass}
+                        `}>
+                            
+                            <div className="max-w-3xl w-full flex flex-col items-center md:items-start text-center md:text-right pointer-events-auto">
+                                
+                                {content.bannerNote && (
+                                    <div className={`
+                                        mb-1 text-sm font-medium shadow-sm w-fit animate-fade-in-up
+                                        ${isRamadanTheme 
+                                            ? 'bg-[#D4AF37]/10 text-white border border-[#D4AF37]/10 px-3 py-1 rounded-lg backdrop-blur-md' 
+                                            : isEidTheme
+                                                ? 'bg-purple-600/10 text-white border border-purple-500/10 px-3 py-1 rounded-lg backdrop-blur-md'
+                                                : isCosmicTealTheme
+                                                    ? 'bg-[#35F18B]/10 text-white border border-[#35F18B]/10 px-3 py-1 rounded-lg backdrop-blur-md'
+                                                    : isNetflixRedTheme
+                                                        ? 'bg-[#E50914]/20 text-white border border-[#E50914]/20 px-3 py-1 rounded-lg backdrop-blur-md'
+                                                        : 'bg-[rgba(15,35,55,0.5)] text-[#00D2FF] border border-[rgba(0,210,255,0.3)] rounded-[6px] px-[12px] py-[4px] backdrop-blur-[4px]'}
+                                    `}>
+                                        {content.bannerNote}
+                                    </div>
+                                )}
+
+                                <div className={`transition-all duration-700 ease-in-out transform origin-center md:origin-right ${shouldShowVideo ? 'translate-y-4 scale-75 mb-1' : 'translate-y-0 scale-100 mb-1 md:mb-2'}`}>
+                                    {content.isLogoEnabled && content.logoUrl ? (
+                                        <img 
+                                            src={content.logoUrl} 
+                                            alt={content.title} 
+                                            className="w-auto h-auto max-w-[180px] md:max-w-[360px] object-contain drop-shadow-2xl mx-auto md:mx-0"
+                                            draggable={false}
+                                        />
+                                    ) : (
+                                        <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white drop-shadow-lg leading-tight">
+                                            {content.title}
+                                        </h1>
+                                    )}
+                                </div>
+
+                                <div className={`flex flex-wrap items-center justify-center md:justify-start gap-2 text-xs md:text-base font-medium text-gray-200 transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'mb-1 opacity-80' : 'mb-1 md:mb-2 opacity-100'}`}>
+                                    <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/10">
+                                        <StarIcon className="w-3 h-3 md:w-4 md:h-4" />
+                                        <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
+                                    </div>
+                                    <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                    <span>{content.releaseYear}</span>
+                                    {content.ageRating && (
+                                        <>
+                                            <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                            <span className="border border-gray-500 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded text-[10px] md:text-xs backdrop-blur-sm bg-white/5">{content.ageRating}</span>
+                                        </>
+                                    )}
+                                    {content.type === 'movie' && content.duration && (
+                                        <>
+                                            <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                            <div className="flex items-center gap-1 px-2 py-0.5 border border-gray-500 rounded text-gray-300 text-[10px] md:text-xs backdrop-blur-sm bg-white/5">
+                                                <ClockIcon className="w-3 h-3" />
+                                                <span dir="ltr">{content.duration}</span>
+                                            </div>
+                                        </>
+                                    )}
+                                    {content.genres && content.genres.length > 0 && (
+                                        <>
+                                            <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                            <div className="flex items-center gap-2">
+                                                {content.genres.slice(0, 3).map((genre, index) => (
+                                                    <React.Fragment key={index}>
+                                                        <span className={isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]'}>
+                                                            {genre}
+                                                        </span>
+                                                        {index < Math.min(content.genres.length, 3) - 1 && <span className="text-gray-500 text-[10px] md:text-xs">|</span>}
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-2 md:mb-3'}`}>
+                                    <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-2 md:line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-xl font-medium">
+                                        {content.description}
+                                    </p>
+                                </div>
+
+                                {/* Mobile Dots */}
+                                {hasMultiple && renderDots("mb-4 md:hidden")}
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-4 w-full justify-center md:justify-start relative z-40 mt-1">
+                                    <ActionButtons 
+                                        onWatch={() => onWatchNow(content)}
+                                        onToggleMyList={() => onToggleMyList(content.id)}
+                                        isInMyList={!!myList?.includes(content.id)}
+                                        isRamadanTheme={isRamadanTheme}
+                                        isEidTheme={isEidTheme}
+                                        isCosmicTealTheme={isCosmicTealTheme}
+                                        isNetflixRedTheme={isNetflixRedTheme}
+                                        showMyList={isLoggedIn}
+                                    />
+                                    
+                                    {shouldShowVideo && (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                            className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group"
+                                            title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
+                                        >
+                                            <SpeakerIcon isMuted={isMuted} className="w-7 h-7 text-white group-hover:scale-110 transition-transform" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+
+            {/* Desktop Thumbnail Navigation */}
+            {hasMultiple && (
+                <div className="hidden md:flex absolute bottom-0 left-0 right-0 w-full z-40 justify-center items-end gap-8 animate-fade-in-up px-4 pb-0 pointer-events-none">
+                    {contents.map((c, idx) => {
+                        const isActiveItem = idx === activeIndex;
+                        const indicatorColor = isRamadanTheme ? 'bg-[#FFD700]' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]';
+
+                        return (
+                            <button 
+                                key={`thumb-${c.id}`} 
+                                onClick={(e) => { e.stopPropagation(); handleManualSlide(idx); }}
+                                className={`relative transition-all duration-500 ease-out group flex flex-col items-center gap-2 pb-2 pointer-events-auto ${isActiveItem ? `opacity-100 scale-110 filter-none` : 'opacity-50 grayscale hover:opacity-100 hover:grayscale-0 hover:scale-105'}`}
+                                title={c.title}
+                            >
+                                {c.logoUrl ? (
+                                    <img src={c.logoUrl} alt={c.title} className="h-20 w-auto object-contain max-w-[140px] drop-shadow-lg" loading="lazy" />
+                                ) : (
+                                    <span className="text-sm font-bold text-white max-w-[100px] truncate block bg-black/50 px-3 py-1 rounded">{c.title}</span>
+                                )}
+                                <div className={`h-[3px] rounded-full transition-all duration-300 mt-1 ${isActiveItem ? `w-12 opacity-100 ${indicatorColor} shadow-[0_0_8px_rgba(255,255,255,0.3)]` : 'w-0 opacity-0 bg-transparent'}`}></div>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+      );
 };
 
 export default Hero;

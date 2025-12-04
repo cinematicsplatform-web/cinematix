@@ -45,12 +45,13 @@ const KidsPage: React.FC<KidsPageProps> = ({
     allContent.filter(c => c.categories.includes('افلام أنميشن') || c.visibility === 'kids')
   , [allContent]);
   
+  // 🎯 Master Hero Logic: Ensure 5 items for Infinite Loop
   const heroContent = useMemo(() => {
-    // Removed Pinned Content logic ("Our Choice") as requested
+    // Fallback: Latest 5 animation content to enable slider behavior
     const sortedContent = [...animationContent].sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    // Updated to slice 5 items to enable slider behavior
+    // Slice 5 items to enable slider behavior
     return sortedContent.slice(0, 5);
   }, [animationContent]);
 
@@ -109,7 +110,8 @@ const KidsPage: React.FC<KidsPageProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-body)] text-white animate-fade-in-up relative overflow-x-hidden"> 
+    // CRITICAL FIX: Clean Container Structure - Absolutely NO overflow-x-hidden here to allow sticky/drag gestures
+    <div className="relative min-h-screen bg-[var(--bg-body)] text-white"> 
 
       <SEO 
         title="أطفال - سينماتيكس" 
@@ -118,7 +120,7 @@ const KidsPage: React.FC<KidsPageProps> = ({
       />
 
       <div className="relative z-10">
-          <Hero 
+        <Hero 
             contents={heroContent} 
             onWatchNow={onSelectContent}
             isLoggedIn={isLoggedIn}
@@ -129,10 +131,10 @@ const KidsPage: React.FC<KidsPageProps> = ({
             isEidTheme={isEidTheme}
             isCosmicTealTheme={isCosmicTealTheme}
             isNetflixRedTheme={isNetflixRedTheme}
-          />
+        />
       </div>
 
-      <main className="pb-24 z-30 relative bg-[var(--bg-body)]">
+      <main className="relative z-30 pb-24 bg-[var(--bg-body)]">
         <div className={`w-full h-px mt-0 mb-2 md:my-4 
             ${isRamadanTheme 
                 ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent opacity-80' 
@@ -145,7 +147,6 @@ const KidsPage: React.FC<KidsPageProps> = ({
                             : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'
             }`}></div>
         
-        {/* NEW: Page Specific Banner */}
         {adsEnabled && <AdZone position="page_kids_top" />}
 
         <AdPlacement ads={ads} placement="kids-top" isEnabled={adsEnabled} />

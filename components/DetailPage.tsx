@@ -1,4 +1,12 @@
+
+
+
+
+
+
+
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Content, Ad, Episode, Server, Season, View } from '../types';
 import VideoPlayer from './VideoPlayer';
 import ContentCarousel from './ContentCarousel';
@@ -9,6 +17,9 @@ import { StarIcon } from './icons/StarIcon';
 import { DownloadIcon } from './icons/DownloadIcon';
 import { ClockIcon } from './icons/ClockIcon';
 import { CloseIcon } from './icons/CloseIcon'; 
+import { SpeakerIcon } from './icons/SpeakerIcon';
+import { ReplayIcon } from './icons/ReplayIcon';
+import { ExpandIcon } from './icons/ExpandIcon';
 import SEO from './SEO';
 import AdZone from './AdZone';
 import AdWaiterModal from './AdWaiterModal';
@@ -48,6 +59,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
 }) => {
   const playerSectionRef = useRef<HTMLDivElement>(null);
   
+  // --- HERO VIDEO STATE ---
+  const [showVideo, setShowVideo] = useState(false);
+  const [videoEnded, setVideoEnded] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [isTrailerModalOpen, setIsTrailerModalOpen] = useState(false);
+
   // --- HELPER: Find Latest Season ---
   const getLatestSeason = (seasons?: Season[]) => {
       if (!seasons || seasons.length === 0) return null;
@@ -105,6 +122,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   // Pre-roll Ad State
   const [showPreroll, setShowPreroll] = useState(false);
   const [prerollTimer, setPrerollTimer] = useState(5);
+  const prerollContainerRef = useRef<HTMLDivElement>(null);
   
   // Get Download URL
   const downloadUrl = selectedServer?.downloadUrl || activeServers[0]?.downloadUrl;
@@ -125,6 +143,78 @@ const DetailPage: React.FC<DetailPageProps> = ({
       window.addEventListener('resize', checkMobile);
       return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // --- TRAILER LOGIC ---
+  const getVideoId = (url: string | undefined) => {
+      if (!url) return null;
+      try {
+          if (url.includes('youtu.be/')) return url.split('youtu.be/')[1].split('?')[0];
+          if (url.includes('v=')) return url.split('v=')[1].split('&')[0];
+          if (url.includes('embed/')) return url.split('embed/')[1].split('?')[0];
+          return null;
+      } catch (e) { return null; }
+  };
+
+  // Determine which trailer to show: Season-specific or Content-default
+  const displayTrailerUrl = (content.type === 'series' && currentSeason?.trailerUrl) 
+        ? currentSeason.trailerUrl 
+        : content.trailerUrl;
+
+  const trailerVideoId = getVideoId(displayTrailerUrl);
+
+  // 1. Auto-play delay logic
+  useEffect(() => {
+      // Reset states when content changes
+      setShowVideo(false);
+      setVideoEnded(false);
+      setIsMuted(true);
+
+      if (!trailerVideoId || isMobile) return;
+
+      const timer = setTimeout(() => {
+          setShowVideo(true);
+      }, 2000); // 2 Seconds Delay
+
+      return () => clearTimeout(timer);
+  }, [content.id, trailerVideoId, isMobile]);
+
+  // 2. Listen for YouTube "Ended" event via postMessage
+  useEffect(() => {
+      const handleMessage = (event: MessageEvent) => {
+          try {
+              if (typeof event.data === 'string') {
+                  const data = JSON.parse(event.data);
+                  // YouTube API: info delivery. info=0 means ended.
+                  if (data.event === 'infoDelivery' && data.info && data.info.playerState === 0) {
+                      setShowVideo(false);
+                      setVideoEnded(true);
+                  }
+                  // Handle standardized postMessage from some embed wrappers
+                  if (data.event === 'onStateChange' && data.info === 0) {
+                      setShowVideo(false);
+                      setVideoEnded(true);
+                  }
+              }
+          } catch (e) {
+              // Ignore non-JSON messages
+          }
+      };
+
+      window.addEventListener('message', handleMessage);
+      return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const handleReplay = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setVideoEnded(false);
+      setShowVideo(true);
+      setIsMuted(false); // Unmute on explicit replay
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setIsMuted(prev => !prev);
+  };
 
   // --- Logic: Deep Link Parsing & Sync on Load/Change ---
   useEffect(() => {
@@ -173,7 +263,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
     } 
   }, [content.id, locationPath]); // Re-run when content loads or URL changes
 
-  // --- Pre-roll Effect ---
+  // --- Pre-roll Effect (Timer & Script Injection) ---
   useEffect(() => {
       if (isContentPlayable && prerollAd) {
           setShowPreroll(true);
@@ -194,6 +284,25 @@ const DetailPage: React.FC<DetailPageProps> = ({
           setShowPreroll(false);
       }
   }, [content.id, selectedEpisode?.id, prerollAd, isContentPlayable]);
+
+  // Inject Script for Pre-roll
+  useEffect(() => {
+      if (showPreroll && prerollAd && prerollContainerRef.current) {
+          const container = prerollContainerRef.current;
+          container.innerHTML = ''; // Clear previous content
+          
+          try {
+              const range = document.createRange();
+              range.selectNode(container);
+              // Fallback to scriptCode if code is missing (backward compatibility)
+              const adContent = prerollAd.code || prerollAd.scriptCode || '';
+              const fragment = range.createContextualFragment(adContent);
+              container.appendChild(fragment);
+          } catch (e) {
+              console.error("Failed to inject pre-roll ad:", e);
+          }
+      }
+  }, [showPreroll, prerollAd]);
 
   // --- ACTION AD WAITER LOGIC ---
   const [waiterAdState, setWaiterAdState] = useState<{ isOpen: boolean, ad: Ad | null, onComplete: () => void }>({ isOpen: false, ad: null, onComplete: () => {} });
@@ -480,6 +589,10 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   const { title: seoTitle, description: seoDesc, image: seoImage, url: seoUrl, type: seoType } = getSEOData();
 
+  // --- TRAILER URL ---
+  const heroEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}` : '';
+  const modalEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=0&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1` : '';
+
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0">
       
@@ -506,34 +619,48 @@ const DetailPage: React.FC<DetailPageProps> = ({
           } catch (e) { return null; }
       })}
 
-      {/* --- 1. Hero Section --- */}
+      {/* --- 1. Hero Section (Updated) --- */}
       <div className="relative h-[80vh] w-full overflow-hidden group">
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-black">
+            {/* 1.1 Poster Image (Transition Out) */}
             <img 
                 src={displayBackdrop} 
                 alt={content.title} 
-                className={`w-full h-full object-cover ${!isMobile ? 'md:object-top' : ''}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${showVideo && !isTrailerModalOpen ? 'opacity-0' : 'opacity-100'} ${!isMobile ? 'md:object-top' : ''}`}
                 style={imgStyle} 
                 loading="eager"
             />
-            {/* UPDATED GRADIENT: Stronger fade at bottom (via-80%) to simulate merge, ensuring smooth transition to content */}
+            
+            {/* 1.2 YouTube Trailer (Transition In) */}
+            {heroEmbedUrl && !isMobile && !isTrailerModalOpen && (
+                <div className={`absolute inset-0 w-full h-full overflow-hidden transition-opacity duration-1000 ${showVideo ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                    <div className="relative w-full h-full pointer-events-none">
+                        <iframe 
+                            src={heroEmbedUrl}
+                            className="absolute top-0 left-0 w-full h-full" 
+                            allow="autoplay; encrypted-media; picture-in-picture" 
+                            title="Trailer"
+                            frameBorder="0"
+                        ></iframe>
+                    </div>
+                </div>
+            )}
+
+            {/* Overlays */}
             <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/80 via-20% to-transparent z-10"></div>
-            {/* Side gradient for desktop text readability */}
             <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-body)]/80 via-transparent to-transparent z-10 hidden md:block"></div>
         </div>
 
-        {/* 
-            MOBILE ADJUSTMENT: 
-            Changed pb to 4 (bottom-4) to push content extremely low on mobile.
-            Z-index increased to sit above the stronger gradient.
-        */}
+        {/* Content Layer */}
         <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 pb-4 md:pb-12 flex flex-col justify-end items-start z-20">
             <div className="max-w-4xl w-full animate-fade-in-up flex flex-col items-center md:items-start text-center md:text-right">
+                
+                {/* Logo/Title */}
                 {content.isLogoEnabled && displayLogo ? (
                     <img 
                         src={displayLogo} 
                         alt={content.title} 
-                        className="w-auto h-auto max-w-[250px] md:max-w-[500px] mb-2 md:mb-6 object-contain drop-shadow-2xl mx-auto md:mx-0"
+                        className={`w-auto h-auto max-w-[250px] md:max-w-[500px] mb-2 md:mb-6 object-contain drop-shadow-2xl mx-auto md:mx-0 transition-transform duration-700 ${showVideo ? 'translate-y-0 scale-75 origin-bottom-right' : 'scale-100'}`}
                         draggable={false}
                     />
                 ) : (
@@ -545,6 +672,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     </h1>
                 )}
 
+                {/* Metadata */}
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-6 mb-4 md:mb-8 text-sm md:text-lg font-medium text-gray-200 w-full">
                      <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
                         <StarIcon className="w-5 h-5" />
@@ -559,11 +687,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             <span className="text-gray-500 text-xl">|</span>
                         </>
                     )}
+                    {/* DURATION BADGE FOR MOVIES */}
                     {content.type === 'movie' && content.duration && (
                         <>
-                             <div className="flex items-center gap-1.5 text-gray-300 bg-black/30 px-2 py-0.5 rounded border border-white/5">
+                            <div className="flex items-center gap-1.5 px-2 py-0.5 border border-gray-500 rounded text-gray-300 text-xs md:text-sm backdrop-blur-sm bg-white/5">
                                 <ClockIcon className="w-4 h-4" />
-                                <span>{content.duration}</span>
+                                <span dir="ltr">{content.duration}</span>
                             </div>
                             <span className="text-gray-500 text-xl">|</span>
                         </>
@@ -577,19 +706,81 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     </div>
                 </div>
 
-                <ActionButtons 
-                    onWatch={handleWatchScroll}
-                    onToggleMyList={() => onToggleMyList(content.id)}
-                    isInMyList={isInMyList}
-                    showMyList={isLoggedIn}
-                    isRamadanTheme={isRamadanTheme}
-                    isEidTheme={isEidTheme}
-                    isCosmicTealTheme={isCosmicTealTheme}
-                    isNetflixRedTheme={isNetflixRedTheme}
-                />
+                {/* Description (Fade Out on Video) */}
+                <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${showVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-6'}`}>
+                    <p className="text-gray-300 text-base md:text-lg line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-2xl">
+                        {content.description}
+                    </p>
+                </div>
+
+                {/* Action Buttons Row */}
+                <div className="flex items-center justify-center md:justify-start gap-4 w-full md:w-auto relative z-40 mt-1 md:mt-2">
+                    
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <ActionButtons 
+                            onWatch={handleWatchScroll}
+                            onToggleMyList={() => onToggleMyList(content.id)}
+                            isInMyList={isInMyList}
+                            showMyList={isLoggedIn}
+                            isRamadanTheme={isRamadanTheme}
+                            isEidTheme={isEidTheme}
+                            isCosmicTealTheme={isCosmicTealTheme}
+                            isNetflixRedTheme={isNetflixRedTheme}
+                            className="flex-1 md:flex-none"
+                        />
+
+                        {/* 2. Mute/Replay Button - Visible if video is playing OR ended */}
+                        {heroEmbedUrl && !isMobile && (showVideo || videoEnded) && (
+                            <button 
+                                onClick={videoEnded ? handleReplay : toggleMute} 
+                                className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-transparent border border-white/30 text-white hover:bg-white/10 transition-all duration-300 backdrop-blur-md"
+                                title={videoEnded ? "إعادة التشغيل" : (isMuted ? "تشغيل الصوت" : "كتم الصوت")}
+                            >
+                                {videoEnded ? (
+                                    <ReplayIcon className="w-5 h-5 md:w-6 md:h-6" />
+                                ) : (
+                                    <SpeakerIcon isMuted={isMuted} className="w-5 h-5 md:w-6 md:h-6" />
+                                )}
+                            </button>
+                        )}
+                        
+                        {/* 3. Expand Button - Visible ONLY if video is playing (showVideo is true) */}
+                        {trailerVideoId && showVideo && (
+                            <button 
+                                onClick={() => setIsTrailerModalOpen(true)}
+                                className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-gray-600/40 border border-white/30 text-white hover:bg-white/20 transition-all duration-300 backdrop-blur-md ml-auto md:ml-0"
+                                title="عرض التريلر"
+                            >
+                                <ExpandIcon className="w-5 h-5 md:w-6 md:h-6" />
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
       </div>
+
+      {/* --- Trailer Modal --- */}
+      {isTrailerModalOpen && trailerVideoId && createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in-up" onClick={() => setIsTrailerModalOpen(false)}>
+              <div className="relative w-full max-w-5xl aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800" onClick={e => e.stopPropagation()}>
+                  <button 
+                      onClick={() => setIsTrailerModalOpen(false)}
+                      className="absolute top-4 right-4 z-50 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full transition-colors"
+                  >
+                      <CloseIcon className="w-6 h-6" />
+                  </button>
+                  <iframe 
+                      src={modalEmbedUrl} 
+                      className="w-full h-full" 
+                      allow="autoplay; encrypted-media; picture-in-picture; fullscreen" 
+                      allowFullScreen
+                      title="Trailer Modal"
+                  ></iframe>
+              </div>
+          </div>,
+          document.body
+      )}
 
       {/* --- 2. Info & Lists Section --- */}
       <div className="w-full px-4 md:px-8 pt-4 pb-10 md:py-10">
@@ -742,8 +933,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                               </button>
                                           )}
                                       </div>
-                                      <div className="w-full h-full flex items-center justify-center pointer-events-auto">
-                                          <div dangerouslySetInnerHTML={{ __html: prerollAd.code || '' }} />
+                                      {/* Manual Injection Container for Pre-roll Scripts */}
+                                      <div className="w-full h-full flex items-center justify-center pointer-events-auto bg-black">
+                                          <div ref={prerollContainerRef} className="w-full h-full flex justify-center items-center" />
                                       </div>
                                   </div>
                               ) : (

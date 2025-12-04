@@ -56,7 +56,9 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
         try {
             const range = document.createRange();
             range.selectNode(container);
-            const documentFragment = range.createContextualFragment(activeAd.code);
+            // Support both 'code' (new) and 'scriptCode' (old)
+            const adContent = activeAd.code || activeAd.scriptCode || '';
+            const documentFragment = range.createContextualFragment(adContent);
             container.appendChild(documentFragment);
         } catch (e) {
             console.error('Ad Injection Error:', e);

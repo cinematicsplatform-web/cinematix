@@ -6,7 +6,7 @@ import Hero from './Hero';
 import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
 import SEO from './SEO';
-import AdZone from './AdZone'; // Import AdZone
+import AdZone from './AdZone'; 
 
 interface MoviesPageProps {
   allContent: Content[];
@@ -128,7 +128,8 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-body)] relative overflow-x-hidden">
+    // CRITICAL FIX: Clean Container Structure - Absolutely NO overflow-x-hidden here to allow sticky/drag gestures
+    <div className="relative min-h-screen bg-[var(--bg-body)]">
         
         <SEO 
             title="الأفلام - سينماتيكس" 
@@ -151,7 +152,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
             />
         </div>
 
-        <main className="pb-24 z-30 relative bg-[var(--bg-body)]">
+        <main className="relative z-30 pb-24 bg-[var(--bg-body)]">
             <div className={`w-full h-px mt-0 mb-2 md:my-4 
                 ${isRamadanTheme 
                     ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent opacity-80' 
@@ -165,12 +166,8 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
                 }`}></div>
 
             <div className="flex flex-col lg:flex-row gap-6 px-0 md:px-0">
-                {/* Main Content */}
                 <div className="flex-1 w-full">
-                    
-                    {/* NEW: Page Specific Banner */}
                     {adsEnabled && <AdZone position="page_movies_top" />}
-
                     <AdPlacement ads={ads} placement="listing-top" isEnabled={adsEnabled} />
                     <AdPlacement ads={ads} placement="movies-page" isEnabled={adsEnabled} />
                     
@@ -198,7 +195,6 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
                     <AdPlacement ads={ads} placement="listing-bottom" isEnabled={adsEnabled} />
                 </div>
 
-                {/* Sidebar (Desktop Only) */}
                 <div className="hidden lg:block w-[300px] flex-shrink-0 pt-4 pl-4 sticky top-24 h-fit">
                     <AdPlacement ads={ads} placement="listing-sidebar" isEnabled={adsEnabled} />
                 </div>
