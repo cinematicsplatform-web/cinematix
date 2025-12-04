@@ -22,9 +22,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
     let finalUrl = manualSrc;
     let shouldUseIsolation = false;
 
+    // Reset active source momentarily to trigger reload if source changes
+    setActiveSource(undefined);
+
     // 1. الأولوية للرابط اليدوي
     if (!finalUrl || finalUrl.trim() === '') {
         // 2. إذا لم يوجد، نستخدم التلقائي
+        // Fallback to Automatic System if no manual URL provided
         if (tmdbId) {
             // تحديد الرابط بناءً على السيرفر المختار من الأزرار
             let domain = 'https://vidsrc.xyz/embed'; // الافتراضي (الأكثر استقراراً)
@@ -54,10 +58,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
         if (shouldUseIsolation) {
             // تمرير الرابط لصفحة العزل لكسر الحماية
             const encodedUrl = encodeURIComponent(finalUrl);
-            setActiveSource(`/embed.html?url=${encodedUrl}`);
+            // Slight delay to ensure UI updates
+            setTimeout(() => setActiveSource(`/embed.html?url=${encodedUrl}`), 50);
         } else {
             // اليدوي يعمل مباشرة
-            setActiveSource(finalUrl);
+            setTimeout(() => setActiveSource(finalUrl), 50);
         }
     } else {
         setActiveSource(undefined);
@@ -99,7 +104,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
   );
 
   // --- حالة عدم وجود سيرفر ---
-  if (!activeSource) {
+  if (!activeSource && !isLoading) {
     return (
       <div className="aspect-video w-full bg-black rounded-xl overflow-hidden relative group flex items-center justify-center p-4 border border-gray-800">
         <div className="absolute inset-0 z-0">
@@ -127,39 +132,41 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
         
         {isLoading && <LoadingOverlay />}
 
-        <div className="absolute inset-0 z-10">
-            {isDirectVideo ? (
-                <video
-                    key={activeSource} 
-                    controls
-                    autoPlay
-                    poster={poster}
-                    className="w-full h-full bg-black"
-                    onLoadedData={() => setIsLoading(false)}
-                    onWaiting={() => setIsLoading(true)}
-                    onPlaying={() => setIsLoading(false)}
-                    playsInline
-                >
-                    <source src={activeSource} type={activeSource.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'} />
-                    عفواً، متصفحك لا يدعم تشغيل الفيديوهات.
-                </video>
-            ) : (
-                <iframe
-                    key={activeSource}
-                    src={activeSource}
-                    allowFullScreen
-                    loading="eager" 
-                    referrerPolicy="no-referrer" 
-                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                    className="w-full h-full border-none" 
-                    title="Cinematix Player"
-                    onLoad={() => setIsLoading(false)}
-                />
-            )}
-        </div>
+        {activeSource && (
+            <div className="absolute inset-0 z-10">
+                {isDirectVideo ? (
+                    <video
+                        key={activeSource} 
+                        controls
+                        autoPlay
+                        poster={poster}
+                        className="w-full h-full bg-black"
+                        onLoadedData={() => setIsLoading(false)}
+                        onWaiting={() => setIsLoading(true)}
+                        onPlaying={() => setIsLoading(false)}
+                        playsInline
+                    >
+                        <source src={activeSource} type={activeSource.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'} />
+                        عفواً، متصفحك لا يدعم تشغيل الفيديوهات.
+                    </video>
+                ) : (
+                    <iframe
+                        key={activeSource}
+                        src={activeSource}
+                        allowFullScreen
+                        loading="eager" 
+                        referrerPolicy="no-referrer" 
+                        allow="autoplay; encrypted-media; fullscreen; picture-in-picture; web-share; fullscreen"
+                        className="w-full h-full border-none" 
+                        title="Cinematix Player"
+                        onLoad={() => setIsLoading(false)}
+                    />
+                )}
+            </div>
+        )}
       </div>
 
-      {/* أزرار التبديل (تظهر فقط إذا لم يكن هناك رابط يدوي) */}
+      {/* أزرار التبديل (تظهر فقط إذا لم يكن هناك رابط يدوي - النظام التلقائي) */}
       {!manualSrc && tmdbId && (
         <div className="flex flex-wrap gap-2 justify-center bg-gray-900/50 p-3 rounded-lg border border-white/5 animate-fade-in-up">
           <span className="text-xs text-gray-400 self-center ml-2 font-bold">سيرفرات تلقائية:</span>

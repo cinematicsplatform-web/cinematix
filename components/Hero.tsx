@@ -25,35 +25,35 @@ const Hero: React.FC<HeroProps> = ({
     isLoggedIn, 
     myList, 
     onToggleMyList, 
-    autoSlideInterval = 6000, // Increased default slightly for better reading time
+    autoSlideInterval = 6000, 
     isRamadanTheme,
     isEidTheme,
     isCosmicTealTheme,
     isNetflixRedTheme
 }) => {
-    // --- Internal State (Fully Encapsulated) ---
-    // Parent components have NO control over these variables
+    // --- Internal State ---
     const [unboundedIndex, setUnboundedIndex] = useState(0);
     const [isDirectJump, setIsDirectJump] = useState(false);
     const [showVideo, setShowVideo] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
-    const [isPaused, setIsPaused] = useState(false); // New: Pause on hover
+    const [isPaused, setIsPaused] = useState(false); 
+    const [isInView, setIsInView] = useState(true); // New: Track viewport visibility
     
     // Touch/Drag State
     const [isDragging, setIsDragging] = useState(false);
     const [startPos, setStartPos] = useState(0);
     const [dragOffset, setDragOffset] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
     const [isMobile, setIsMobile] = useState(false);
 
     // --- Derived Values ---
     const len = contents.length;
-    // Normalized active index (0 to length-1) ensuring proper wrapping
     const activeIndex = len > 0 ? ((unboundedIndex % len) + len) % len : 0;
     const activeContent = contents[activeIndex];
     const hasMultiple = len > 1;
 
-    // --- Self-Management Effects ---
+    // --- Effects ---
 
     // 1. Mobile Detection
     useEffect(() => {
@@ -63,41 +63,72 @@ const Hero: React.FC<HeroProps> = ({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // 2. Auto-Reset: Detect content change (Navigation) and reset slider state
-    // This allows the component to "refresh" itself when you navigate from Movies to Series
+    // 2. Intersection Observer (Scroll Rule)
     useEffect(() => {
-        setUnboundedIndex(0);
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                setIsInView(entry.isIntersecting);
+                if (!entry.isIntersecting) {
+                    // Scroll Rule: Stop video when out of view
+                    setShowVideo(false); 
+                } else {
+                    // Scroll Rule: Resume/Restart when back in view if content has trailer
+                    // We add a small delay to avoid flicker during rapid scrolls and ensure intent
+                    if (activeContent?.trailerUrl && !isMobile && !isDragging) {
+                        const timer = setTimeout(() => setShowVideo(true), 500);
+                        return () => clearTimeout(timer);
+                    }
+                }
+            },
+            { threshold: 0.3 } // Trigger when 30% visible
+        );
+
+        if (containerRef.current) {
+            observer.observe(containerRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [activeContent?.trailerUrl, isMobile, isDragging]);
+
+    // 3. Auto-Reset on Slide Change
+    useEffect(() => {
+        // When content changes, reset video state immediately
+        // Note: We don't reset unboundedIndex here to allow smooth infinite loop, 
+        // but we reset video to show poster first.
         setIsDirectJump(false);
         setShowVideo(false);
         setIsMuted(true);
         setIsPaused(false);
-    }, [contents[0]?.id, contents.length]); // Dependency on the first item's ID effectively detects "Page Change"
+    }, [activeIndex]); // Reset when active index changes
 
-    // 3. Video Playback Logic
+    // 4. Video Playback Logic (Initial Load & Visibility)
     useEffect(() => {
-        // Always reset video state when slide changes
+        // Don't auto-play if not in view or dragging
+        if (!isInView || isDragging) return;
+
+        // Reset video state initially
         setShowVideo(false);
         setIsMuted(true);
 
-        if (!activeContent || !activeContent.trailerUrl) return;
+        if (!activeContent || !activeContent.trailerUrl || isMobile) return;
 
-        // Delay video start to allow user to see the poster first
         const trailerTimer = setTimeout(() => {
-            // Don't play if dragging or if explicit pause logic required (optional)
-            if (!isDragging) {
+            // Double check visibility before playing
+            if (!isDragging && isInView) {
                 setShowVideo(true);
             }
-        }, 3500); // 3.5 seconds delay
+        }, 3500); 
 
         return () => clearTimeout(trailerTimer);
-    }, [unboundedIndex, activeContent?.id, isDragging]); 
+    }, [activeIndex, activeContent?.id, isInView, isMobile, isDragging]);
 
-    // 4. Auto Slider Logic
+    // 5. Auto Slider Logic
     useEffect(() => {
         if (!hasMultiple) return;
         if (isDragging) return; 
-        if (showVideo) return; // Stop sliding if video is playing
-        if (isPaused) return;  // Stop sliding if mouse is hovering
+        if (showVideo) return; // Pause slider when video is playing
+        if (isPaused) return; 
+        if (!isInView) return; // Don't slide if not visible
 
         const slideInterval = setInterval(() => {
             setIsDirectJump(false);
@@ -105,9 +136,25 @@ const Hero: React.FC<HeroProps> = ({
         }, autoSlideInterval);
 
         return () => clearInterval(slideInterval);
-    }, [hasMultiple, autoSlideInterval, showVideo, isDragging, isPaused]);
+    }, [hasMultiple, autoSlideInterval, showVideo, isDragging, isPaused, isInView]);
 
-    // --- Internal Handlers ---
+    // 6. Handle Mute Toggle via PostMessage (No Reload)
+    useEffect(() => {
+        if (iframeRef.current && iframeRef.current.contentWindow) {
+            try {
+                const func = isMuted ? 'mute' : 'unMute';
+                iframeRef.current.contentWindow.postMessage(JSON.stringify({
+                    'event': 'command',
+                    'func': func,
+                    'args': []
+                }), '*');
+            } catch (e) {
+                console.warn("Failed to send postMessage to iframe", e);
+            }
+        }
+    }, [isMuted]);
+
+    // --- Handlers ---
 
     const getVideoId = (url: string | undefined) => {
         if (!url) return null;
@@ -122,13 +169,10 @@ const Hero: React.FC<HeroProps> = ({
     const handleManualSlide = useCallback((targetIndex: number) => {
         if (targetIndex === activeIndex) return;
         
-        setIsDirectJump(true); // Enable fade transition for click-jumps
-
-        // Smart Path Finding: Go the shortest direction
+        setIsDirectJump(true); 
         const currentMod = activeIndex;
         let diff = targetIndex - currentMod;
         
-        // Adjust diff to wrap around correctly if closer
         if (diff > len / 2) diff -= len;
         else if (diff < -len / 2) diff += len;
 
@@ -137,11 +181,16 @@ const Hero: React.FC<HeroProps> = ({
 
     const handleStart = (clientX: number) => {
         if (!hasMultiple) return;
+
+        // Interaction Rule: Do NOT stop video on start/click. 
+        // We only track the gesture start. The video will stop ONLY if the slide actually changes (in handleEnd).
         setIsDragging(true);
         setStartPos(clientX);
         setDragOffset(0);
         setIsDirectJump(false);
-        setShowVideo(false); // Stop video immediately on interaction
+        
+        // REMOVED: setShowVideo(false); 
+        // This ensures clicks do not interrupt playback.
     };
 
     const handleMove = (clientX: number) => {
@@ -154,19 +203,19 @@ const Hero: React.FC<HeroProps> = ({
         if (!isDragging) return;
         setIsDragging(false);
         
-        const threshold = window.innerWidth * 0.2; // 20% swipe width required
+        const threshold = window.innerWidth * 0.2; 
         
+        // Only change slide if drag exceeds threshold
         if (dragOffset > threshold) {
-            setUnboundedIndex(prev => prev - 1); // Swipe Right -> Prev
+            setUnboundedIndex(prev => prev - 1); 
         } else if (dragOffset < -threshold) {
-            setUnboundedIndex(prev => prev + 1); // Swipe Left -> Next
+            setUnboundedIndex(prev => prev + 1); 
         }
+        // If threshold not met, video continues playing (if it was)
         setDragOffset(0);
     };
 
     if (!contents || contents.length === 0) return null;
-
-    // --- Render Helpers ---
 
     const containerBgColor = isRamadanTheme 
         ? 'bg-[#1a1000]' 
@@ -178,7 +227,6 @@ const Hero: React.FC<HeroProps> = ({
                     ? 'bg-[#141414]' 
                     : 'bg-black';    
 
-    // Dots Indicator
     const renderDots = (className: string) => (
       <div className={`flex gap-2 pointer-events-none justify-center w-full ${className}`} dir="rtl">
         {contents.map((_, idx) => (
@@ -220,13 +268,12 @@ const Hero: React.FC<HeroProps> = ({
             onTouchStart={(e) => handleStart(e.targetTouches[0].clientX)}
             onTouchMove={(e) => handleMove(e.targetTouches[0].clientX)}
             onTouchEnd={handleEnd}
-            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+            style={{ cursor: isDragging ? 'grabbing' : 'default' }}
         >
             
             {contents.map((content, index) => {
                 const isActive = index === activeIndex;
                 
-                // Smart Crop Logic for Mobile
                 const posX = content.mobileCropPositionX ?? content.mobileCropPosition ?? 50;
                 const posY = content.mobileCropPositionY ?? 50;
 
@@ -238,36 +285,33 @@ const Hero: React.FC<HeroProps> = ({
                     '--mob-y': `${posY}%`,
                 } as React.CSSProperties;
 
-                // Video Logic
                 let embedUrl = '';
                 if (isActive && content.trailerUrl) {
                     const videoId = getVideoId(content.trailerUrl);
                     if (videoId) {
                         const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&showinfo=0&rel=0&modestbranding=1&loop=1&playlist=${videoId}&playsinline=1&enablejsapi=1&origin=${origin}`;
+                        // FIXED: Initialize with mute=1. Mute toggle handled via postMessage.
+                        // ADDED: playlist loop to ensure continuous playback if needed
+                        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=1&playlist=${videoId}&playsinline=1&enablejsapi=1&origin=${origin}`;
                     }
                 }
+                
+                // Show video if active, url exists, not mobile, and visible in viewport
                 const shouldShowVideo = isActive && showVideo && embedUrl && !isMobile;
 
-                // Infinite Loop Calculation (Modulo Arithmetic)
                 let offset = (index - unboundedIndex) % len;
                 if (offset < 0) offset += len; 
-                // Adjust to center the active item (0) and have neighbors at 1 and -1 (conceptually)
                 if (offset > len / 2) offset -= len;
                 
                 const baseTranslate = offset * 100;
-                
-                // Transitions: Snap if dragging, Ease if auto/click
                 const transitionStyle = isDragging ? 'none' : 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
-                
-                // Fade effect for text to prevent clashing during fast slides
                 const textOpacityClass = isDirectJump 
                     ? (isActive ? 'opacity-100' : 'opacity-0') 
                     : 'opacity-100';
 
                 return (
                     <div 
-                        key={`${content.id}-${index}`} // Composite key to ensure uniqueness in some rendering cases
+                        key={`${content.id}-${index}`} 
                         className="absolute top-0 left-0 w-full h-full will-change-transform"
                         style={{ 
                             transform: `translateX(calc(${baseTranslate}% + ${dragOffset}px))`,
@@ -280,9 +324,11 @@ const Hero: React.FC<HeroProps> = ({
                             {shouldShowVideo && (
                                 <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in-up pointer-events-none"> 
                                     <div className="relative w-full h-full pointer-events-none">
+                                        {/* Visual Rule: w-full h-full object-cover ensures it fills width and allows cropping height */}
                                         <iframe 
+                                            ref={iframeRef}
                                             src={embedUrl} 
-                                            className="absolute top-0 left-0 w-full h-full pointer-events-none" 
+                                            className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none" 
                                             allow="autoplay; encrypted-media; picture-in-picture" 
                                             title="Trailer"
                                             frameBorder="0"
@@ -299,7 +345,6 @@ const Hero: React.FC<HeroProps> = ({
                                 draggable={false}
                             />
 
-                            {/* Gradient Overlays */}
                             <div className={`absolute inset-0 z-20 pointer-events-none
                                 ${isRamadanTheme 
                                     ? "bg-gradient-to-t from-black via-black/80 via-25% to-transparent"
@@ -335,12 +380,12 @@ const Hero: React.FC<HeroProps> = ({
                                     </div>
                                 )}
 
-                                <div className={`transition-all duration-700 ease-in-out transform origin-center md:origin-right ${shouldShowVideo ? 'translate-y-4 scale-75 mb-1' : 'translate-y-0 scale-100 mb-1 md:mb-2'}`}>
+                                <div className={`transition-all duration-700 ease-in-out transform origin-center md:origin-right ${shouldShowVideo ? 'translate-y-4 scale-75 mb-0' : 'translate-y-0 scale-100 mb-0 md:mb-1'}`}>
                                     {content.isLogoEnabled && content.logoUrl ? (
                                         <img 
                                             src={content.logoUrl} 
                                             alt={content.title} 
-                                            className="w-auto h-auto max-w-[180px] md:max-w-[360px] object-contain drop-shadow-2xl mx-auto md:mx-0"
+                                            className="w-auto h-auto max-w-[160px] md:max-w-[320px] object-contain drop-shadow-2xl mx-auto md:mx-0"
                                             draggable={false}
                                         />
                                     ) : (
@@ -350,7 +395,7 @@ const Hero: React.FC<HeroProps> = ({
                                     )}
                                 </div>
 
-                                <div className={`flex flex-wrap items-center justify-center md:justify-start gap-2 text-xs md:text-base font-medium text-gray-200 transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'mb-1 opacity-80' : 'mb-1 md:mb-2 opacity-100'}`}>
+                                <div className={`flex flex-wrap items-center justify-center md:justify-start gap-2 text-xs md:text-base font-medium text-gray-200 transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'mb-0 opacity-80' : 'mb-0 md:mb-1 opacity-100'}`}>
                                     <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/10">
                                         <StarIcon className="w-3 h-3 md:w-4 md:h-4" />
                                         <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
@@ -389,16 +434,14 @@ const Hero: React.FC<HeroProps> = ({
                                     )}
                                 </div>
 
-                                <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-2 md:mb-3'}`}>
+                                <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-1 md:mb-2'}`}>
                                     <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-2 md:line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-xl font-medium">
                                         {content.description}
                                     </p>
                                 </div>
 
-                                {/* Mobile Dots */}
-                                {hasMultiple && renderDots("mb-4 md:hidden")}
+                                {hasMultiple && renderDots("mb-2 md:hidden")}
 
-                                {/* Actions */}
                                 <div className="flex items-center gap-4 w-full justify-center md:justify-start relative z-40 mt-1">
                                     <ActionButtons 
                                         onWatch={() => onWatchNow(content)}
@@ -414,6 +457,7 @@ const Hero: React.FC<HeroProps> = ({
                                     {shouldShowVideo && (
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                                            // Stop propagation onMouseDown to prevent triggering drag/slide on mute click
                                             onMouseDown={(e) => e.stopPropagation()}
                                             className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group"
                                             title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
@@ -428,7 +472,6 @@ const Hero: React.FC<HeroProps> = ({
                 );
             })}
 
-            {/* Desktop Thumbnail Navigation */}
             {hasMultiple && (
                 <div className="hidden md:flex absolute bottom-0 left-0 right-0 w-full z-40 justify-center items-end gap-8 animate-fade-in-up px-4 pb-0 pointer-events-none">
                     {contents.map((c, idx) => {

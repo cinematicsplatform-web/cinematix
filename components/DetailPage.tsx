@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Content, Ad, Episode, Server, Season, View } from '../types';
@@ -64,6 +58,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [videoEnded, setVideoEnded] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isTrailerModalOpen, setIsTrailerModalOpen] = useState(false);
+  const heroIframeRef = useRef<HTMLIFrameElement>(null);
 
   // --- HELPER: Find Latest Season ---
   const getLatestSeason = (seasons?: Season[]) => {
@@ -203,6 +198,22 @@ const DetailPage: React.FC<DetailPageProps> = ({
       window.addEventListener('message', handleMessage);
       return () => window.removeEventListener('message', handleMessage);
   }, []);
+
+  // 3. Handle Mute via PostMessage
+  useEffect(() => {
+      if (heroIframeRef.current && heroIframeRef.current.contentWindow) {
+          try {
+              const func = isMuted ? 'mute' : 'unMute';
+              heroIframeRef.current.contentWindow.postMessage(JSON.stringify({
+                  'event': 'command',
+                  'func': func,
+                  'args': []
+              }), '*');
+          } catch (e) {
+              console.warn("Failed to send postMessage to hero iframe", e);
+          }
+      }
+  }, [isMuted]);
 
   const handleReplay = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -589,8 +600,10 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   const { title: seoTitle, description: seoDesc, image: seoImage, url: seoUrl, type: seoType } = getSEOData();
 
-  // --- TRAILER URL ---
-  const heroEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}` : '';
+  // --- TRAILER URL (FIXED MUTE ISSUE) ---
+  // Always initialize mute=1 so URL doesn't change on mute toggle
+  const heroEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}` : '';
+  
   const modalEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=0&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1` : '';
 
   return (
@@ -633,11 +646,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
             
             {/* 1.2 YouTube Trailer (Transition In) */}
             {heroEmbedUrl && !isMobile && !isTrailerModalOpen && (
-                <div className={`absolute inset-0 w-full h-full overflow-hidden transition-opacity duration-1000 ${showVideo ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                <div className={`absolute inset-0 w-full h-full overflow-hidden transition-opacity duration-1000 ${showVideo ? 'opacity-100' : 'opacity-0'} pointer-events-none`}>
                     <div className="relative w-full h-full pointer-events-none">
                         <iframe 
+                            ref={heroIframeRef}
                             src={heroEmbedUrl}
-                            className="absolute top-0 left-0 w-full h-full" 
+                            className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none" 
                             allow="autoplay; encrypted-media; picture-in-picture" 
                             title="Trailer"
                             frameBorder="0"
@@ -732,7 +746,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         {/* 2. Mute/Replay Button - Visible if video is playing OR ended */}
                         {heroEmbedUrl && !isMobile && (showVideo || videoEnded) && (
                             <button 
-                                onClick={videoEnded ? handleReplay : toggleMute} 
+                                onClick={videoEnded ? handleReplay : toggleMute}
+                                onMouseDown={(e) => e.stopPropagation()} 
                                 className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-transparent border border-white/30 text-white hover:bg-white/10 transition-all duration-300 backdrop-blur-md"
                                 title={videoEnded ? "إعادة التشغيل" : (isMuted ? "تشغيل الصوت" : "كتم الصوت")}
                             >
