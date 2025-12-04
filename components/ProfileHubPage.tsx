@@ -40,25 +40,17 @@ interface ProfileHubPageProps {
     activeProfile: Profile;
     onSetView: (view: View) => void;
     onLogout: () => void;
+    isRamadanTheme?: boolean;
+    isEidTheme?: boolean;
+    isCosmicTealTheme?: boolean;
+    isNetflixRedTheme?: boolean;
 }
 
-const ProfileHubPage: React.FC<ProfileHubPageProps> = ({ user, activeProfile, onSetView, onLogout }) => {
+const ProfileHubPage: React.FC<ProfileHubPageProps> = ({ user, activeProfile, onSetView, onLogout, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
     
-    // Helper to check for Netflix theme presence (basic check based on body class for this specific inline logic if props aren't passed, 
-    // BUT ProfileHubPage DOES NOT receive theme props from App.tsx in the original file.
-    // Let's check App.tsx again. `renderView` -> `ProfileHubPage` props.
-    // App.tsx passes: user, activeProfile, onSetView, onLogout. 
-    // It DOES NOT pass isNetflixRedTheme.
-    // I need to detect it via body class or assume context. 
-    // Since I cannot change App.tsx easily without listing it (and it was not requested to be changed excessively), 
-    // I will use a DOM check or just CSS variable reliance where possible.
-    // However, for the gradient classes, I need JS logic.
-    // Let's check if we can use CSS variables for the gradient?
-    // The gradient is tailwind classes.
-    // I will stick to a safe default or try to read body class.
-    
-    const isNetflixRed = document.body.classList.contains('theme-netflix-red');
-    const isCosmicTeal = document.body.classList.contains('theme-cosmic-teal');
+    // Fallback if not passed (though App.tsx should pass them now)
+    const isNetflixRed = isNetflixRedTheme || document.body.classList.contains('theme-netflix-red');
+    const isCosmicTeal = isCosmicTealTheme || document.body.classList.contains('theme-cosmic-teal');
 
     const menuItems = [
         {

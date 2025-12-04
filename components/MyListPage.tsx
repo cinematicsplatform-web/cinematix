@@ -31,10 +31,11 @@ const MyListPage: React.FC<MyListPageProps> = (props) => {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
-    <div className="min-h-screen bg-[var(--bg-body)] text-white p-4 md:p-8 pt-8 animate-fade-in-up">
-      <div className="max-w-[1600px] mx-auto">
+    <div className="min-h-screen bg-[var(--bg-body)] text-white animate-fade-in-up">
+      {/* UPDATED: w-full for Fluid Container (Removed max-w, removed margin auto for container) */}
+      <div className="w-full max-w-none px-4 md:px-8 pt-8 pb-24">
         
-        <div className="flex flex-row justify-between items-center mb-12 mt-4">
+        <div className="flex flex-row justify-between items-center mb-12 mt-4 w-full">
             
             <h1 className="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
                 قائمتي
@@ -62,7 +63,9 @@ const MyListPage: React.FC<MyListPageProps> = (props) => {
         </div>
 
         {myListContent.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 gap-y-12">
+          // Grid optimized for larger posters with Fluid Container
+          // Capped at 6 columns (xl:grid-cols-6) to force expansion via 1fr
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6 gap-y-12 w-full">
             {myListContent.map(content => (
               <ContentCard 
                 key={content.id} 
@@ -80,7 +83,7 @@ const MyListPage: React.FC<MyListPageProps> = (props) => {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-32 text-center opacity-60">
+          <div className="flex flex-col items-center justify-center py-32 text-center opacity-60 w-full">
             <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />

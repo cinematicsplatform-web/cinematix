@@ -152,7 +152,7 @@ const App: React.FC = () => {
   const scrollPositions = useRef<Record<string, number>>({});
   const prevViewRef = useRef<View>(getInitialView());
   
-  // Track previous view for Back Button logic (e.g. returning from Detail to List)
+  // Track previous view for Back button logic
   const [returnView, setReturnView] = useState<View>('home');
 
   const [selectedCategory, setSelectedCategory] = useState<string>(() => {
@@ -213,38 +213,30 @@ const App: React.FC = () => {
       if (!siteSettings.adsEnabled) return;
 
       const handleSmartPopunder = (e: MouseEvent) => {
-          // Filter active popunders
           const activePopunders = ads.filter(a => a.placement === 'global-popunder' && a.status === 'active');
           
-          // Device check
           const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
           const isMobile = /android|iPad|iPhone|iPod/i.test(userAgent) || window.innerWidth <= 768;
 
           activePopunders.forEach(ad => {
-              // 1. Device Target Check
               const targetDevice = ad.targetDevice || 'all';
               if (targetDevice === 'mobile' && !isMobile) return;
               if (targetDevice === 'desktop' && isMobile) return;
 
-              // 2. Frequency Capping Check (24 Hours by default)
               const lastRun = localStorage.getItem(`popunder_last_run_${ad.id}`);
               const now = Date.now();
               const oneDay = 24 * 60 * 60 * 1000;
 
               if (lastRun && (now - parseInt(lastRun) < oneDay)) {
-                  return; // Too soon
+                  return; 
               }
 
-              // 3. Target Matching Logic (CSS Selector)
               const triggerKey = ad.triggerTarget || 'all';
               const selector = triggerSelectors[triggerKey];
               
-              // Check if the clicked element matches the selector (or is a child of it)
               const targetElement = (e.target as Element).closest(selector);
 
               if (targetElement) {
-                  // 4. Execute Script
-                  // Using a dummy container to execute scripts safely
                   const div = document.createElement('div');
                   div.style.display = 'none';
                   div.className = `smart-popunder-${ad.id}`;
@@ -255,12 +247,8 @@ const App: React.FC = () => {
                       div.appendChild(fragment);
                       document.body.appendChild(div);
                       
-                      // Mark as executed
                       localStorage.setItem(`popunder_last_run_${ad.id}`, now.toString());
                       console.log(`Popunder [${ad.title}] triggered on [${triggerKey}]`);
-                      
-                      // Optional: If it's "Watch Now" or "Download", we generally DON'T block the action,
-                      // popunders usually open in a new tab while the user stays on the action.
                   } catch (err) {
                       console.error("Smart Popunder Error:", err);
                   }
@@ -268,44 +256,35 @@ const App: React.FC = () => {
           });
       };
 
-      // Use capture phase to catch events before other handlers if necessary, 
-      // but bubble phase is usually safer for 'closest' checks.
       window.addEventListener('click', handleSmartPopunder); 
       return () => window.removeEventListener('click', handleSmartPopunder);
 
   }, [ads, siteSettings.adsEnabled]);
 
 
-  // FORCE MANUAL SCROLL RESTORATION
   useEffect(() => {
       if ('scrollRestoration' in window.history) {
           window.history.scrollRestoration = 'manual';
       }
   }, []);
 
-  // 2. تعديل useLayoutEffect
   useLayoutEffect(() => {
       const prevView = prevViewRef.current;
       
-      // الحالة 1: نحن الآن في صفحة المشاهدة (سواء دخلنا جديد أو انتقلنا لفيلم آخر)
       if (view === 'detail') {
-          window.scrollTo(0, 0); // إجبار البدء من الأعلى دائماً
+          window.scrollTo(0, 0); 
       } 
-      // الحالة 2: كنا في المشاهدة ورجعنا للقوائم (Home/Movies)
       else if (prevView === 'detail') {
-          // راجع من فيلم؟ استرجع مكانك القديم
           const savedPosition = scrollPositions.current[view];
-          window.scrollTo(0, savedPosition || 0); // استرجع المكان القديم
+          window.scrollTo(0, savedPosition || 0); 
       } 
-      // الحالة 3: تنقل عادي بين القوائم
       else {
           window.scrollTo(0, 0);
       }
 
       prevViewRef.current = view;
-  }, [view, selectedContent]); // <--- تمت إضافة selectedContent هنا لضمان تصفير السكرول عند تغيير الفيلم
+  }, [view, selectedContent]); 
 
-  // FIX: Removed 'view' dependency to prevent circular logic/race condition when navigating
   const resolveContentFromUrl = useCallback((path: string, contentList: Content[]) => {
       const decodedPath = decodeURIComponent(path);
       const match = decodedPath.match(/^\/(?:series|مسلسل|movie|فيلم)\/([^\/]+)/);
@@ -318,8 +297,6 @@ const App: React.FC = () => {
               setSelectedContent(foundContent);
               setView('detail');
           } else {
-              // URL looks like a detail page, but content not found.
-              // Only redirect to home if we actually have content loaded (not empty list)
               if (contentList.length > 0) {
                  setView('home');
                  safeHistoryReplace('/');
@@ -338,7 +315,6 @@ const App: React.FC = () => {
               setSelectedCategory(path.split('/category/')[1]);
           }
 
-          // Only attempt to resolve content if we are navigating TO a detail view via Back/Forward
           if (newView === 'detail' && allContent.length > 0) {
               resolveContentFromUrl(window.location.pathname, allContent);
           }
@@ -430,7 +406,6 @@ const App: React.FC = () => {
   
   useEffect(() => {
       if (allContent.length > 0) {
-          // Run once on initial load / content load to handle deep linking
           resolveContentFromUrl(window.location.pathname, allContent);
       }
   }, [allContent, resolveContentFromUrl]);
@@ -439,7 +414,6 @@ const App: React.FC = () => {
       const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
           try {
               if (firebaseUser) {
-                  // Request Notification Permission on Login
                   requestNotificationPermission(firebaseUser.uid);
 
                   const profile = await getUserProfile(firebaseUser.uid);
@@ -493,12 +467,10 @@ const App: React.FC = () => {
       if (path) {
           if (window.location.pathname !== path) {
             safeHistoryPush(path);
-            // Scroll is handled by useLayoutEffect
           }
       }
   };
 
-  // 3. تعديل دالة handleSelectContent
   const handleSelectContent = (content: Content) => {
       if (siteSettings.isRamadanModeEnabled && content.categories.includes('رمضان')) {
           const now = new Date().getTime();
@@ -511,27 +483,20 @@ const App: React.FC = () => {
           }
       }
       
-      // 1. احفظ مكان السكرول للصفحة الحالية (Home, Movies, Series...)
-      // هذا يضمن أننا لو رجعنا لها نجدها في مكانها
       scrollPositions.current[view] = window.scrollY;
 
-      // Keep returnView logic for Back button support in Header
       if (view !== 'detail') {
           setReturnView(view);
       }
 
-      // 2. تحديث المحتوى والفيو
       setSelectedContent(content);
       setView('detail');
 
-      // 3. التنقل (Push)
       const slug = content.slug || content.id;
       const prefix = content.type === 'series' ? '/مسلسل/' : '/فيلم/';
       const newPath = `${prefix}${slug}`;
 
       safeHistoryPush(newPath);
-
-      // 4. (تأكيد إضافي) اجبار السكرول للأعلى فوراً
       window.scrollTo(0, 0);
   };
 
@@ -902,7 +867,7 @@ const App: React.FC = () => {
                         isNetflixRedTheme={isNetflixRedTheme}
                         ads={ads}
                         adsEnabled={siteSettings.adsEnabled}
-                        onRequestOpen={() => setIsRequestModalOpen(true)} // Pass request handler
+                        onRequestOpen={() => setIsRequestModalOpen(true)}
                       />;
            case 'admin':
                 if (isAuthLoading) return <LoadingSpinner />;
@@ -968,6 +933,10 @@ const App: React.FC = () => {
                             }
                         }}
                         onSetView={handleSetView}
+                        isRamadanTheme={isRamadanTheme}
+                        isEidTheme={isEidTheme}
+                        isCosmicTealTheme={isCosmicTealTheme}
+                        isNetflixRedTheme={isNetflixRedTheme}
                     />
                ) : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
             case 'profileHub':
@@ -978,6 +947,10 @@ const App: React.FC = () => {
                         activeProfile={activeProfile}
                         onSetView={handleSetView}
                         onLogout={handleLogout}
+                        isRamadanTheme={isRamadanTheme}
+                        isEidTheme={isEidTheme}
+                        isCosmicTealTheme={isCosmicTealTheme}
+                        isNetflixRedTheme={isNetflixRedTheme}
                     />
                 ) : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
             case 'privacy':
@@ -992,9 +965,7 @@ const App: React.FC = () => {
   };
 
   return (
-    // FIX: Remove bottom padding (pb-16) when in detail view to avoid empty footer space
     <div className={`min-h-screen text-white font-['Cairo'] ${view === 'detail' ? '' : 'pb-16 md:pb-0'}`}>
-        {/* Toast Container */}
         <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
             {toasts.map(toast => (
                 <div 
@@ -1010,7 +981,6 @@ const App: React.FC = () => {
             ))}
         </div>
 
-        {/* Global Head Injection (e.g., Pop-unders) */}
         {siteSettings.adsEnabled && <AdZone position="global_head" />}
 
         {!isAuthLoading && view !== 'login' && view !== 'register' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && !siteSettings.is_maintenance_mode_enabled && (
@@ -1030,7 +1000,6 @@ const App: React.FC = () => {
             />
         )}
         
-        {/* Global Ads - Social Bar & Sticky Footer */}
         <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className="fixed z-[90] bottom-20 left-4 right-4 md:bottom-4 md:left-4 md:right-auto md:w-auto pointer-events-auto" />
         <AdPlacement ads={ads} placement="global-sticky-footer" isEnabled={siteSettings.adsEnabled} className="fixed bottom-0 left-0 w-full z-[1000] bg-black/80" />
 
@@ -1042,7 +1011,7 @@ const App: React.FC = () => {
                     socialLinks={siteSettings.socialLinks} 
                     onSetView={handleSetView} 
                     isRamadanFooter={siteSettings.activeTheme === 'ramadan'}
-                    onRequestOpen={() => setIsRequestModalOpen(true)} // Pass request modal handler
+                    onRequestOpen={() => setIsRequestModalOpen(true)}
                 />
                 <BottomNavigation 
                     currentView={view} 
@@ -1058,7 +1027,6 @@ const App: React.FC = () => {
             </>
         )}
 
-        {/* Global Request Content Modal */}
         <RequestContentModal 
             isOpen={isRequestModalOpen}
             onClose={() => setIsRequestModalOpen(false)}

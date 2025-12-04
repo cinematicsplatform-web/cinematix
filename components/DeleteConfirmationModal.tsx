@@ -24,11 +24,17 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
             {/* Backdrop with blur and dim */}
             <div 
                 className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" 
-                onClick={onClose}
+                onClick={(e) => {
+                    e.stopPropagation(); // Prevent closing parent modal
+                    onClose();
+                }}
             ></div>
 
             {/* Modal Content */}
-            <div className="relative bg-[#1f2937] border border-gray-700 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] w-full max-w-md transform transition-all animate-fade-in-up overflow-hidden">
+            <div 
+                className="relative bg-[#1f2937] border border-gray-700 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] w-full max-w-md transform transition-all animate-fade-in-up overflow-hidden"
+                onClick={(e) => e.stopPropagation()} // Prevent clicks inside modal from closing parent
+            >
                 
                 {/* Header / Icon Area */}
                 <div className="flex flex-col items-center pt-8 px-6 text-center">
@@ -52,7 +58,8 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
                     <div className="flex items-center justify-center gap-4">
                         {/* Yes Button (Right) - Red Capsule */}
                         <button
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.stopPropagation();
                                 onConfirm();
                             }}
                             className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full transition-all duration-300 shadow-lg hover:shadow-red-600/30 transform hover:scale-105"
@@ -62,7 +69,10 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
 
                         {/* Cancel Button (Left) - Outline Capsule */}
                         <button
-                            onClick={onClose}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onClose();
+                            }}
                             className="flex-1 bg-transparent border border-gray-600 text-gray-300 hover:text-white hover:border-gray-400 hover:bg-gray-800 font-bold py-3 px-6 rounded-full transition-all duration-300"
                         >
                             إلغاء
@@ -72,7 +82,10 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
 
                 {/* Close X Top Right */}
                 <button 
-                    onClick={onClose}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onClose();
+                    }}
                     className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2 rounded-full"
                 >
                     <CloseIcon className="w-5 h-5" />

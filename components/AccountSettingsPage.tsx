@@ -8,25 +8,27 @@ interface AccountSettingsPageProps {
   user: User;
   onUpdateProfile: (profile: Profile) => void;
   onDeleteProfile: (profileId: number) => void;
-  // FIX: Changed onUpdatePassword to return a Promise to support async operations.
   onUpdatePassword: (oldPassword: string, newPassword: string) => Promise<boolean>;
   onDeleteAccount: () => void;
   onSetView: (view: View) => void;
+  isRamadanTheme?: boolean;
+  isEidTheme?: boolean;
+  isCosmicTealTheme?: boolean;
+  isNetflixRedTheme?: boolean;
 }
 
 const PasswordChangeModal: React.FC<{
     onClose: () => void;
     onSave: (oldPassword: string, newPassword: string) => Promise<boolean>;
-}> = ({ onClose, onSave }) => {
+    isNetflixRed?: boolean;
+}> = ({ onClose, onSave, isNetflixRed }) => {
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
-    const isNetflixRed = document.body.classList.contains('theme-netflix-red');
     const focusRing = isNetflixRed ? 'focus:ring-[#E50914]' : 'focus:ring-[#00FFB0]';
     const btnBg = isNetflixRed ? 'bg-[#E50914] text-white' : 'bg-[#00FFB0] text-black';
 
-    // FIX: Made handleSave async to correctly await the onSave promise.
     const handleSave = async () => {
         if(newPassword.length < 6) {
             alert("يجب أن تتكون كلمة المرور الجديدة من 6 أحرف على الأقل.");
@@ -63,12 +65,12 @@ const PasswordChangeModal: React.FC<{
 };
 
 
-const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdateProfile, onDeleteProfile, onUpdatePassword, onDeleteAccount, onSetView }) => {
+const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdateProfile, onDeleteProfile, onUpdatePassword, onDeleteAccount, onSetView, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | 'new' | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
-  const isNetflixRed = document.body.classList.contains('theme-netflix-red');
+  const isNetflixRed = isNetflixRedTheme || document.body.classList.contains('theme-netflix-red');
   const accentText = isNetflixRed ? 'text-[#E50914]' : 'text-[#00FFB0]';
   const focusRing = isNetflixRed ? 'focus:ring-[#E50914]' : 'focus:ring-[#00FFB0]';
   const primaryBtn = isNetflixRed 
@@ -94,14 +96,12 @@ const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdat
 
   return (
     <>
-      {/* Adjusted padding for non-fixed header layout */}
       <div className="min-h-screen bg-[var(--bg-body)] text-white p-4 sm:p-6 lg:p-8 pt-8 pb-24 animate-fade-in-up">
         
         {/* Navigation Header */}
         <div className="max-w-4xl mx-auto flex items-center justify-between mb-8">
              <h1 className="text-3xl md:text-4xl font-bold">إعدادات الحساب</h1>
              
-             {/* Mobile-style Back Button */}
              <button 
                 onClick={() => onSetView('profileHub')}
                 className="p-2 bg-gray-800/50 rounded-full hover:bg-gray-700 transition-colors group border border-white/10"
@@ -182,6 +182,7 @@ const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdat
         <PasswordChangeModal 
             onClose={() => setIsPasswordModalOpen(false)}
             onSave={onUpdatePassword}
+            isNetflixRed={isNetflixRed}
         />
       )}
     </>

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Content } from '../types';
 import { StarIcon } from './icons/StarIcon';
 import ActionButtons from './ActionButtons';
+import { SpeakerIcon } from './icons/SpeakerIcon';
 
 interface HeroProps {
   contents: Content[];
@@ -26,8 +27,15 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
   const [dragOffset, setDragOffset] = useState<number>(0); // in pixels
   const [isAnimating, setIsAnimating] = useState(false);
   
+  // Video Background States
+  const [showVideo, setShowVideo] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const videoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // --- Helpers ---
   const getPrevIndex = (idx: number) => (idx === 0 ? contents.length - 1 : idx - 1);
@@ -35,6 +43,27 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
 
   // We need at least 2 items to slide effectively. If 1, we just show it static.
   const hasMultiple = contents.length > 1;
+
+  // --- Video Logic ---
+  const extractVideoID = (url?: string) => {
+      if (!url) return null;
+      const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+      const match = url.match(regExp);
+      return (match && match[7].length === 11) ? match[7] : null;
+  };
+
+  const toggleMute = () => {
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+          const newMuteState = !isMuted;
+          const command = newMuteState ? 'mute' : 'unMute';
+          iframeRef.current.contentWindow.postMessage(JSON.stringify({
+              event: 'command',
+              func: command,
+              args: []
+          }), '*');
+          setIsMuted(newMuteState);
+      }
+  };
 
   // --- Auto Slide Logic ---
   const startTimer = useCallback(() => {
@@ -51,6 +80,33 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
           intervalRef.current = null;
       }
   };
+
+  // Handle slide change video logic reset
+  useEffect(() => {
+      // 1. Reset Video State
+      setShowVideo(false);
+      setVideoLoaded(false);
+      setIsMuted(true);
+      if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
+
+      // 2. Setup Video Timer if applicable
+      const currentContent = contents[currentIndex];
+      const videoId = extractVideoID(currentContent?.trailerUrl);
+      
+      // Simple Mobile Check to avoid burning data
+      const isMobile = window.innerWidth < 768; 
+
+      if (videoId && !isMobile) {
+          // Delay showing the video to allow poster to be seen first and improve perceived speed
+          videoTimeoutRef.current = setTimeout(() => {
+              setShowVideo(true);
+          }, 3000); // 3 seconds delay
+      }
+
+      return () => {
+          if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
+      };
+  }, [currentIndex, contents]);
 
   useEffect(() => {
     startTimer();
@@ -184,6 +240,12 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
       };
 
       const isActive = position === 'curr';
+      const videoID = extractVideoID(content.trailerUrl);
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      
+      // Determine if we should attempt to show video for this slide
+      // Only show if it's the current slide, video exists, showVideo is true, and NOT animating/dragging
+      const shouldPlayVideo = isActive && videoID && showVideo && !isAnimating && !isDragging && !isMobile;
 
       // Use global CSS variable for background to allow theme switching (Black/Blue)
       // UPDATED: Cosmic Teal now uses a specific inline style for the precise gradient requirement.
@@ -224,6 +286,23 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
                 <div className="absolute inset-0 bg-black/20"></div>
             </div>
 
+            {/* Video Background Layer - Z-Index 5 (Above Image, Below Gradient) */}
+            {shouldPlayVideo && (
+                <div className={`absolute inset-0 z-5 overflow-hidden transition-opacity duration-1000 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className="relative w-full h-full pointer-events-none scale-[1.35]"> {/* Scale to remove black bars */}
+                        <iframe
+                            ref={iframeRef}
+                            src={`https://www.youtube.com/embed/${videoID}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoID}&rel=0&showinfo=0&iv_load_policy=3&modestbranding=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
+                            className="absolute top-1/2 left-1/2 w-[100vw] h-[56.25vw] min-h-[100vh] min-w-[177.77vh] -translate-x-1/2 -translate-y-1/2 object-cover pointer-events-none"
+                            title="Hero Video"
+                            frameBorder="0"
+                            allow="autoplay; encrypted-media"
+                            onLoad={() => setVideoLoaded(true)}
+                        />
+                    </div>
+                </div>
+            )}
+
             {/* 
                 Gradient Overlay
                 Adjusted dynamically to blend with the correct page background
@@ -242,7 +321,7 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
             {/* FIX: Enforced px-4 and pb-8 specifically for Mobile */}
             <div className="absolute inset-0 z-30 flex flex-col justify-end px-4 md:px-16 pb-8 md:pb-10 text-white pointer-events-none">
                 {/* FIX: Enforced items-center and text-center specifically for Mobile */}
-                <div className={`max-w-2xl w-full transition-opacity duration-300 pointer-events-auto flex flex-col items-center md:items-start text-center md:text-right ${isActive ? 'opacity-100' : 'opacity-100'}`}>
+                <div className={`max-w-2xl w-full transition-opacity duration-300 pointer-events-auto flex flex-col items-center md:items-start text-center md:text-right relative ${isActive ? 'opacity-100' : 'opacity-100'}`}>
                     
                     {/* Banner Note - Featured Text */}
                     {content.bannerNote && (
@@ -312,16 +391,29 @@ const Hero: React.FC<HeroProps> = ({ contents, onWatchNow, isLoggedIn, myList, o
                     {/* Mobile Dots: Placed BEFORE buttons */}
                     {hasMultiple && renderDots("mb-2 md:hidden")}
 
-                    <ActionButtons 
-                        onWatch={() => onWatchNow(content)}
-                        onToggleMyList={() => onToggleMyList(content.id)}
-                        isInMyList={!!myList?.includes(content.id)}
-                        isRamadanTheme={isRamadanTheme}
-                        isEidTheme={isEidTheme}
-                        isCosmicTealTheme={isCosmicTealTheme}
-                        isNetflixRedTheme={isNetflixRedTheme}
-                        showMyList={isLoggedIn}
-                    />
+                    <div className="flex items-center gap-4 w-full justify-center md:justify-start">
+                        <ActionButtons 
+                            onWatch={() => onWatchNow(content)}
+                            onToggleMyList={() => onToggleMyList(content.id)}
+                            isInMyList={!!myList?.includes(content.id)}
+                            isRamadanTheme={isRamadanTheme}
+                            isEidTheme={isEidTheme}
+                            isCosmicTealTheme={isCosmicTealTheme}
+                            isNetflixRedTheme={isNetflixRedTheme}
+                            showMyList={isLoggedIn}
+                        />
+                        
+                        {/* Mute Toggle Button (Visible only when video is active) */}
+                        {shouldPlayVideo && videoLoaded && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+                                className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group mt-2 md:mt-6"
+                                title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
+                            >
+                                <SpeakerIcon isMuted={isMuted} className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

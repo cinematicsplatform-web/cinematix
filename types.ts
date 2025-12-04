@@ -98,6 +98,7 @@ export interface Content {
   updatedAt?: string;
   logoUrl?: string; // New: URL for the title logo image
   isLogoEnabled?: boolean; // New: Toggle to show logo instead of text
+  trailerUrl?: string; // New: YouTube Trailer URL for Hero Background
   duration?: string; // New: Movie duration (e.g., "1h 30m")
   enableMobileCrop?: boolean; // New: Toggle for mobile image cropping
   mobileCropPosition?: number; // Legacy X

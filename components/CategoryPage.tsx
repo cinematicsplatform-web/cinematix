@@ -119,6 +119,16 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
     return { displayTitle: title, filteredContent: content, showRank: isRanked };
   }, [allContent, categoryTitle, searchQuery]);
 
+  // Check if there is a sidebar ad to show
+  const hasSidebarAd = useMemo(() => {
+      if (!adsEnabled) return false;
+      return ads.some(a => 
+          a.placement === 'listing-sidebar' && 
+          a.status === 'active' &&
+          (a.targetDevice === 'all' || a.targetDevice === 'desktop')
+      );
+  }, [ads, adsEnabled]);
+
   // Theme Colors for Accent
   const accentColor = isRamadanTheme 
         ? 'text-[#FFD700]' 
@@ -144,12 +154,13 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
     <div className="min-h-screen bg-[var(--bg-body)] text-white animate-fade-in-up">
       
       {/* Sticky Header Section */}
-      <div className="sticky top-0 z-50 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 pb-4 pt-6 px-4 md:px-8 shadow-lg">
+      <div className="sticky top-0 z-50 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 pb-4 pt-6 px-4 md:px-8 shadow-lg w-full">
           
-          <div className="max-w-[1600px] mx-auto flex flex-col gap-6">
+          {/* UPDATED: Fluid Container (Full Width) */}
+          <div className="w-full flex flex-col gap-6">
               
               {/* 1. Search Bar (Top) */}
-              <div className="w-full max-w-2xl mx-auto">
+              <div className="w-full max-w-3xl mx-auto">
                   <div className={`relative group flex items-center bg-black/40 border border-white/10 rounded-full px-4 py-3 transition-all duration-300 focus-within:bg-black/60 focus-within:shadow-[0_0_20px_rgba(0,0,0,0.3)] focus-within:border-transparent focus-within:ring-2 ${ringColor}`}>
                         <input 
                             type="text"
@@ -163,7 +174,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
               </div>
 
               {/* 2. Title & Back Button Row (Below Search) */}
-              <div className="flex flex-row justify-between items-center">
+              <div className="flex flex-row justify-between items-center w-full">
                     <h1 className={`text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text truncate max-w-[70%] leading-tight
                         ${isRamadanTheme 
                             ? 'bg-gradient-to-r from-[#D4AF37] to-[#F59E0B]' 
@@ -172,7 +183,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                                 : isCosmicTealTheme
                                     ? 'bg-gradient-to-r from-[#35F18B] to-[#2596be]'
                                     : isNetflixRedTheme
-                                        ? 'text-[#E50914]' // Solid red often looks cleaner for Netflix titles than a gradient
+                                        ? 'text-[#E50914]' 
                                         : 'bg-gradient-to-r from-white to-gray-400'
                         }`}>
                         {displayTitle}
@@ -201,14 +212,14 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
           </div>
       </div>
 
-      {/* Main Layout */}
-      <div className="p-4 md:p-8 pt-6 md:pt-8 max-w-[1600px] mx-auto pb-24 flex flex-col lg:flex-row gap-6">
+      {/* Main Layout - UPDATED: Fluid Container (Full Width 100%) */}
+      <div className="w-full max-w-none px-4 md:px-8 pt-6 pb-24 flex flex-col lg:flex-row gap-6">
         
         <div className="flex-1 w-full">
             <AdPlacement ads={ads} placement="listing-top" isEnabled={adsEnabled} />
 
             {filteredContent.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-4 md:gap-6 gap-y-12">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 md:gap-6 gap-y-8 md:gap-y-12 w-full">
                 {filteredContent.map((content, index) => (
                 <ContentCard 
                     key={content.id} 
@@ -264,10 +275,12 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
             <AdPlacement ads={ads} placement="listing-bottom" isEnabled={adsEnabled} />
         </div>
 
-        {/* Sidebar (Desktop Only) */}
-        <div className="hidden lg:block w-[300px] flex-shrink-0 sticky top-48 h-fit">
-            <AdPlacement ads={ads} placement="listing-sidebar" isEnabled={adsEnabled} />
-        </div>
+        {/* Sidebar (Desktop Only) - Render ONLY if Ads Enabled AND Sidebar Ads Exist */}
+        {hasSidebarAd && (
+            <div className="hidden lg:block w-[300px] flex-shrink-0 sticky top-48 h-fit">
+                <AdPlacement ads={ads} placement="listing-sidebar" isEnabled={adsEnabled} />
+            </div>
+        )}
 
       </div>
     </div>
