@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Content, Ad, Episode, Server, Season, View } from '../types';
@@ -55,7 +56,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   // --- HERO VIDEO STATE ---
   const [showVideo, setShowVideo] = useState(false);
   const [videoEnded, setVideoEnded] = useState(false);
-  const [isMuted, setIsMuted] = useState(true); // Default muted for autoplay policy
+  const [isMuted, setIsMuted] = useState(true);
   const [isTrailerModalOpen, setIsTrailerModalOpen] = useState(false);
 
   // Refs for Scroll Control & Player API
@@ -175,31 +176,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return () => clearTimeout(timer);
   }, [content.id, trailerVideoId, isMobile]);
 
-  // 2. STRICT 60-SECOND TIMER LOGIC
-  useEffect(() => {
-      let limitTimer: ReturnType<typeof setTimeout>;
-      
-      if (showVideo) {
-          // Force stop video after 60 seconds
-          limitTimer = setTimeout(() => {
-              if (iframeRef.current) {
-                  iframeRef.current.contentWindow?.postMessage(JSON.stringify({
-                      event: 'command',
-                      func: 'pauseVideo',
-                      args: ''
-                  }), '*');
-              }
-              setShowVideo(false);
-              setVideoEnded(true); // Treated as ended/stopped
-          }, 60000); // 60,000 ms = 60 seconds
-      }
-
-      return () => {
-          if (limitTimer) clearTimeout(limitTimer);
-      };
-  }, [showVideo]);
-
-  // 3. Listen for YouTube "Ended" event via postMessage (Natural ending < 60s)
+  // 2. Listen for YouTube "Ended" event via postMessage
   useEffect(() => {
       const handleMessage = (event: MessageEvent) => {
           try {
@@ -225,7 +202,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // 4. Scroll Visibility Rule (Intersection Observer)
+  // 3. Scroll Visibility Rule (Intersection Observer)
   useEffect(() => {
       const observer = new IntersectionObserver(
           ([entry]) => {
@@ -252,6 +229,38 @@ const DetailPage: React.FC<DetailPageProps> = ({
       if (heroRef.current) observer.observe(heroRef.current);
       return () => observer.disconnect();
   }, [showVideo, videoEnded]);
+
+  const handleReplay = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setVideoEnded(false);
+      setShowVideo(true);
+      setIsMuted(false); // Unmute on replay for better UX
+      
+      // Smart Restart via postMessage (No Reload)
+      if (iframeRef.current) {
+          // Seek to 0
+          iframeRef.current.contentWindow?.postMessage(JSON.stringify({event: 'command', func: 'seekTo', args: [0, true]}), '*');
+          // Play
+          iframeRef.current.contentWindow?.postMessage(JSON.stringify({event: 'command', func: 'playVideo', args: ''}), '*');
+          // Unmute
+          iframeRef.current.contentWindow?.postMessage(JSON.stringify({event: 'command', func: 'unMute', args: ''}), '*');
+      }
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const newMuted = !isMuted;
+      setIsMuted(newMuted);
+      
+      // Toggle mute via postMessage to prevent iframe reload
+      if (iframeRef.current) {
+          iframeRef.current.contentWindow?.postMessage(JSON.stringify({
+              event: 'command',
+              func: newMuted ? 'mute' : 'unMute',
+              args: ''
+          }), '*');
+      }
+  };
 
   // --- Logic: Deep Link Parsing & Sync on Load/Change ---
   useEffect(() => {
@@ -773,12 +782,27 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             className="flex-1 md:flex-none"
                         />
 
-                        {/* 2. Persistent Expand/Popup Button - Always visible if trailer exists */}
-                        {trailerVideoId && !isMobile && (
+                        {/* 2. Mute/Replay Button - Visible if video is playing OR ended */}
+                        {heroEmbedUrl && !isMobile && (showVideo || videoEnded) && (
+                            <button 
+                                onClick={videoEnded ? handleReplay : toggleMute} 
+                                className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-transparent border border-white/30 text-white hover:bg-white/10 transition-all duration-300 backdrop-blur-md"
+                                title={videoEnded ? "إعادة التشغيل" : (isMuted ? "تشغيل الصوت" : "كتم الصوت")}
+                            >
+                                {videoEnded ? (
+                                    <ReplayIcon className="w-5 h-5 md:w-6 md:h-6" />
+                                ) : (
+                                    <SpeakerIcon isMuted={isMuted} className="w-5 h-5 md:w-6 md:h-6" />
+                                )}
+                            </button>
+                        )}
+                        
+                        {/* 3. Expand Button - Visible ONLY if video is playing (showVideo is true) */}
+                        {trailerVideoId && showVideo && (
                             <button 
                                 onClick={() => setIsTrailerModalOpen(true)}
-                                className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/10 border border-white/30 text-white hover:bg-white/20 transition-all duration-300 backdrop-blur-md"
-                                title="عرض التريلر في نافذة منبثقة"
+                                className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-gray-600/40 border border-white/30 text-white hover:bg-white/20 transition-all duration-300 backdrop-blur-md ml-auto md:ml-0"
+                                title="عرض التريلر"
                             >
                                 <ExpandIcon className="w-5 h-5 md:w-6 md:h-6" />
                             </button>
