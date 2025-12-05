@@ -322,12 +322,12 @@ const Hero: React.FC<HeroProps> = ({
                         <div className="absolute inset-0 w-full h-full">
                             {shouldShowVideo && (
                                 <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in-up pointer-events-none"> 
-                                    {/* Updated: Aspect-Video container centered with scale-[1.35] to fill corners */}
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none scale-[1.35]">
+                                    {/* Updated: Ensure full width 100% and aspect ratio preservation. No scaling to avoid cropping sides unless container is too tall. Pointer events none to allow scrolling over video. */}
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
                                         <iframe 
                                             ref={activeIframeRef}
                                             src={embedUrl} 
-                                            className="w-full h-full" 
+                                            className="w-full h-full pointer-events-none" 
                                             allow="autoplay; encrypted-media; picture-in-picture" 
                                             title="Trailer"
                                             frameBorder="0"
