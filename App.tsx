@@ -148,7 +148,7 @@ const App: React.FC = () => {
 
   const [view, setView] = useState<View>(getInitialView);
   
-  // 1. تعريف الذاكرة (State)
+  // 1. Memory for Scroll Positions
   const scrollPositions = useRef<Record<string, number>>({});
   const prevViewRef = useRef<View>(getInitialView());
   
@@ -278,6 +278,7 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
+      // CRITICAL: Prevent browser from auto-restoring scroll, we handle it manually
       if ('scrollRestoration' in window.history) {
           window.history.scrollRestoration = 'manual';
       }
@@ -287,14 +288,23 @@ const App: React.FC = () => {
       const prevView = prevViewRef.current;
       
       if (view === 'detail') {
-          window.scrollTo(0, 0); 
+          // Always scroll to top when entering Detail page.
+          // Using 'instant' behavior to prevent visual scrolling animation from previous position.
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
       } 
       else if (prevView === 'detail') {
+          // Returning from Detail page: Restore previous scroll position instantly
           const savedPosition = scrollPositions.current[view];
-          window.scrollTo(0, savedPosition || 0); 
+          if (savedPosition !== undefined) {
+              window.scrollTo({ top: savedPosition, left: 0, behavior: 'instant' as any });
+          } else {
+              window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+          }
       } 
       else {
-          window.scrollTo(0, 0);
+          // Navigation between main tabs (Home <-> Movies etc)
+          // Reset to 0 instantly for a fresh start.
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
       }
 
       prevViewRef.current = view;
@@ -322,6 +332,8 @@ const App: React.FC = () => {
 
   useEffect(() => {
       const handlePopState = () => {
+          // When hitting back button, save current scroll for the view we are LEAVING? 
+          // Browser back button usually handles history state, but since we use manual restoration:
           const newView = getInitialView();
           setView(newView); 
           
@@ -470,6 +482,11 @@ const App: React.FC = () => {
 
 
   const handleSetView = (newView: View, category?: string) => {
+      // If we are leaving a list view (like home, movies, etc), save the scroll position
+      if (view !== 'detail') {
+          scrollPositions.current[view] = window.scrollY;
+      }
+
       setView(newView);
       if (category) setSelectedCategory(category);
 
@@ -498,6 +515,7 @@ const App: React.FC = () => {
           }
       }
       
+      // Save current scroll position before switching to detail view
       scrollPositions.current[view] = window.scrollY;
 
       if (view !== 'detail') {
@@ -512,7 +530,7 @@ const App: React.FC = () => {
       const newPath = `${prefix}${slug}`;
 
       safeHistoryPush(newPath);
-      window.scrollTo(0, 0);
+      // NOTE: We rely on useLayoutEffect to handle the scroll-to-top instantly
   };
 
   const handleLogin = async (email: string, pass: string): Promise<LoginError> => {
