@@ -176,7 +176,30 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return () => clearTimeout(timer);
   }, [content.id, trailerVideoId, isMobile]);
 
-  // 2. Listen for YouTube "Ended" event via postMessage
+  // 2. 60 Seconds Limit Logic
+  useEffect(() => {
+      let limitTimer: ReturnType<typeof setTimeout>;
+
+      if (showVideo) {
+          limitTimer = setTimeout(() => {
+              // 1. Manually pause video (to stop audio)
+              if (iframeRef.current) {
+                  iframeRef.current.contentWindow?.postMessage(JSON.stringify({
+                      event: 'command',
+                      func: 'pauseVideo',
+                      args: ''
+                  }), '*');
+              }
+              // 2. Hide video and revert to poster
+              setShowVideo(false);
+              setVideoEnded(true);
+          }, 60000); // 60 Seconds
+      }
+
+      return () => clearTimeout(limitTimer);
+  }, [showVideo]);
+
+  // 3. Listen for YouTube "Ended" event via postMessage
   useEffect(() => {
       const handleMessage = (event: MessageEvent) => {
           try {
@@ -202,14 +225,14 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // 3. Scroll Visibility Rule (Intersection Observer)
+  // 4. Scroll Visibility Rule (Intersection Observer)
   useEffect(() => {
       const observer = new IntersectionObserver(
           ([entry]) => {
               if (iframeRef.current) {
                   // "Out of View" (isIntersecting = false): Stop resource usage (Pause)
                   // "Back in View" (isIntersecting = true): Resume from last point (Play)
-                  
+                  // Only try to play if it hasn't ended and was supposed to be showing
                   const msg = entry.isIntersecting 
                       ? (showVideo && !videoEnded ? 'playVideo' : null) 
                       : 'pauseVideo';
@@ -759,12 +782,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     </div>
                 </div>
 
-                {/* Description (Fade Out on Video) */}
-                <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${showVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-6'}`}>
-                    <p className="text-gray-300 text-base md:text-lg line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-2xl">
-                        {content.description}
-                    </p>
-                </div>
+                {/* Description removed from Hero section to avoid duplication with 'Story' section below */}
 
                 {/* Action Buttons Row */}
                 <div className="flex items-center justify-center md:justify-start gap-4 w-full md:w-auto relative z-40 mt-1 md:mt-2">
@@ -782,29 +800,25 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             className="flex-1 md:flex-none"
                         />
 
-                        {/* 2. Mute/Replay Button - Visible if video is playing OR ended */}
-                        {heroEmbedUrl && !isMobile && (showVideo || videoEnded) && (
+                        {/* 2. Mute/Replay Button - Visible ONLY if video is PLAYING and NOT ended */}
+                        {heroEmbedUrl && !isMobile && showVideo && !videoEnded && (
                             <button 
-                                onClick={videoEnded ? handleReplay : toggleMute} 
-                                className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-transparent border border-white/30 text-white hover:bg-white/10 transition-all duration-300 backdrop-blur-md"
-                                title={videoEnded ? "إعادة التشغيل" : (isMuted ? "تشغيل الصوت" : "كتم الصوت")}
+                                onClick={toggleMute} 
+                                className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group"
+                                title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
                             >
-                                {videoEnded ? (
-                                    <ReplayIcon className="w-5 h-5 md:w-6 md:h-6" />
-                                ) : (
-                                    <SpeakerIcon isMuted={isMuted} className="w-5 h-5 md:w-6 md:h-6" />
-                                )}
+                                <SpeakerIcon isMuted={isMuted} className="w-7 h-7 text-white group-hover:scale-110 transition-transform" />
                             </button>
                         )}
                         
-                        {/* 3. Expand Button - Visible ONLY if video is playing (showVideo is true) */}
-                        {trailerVideoId && showVideo && (
+                        {/* 3. Expand Button - Visible if video playing OR ended (persistent after 60s) */}
+                        {trailerVideoId && (showVideo || videoEnded) && (
                             <button 
                                 onClick={() => setIsTrailerModalOpen(true)}
-                                className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-gray-600/40 border border-white/30 text-white hover:bg-white/20 transition-all duration-300 backdrop-blur-md ml-auto md:ml-0"
+                                className="p-4 bg-gray-600/40 border border-white/30 hover:bg-white/20 backdrop-blur-md rounded-full transition-all z-50 group ml-auto md:ml-0"
                                 title="عرض التريلر"
                             >
-                                <ExpandIcon className="w-5 h-5 md:w-6 md:h-6" />
+                                <ExpandIcon className="w-7 h-7 text-white group-hover:scale-110 transition-transform" />
                             </button>
                         )}
                     </div>

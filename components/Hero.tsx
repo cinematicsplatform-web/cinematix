@@ -17,6 +17,7 @@ interface HeroProps {
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
+  hideDescription?: boolean;
 }
 
 const Hero: React.FC<HeroProps> = ({ 
@@ -29,7 +30,8 @@ const Hero: React.FC<HeroProps> = ({
     isRamadanTheme,
     isEidTheme,
     isCosmicTealTheme,
-    isNetflixRedTheme
+    isNetflixRedTheme,
+    hideDescription = false
 }) => {
     // --- Internal State (Fully Encapsulated) ---
     // Parent components have NO control over these variables
@@ -389,11 +391,13 @@ const Hero: React.FC<HeroProps> = ({
                                     )}
                                 </div>
 
-                                <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-3 md:mb-4'}`}>
-                                    <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-2 md:line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-xl font-medium">
-                                        {content.description}
-                                    </p>
-                                </div>
+                                {!hideDescription && (
+                                    <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-3 md:mb-4'}`}>
+                                        <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-2 md:line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-xl font-medium">
+                                            {content.description}
+                                        </p>
+                                    </div>
+                                )}
 
                                 {/* Mobile Dots */}
                                 {hasMultiple && renderDots("mb-4 md:hidden")}
