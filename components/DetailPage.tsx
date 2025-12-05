@@ -58,7 +58,10 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [videoEnded, setVideoEnded] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isTrailerModalOpen, setIsTrailerModalOpen] = useState(false);
-  const heroIframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Refs for Scroll Control & Player API
+  const heroRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // --- HELPER: Find Latest Season ---
   const getLatestSeason = (seasons?: Season[]) => {
@@ -199,32 +202,64 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // 3. Handle Mute via PostMessage
+  // 3. Scroll Visibility Rule (Intersection Observer)
   useEffect(() => {
-      if (heroIframeRef.current && heroIframeRef.current.contentWindow) {
-          try {
-              const func = isMuted ? 'mute' : 'unMute';
-              heroIframeRef.current.contentWindow.postMessage(JSON.stringify({
-                  'event': 'command',
-                  'func': func,
-                  'args': []
-              }), '*');
-          } catch (e) {
-              console.warn("Failed to send postMessage to hero iframe", e);
-          }
-      }
-  }, [isMuted]);
+      const observer = new IntersectionObserver(
+          ([entry]) => {
+              if (iframeRef.current) {
+                  // "Out of View" (isIntersecting = false): Stop resource usage (Pause)
+                  // "Back in View" (isIntersecting = true): Resume from last point (Play)
+                  
+                  const msg = entry.isIntersecting 
+                      ? (showVideo && !videoEnded ? 'playVideo' : null) 
+                      : 'pauseVideo';
+                  
+                  if (msg) {
+                      iframeRef.current.contentWindow?.postMessage(JSON.stringify({
+                          event: 'command',
+                          func: msg,
+                          args: ''
+                      }), '*');
+                  }
+              }
+          },
+          { threshold: 0.0 } // 0.0 means trigger exactly when element leaves viewport completely
+      );
+      
+      if (heroRef.current) observer.observe(heroRef.current);
+      return () => observer.disconnect();
+  }, [showVideo, videoEnded]);
 
   const handleReplay = (e: React.MouseEvent) => {
       e.stopPropagation();
       setVideoEnded(false);
       setShowVideo(true);
-      setIsMuted(false); // Unmute on explicit replay
+      setIsMuted(false); // Unmute on replay for better UX
+      
+      // Smart Restart via postMessage (No Reload)
+      if (iframeRef.current) {
+          // Seek to 0
+          iframeRef.current.contentWindow?.postMessage(JSON.stringify({event: 'command', func: 'seekTo', args: [0, true]}), '*');
+          // Play
+          iframeRef.current.contentWindow?.postMessage(JSON.stringify({event: 'command', func: 'playVideo', args: ''}), '*');
+          // Unmute
+          iframeRef.current.contentWindow?.postMessage(JSON.stringify({event: 'command', func: 'unMute', args: ''}), '*');
+      }
   };
 
   const toggleMute = (e: React.MouseEvent) => {
       e.stopPropagation();
-      setIsMuted(prev => !prev);
+      const newMuted = !isMuted;
+      setIsMuted(newMuted);
+      
+      // Toggle mute via postMessage to prevent iframe reload
+      if (iframeRef.current) {
+          iframeRef.current.contentWindow?.postMessage(JSON.stringify({
+              event: 'command',
+              func: newMuted ? 'mute' : 'unMute',
+              args: ''
+          }), '*');
+      }
   };
 
   // --- Logic: Deep Link Parsing & Sync on Load/Change ---
@@ -600,21 +635,15 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   const { title: seoTitle, description: seoDesc, image: seoImage, url: seoUrl, type: seoType } = getSEOData();
 
-  // --- TRAILER URL (FIXED MUTE ISSUE) ---
-  // Always initialize mute=1 so URL doesn't change on mute toggle
-  const heroEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playlist=${trailerVideoId}&playsinline=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}` : '';
-  
-  const modalEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=0&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1` : '';
+  // --- TRAILER URL (Optimized & Memoized) ---
+  // Start muted (mute=1) to allow autoplay and prevent reload on simple mute toggles.
+  const heroEmbedUrl = useMemo(() => {
+      if (!trailerVideoId) return '';
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      return `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${origin}`;
+  }, [trailerVideoId]);
 
-  const containerBgColor = isRamadanTheme 
-    ? 'bg-[#1a1000]' 
-    : isEidTheme 
-        ? 'bg-[#1a0b2e]' 
-        : isCosmicTealTheme
-            ? 'bg-[#0b1116]' 
-            : isNetflixRedTheme
-                ? 'bg-[#141414]' 
-                : 'bg-black';
+  const modalEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=0&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1` : '';
 
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0">
@@ -643,8 +672,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
       })}
 
       {/* --- 1. Hero Section (Updated) --- */}
-      <div className={`relative h-[80vh] md:h-[85vh] w-full overflow-hidden group ${containerBgColor}`}>
-        <div className="absolute inset-0 bg-transparent">
+      <div ref={heroRef} className="relative h-[80vh] w-full overflow-hidden group">
+        <div className="absolute inset-0 bg-black">
             {/* 1.1 Poster Image (Transition Out) */}
             <img 
                 src={displayBackdrop} 
@@ -656,12 +685,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
             
             {/* 1.2 YouTube Trailer (Transition In) */}
             {heroEmbedUrl && !isMobile && !isTrailerModalOpen && (
-                <div className={`absolute inset-0 w-full h-full overflow-hidden transition-opacity duration-1000 ${showVideo ? 'opacity-100' : 'opacity-0'} pointer-events-none`}>
-                    <div className="relative w-full h-full pointer-events-none">
+                <div className={`absolute inset-0 w-full h-full overflow-hidden transition-opacity duration-1000 ${showVideo ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                    <div className="relative w-full h-full pointer-events-none scale-125">
                         <iframe 
-                            ref={heroIframeRef}
+                            ref={iframeRef}
                             src={heroEmbedUrl}
-                            className="absolute top-1/2 left-1/2 w-[100vw] h-[56.25vw] min-h-[100vh] min-w-[177.77vh] -translate-x-1/2 -translate-y-1/2 object-cover pointer-events-none"
+                            className="absolute top-0 left-0 w-full h-full object-cover" 
                             allow="autoplay; encrypted-media; picture-in-picture" 
                             title="Trailer"
                             frameBorder="0"
@@ -676,10 +705,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
         </div>
 
         {/* Content Layer */}
-        {/* UPDATE: Removed animate-fade-in-up class here for immediate appearance */}
-        {/* UPDATE: Reduced pb-4 to pb-1 on mobile to push content down near the separator */}
-        <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 pb-1 md:pb-12 flex flex-col justify-end items-start z-20">
-            <div className="max-w-4xl w-full flex flex-col items-center md:items-start text-center md:text-right">
+        <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 pb-4 md:pb-12 flex flex-col justify-end items-start z-20">
+            <div className="max-w-4xl w-full animate-fade-in-up flex flex-col items-center md:items-start text-center md:text-right">
                 
                 {/* Logo/Title */}
                 {content.isLogoEnabled && displayLogo ? (
@@ -732,10 +759,15 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     </div>
                 </div>
 
-                {/* --- DESCRIPTION REMOVED FROM HERO SECTION TO AVOID DUPLICATION ON WATCH PAGE --- */}
+                {/* Description (Fade Out on Video) */}
+                <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${showVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-6'}`}>
+                    <p className="text-gray-300 text-base md:text-lg line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-2xl">
+                        {content.description}
+                    </p>
+                </div>
 
                 {/* Action Buttons Row */}
-                <div className={`flex items-center justify-center md:justify-start gap-4 w-full md:w-auto relative z-40 transition-all duration-500 ${showVideo ? 'mt-6' : 'mt-2'}`}>
+                <div className="flex items-center justify-center md:justify-start gap-4 w-full md:w-auto relative z-40 mt-1 md:mt-2">
                     
                     <div className="flex items-center gap-3 w-full md:w-auto">
                         <ActionButtons 
@@ -747,13 +779,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             isEidTheme={isEidTheme}
                             isCosmicTealTheme={isCosmicTealTheme}
                             isNetflixRedTheme={isNetflixRedTheme}
+                            className="flex-1 md:flex-none"
                         />
 
                         {/* 2. Mute/Replay Button - Visible if video is playing OR ended */}
                         {heroEmbedUrl && !isMobile && (showVideo || videoEnded) && (
                             <button 
-                                onClick={videoEnded ? handleReplay : toggleMute}
-                                onMouseDown={(e) => e.stopPropagation()} 
+                                onClick={videoEnded ? handleReplay : toggleMute} 
                                 className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-transparent border border-white/30 text-white hover:bg-white/10 transition-all duration-300 backdrop-blur-md"
                                 title={videoEnded ? "إعادة التشغيل" : (isMuted ? "تشغيل الصوت" : "كتم الصوت")}
                             >
