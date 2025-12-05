@@ -71,7 +71,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   return (
     <div className={`w-full md:w-auto flex flex-row items-stretch gap-4 z-30 relative action-buttons-container ${className}`}>
-      {/* Watch Button - Updated Style: Rounded Full, Bold Font, Scaled up 5% */}
+      {/* Watch Button - Updated Style: Removed default scale-105 to prevent overflow on mobile. Added active:scale-95 for shrinkage. */}
       <button 
         onClick={(e) => { e.stopPropagation(); onWatch(); }}
         className={`
@@ -82,8 +82,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           py-3.5 px-8 md:py-4 md:px-10
           rounded-full
           text-base md:text-lg
-          transform scale-[1.05] hover:scale-[1.10] active:scale-[0.98] 
-          transition-all duration-300
+          transform transition-all duration-200
+          active:scale-95
           whitespace-nowrap
           target-watch-btn
           ${primaryBtnClass}
@@ -93,7 +93,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         <span>شاهد الآن</span>
       </button>
       
-      {/* My List Button - Updated Style: Rounded Full, Bold Font, Scaled up 5% */}
+      {/* My List Button */}
       {showMyList && onToggleMyList && (
         <button 
           onClick={handleToggle}
@@ -105,7 +105,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
             py-3.5 px-8 md:py-4 md:px-10
             rounded-full
             text-base md:text-lg
-            transition-all duration-300 transform scale-[1.05] hover:scale-[1.10] active:scale-[0.98] whitespace-nowrap
+            transition-all duration-200 transform active:scale-95 whitespace-nowrap
             ${isInMyList 
               ? myListActiveClass 
               : myListBaseClass

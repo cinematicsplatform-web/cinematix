@@ -709,11 +709,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
             {/* 1.2 YouTube Trailer (Transition In) */}
             {heroEmbedUrl && !isMobile && !isTrailerModalOpen && (
                 <div className={`absolute inset-0 w-full h-full overflow-hidden transition-opacity duration-1000 ${showVideo ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-                    <div className="relative w-full h-full pointer-events-none scale-125">
+                    {/* Updated: Aspect-Video container centered with scale-[1.35] to fill corners */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none scale-[1.35]">
                         <iframe 
                             ref={iframeRef}
                             src={heroEmbedUrl}
-                            className="absolute top-0 left-0 w-full h-full object-cover" 
+                            className="w-full h-full" 
                             allow="autoplay; encrypted-media; picture-in-picture" 
                             title="Trailer"
                             frameBorder="0"
@@ -729,7 +730,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
         {/* Content Layer */}
         <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 pb-4 md:pb-12 flex flex-col justify-end items-start z-20">
-            <div className="max-w-4xl w-full animate-fade-in-up flex flex-col items-center md:items-start text-center md:text-right">
+            <div className="max-w-4xl w-full flex flex-col items-center md:items-start text-center md:text-right">
                 
                 {/* Logo/Title */}
                 {content.isLogoEnabled && displayLogo ? (
@@ -829,7 +830,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
       {/* --- Trailer Modal --- */}
       {isTrailerModalOpen && trailerVideoId && createPortal(
-          <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in-up" onClick={() => setIsTrailerModalOpen(false)}>
+          <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setIsTrailerModalOpen(false)}>
               <div className="relative w-full max-w-5xl aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800" onClick={e => e.stopPropagation()}>
                   <button 
                       onClick={() => setIsTrailerModalOpen(false)}
@@ -853,7 +854,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       <div className="w-full px-4 md:px-8 pt-4 pb-10 md:py-10">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
               <div className="lg:col-span-3 space-y-12">
-                  <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                  <div>
                       <SectionTitle title="القصة" />
                       <p className="text-gray-300 text-base md:text-lg leading-relaxed max-w-4xl opacity-90">
                           {displayDescription}
@@ -861,7 +862,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                   </div>
 
                   {displayCast && displayCast.length > 0 && (
-                      <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                      <div>
                           <SectionTitle title="طاقم العمل" />
                           <div className="flex flex-wrap gap-3">
                               {displayCast.map((actor, index) => (
@@ -874,7 +875,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                   )}
 
                   {content.type === 'series' && content.seasons && (
-                    <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                    <div>
                         <SectionTitle title="الحلقات" />
                         <div className="flex items-center gap-3 overflow-x-auto rtl-scroll pb-4 mb-6">
                             {[...content.seasons].sort((a, b) => a.seasonNumber - b.seasonNumber).map(season => (
@@ -954,7 +955,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                  {isContentPlayable ? (
                     <>
                          {activeServers.length > 0 && (
-                             <div className="mb-6 animate-fade-in-up">
+                             <div className="mb-6">
                                 <SectionTitle title="سيرفرات المشاهدة" />
                                 <div className="flex items-center gap-3 overflow-x-auto rtl-scroll pb-2 no-scrollbar">
                                     {activeServers.map((server) => (
@@ -985,7 +986,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                              </div>
                          )}
 
-                         <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.7)] border border-gray-800 bg-black z-10 group animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                         <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.7)] border border-gray-800 bg-black z-10 group">
                               {showPreroll && prerollAd ? (
                                   <div className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-4">
                                       <div className="absolute top-4 right-4 z-[60] bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex items-center gap-3">
@@ -1022,7 +1023,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                          <AdPlacement ads={ads} placement="watch-below-player" isEnabled={adsEnabled} />
 
                          {downloadUrl && (
-                             <div className="mt-8 flex justify-center items-center animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                             <div className="mt-8 flex justify-center items-center">
                                  <button 
                                     onClick={handleDownloadClick}
                                     className={`relative overflow-hidden group w-full md:w-auto bg-[#151515] hover:bg-[#202020] border border-gray-700 hover:border-opacity-50 rounded-full p-1.5 transition-all duration-300 flex items-center justify-center gap-4 shadow-lg min-w-[280px] target-download-btn`}
