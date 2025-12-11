@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import type { User, Profile, View } from '../types';
 import ProfileEditModal from './ProfileEditModal';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 interface AccountSettingsPageProps {
   user: User;
@@ -69,6 +70,7 @@ const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdat
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | 'new' | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
 
   const isNetflixRed = isNetflixRedTheme || document.body.classList.contains('theme-netflix-red');
   const accentText = isNetflixRed ? 'text-[#E50914]' : 'text-[#00FFB0]';
@@ -164,7 +166,7 @@ const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdat
           <div className="bg-red-900/10 border border-red-500/20 p-5 md:p-6 rounded-xl">
               <h2 className="text-xl font-bold text-red-400 mb-2">منطقة الخطر</h2>
               <p className="text-red-300/70 text-sm mb-6 leading-relaxed">حذف حسابك هو إجراء دائم ولا يمكن التراجع عنه. ستفقد كل سجل المشاهدة وقوائم المفضلة والملفات الشخصية المرتبطة بهذا الحساب.</p>
-              <button onClick={onDeleteAccount} className="w-full md:w-auto bg-red-600/90 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg">
+              <button onClick={() => setIsDeleteAccountModalOpen(true)} className="w-full md:w-auto bg-red-600/90 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg">
                   حذف الحساب نهائياً
               </button>
           </div>
@@ -185,6 +187,16 @@ const AccountSettingsPage: React.FC<AccountSettingsPageProps> = ({ user, onUpdat
             isNetflixRed={isNetflixRed}
         />
       )}
+      <DeleteConfirmationModal
+        isOpen={isDeleteAccountModalOpen}
+        onClose={() => setIsDeleteAccountModalOpen(false)}
+        onConfirm={() => {
+            onDeleteAccount();
+            setIsDeleteAccountModalOpen(false);
+        }}
+        title="حذف الحساب"
+        message="هل أنت متأكد من حذف حسابك نهائياً؟ هذا الإجراء لا يمكن التراجع عنه وسيتم فقدان جميع البيانات."
+      />
     </>
   );
 };

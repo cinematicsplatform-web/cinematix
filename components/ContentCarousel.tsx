@@ -2,6 +2,7 @@
 import React, { useRef } from 'react';
 import type { Content } from '../types';
 import ContentCard from './ContentCard';
+import SkeletonCard from './SkeletonCard';
 import { ChevronLeftIcon } from './icons/ChevronLeftIcon';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
 
@@ -16,11 +17,12 @@ interface ContentCarouselProps {
   isRestricted?: boolean;
   containerClassName?: string;
   onSeeAll?: () => void;
-  showRanking?: boolean; // New Prop for Top 10
-  isRamadanTheme?: boolean; // New Prop for theming arrows
+  showRanking?: boolean;
+  isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
+  isLoading?: boolean; // New Prop
 }
 
 const ContentCarousel: React.FC<ContentCarouselProps> = ({ 
@@ -38,30 +40,38 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
     isRamadanTheme,
     isEidTheme,
     isCosmicTealTheme,
-    isNetflixRedTheme
+    isNetflixRedTheme,
+    isLoading
 }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const scroll = (direction: 'left' | 'right') => {
         if (scrollRef.current) {
             const { clientWidth } = scrollRef.current;
-            
-            // RTL Scrolling Logic:
-            // 'left' direction (visually pointing Left, meaning "Next Items"): 
-            // Needs NEGATIVE scroll value to move viewport left relative to content start (Right).
-            
-            // 'right' direction (visually pointing Right, meaning "Previous Items"):
-            // Needs POSITIVE scroll value to move viewport right.
-            
             const scrollAmount = direction === 'left' ? -clientWidth : clientWidth;
             scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
         }
     };
 
+  // Render Skeletons if loading
+  if (isLoading) {
+      return (
+        <div className={`mb-2 md:mb-4 relative z-0 ${containerClassName || ''}`}>
+            <div className="flex justify-between items-center mb-2 px-4 md:px-8">
+                <div className="h-8 w-48 bg-gray-800 rounded animate-pulse"></div>
+            </div>
+            <div className="flex overflow-hidden gap-3 pb-2 pt-2 px-4 md:px-8 rtl-scroll">
+                {Array.from({ length: 6 }).map((_, i) => (
+                    <SkeletonCard key={i} />
+                ))}
+            </div>
+        </div>
+      );
+  }
+
   return (
-    // COMPACT LAYOUT UPDATE: Reduced mb-6/mb-8 to mb-2/mb-4
     <div className={`mb-2 md:mb-4 relative group/carousel z-0 ${containerClassName || ''}`}>
-      {/* Header - Aligned exactly with the scroll content padding (px-4 md:px-8) */}
+      {/* Header */}
       <div className="flex justify-between items-center mb-2 px-4 md:px-8">
         
         {/* Title Section */}
@@ -116,11 +126,6 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
       </div>
       
       <div className="relative">
-        {/* 
-            Left Scroll Button (Points Left <)
-            Function: Scroll to show items on the LEFT (Next items in RTL).
-            Action: scroll('left') -> Negative scrollBy
-        */}
         <button 
             onClick={() => scroll('left')} 
             className={`
@@ -149,12 +154,6 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
            <ChevronLeftIcon className="w-6 h-6" />
         </button>
         
-        {/* 
-            Carousel Container 
-            - Used gap-3 (12px) for consistent spacing
-            - Padding px-4 md:px-8 to allow items to flush with edge
-            - COMPACT LAYOUT UPDATE: Reduced pb-6 to pb-2
-        */}
         <div 
             ref={scrollRef} 
             className="flex overflow-x-auto gap-3 pb-2 pt-2 px-4 md:px-8 rtl-scroll scroll-smooth"
@@ -178,11 +177,6 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
           ))}
         </div>
         
-        {/* 
-            Right Scroll Button (Points Right >)
-            Function: Scroll to show items on the RIGHT (Previous items in RTL).
-            Action: scroll('right') -> Positive scrollBy
-        */}
          <button 
             onClick={() => scroll('right')} 
             className={`

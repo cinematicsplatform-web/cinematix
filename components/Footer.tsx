@@ -11,9 +11,10 @@ interface FooterProps {
   onSetView: (view: View) => void;
   isRamadanFooter?: boolean;
   onRequestOpen?: () => void; // New Handler for Request Modal 
+  className?: string; // New Prop for custom classes
 }
 
-const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter, onRequestOpen }) => {
+const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter, onRequestOpen, className = '' }) => {
   const footerLinks: {name: string, action: () => void}[] = [
       { name: 'حولنا', action: () => onSetView('about') },
       { name: 'اتصل بنا', action: () => { window.location.href = socialLinks.contactUs } },
@@ -25,10 +26,12 @@ const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter
   
   // Updated: Use var(--bg-body) to match the page background in all themes.
   // Updated: Use border-white/10 for subtle separation.
-  const footerClasses = isRamadanFooter
+  const baseClasses = isRamadanFooter
     ? "relative w-full bg-[var(--bg-body)] shadow-[0_0_25px_rgba(0,0,0,0.8)] z-[100] pt-10 pb-10 border-t border-white/10" 
     : "bg-[var(--bg-body)] py-12 border-t border-white/10"; 
   
+  const footerClasses = `${baseClasses} ${className}`;
+
   // Updated: Text is now white.
   const textClasses = "text-white"; 
 

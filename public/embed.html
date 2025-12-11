@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,7 +20,10 @@
     <script>
         const params = new URLSearchParams(window.location.search);
         const url = params.get('url');
-        if(url) document.getElementById('player').src = url;
+        // Security: Ensure URL protocol is http or https to prevent javascript: execution
+        if(url && (url.startsWith('http://') || url.startsWith('https://'))) {
+            document.getElementById('player').src = url;
+        }
     </script>
 </body>
 </html>

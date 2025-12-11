@@ -29,7 +29,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onSetView }) => {
             <h2 className="text-2xl font-bold text-[#00A7F8] mb-6">🎬 استكشف جديدنا الآن!</h2>
             <button
               onClick={() => onSetView('home')}
-              className="bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-bold px-8 py-4 rounded-full hover:bg-white transition-all duration-300 transform hover:scale-105"
+              className="bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-bold px-10 py-5 rounded-full text-xl hover:bg-white transition-all duration-300 transform hover:scale-105"
             >
               شاهد الآن
             </button>

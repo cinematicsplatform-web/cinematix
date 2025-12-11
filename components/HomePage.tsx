@@ -32,11 +32,8 @@ interface HomePageProps {
 
 const HomePage: React.FC<HomePageProps> = (props) => {
 
-  // 1. Priority: Loading State
-  if (props.isLoading) {
-      return <div className="min-h-screen bg-[var(--bg-body)]" />;
-  }
-
+  // Removed blocking check to allow Skeletons to render via ContentCarousel
+  
   // Check for Kids Mode
   const isKidMode = props.activeProfile?.isKid || false;
 
@@ -238,7 +235,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
   };
 
   // Special Empty State for Kids
-  if (isKidMode && safeContent.length === 0) {
+  if (isKidMode && safeContent.length === 0 && !props.isLoading) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--bg-body)] text-gray-500 animate-fade-in-up">
               <p className="text-xl font-bold">مرحباً يا بطل!</p>
@@ -247,7 +244,21 @@ const HomePage: React.FC<HomePageProps> = (props) => {
       );
   }
 
-  if (props.allContent.length === 0) {
+  // Handle Initial Loading State explicitly if no content but loading is true
+  if (props.isLoading && props.allContent.length === 0) {
+      // Just render the skeleton structure
+      return (
+        <div className="relative min-h-screen bg-[var(--bg-body)]">
+            <div className="h-[80vh] w-full bg-gray-900 animate-pulse"></div>
+            <div className="p-8 space-y-8">
+                <ContentCarousel title="Loading..." contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} />
+                <ContentCarousel title="Loading..." contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} />
+            </div>
+        </div>
+      )
+  }
+
+  if (props.allContent.length === 0 && !props.isLoading) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--bg-body)] text-gray-500 animate-fade-in-up">
               <p className="text-xl font-bold">لا يوجد محتوى في الموقع</p>
@@ -332,6 +343,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                             isCosmicTealTheme={isCosmicTeal}
                             isNetflixRedTheme={isNetflixRed}
                             showRanking={(carousel as any).showRanking}
+                            isLoading={props.isLoading}
                         />
                         {showAd && (
                             <AdPlacement ads={props.ads} placement="home-carousel-3-4" isEnabled={props.siteSettings.adsEnabled}/>

@@ -268,12 +268,17 @@ const Hero: React.FC<HeroProps> = ({
             {contents.map((content, index) => {
                 const isActive = index === activeIndex;
                 
-                // Smart Crop Logic for Mobile
+                // Smart Crop Logic for Mobile (Fallback if not using dedicated vertical image)
                 const posX = content.mobileCropPositionX ?? content.mobileCropPosition ?? 50;
                 const posY = content.mobileCropPositionY ?? 50;
 
+                // Determine Image Source: Use dedicated mobile background if available on mobile
+                const bgImage = (isMobile && content.mobileBackdropUrl) 
+                    ? content.mobileBackdropUrl 
+                    : content.backdrop;
+
                 const imgStyle: React.CSSProperties = {
-                    objectPosition: isMobile && content.enableMobileCrop 
+                    objectPosition: (isMobile && !content.mobileBackdropUrl && content.enableMobileCrop)
                         ? `${posX}% ${posY}%` 
                         : 'top center',
                     '--mob-x': `${posX}%`,
@@ -329,7 +334,7 @@ const Hero: React.FC<HeroProps> = ({
                                             src={embedUrl} 
                                             className="w-full h-full pointer-events-none" 
                                             allow="autoplay; encrypted-media; picture-in-picture" 
-                                            title="Trailer"
+                                            title={`Trailer for ${content.title}`}
                                             frameBorder="0"
                                         ></iframe>
                                     </div>
@@ -337,9 +342,9 @@ const Hero: React.FC<HeroProps> = ({
                             )}
 
                             <img 
-                                src={content.backdrop} 
+                                src={bgImage} 
                                 alt={content.title} 
-                                className={`absolute inset-0 w-full h-full object-cover z-10 pointer-events-none transition-opacity duration-1000 ${shouldShowVideo ? 'opacity-0' : 'opacity-100'} ${content.enableMobileCrop ? 'mobile-custom-crop' : ''}`}
+                                className={`absolute inset-0 w-full h-full object-cover z-10 pointer-events-none transition-opacity duration-1000 ${shouldShowVideo ? 'opacity-0' : 'opacity-100'} ${(content.enableMobileCrop && !content.mobileBackdropUrl) ? 'mobile-custom-crop' : ''}`}
                                 style={imgStyle}
                                 draggable={false}
                             />
@@ -458,7 +463,7 @@ const Hero: React.FC<HeroProps> = ({
                                     {shouldShowVideo && (
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
-                                            className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group"
+                                            className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group scale-[1.15] origin-center"
                                             title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
                                         >
                                             <SpeakerIcon isMuted={isMuted} className="w-7 h-7 text-white group-hover:scale-110 transition-transform" />

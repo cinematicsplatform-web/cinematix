@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import type { Profile } from '../types';
 import { maleAvatars, femaleAvatars, defaultAvatar } from '../data';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 interface ProfileEditModalProps {
     profile: Profile | null;
@@ -15,6 +16,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ profile, onClose, o
     const [name, setName] = useState(profile?.name || '');
     const [isKid, setIsKid] = useState(profile?.isKid || false);
     const [avatar, setAvatar] = useState(profile?.avatar || defaultAvatar);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     const handleSave = () => {
         if (!name.trim()) {
@@ -33,11 +35,16 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ profile, onClose, o
         onClose();
     };
     
-    const handleDelete = () => {
-        if (profile && confirm(`هل أنت متأكد من حذف ملف "${profile.name}" الشخصي؟`)) {
+    const handleDeleteClick = () => {
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (profile) {
             onDelete(profile.id);
             onClose();
         }
+        setIsDeleteModalOpen(false);
     };
 
     const AvatarRow = ({ title, avatars }: { title: string, avatars: string[] }) => (
@@ -103,7 +110,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ profile, onClose, o
                     <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-700">
                         <div>
                             {!isNew && (
-                                <button onClick={handleDelete} className="text-red-400 hover:text-red-300 font-bold px-4 py-2 rounded-lg hover:bg-red-500/10 transition-colors text-sm">
+                                <button onClick={handleDeleteClick} className="text-red-400 hover:text-red-300 font-bold px-4 py-2 rounded-lg hover:bg-red-500/10 transition-colors text-sm">
                                     حذف الملف
                                 </button>
                             )}
@@ -119,6 +126,13 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ profile, onClose, o
                     </div>
                 </div>
             </div>
+            <DeleteConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title="حذف الملف الشخصي"
+                message={`هل أنت متأكد من حذف ملف "${profile?.name}" الشخصي؟`}
+            />
         </div>
     );
 };

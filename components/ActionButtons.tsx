@@ -71,17 +71,17 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   return (
     <div className={`w-full md:w-auto flex flex-row items-stretch gap-4 z-30 relative action-buttons-container ${className}`}>
-      {/* Watch Button - Updated Style: Removed default scale-105 to prevent overflow on mobile. Added active:scale-95 for shrinkage. */}
+      {/* Watch Button - Updated Style: Increased Size by ~15% */}
       <button 
-        onClick={(e) => { e.stopPropagation(); onWatch(); }}
+        onClick={(e) => { e.stopPropagation(); onWatch?.(); }}
         className={`
           flex-grow md:flex-none
           min-w-fit
           flex items-center justify-center gap-3
           font-bold 
-          py-3.5 px-8 md:py-4 md:px-10
+          py-4 px-9 md:py-5 md:px-12
           rounded-full
-          text-base md:text-lg
+          text-lg md:text-xl
           transform transition-all duration-200
           active:scale-95
           whitespace-nowrap
@@ -89,11 +89,11 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           ${primaryBtnClass}
         `}
       >
-        <PlayIcon className="w-6 h-6 md:w-7 md:h-7 fill-current" />
+        <PlayIcon className="w-7 h-7 md:w-8 md:h-8 fill-current" />
         <span>شاهد الآن</span>
       </button>
       
-      {/* My List Button */}
+      {/* My List Button - Updated Style: Increased Size by ~15% */}
       {showMyList && onToggleMyList && (
         <button 
           onClick={handleToggle}
@@ -102,9 +102,9 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
             min-w-fit
             flex items-center justify-center gap-3
             font-bold
-            py-3.5 px-8 md:py-4 md:px-10
+            py-4 px-9 md:py-5 md:px-12
             rounded-full
-            text-base md:text-lg
+            text-lg md:text-xl
             transition-all duration-200 transform active:scale-95 whitespace-nowrap
             ${isInMyList 
               ? myListActiveClass 
@@ -112,7 +112,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
             }
           `}
         >
-          {isInMyList ? <CheckIcon className="w-6 h-6 md:w-7 md:h-7" /> : <PlusIcon className="w-6 h-6 md:w-7 md:h-7" />}
+          {isInMyList ? <CheckIcon className="w-7 h-7 md:w-8 md:h-8" /> : <PlusIcon className="w-7 h-7 md:w-8 md:h-8" />}
           <span>{showFeedback ? 'تمت الإضافة' : 'قائمتي'}</span>
         </button>
       )}

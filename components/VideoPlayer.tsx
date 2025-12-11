@@ -83,7 +83,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
         <div className="absolute inset-0 z-0">
             <img 
                 src={poster || 'https://placehold.co/1920x1080/101010/101010/png'} 
-                onError={(e) => { e.currentTarget.src = 'https://placehold.co/1920x1080/000000/000000/png'; }}
+                onError={(e) => { 
+                    const target = e.currentTarget;
+                    const fallback = 'https://placehold.co/1920x1080/000000/000000/png';
+                    if (target.src !== fallback) {
+                        target.src = fallback;
+                    }
+                }}
                 alt="Loading" 
                 className="w-full h-full object-cover opacity-30 blur-md scale-110" 
             />
@@ -110,7 +116,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
         <div className="absolute inset-0 z-0">
             <img 
                 src={poster || 'https://placehold.co/1920x1080/101010/101010/png'} 
-                onError={(e) => { e.currentTarget.src = 'https://placehold.co/1920x1080/000000/000000/png'; }}
+                onError={(e) => { 
+                    const target = e.currentTarget;
+                    const fallback = 'https://placehold.co/1920x1080/000000/000000/png';
+                    if (target.src !== fallback) {
+                        target.src = fallback;
+                    }
+                }}
                 alt="Poster" 
                 className="w-full h-full object-cover opacity-40 blur-md" 
             />
@@ -156,7 +168,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                         allowFullScreen
                         loading="eager" 
                         referrerPolicy="no-referrer" 
-                        allow="autoplay; encrypted-media; fullscreen; picture-in-picture; web-share; fullscreen"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                         className="w-full h-full border-none" 
                         title="Cinematix Player"
                         onLoad={() => setIsLoading(false)}
