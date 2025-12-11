@@ -114,7 +114,7 @@ const safeHistoryPush = (path: string) => {
              window.history.pushState({}, '', path);
         }
     } catch (e) {
-        // Sandbox environment detected
+        // Sandbox environment detected - suppress warning
     }
 };
 
@@ -124,7 +124,7 @@ const safeHistoryReplace = (path: string) => {
             window.history.replaceState({}, '', path);
         }
     } catch (e) {
-        // Sandbox environment detected
+        // Sandbox environment detected - suppress warning
     }
 };
 
@@ -964,12 +964,11 @@ const App: React.FC = () => {
                              }
                         }}
                         onDeleteAccount={async () => {
-                            if (confirm('هل أنت متأكد؟')) {
-                                await deleteUserFromFirestore(currentUser.id);
-                                await auth.currentUser?.delete();
-                                handleSetView('home');
-                                addToast('تم حذف الحساب', 'info');
-                            }
+                            // Removed confirm here
+                            await deleteUserFromFirestore(currentUser.id);
+                            await auth.currentUser?.delete();
+                            handleSetView('home');
+                            addToast('تم حذف الحساب', 'info');
                         }}
                         onSetView={handleSetView}
                         isRamadanTheme={isRamadanTheme}
@@ -1002,6 +1001,22 @@ const App: React.FC = () => {
               return <HomePage {...{allContent, pinnedContent: [], onSelectContent: handleSelectContent, isLoggedIn: !!currentUser, myList: activeProfile?.myList, onToggleMyList: handleToggleMyList, ads, siteSettings, onNavigate: handleSetView, activeProfile}} isLoading={isContentLoading} />;
       }
   };
+
+  // Logic to determine visibility on mobile and desktop
+  const fullScreenViews = ['login', 'register', 'profileSelector', 'admin', 'detail', 'maintenance'];
+  const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
+  
+  const showGlobalFooter = !isAuthLoading && !fullScreenViews.includes(view) && !siteSettings.is_maintenance_mode_enabled;
+  
+  // Bottom Nav is mobile only anyway (via CSS md:hidden), so simply exclude clean views
+  const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view);
+  
+  // Footer visibility class: hide on mobile if it's a clean view, show on desktop always unless fullscreen
+  const footerClass = mobileCleanViews.includes(view) ? 'hidden md:block' : '';
+
+  // Bottom Ads Visibility: similar to footer logic, hide on clean mobile views
+  const bottomAdClass = mobileCleanViews.includes(view) ? 'hidden md:block' : 'fixed bottom-0 left-0 w-full z-[1000] bg-black/80';
+  const socialBarClass = mobileCleanViews.includes(view) ? 'hidden md:block' : 'fixed z-[90] bottom-20 left-4 right-4 md:bottom-4 md:left-4 md:right-auto md:w-auto pointer-events-auto';
 
   return (
     <div className={`min-h-screen text-white font-['Cairo'] ${view === 'detail' ? '' : 'pb-16 md:pb-0'}`}>
@@ -1040,30 +1055,39 @@ const App: React.FC = () => {
             />
         )}
         
-        <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className="fixed z-[90] bottom-20 left-4 right-4 md:bottom-4 md:left-4 md:right-auto md:w-auto pointer-events-auto" />
-        <AdPlacement ads={ads} placement="global-sticky-footer" isEnabled={siteSettings.adsEnabled} className="fixed bottom-0 left-0 w-full z-[1000] bg-black/80" />
+        {/* Floating Social Bar */}
+        <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className={socialBarClass} />
+        
+        {/* Sticky Footer Ad */}
+        <AdPlacement ads={ads} placement="global-sticky-footer" isEnabled={siteSettings.adsEnabled} className={bottomAdClass} />
 
         {renderView()}
 
-        {!isAuthLoading && view !== 'login' && view !== 'register' && view !== 'profileSelector' && view !== 'admin' && view !== 'detail' && !siteSettings.is_maintenance_mode_enabled && (
+        {showGlobalFooter && (
             <>
                 <Footer 
                     socialLinks={siteSettings.socialLinks} 
                     onSetView={handleSetView} 
                     isRamadanFooter={siteSettings.activeTheme === 'ramadan'}
                     onRequestOpen={() => setIsRequestModalOpen(true)}
+                    className={footerClass}
                 />
-                <BottomNavigation 
-                    currentView={view} 
-                    onSetView={handleSetView} 
-                    activeProfile={activeProfile} 
-                    isLoggedIn={!!currentUser}
-                    isRamadanTheme={siteSettings.activeTheme === 'ramadan'}
-                    isEidTheme={siteSettings.activeTheme === 'eid'}
-                    isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'}
-                    isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'}
-                />
-                <PWAInstallPrompt />
+                
+                {showBottomNav && (
+                    <>
+                        <BottomNavigation 
+                            currentView={view} 
+                            onSetView={handleSetView} 
+                            activeProfile={activeProfile} 
+                            isLoggedIn={!!currentUser}
+                            isRamadanTheme={siteSettings.activeTheme === 'ramadan'}
+                            isEidTheme={siteSettings.activeTheme === 'eid'}
+                            isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'}
+                            isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'}
+                        />
+                        <PWAInstallPrompt />
+                    </>
+                )}
             </>
         )}
 

@@ -1,4 +1,5 @@
 
+
 /* Global overrides */
 body, h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, select, textarea {
     font-family: 'Cairo', sans-serif !important;
@@ -125,4 +126,45 @@ input:-webkit-autofill:active {
   .mobile-custom-crop {
     object-position: var(--mob-x, 50%) var(--mob-y, 50%) !important;
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Episode Card Hover Logic (Edge Detection)                                  */
+/* -------------------------------------------------------------------------- */
+
+.episode-card-hover {
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), z-index 0s;
+}
+
+.episode-card-hover:hover {
+    transform: scale(1.20); /* 20% Expansion */
+    z-index: 100 !important; /* Force top */
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+}
+
+/* Default Mobile (2 Columns) - RTL Logic */
+/* Col 1 (Right Side) -> Expand Left (Anchor Right) */
+.episode-card-hover:nth-child(2n+1) { transform-origin: right center; }
+/* Col 2 (Left Side) -> Expand Right (Anchor Left) */
+.episode-card-hover:nth-child(2n) { transform-origin: left center; }
+
+/* MD (3 Columns) */
+@media (min-width: 768px) {
+    .episode-card-hover:nth-child(n) { transform-origin: center center; } /* Reset */
+    .episode-card-hover:nth-child(3n+1) { transform-origin: right center; }
+    .episode-card-hover:nth-child(3n) { transform-origin: left center; }
+}
+
+/* LG (4 Columns) */
+@media (min-width: 1024px) {
+    .episode-card-hover:nth-child(n) { transform-origin: center center; }
+    .episode-card-hover:nth-child(4n+1) { transform-origin: right center; }
+    .episode-card-hover:nth-child(4n) { transform-origin: left center; }
+}
+
+/* XL (5 Columns) */
+@media (min-width: 1280px) {
+    .episode-card-hover:nth-child(n) { transform-origin: center center; }
+    .episode-card-hover:nth-child(5n+1) { transform-origin: right center; }
+    .episode-card-hover:nth-child(5n) { transform-origin: left center; }
 }

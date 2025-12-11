@@ -4,8 +4,6 @@ import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
 import "firebase/compat/messaging"; // Import Messaging
-// FIX: Import Modular SDK functions for modern persistence initialization
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 
 import type { Ad, SiteSettings, User, PinnedContentState, PinnedItem, PageKey, ContentRequest } from './types';
 import { initialSiteSettings, pinnedContentData as initialPinnedData } from './data';
@@ -24,7 +22,6 @@ const getEnv = () => {
 const env = getEnv();
 
 // Configuration is now pulled from Environment Variables (Vercel/local .env)
-// Fallback values are kept for local development convenience but should be overridden in production.
 const firebaseConfig = {
   apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyBVK0Zla5VD05Hgf4QqExAWUuXX64odyes", 
   authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "cinematic-d3697.firebaseapp.com",
@@ -36,23 +33,32 @@ const firebaseConfig = {
 
 // Initialize Firebase using v8 namespaced syntax via compat library.
 if (!firebase.apps.length) {
-  // DEBUG: Log the project ID to ensure env vars are loaded correctly
   console.log(`[Firebase] Initializing with Project ID: ${firebaseConfig.projectId}`);
   firebase.initializeApp(firebaseConfig);
 }
 const app = firebase.app();
 
-// --- CRITICAL FIX: Modern Firestore Initialization ---
-initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  }),
-  experimentalAutoDetectLongPolling: true,
-  ignoreUndefinedProperties: true,
-});
-
-// Export Compat instance for the rest of the app
+// --- Firestore Initialization (Fixed for Connectivity) ---
+// We use the compat instance directly. 
 export const db = app.firestore();
+
+// Apply standard settings - Updated to suppress host override warning
+db.settings({
+  ignoreUndefinedProperties: true,
+  merge: true, 
+} as any); // Cast to any to avoid strict type checks on compat interface if types are outdated
+
+// Enable offline persistence (standard compat method)
+// We wrap this in a catch block because it can fail in certain environments (e.g. multiple tabs)
+db.enablePersistence({ synchronizeTabs: true })
+  .catch((err) => {
+    if (err.code == 'failed-precondition') {
+        // console.warn('Firestore persistence failed: Multiple tabs open');
+    } else if (err.code == 'unimplemented') {
+        // console.warn('Firestore persistence not supported in this browser');
+    }
+  });
+
 export const auth = app.auth();
 export const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
 export const Timestamp = firebase.firestore.Timestamp;
@@ -64,7 +70,7 @@ try {
     messaging = firebase.messaging();
   }
 } catch (e) {
-  console.warn("Firebase Messaging not supported in this environment (e.g. Safari non-PWA or http)");
+  // console.warn("Firebase Messaging not supported in this environment");
 }
 
 // --- Helpers ---
@@ -140,7 +146,7 @@ export const getPinnedContent = async (): Promise<PinnedContentState> => {
             return initialPinnedData;
         }
     } catch (error) {
-        console.warn("Error fetching pinned content:", error);
+        // console.warn("Error fetching pinned content:", error);
         return initialPinnedData;
     }
 };
@@ -196,7 +202,7 @@ export const getAdByPosition = async (position: string): Promise<Ad | null> => {
 
     return null;
   } catch (e) {
-    console.error(`Error fetching ad by position [${position}]:`, e);
+    // console.error(`Error fetching ad by position [${position}]:`, e);
     return null;
   }
 };
@@ -321,4 +327,19 @@ export const getContentRequests = async (): Promise<ContentRequest[]> => {
 
 export const deleteContentRequest = async (requestId: string): Promise<void> => {
     await db.collection('content_requests').doc(requestId).delete();
+};
+
+// ---- Reporting System ----
+export const addReport = async (reportData: { 
+    contentId: string;
+    contentTitle: string;
+    episode?: string;
+    reason: string;
+    description?: string;
+}): Promise<void> => {
+    await db.collection('reports').add({
+        ...reportData,
+        status: 'open',
+        createdAt: serverTimestamp()
+    });
 };

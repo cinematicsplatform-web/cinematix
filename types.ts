@@ -50,8 +50,9 @@ export interface Server {
 export interface Episode {
   id: number;
   title?: string;
-  thumbnail: string;
-  duration: number; // in minutes
+  thumbnail?: string; // Made optional
+  description?: string; // New: Episode Story/Description
+  duration?: string; // Changed to string to support "45:30" format
   progress: number; // percentage
   servers: Server[];
 }
@@ -72,6 +73,7 @@ export interface Season {
   // Mobile Specifics
   mobileImageUrl?: string; // Optional custom image for mobile (Portrait/Custom Crop)
   useCustomMobileImage?: boolean; // Toggle to use the custom image
+  enableMobileCrop?: boolean; // New: Toggle for mobile customization
   mobileCropPosition?: number; // Legacy X
   mobileCropPositionX?: number; // 0-100 percentage X
   mobileCropPositionY?: number; // 0-100 percentage Y
@@ -84,6 +86,7 @@ export interface Content {
   type: ContentType;
   poster: string;
   backdrop: string;
+  mobileBackdropUrl?: string; // New: Specific vertical background for mobile
   rating: number; // out of 5
   ageRating: string;
   categories: Category[];

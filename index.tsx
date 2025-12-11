@@ -12,7 +12,8 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(registration => {
       console.log('SW registered successfully:', registration.scope);
     }).catch(registrationError => {
-      console.warn('SW registration failed:', registrationError);
+      // Suppress warning in console for cleaner logs in restricted environments (like AI Studio preview)
+      // console.debug('SW registration failed:', registrationError);
     });
   });
 }
