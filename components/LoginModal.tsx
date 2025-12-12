@@ -73,7 +73,14 @@ const LoginModal: React.FC<LoginModalProps> = ({ onSetView, onLogin, isRamadanTh
                     : 'text-[#00A7F8] hover:text-[#00FFB0]';
 
   return (
-    <div className="min-h-screen bg-[var(--bg-body)] flex items-center justify-center p-4 pt-24 relative">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 pt-24 relative bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage: `url('https://shahid.mbc.net/mediaObject/436ea116-cdae-4007-ace6-3c755df16856?width=1920&type=avif&q=80')`
+      }}
+    >
+      {/* Dark Overlay without blur to show image clearly */}
+      <div className="absolute inset-0 bg-black/50 z-0"></div>
       
       <button 
           onClick={() => onSetView('home')} 
@@ -83,7 +90,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onSetView, onLogin, isRamadanTh
            <ChevronRightIcon className="w-6 h-6 transform rotate-180 group-hover:-translate-x-1 transition-transform" />
       </button>
 
-      <div className="bg-black border border-gray-700 rounded-2xl shadow-xl w-full max-w-md text-white animate-fade-in-up relative">
+      <div className="bg-black/80 backdrop-blur-md border border-gray-700 rounded-2xl shadow-2xl w-full max-w-md text-white animate-fade-in-up relative z-10">
         <div className="p-8 md:p-12">
             <h1 className="text-3xl font-extrabold mb-4 text-center">
                 <span className="text-white">سينما</span><span className="gradient-text font-['Lalezar'] tracking-wide">تيكس</span>
@@ -109,7 +116,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onSetView, onLogin, isRamadanTh
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="user@cinematix.com"
                         disabled={isLoading || isSuccess}
-                        className={`w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed ${error !== 'none' ? errorGlowClass : ''}`}
+                        className={`w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed ${error !== 'none' ? errorGlowClass : ''}`}
                         required
                     />
                 </div>
@@ -122,7 +129,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onSetView, onLogin, isRamadanTh
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="********"
                         disabled={isLoading || isSuccess}
-                        className={`w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed ${error !== 'none' ? errorGlowClass : ''}`}
+                        className={`w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed ${error !== 'none' ? errorGlowClass : ''}`}
                         required
                     />
                 </div>

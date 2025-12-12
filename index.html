@@ -52,7 +52,9 @@
     "xlsx": "https://esm.sh/xlsx@0.18.5",
     "jsrsasign": "https://esm.sh/jsrsasign@11.1.0",
     "fs": "https://aistudiocdn.com/fs@^0.0.1-security",
-    "url": "https://aistudiocdn.com/url@^0.11.4"
+    "url": "https://aistudiocdn.com/url@^0.11.4",
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.560.0"
   }
 }
 </script>
@@ -67,6 +69,7 @@
       :root {
         /* Default Theme (Cyber/Cool Blue) */
         --bg-body: #141b29;
+        --bg-card: #1f2937; /* Lighter than body */
         --color-primary-from: #00A7F8;
         --color-primary-to: #00FFB0;
         --color-accent: #00A7F8;
@@ -80,6 +83,7 @@
       /* Ramadan Theme (Golden/Warm) */
       body.theme-ramadan {
         --bg-body: #000000; 
+        --bg-card: #121212; /* Very dark grey */
         --color-primary-from: #D4AF37; 
         --color-primary-to: #F59E0B;   
         --color-accent: #FFD700;       
@@ -91,6 +95,7 @@
       /* Eid Theme (Celebration - Purple/Silver) */
       body.theme-eid {
         --bg-body: #141b29; 
+        --bg-card: #1f2937;
         --color-primary-from: #6A0DAD; /* Royal Purple */
         --color-primary-to: #C0C0C0;   /* Silver */
         --color-accent: #9d4edd;       /* Light Purple */
@@ -102,6 +107,7 @@
       /* iOS Theme (Glassmorphism/Cyan/Clean) */
       body.theme-ios {
         --bg-body: #000000; /* Deep Dark Background */
+        --bg-card: #1c1c1e; /* iOS System Gray 6 */
         --color-primary-from: #00C6FF; /* Cyan */
         --color-primary-to: #0072FF;   /* iOS Blue */
         --color-accent: #00C6FF;
@@ -116,6 +122,7 @@
       /* Night City Theme (Cyberpunk/Neon) */
       body.theme-night-city {
         --bg-body: #050505; /* Pure Black */
+        --bg-card: #0f0f0f;
         --color-primary-from: #FF00FF; /* Neon Magenta */
         --color-primary-to: #00FFFF;   /* Neon Cyan */
         --color-accent: #00FFFF;       /* Electric Blue */
@@ -128,6 +135,7 @@
       /* Serene Nature Theme (Forest/Earth) */
       body.theme-nature {
         --bg-body: #1a2f2f; /* Deep Forest Green */
+        --bg-card: #233e3e;
         --color-primary-from: #8FBC8F; /* Dark Sea Green */
         --color-primary-to: #B8860B;   /* Dark Goldenrod */
         --color-accent: #F5DEB3;       /* Wheat */
@@ -141,6 +149,7 @@
       /* Cosmic Teal Theme (Refined & Unified) */
       body.theme-cosmic-teal {
         --bg-body: #0b1116; /* Exact Dark Color */
+        --bg-card: #161b22; /* Slightly lighter teal-black */
         /* Vertical Gradient Colors for UI Elements: Lighter Top -> Darker Bottom */
         --color-primary-from: #2DD4BF; /* Bright Teal */
         --color-primary-to: #0F766E;   /* Deep Teal */
@@ -184,6 +193,7 @@
       /* Netflix Red Theme (Black & Red) */
       body.theme-netflix-red {
         --bg-body: #141414; /* Netflix Black/Dark Grey */
+        --bg-card: #1f1f1f; /* Card Grey */
         --color-primary-from: #E50914; /* Netflix Red */
         --color-primary-to: #B20710;   /* Darker Red */
         --color-accent: #E50914;       /* Primary Red */

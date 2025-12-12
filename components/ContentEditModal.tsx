@@ -335,7 +335,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdbId}/season/${seasonNumber}/episode/${epNum}?api_key=${API_KEY}&language=${language}`);
                         if (res.ok) {
                             const data = await res.json();
-                            if (data.name) title = data.name;
+                            // REMOVED: Fetching episode name from TMDB
+                            // if (data.name) title = data.name; 
                             if (data.still_path) thumbnail = `https://image.tmdb.org/t/p/w500${data.still_path}`;
                             if (data.overview) description = data.overview;
                             if (data.runtime) duration = `${data.runtime}:00`;
@@ -441,7 +442,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             const epId = Date.now() + Math.floor(Math.random() * 1000000) + i;
                             episodes.push({
                                 id: epId,
-                                title: tmdbEp?.name || `الحلقة ${i}`,
+                                title: `الحلقة ${i}`, // REMOVED: tmdbEp?.name || 
                                 thumbnail: tmdbEp?.still_path ? `https://image.tmdb.org/t/p/w500${tmdbEp.still_path}` : '',
                                 description: tmdbEp?.overview || '', // Fetch Description
                                 duration: tmdbEp?.runtime ? `${tmdbEp.runtime}:00` : '',
@@ -678,7 +679,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
                             episodes.push({
                                 id: epId,
-                                title: tmdbEp?.name || `الحلقة ${i}`,
+                                title: `الحلقة ${i}`, // REMOVED: tmdbEp?.name || 
                                 thumbnail: tmdbEp?.still_path ? `https://image.tmdb.org/t/p/w500${tmdbEp.still_path}` : '',
                                 description: tmdbEp?.overview || '', // Fetch Description
                                 duration: tmdbEp?.runtime ? `${tmdbEp.runtime}:00` : '',

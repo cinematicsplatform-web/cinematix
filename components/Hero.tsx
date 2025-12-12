@@ -58,7 +58,7 @@ const Hero: React.FC<HeroProps> = ({
 
     // --- Self-Management Effects ---
 
-    // 1. Mobile Detection
+    // 1. Mobile Detection (Kept for video logic only, not for images)
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
         checkMobile(); 
@@ -268,22 +268,20 @@ const Hero: React.FC<HeroProps> = ({
             {contents.map((content, index) => {
                 const isActive = index === activeIndex;
                 
-                // Smart Crop Logic for Mobile (Fallback if not using dedicated vertical image)
+                // Smart Crop Logic: Always calculate values, CSS handles whether to use them via media query
                 const posX = content.mobileCropPositionX ?? content.mobileCropPosition ?? 50;
                 const posY = content.mobileCropPositionY ?? 50;
 
-                // Determine Image Source: Use dedicated mobile background if available on mobile
-                const bgImage = (isMobile && content.mobileBackdropUrl) 
-                    ? content.mobileBackdropUrl 
-                    : content.backdrop;
-
+                // Pass variables to CSS. The 'mobile-custom-crop' class in index.css 
+                // uses a media query (@media max-width: 768px) to apply these only on mobile.
                 const imgStyle: React.CSSProperties = {
-                    objectPosition: (isMobile && !content.mobileBackdropUrl && content.enableMobileCrop)
-                        ? `${posX}% ${posY}%` 
-                        : 'top center',
                     '--mob-x': `${posX}%`,
                     '--mob-y': `${posY}%`,
                 } as React.CSSProperties;
+
+                // Determine CSS Class: Apply custom crop class only if we are using the desktop image and cropping it
+                // If a dedicated mobile URL exists, we usually want to show it as-is (cover center)
+                const cropClass = (content.enableMobileCrop && !content.mobileBackdropUrl) ? 'mobile-custom-crop' : '';
 
                 // Video Logic
                 let embedUrl = '';
@@ -295,6 +293,7 @@ const Hero: React.FC<HeroProps> = ({
                         embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=1&playlist=${videoId}&playsinline=1&enablejsapi=1&origin=${origin}`;
                     }
                 }
+                // Video only shows on Desktop
                 const shouldShowVideo = isActive && showVideo && embedUrl && !isMobile;
 
                 // Infinite Loop Calculation (Modulo Arithmetic)
@@ -315,7 +314,7 @@ const Hero: React.FC<HeroProps> = ({
 
                 return (
                     <div 
-                        key={`${content.id}-${index}`} // Composite key to ensure uniqueness in some rendering cases
+                        key={`${content.id}-${index}`} 
                         className="absolute top-0 left-0 w-full h-full will-change-transform"
                         style={{ 
                             transform: `translateX(calc(${baseTranslate}% + ${dragOffset}px))`,
@@ -323,11 +322,10 @@ const Hero: React.FC<HeroProps> = ({
                             zIndex: isActive ? 20 : 10 
                         }}
                     >
-                        {/* 1. Background Layer */}
+                        {/* 1. Background Layer (Using <picture> for instant mobile switching) */}
                         <div className="absolute inset-0 w-full h-full">
                             {shouldShowVideo && (
                                 <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in-up pointer-events-none"> 
-                                    {/* Updated: Ensure full width 100% and aspect ratio preservation. No scaling to avoid cropping sides unless container is too tall. Pointer events none to allow scrolling over video. */}
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
                                         <iframe 
                                             ref={activeIframeRef}
@@ -341,13 +339,23 @@ const Hero: React.FC<HeroProps> = ({
                                 </div>
                             )}
 
-                            <img 
-                                src={bgImage} 
-                                alt={content.title} 
-                                className={`absolute inset-0 w-full h-full object-cover z-10 pointer-events-none transition-opacity duration-1000 ${shouldShowVideo ? 'opacity-0' : 'opacity-100'} ${(content.enableMobileCrop && !content.mobileBackdropUrl) ? 'mobile-custom-crop' : ''}`}
-                                style={imgStyle}
-                                draggable={false}
-                            />
+                            {/* THE FIX: Use <picture> element. Browser chooses source BEFORE loading/rendering */}
+                            <picture className={`absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-1000 ${shouldShowVideo ? 'opacity-0' : 'opacity-100'}`}>
+                                {/* 1. Mobile Source: If dedicated mobile image exists, use it for screens < 768px */}
+                                {content.mobileBackdropUrl && (
+                                    <source media="(max-width: 767px)" srcSet={content.mobileBackdropUrl} />
+                                )}
+                                
+                                {/* 2. Desktop/Default Source: Used for desktop OR fallback for mobile */}
+                                <img 
+                                    src={content.backdrop} 
+                                    alt={content.title} 
+                                    className={`absolute inset-0 w-full h-full object-cover z-10 pointer-events-none ${cropClass}`}
+                                    style={imgStyle}
+                                    draggable={false}
+                                    loading={isActive ? "eager" : "lazy"}
+                                />
+                            </picture>
 
                             {/* Gradient Overlays */}
                             <div className={`absolute inset-0 z-20 pointer-events-none

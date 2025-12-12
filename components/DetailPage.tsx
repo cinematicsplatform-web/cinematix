@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '../types';
 import VideoPlayer from './VideoPlayer';
@@ -25,7 +26,7 @@ interface DetailPageProps {
   isLoggedIn: boolean;
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
-  onSetView: (view: View) => void;
+  onSetView: (view: View, category?: string, params?: any) => void;
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
@@ -52,7 +53,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
   // Tabs State
   const [activeTab, setActiveTab] = useState<'episodes' | 'trailer' | 'details' | 'related'>('episodes');
   const tabsRef = useRef<HTMLDivElement>(null);
-  
   const playerSectionRef = useRef<HTMLDivElement>(null);
   
   // --- HERO VIDEO STATE ---
@@ -82,6 +82,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return null;
   });
 
+  // Selected Episode state is used to highlight UI, but not for player (series uses new page)
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(() => {
       if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
           const latest = getLatestSeason(content.seasons);
@@ -90,23 +91,44 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return null;
   });
 
+  // --- STATE RESET EFFECT (Fix for Related Content Navigation) ---
+  useEffect(() => {
+      // 1. Reset Tab to Default
+      setActiveTab('episodes');
+
+      // 2. Reset Season & Episode selection for Series
+      if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
+          const latest = getLatestSeason(content.seasons);
+          const targetSeason = latest || content.seasons[0];
+          
+          if (targetSeason) {
+              setSelectedSeasonId(targetSeason.id);
+              setSelectedEpisode(targetSeason.episodes?.[0] || null);
+          }
+      } else {
+          // Reset for Movies or empty Series
+          setSelectedSeasonId(null);
+          setSelectedEpisode(null);
+      }
+  }, [content.id, content.type, content.seasons, getLatestSeason]);
+
   // Derived State
   const currentSeason = useMemo(() => content.seasons?.find(s => s.id === selectedSeasonId), [content.seasons, selectedSeasonId]);
   const episodes = useMemo(() => currentSeason?.episodes || [], [currentSeason]);
   
   // Resolve servers based on type (Memoized) and filter out empty URLs
+  // Only for MOVIES now
   const activeServers = useMemo(() => {
       let servers: Server[] = [];
       
       if (content.type === 'movie') {
           servers = content.servers || [];
-      } else if (content.type === 'series' && selectedEpisode) {
-          servers = selectedEpisode.servers || [];
-      }
+      } 
+      // Series episodes are handled in the Watch Page
 
       // Only return servers that have a valid URL
       return servers.filter(s => s.url && s.url.trim().length > 0);
-  }, [content.type, content.servers, selectedEpisode]);
+  }, [content.type, content.servers]);
 
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
 
@@ -126,12 +148,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [prerollTimer, setPrerollTimer] = useState(5);
   const prerollContainerRef = useRef<HTMLDivElement>(null);
   
-  // Get Download URL
+  // Get Download URL (Movies Only)
   const downloadUrl = selectedServer?.downloadUrl || activeServers[0]?.downloadUrl;
 
   const isInMyList = !!myList?.includes(content.id);
   
-  const isContentPlayPlayable = content.type === 'movie' || (content.type === 'series' && !!selectedEpisode);
+  // Determine if content is playable *INLINE* (i.e., only movies)
+  const isContentPlayPlayable = content.type === 'movie';
 
   const prerollAd = useMemo(() => {
       return adsEnabled ? ads.find(ad => ad.placement === 'watch-preroll' && ad.status === 'active') : null;
@@ -279,45 +302,20 @@ const DetailPage: React.FC<DetailPageProps> = ({
     if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
         // Parse Season and Episode numbers from URL (Support both Arabic and English segments)
         const seasonMatch = decodedPath.match(/\/(?:الموسم|season)\/(\d+)/i);
-        const episodeMatch = decodedPath.match(/\/(?:الحلقة|episode)\/(\d+)/i);
+        // const episodeMatch = decodedPath.match(/\/(?:الحلقة|episode)\/(\d+)/i); // Not using episode match here currently for selection
 
         if (seasonMatch && seasonMatch[1]) {
             const sNum = parseInt(seasonMatch[1]);
             const foundS = content.seasons.find(s => s.seasonNumber === sNum);
             
             if (foundS) {
-                // 1. Update Season if URL differs from current state
                 if (foundS.id !== selectedSeasonId) {
                     setSelectedSeasonId(foundS.id);
-                }
-                
-                // 2. Update Episode if URL specified
-                if (episodeMatch && episodeMatch[1]) {
-                    const eNum = parseInt(episodeMatch[1]);
-                    
-                    // Try finding episode by title (e.g. "الحلقة 5") or fallback to array index
-                    let foundE = foundS.episodes.find(e => {
-                        const titleDigits = e.title?.match(/\d+/);
-                        return titleDigits ? parseInt(titleDigits[0]) === eNum : false;
-                    });
-
-                    if (!foundE) {
-                         // Fallback: Assume ordered list (Episode 1 is at index 0)
-                         foundE = foundS.episodes[eNum - 1];
-                    }
-                    
-                    if (foundE) {
-                         setSelectedEpisode(foundE);
-                    }
-                } else if (foundS.id !== selectedSeasonId) {
-                    // If Season changed but no Episode in URL, reset to first episode of that season
-                    const firstEp = foundS.episodes[0];
-                    if (firstEp) setSelectedEpisode(firstEp);
                 }
             }
         }
     } 
-  }, [content.id, content.seasons, content.type, locationPath, selectedSeasonId]); // Re-run when content loads or URL changes
+  }, [content.id, content.seasons, content.type, locationPath, selectedSeasonId]);
 
   // --- Pre-roll Effect (Timer & Script Injection) ---
   useEffect(() => {
@@ -339,7 +337,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       } else {
           setShowPreroll(false);
       }
-  }, [content.id, selectedEpisode?.id, prerollAd, isContentPlayPlayable]);
+  }, [content.id, prerollAd, isContentPlayPlayable]);
 
   // Inject Script for Pre-roll
   useEffect(() => {
@@ -390,16 +388,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   // --- Handlers ---
 
-  const updateUrlForEpisode = useCallback((seasonNum: number, episodeNum: number) => {
-      const slug = content.slug || content.id;
-      const newPath = `/مسلسل/${slug}/الموسم/${seasonNum}/الحلقة/${episodeNum}`;
-      try {
-          window.history.pushState({}, '', newPath);
-      } catch (e) {
-          console.warn('Failed to push state:', e);
-      }
-  }, [content.slug, content.id]);
-
   const handleWatchScroll = () => {
     setActiveTab('episodes');
     setTimeout(() => {
@@ -409,38 +397,27 @@ const DetailPage: React.FC<DetailPageProps> = ({
   
   const handleSeasonSelect = (seasonId: number) => {
       setSelectedSeasonId(seasonId);
-      const season = content.seasons?.find(s => s.id === seasonId);
-      
-      if (season && season.episodes && season.episodes.length > 0) {
-          const firstEp = season.episodes[0];
-          // Pass false to prevent scrolling when changing seasons
-          handleEpisodeSelect(firstEp, season.seasonNumber, 1, false); 
-      } else {
-          setSelectedEpisode(null);
-      }
   };
 
-  const handleEpisodeSelect = (episode: Episode, seasonNum?: number, episodeIndex?: number, shouldScroll: boolean = true) => {
-      // WRAP EPISODE SELECTION IN AD TRIGGER
-      const performSelect = () => {
-          setSelectedEpisode(episode);
-          if (content.type === 'series') {
-              const sNum = seasonNum ?? currentSeason?.seasonNumber ?? 1;
-              let eNum = episodeIndex;
-              if (!eNum && currentSeason) {
-                  const idx = currentSeason.episodes.findIndex(e => e.id === episode.id);
-                  eNum = idx + 1;
-              }
-              if(eNum) updateUrlForEpisode(sNum, eNum);
+  const handleEpisodeSelect = (episode: Episode, seasonNum?: number, episodeIndex?: number) => {
+      // NAVIGATE TO WATCH PAGE FOR SERIES
+      if (content.type === 'series') {
+          const sNum = seasonNum ?? currentSeason?.seasonNumber ?? 1;
+          
+          let eNum = episodeIndex;
+          if (!eNum && currentSeason) {
+              const idx = currentSeason.episodes.findIndex(e => e.id === episode.id);
+              eNum = idx + 1;
           }
-          // Also scroll to player if changing episodes AND shouldScroll is true
-          if (shouldScroll) {
-              playerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          if (eNum) {
+              onSetView('watch', undefined, { season: sNum, episode: eNum });
           }
-      };
-
-      // Trigger 'action_next_episode' ad logic
-      triggerActionWithAd(performSelect, 'action_next_episode');
+          return;
+      }
+      
+      // Keep selected logic just for UI highlight in movies (though movies usually don't have episodes)
+      setSelectedEpisode(episode);
   };
 
   const handleServerSelect = (server: Server) => {
@@ -584,7 +561,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
             ? 'text-white border-[#35F18B]'
             : isNetflixRedTheme
                 ? 'text-white border-[#E50914]'
-                : 'text-white border-[#00A7F8]'; // Explicitly Blue #00A7F8
+                : 'text-white border-[#00A7F8]';
 
   const tabHoverClass = 'text-gray-400 border-transparent hover:text-white';
 
@@ -807,8 +784,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         </div>
 
                         {episodes.length > 0 ? (
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 mb-10 pb-10 px-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-10 pb-10 px-2">
                                 {episodes.map((ep, index) => {
+                                    // Highlight logic: Series uses navigation now, so highlighting might just show active if coming back
                                     const isSelected = selectedEpisode?.id === ep.id;
                                     const epTitle = ep.title || `الحلقة ${index + 1}`;
                                     const thumbnailSrc = ep.thumbnail || currentSeason?.backdrop || content.backdrop;
@@ -818,55 +796,55 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                             key={ep.id}
                                             onClick={() => handleEpisodeSelect(ep, currentSeason?.seasonNumber, index + 1)}
                                             className={`
-                                                group cursor-pointer relative rounded-xl bg-gray-900 border episode-card-hover flex flex-col h-full
+                                                group cursor-pointer relative rounded-xl bg-[var(--bg-card)] border episode-card-hover flex flex-col h-full overflow-hidden
                                                 ${isSelected 
                                                     ? `${isRamadanTheme ? 'border-amber-500' : isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'} ring-1 ring-offset-0 ${isRamadanTheme ? 'ring-amber-500' : isEidTheme ? 'ring-purple-500' : isCosmicTealTheme ? 'ring-[#35F18B]' : isNetflixRedTheme ? 'ring-[#E50914]' : 'ring-[#00A7F8]'} shadow-lg` 
                                                     : 'border-gray-800'
                                                 }
                                             `}
                                         >
-                                            {/* Image Container - Fixed Aspect Ratio */}
-                                            <div className="relative w-full aspect-video rounded-t-xl overflow-hidden bg-black flex-shrink-0">
+                                            {/* Image Container */}
+                                            <div className="relative w-full aspect-video overflow-hidden bg-black flex-shrink-0">
                                                 <img 
                                                     src={thumbnailSrc} 
                                                     alt={epTitle}
-                                                    className="w-full h-full object-cover"
+                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                                     loading="lazy"
                                                 />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                                                 
-                                                {/* Centered Play Icon */}
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <div className={`
-                                                        w-10 h-10 rounded-full flex items-center justify-center
-                                                        backdrop-blur-md transition-all duration-300 shadow-lg
-                                                        ${isSelected 
-                                                            ? 'bg-[var(--color-accent)] text-black scale-110 shadow-[0_0_15px_var(--shadow-color)]' 
-                                                            : 'bg-black/40 text-white border border-white/20 group-hover:bg-[var(--color-accent)] group-hover:text-black group-hover:scale-110 group-hover:border-transparent'
-                                                        }
-                                                    `}>
-                                                        <PlayIcon className="w-5 h-5 ml-0.5" />
-                                                    </div>
-                                                </div>
-                                                {ep.progress > 0 && <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-700"><div className="h-full bg-[var(--color-accent)]" style={{ width: `${ep.progress}%` }}></div></div>}
-                                            </div>
-                                            
-                                            {/* Episode Info */}
-                                            <div className="p-3 flex-1 flex flex-col">
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <h4 className={`text-sm font-bold text-white truncate max-w-[70%] ${isSelected ? 'text-[var(--color-accent)]' : ''}`}>
+                                                {/* --- NEW OVERLAY SECTION --- */}
+                                                <div className="absolute bottom-3 right-3 left-3 flex justify-between items-end z-20 pointer-events-none">
+                                                    {/* Title: Bottom Right, Size 20px (text-xl) */}
+                                                    <h4 className={`text-xl font-bold text-white drop-shadow-md leading-none ${isSelected ? 'text-[var(--color-accent)]' : ''}`}>
                                                         {epTitle}
                                                     </h4>
-                                                    {ep.duration && (
-                                                        <span className="text-xs font-medium text-gray-400 font-mono" dir="ltr">{ep.duration}</span>
-                                                    )}
+
+                                                    {/* Duration & Play Icon: Bottom Left */}
+                                                    <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 text-white shadow-sm">
+                                                        <PlayIcon className="w-3.5 h-3.5 fill-current" />
+                                                        {ep.duration && (
+                                                            <span className="text-xs font-bold font-mono tracking-wider" dir="ltr">
+                                                                {ep.duration}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                
-                                                {/* Description with 2-line clamp */}
-                                                {ep.description && (
-                                                    <p className="text-[10px] text-gray-400 line-clamp-2 leading-relaxed mt-1">
+                                                {/* --------------------------- */}
+
+                                                {/* Progress Bar */}
+                                                {ep.progress > 0 && <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-700 z-30"><div className="h-full bg-[var(--color-accent)]" style={{ width: `${ep.progress}%` }}></div></div>}
+                                            </div>
+                                            
+                                            {/* Info Section (Story Only) */}
+                                            <div className="p-3 md:p-4 flex-1 flex flex-col justify-center">
+                                                {/* Description */}
+                                                {ep.description ? (
+                                                    <p className="text-xs md:text-sm text-gray-400 line-clamp-3 leading-relaxed">
                                                         {ep.description}
                                                     </p>
+                                                ) : (
+                                                     <p className="text-[10px] md:text-xs text-gray-500">لا يتوفر وصف.</p>
                                                 )}
                                             </div>
                                         </div>
@@ -881,124 +859,117 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     </div>
                   )}
 
-                  {/* PLAYER ZONE */}
-                  <div ref={playerSectionRef} className="bg-[var(--bg-body)] py-8 px-4 md:px-8 border-t border-gray-800 w-full">
-                     <div className="max-w-6xl mx-auto w-full">
-                         <AdPlacement ads={ads} placement="watch-top" isEnabled={adsEnabled} />
-                         {isContentPlayPlayable ? (
-                            <>
-                                 <div className="flex justify-between items-end mb-6 w-full">
-                                     {activeServers.length > 0 && (
-                                         <div className="flex-1 overflow-hidden w-full">
-                                            <SectionTitle title="سيرفرات المشاهدة" showBar={true} />
-                                            {/* Servers Horizontal Scroll - ensure w-full and no wrap */}
-                                            <div className="flex items-center gap-3 overflow-x-auto rtl-scroll pb-2 no-scrollbar w-full">
-                                                {activeServers.map((server) => (
-                                                     <button
-                                                        key={server.id}
-                                                        onClick={() => handleServerSelect(server)}
-                                                        className={`
-                                                            flex-shrink-0 px-6 py-3 rounded-lg font-bold text-sm transition-all shadow-sm flex items-center gap-2 whitespace-nowrap target-server-btn
-                                                            ${selectedServer?.id === server.id 
-                                                                ? (isRamadanTheme 
-                                                                    ? 'bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)]' 
-                                                                    : isEidTheme
-                                                                        ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(147,112,219,0.4)]'
-                                                                        : isCosmicTealTheme
-                                                                            ? 'bg-[#35F18B] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)]'
-                                                                            : isNetflixRedTheme
-                                                                                ? 'bg-[#E50914] text-white shadow-[0_0_15px_rgba(229,9,20,0.4)]'
-                                                                                : 'bg-[#00A7F8] text-black scale-105 shadow-[0_0_15px_rgba(0,167,248,0.4)]')
-                                                                : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
-                                                            }
-                                                        `}
-                                                    >
-                                                        <PlayIcon className="w-4 h-4" />
-                                                        {server.name}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                         </div>
-                                     )}
-                                 </div>
-
-                                 <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.7)] border border-gray-800 bg-black z-10 group">
-                                      {showPreroll && prerollAd ? (
-                                          <div className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-4">
-                                              <div className="absolute top-4 right-4 z-[60] bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex items-center gap-3">
-                                                  <span className="text-gray-300 text-xs">إعلان</span>
-                                                  <div className="h-4 w-px bg-white/20"></div>
-                                                  {prerollTimer > 0 ? (
-                                                      <span className="text-white font-bold text-sm">يمكنك التخطي بعد {prerollTimer} ثانية</span>
-                                                  ) : (
-                                                      <button onClick={handleSkipPreroll} className={`font-bold text-sm flex items-center gap-1 transition-colors ${isCosmicTealTheme ? 'text-[#35F18B] hover:text-white' : isNetflixRedTheme ? 'text-[#E50914] hover:text-white' : 'text-[#00A7F8] hover:text-white'}`}>
-                                                          <span>تخطي الإعلان</span>
-                                                          <CloseIcon className="w-4 h-4" />
-                                                      </button>
-                                                  )}
-                                              </div>
-                                              <div className="w-full h-full flex items-center justify-center pointer-events-auto bg-black">
-                                                  <div ref={prerollContainerRef} className="w-full h-full flex justify-center items-center" />
-                                              </div>
-                                          </div>
-                                      ) : (
-                                          <VideoPlayer 
-                                              tmdbId={content.id}
-                                              type={content.type}
-                                              season={currentSeason?.seasonNumber}
-                                              episode={selectedEpisode ? (episodes.findIndex(e => e.id === selectedEpisode.id) + 1) : 1}
-                                              manualSrc={selectedServer?.url} 
-                                              poster={videoPoster} 
-                                              ads={ads}
-                                              adsEnabled={adsEnabled}
-                                          />
-                                      )}
-                                 </div>
-                                 
-                                 <div className="flex justify-end mt-2">
-                                     <button 
-                                        onClick={() => setIsReportModalOpen(true)}
-                                        className="text-xs text-gray-500 hover:text-red-400 flex items-center gap-1 transition-colors"
-                                     >
-                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                         </svg>
-                                         الإبلاغ عن مشكلة
-                                     </button>
-                                 </div>
-                                 
-                                 <AdPlacement ads={ads} placement="watch-below-player" isEnabled={adsEnabled} />
-
-                                 {downloadUrl && (
-                                     <div className="mt-8 flex justify-center items-center">
-                                         <button 
-                                            onClick={handleDownloadClick}
-                                            className={`relative overflow-hidden group w-full md:w-auto bg-[#151515] hover:bg-[#202020] border border-gray-700 hover:border-opacity-50 rounded-full p-1.5 transition-all duration-300 flex items-center justify-center gap-4 shadow-lg min-w-[280px] target-download-btn`}
-                                         >
-                                            <div className={`bg-gradient-to-br from-gray-800 to-black p-3 rounded-full border border-gray-700 transition-colors group-hover:border-[#00A7F8]`}>
-                                                <DownloadIcon className={`w-6 h-6 transition-transform group-hover:scale-110 text-[#00A7F8]`} />
-                                            </div>
-                                            <div className="flex flex-col text-right py-2 pl-8">
-                                                <span className={`font-bold text-base transition-colors text-white group-hover:text-[#00A7F8]`}>
-                                                    تحميل بجودة عالية
-                                                </span>
-                                                <span className="text-gray-500 text-xs mt-0.5 group-hover:text-gray-400">
-                                                    رابط مباشر وسريع
-                                                </span>
-                                            </div>
-                                         </button>
+                  {/* PLAYER ZONE - MOVIES ONLY */}
+                  {isContentPlayPlayable && (
+                      <div ref={playerSectionRef} className="bg-[var(--bg-body)] py-8 px-4 md:px-8 border-t border-gray-800 w-full">
+                         <div className="max-w-6xl mx-auto w-full">
+                             <AdPlacement ads={ads} placement="watch-top" isEnabled={adsEnabled} />
+                             
+                             <div className="flex justify-between items-end mb-6 w-full">
+                                 {activeServers.length > 0 && (
+                                     <div className="flex-1 overflow-hidden w-full">
+                                        <SectionTitle title="سيرفرات المشاهدة" showBar={true} />
+                                        {/* Servers Horizontal Scroll - ensure w-full and no wrap */}
+                                        <div className="flex items-center gap-3 overflow-x-auto rtl-scroll pb-2 no-scrollbar w-full">
+                                            {activeServers.map((server) => (
+                                                 <button
+                                                    key={server.id}
+                                                    onClick={() => handleServerSelect(server)}
+                                                    className={`
+                                                        flex-shrink-0 px-6 py-3 rounded-lg font-bold text-sm transition-all shadow-sm flex items-center gap-2 whitespace-nowrap target-server-btn
+                                                        ${selectedServer?.id === server.id 
+                                                            ? (isRamadanTheme 
+                                                                ? 'bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)]' 
+                                                                : isEidTheme
+                                                                    ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(147,112,219,0.4)]'
+                                                                    : isCosmicTealTheme
+                                                                        ? 'bg-[#35F18B] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)]'
+                                                                        : isNetflixRedTheme
+                                                                            ? 'bg-[#E50914] text-white shadow-[0_0_15px_rgba(229,9,20,0.4)]'
+                                                                            : 'bg-[#00A7F8] text-black scale-105 shadow-[0_0_15px_rgba(0,167,248,0.4)]')
+                                                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
+                                                        }
+                                                    `}
+                                                >
+                                                    <PlayIcon className="w-4 h-4" />
+                                                    {server.name}
+                                                </button>
+                                            ))}
+                                        </div>
                                      </div>
                                  )}
-                            </>
-                         ) : (
-                            content.type === 'series' && !selectedEpisode && (
-                                <div className="text-center py-24 text-gray-500 bg-gray-900/20 rounded-2xl border border-gray-800/50">
-                                    <p className="text-xl mb-2">الرجاء اختيار حلقة للمشاهدة</p>
-                                </div>
-                            )
-                         )}
-                     </div>
-                  </div>
+                             </div>
+
+                             <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.7)] border border-gray-800 bg-black z-10 group">
+                                  {showPreroll && prerollAd ? (
+                                      <div className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-4">
+                                          <div className="absolute top-4 right-4 z-[60] bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex items-center gap-3">
+                                              <span className="text-gray-300 text-xs">إعلان</span>
+                                              <div className="h-4 w-px bg-white/20"></div>
+                                              {prerollTimer > 0 ? (
+                                                  <span className="text-white font-bold text-sm">يمكنك التخطي بعد {prerollTimer} ثانية</span>
+                                              ) : (
+                                                  <button onClick={handleSkipPreroll} className={`font-bold text-sm flex items-center gap-1 transition-colors ${isCosmicTealTheme ? 'text-[#35F18B] hover:text-white' : isNetflixRedTheme ? 'text-[#E50914] hover:text-white' : 'text-[#00A7F8] hover:text-white'}`}>
+                                                      <span>تخطي الإعلان</span>
+                                                      <CloseIcon className="w-4 h-4" />
+                                                  </button>
+                                              )}
+                                          </div>
+                                          <div className="w-full h-full flex items-center justify-center pointer-events-auto bg-black">
+                                              <div ref={prerollContainerRef} className="w-full h-full flex justify-center items-center" />
+                                          </div>
+                                      </div>
+                                  ) : (
+                                      <VideoPlayer 
+                                          tmdbId={content.id}
+                                          type={content.type}
+                                          season={1}
+                                          episode={1}
+                                          manualSrc={selectedServer?.url} 
+                                          poster={videoPoster} 
+                                          ads={ads}
+                                          adsEnabled={adsEnabled}
+                                      />
+                                  )}
+                             </div>
+                             
+                             <div className="flex justify-end mt-2">
+                                 <button 
+                                    onClick={() => setIsReportModalOpen(true)}
+                                    className="text-xs text-gray-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                                 >
+                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                     </svg>
+                                     الإبلاغ عن مشكلة
+                                 </button>
+                             </div>
+                             
+                             <AdPlacement ads={ads} placement="watch-below-player" isEnabled={adsEnabled} />
+
+                             {downloadUrl && (
+                                 <div className="mt-8 flex justify-center items-center">
+                                     <button 
+                                        onClick={handleDownloadClick}
+                                        className={`relative overflow-hidden group w-full md:w-auto bg-[#151515] hover:bg-[#202020] border border-gray-700 hover:border-opacity-50 rounded-full p-1.5 transition-all duration-300 flex items-center justify-center gap-4 shadow-lg min-w-[280px] target-download-btn`}
+                                     >
+                                        <div className={`bg-gradient-to-br from-gray-800 to-black p-3 rounded-full border border-gray-700 transition-colors group-hover:border-[#00A7F8]`}>
+                                            <DownloadIcon className={`w-6 h-6 transition-transform group-hover:scale-110 text-[#00A7F8]`} />
+                                        </div>
+                                        <div className="flex flex-col text-right py-2 pl-8">
+                                            <span className={`font-bold text-base transition-colors text-white group-hover:text-[#00A7F8]`}>
+                                                تحميل بجودة عالية
+                                            </span>
+                                            <span className="text-gray-500 text-xs mt-0.5 group-hover:text-gray-400">
+                                                رابط مباشر وسريع
+                                            </span>
+                                        </div>
+                                     </button>
+                                 </div>
+                             )}
+                         </div>
+                      </div>
+                  )}
               </div>
           )}
 

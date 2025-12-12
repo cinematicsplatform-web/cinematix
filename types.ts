@@ -35,7 +35,7 @@ export const genres = [
 
 export type Genre = typeof genres[number];
 
-export type View = 'home' | 'movies' | 'series' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance';
+export type View = 'home' | 'movies' | 'series' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'watch' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance';
 
 export type LoginError = 'none' | 'userNotFound' | 'wrongPassword';
 
@@ -341,4 +341,30 @@ export interface ContentRequest {
     userId?: string | null; // Allow null
     status: 'pending' | 'completed';
     createdAt: string; // ISO String
+}
+
+// Types for Gemini Service (AI Dashboard)
+export const MediaType = {
+  MOVIE: 'movie',
+  SERIES: 'series',
+} as const;
+
+export type MediaType = typeof MediaType[keyof typeof MediaType];
+
+export interface MediaItem {
+  id: string;
+  title: string;
+  description: string;
+  type: MediaType | string;
+  rating: number;
+  year: number;
+  genre: string[];
+  imageUrl: string;
+  backdropUrl: string;
+  isVip: boolean;
+}
+
+export interface CategorySection {
+  title: string;
+  items: MediaItem[];
 }

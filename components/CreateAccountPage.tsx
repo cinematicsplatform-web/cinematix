@@ -54,7 +54,14 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
                     : 'text-[#00A7F8] hover:text-[#00FFB0]';
 
   return (
-    <div className="min-h-screen bg-[var(--bg-body)] flex items-center justify-center p-4 pt-24 relative">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 pt-24 relative bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage: `url('https://shahid.mbc.net/mediaObject/436ea116-cdae-4007-ace6-3c755df16856?width=1920&type=avif&q=80')`
+      }}
+    >
+      {/* Dark Overlay without blur */}
+      <div className="absolute inset-0 bg-black/50 z-0"></div>
         
       <button 
           onClick={() => onSetView('login')}
@@ -64,7 +71,7 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
           <ChevronRightIcon className="w-6 h-6 transform rotate-180 group-hover:-translate-x-1 transition-transform" />
       </button>
 
-      <div className="bg-black border border-gray-700 rounded-2xl shadow-xl w-full max-w-md text-white animate-fade-in-up relative">
+      <div className="bg-black/80 backdrop-blur-md border border-gray-700 rounded-2xl shadow-xl w-full max-w-md text-white animate-fade-in-up relative z-10">
         <div className="p-8 md:p-12">
             <h1 className="text-3xl font-extrabold mb-4 text-center">
                 <span className="text-white">أنشئ حساباً في سينما</span><span className="gradient-text font-['Lalezar'] tracking-wide">تيكس</span>
@@ -75,12 +82,12 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
             
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="flex gap-4">
-                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="الاسم الأول (اختياري)" className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" />
-                    <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="الاسم الأخير (اختياري)" className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" />
+                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="الاسم الأول (اختياري)" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" />
+                    <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="الاسم الأخير (اختياري)" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" />
                 </div>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="البريد الإلكتروني" className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" required />
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="كلمة المرور" className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" required />
-                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="تأكيد كلمة المرور" className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" required />
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="البريد الإلكتروني" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" required />
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="كلمة المرور" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" required />
+                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="تأكيد كلمة المرور" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" required />
                 
                 <button type="submit" className="w-full btn-primary font-bold py-3 rounded-lg transition-all duration-300 transform hover:scale-105 !mt-6">
                     إنشاء حساب

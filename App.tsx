@@ -37,6 +37,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AdPlacement from './components/AdPlacement';
 import AdZone from './components/AdZone'; 
 import RequestContentModal from './components/RequestContentModal';
+import EpisodeWatchPage from './components/EpisodeWatchPage';
 
 // --- Toast Notification System ---
 
@@ -110,6 +111,7 @@ const REVERSE_VIEW_PATHS: Record<string, string> = {
 // --- Safe History Helpers ---
 const safeHistoryPush = (path: string) => {
     try {
+        if (window.location.protocol === 'blob:') return; // Skip for blob URLs (AI Studio Preview)
         if (window.location.protocol !== 'file:' && window.location.origin !== 'null') {
              window.history.pushState({}, '', path);
         }
@@ -120,6 +122,7 @@ const safeHistoryPush = (path: string) => {
 
 const safeHistoryReplace = (path: string) => {
     try {
+        if (window.location.protocol === 'blob:') return; // Skip for blob URLs (AI Studio Preview)
         if (window.location.protocol !== 'file:' && window.location.origin !== 'null') {
             window.history.replaceState({}, '', path);
         }
@@ -139,6 +142,10 @@ const App: React.FC = () => {
       }
       if (normalizedPath.startsWith('/category/')) {
           return 'category';
+      }
+      // Check for Watch Route first (more specific)
+      if (normalizedPath.match(/^\/مشاهدة\//)) {
+          return 'watch';
       }
       if (normalizedPath.match(/^\/(?:series|مسلسل|movie|فيلم)\/([^\/]+)/)) {
           return 'detail';
@@ -166,6 +173,9 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
+  
+  // New State for Watch Page Params
+  const [watchParams, setWatchParams] = useState<{ season: number, episode: number } | null>(null);
   
   const [allContent, setAllContent] = useState<Content[]>([]);
   const [pinnedItems, setPinnedItems] = useState<PinnedContentState>(initialPinned);
@@ -212,7 +222,7 @@ const App: React.FC = () => {
   useEffect(() => {
       if (activeProfile?.isKid) {
           // List of allowed views for Kids
-          const allowedKidsViews: View[] = ['kids', 'detail', 'profileSelector', 'accountSettings', 'profileHub', 'myList', 'maintenance'];
+          const allowedKidsViews: View[] = ['kids', 'detail', 'watch', 'profileSelector', 'accountSettings', 'profileHub', 'myList', 'maintenance'];
           
           if (!allowedKidsViews.includes(view)) {
               // Redirect to Kids Home if user tries to access an adult view
@@ -287,13 +297,12 @@ const App: React.FC = () => {
   useLayoutEffect(() => {
       const prevView = prevViewRef.current;
       
-      if (view === 'detail') {
-          // Always scroll to top when entering Detail page.
-          // Using 'instant' behavior to prevent visual scrolling animation from previous position.
+      if (view === 'detail' || view === 'watch') {
+          // Always scroll to top when entering Detail or Watch page.
           window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
       } 
-      else if (prevView === 'detail') {
-          // Returning from Detail page: Restore previous scroll position instantly
+      else if (prevView === 'detail' || prevView === 'watch') {
+          // Returning from Detail/Watch page: Restore previous scroll position instantly
           const savedPosition = scrollPositions.current[view];
           if (savedPosition !== undefined) {
               window.scrollTo({ top: savedPosition, left: 0, behavior: 'instant' as any });
@@ -303,7 +312,6 @@ const App: React.FC = () => {
       } 
       else {
           // Navigation between main tabs (Home <-> Movies etc)
-          // Reset to 0 instantly for a fresh start.
           window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
       }
 
@@ -312,8 +320,25 @@ const App: React.FC = () => {
 
   const resolveContentFromUrl = useCallback((path: string, contentList: Content[]) => {
       const decodedPath = decodeURIComponent(path);
-      const match = decodedPath.match(/^\/(?:series|مسلسل|movie|فيلم)\/([^\/]+)/);
       
+      // 1. Handle Watch URL: /مشاهدة/slug/الموسم/X/الحلقة/Y
+      const watchMatch = decodedPath.match(/^\/مشاهدة\/([^\/]+)\/الموسم\/(\d+)\/الحلقة\/(\d+)/);
+      if (watchMatch) {
+          const slug = watchMatch[1];
+          const season = parseInt(watchMatch[2]);
+          const episode = parseInt(watchMatch[3]);
+          
+          const foundContent = contentList.find(c => (c.slug === slug) || (c.id === slug));
+          if (foundContent) {
+              setSelectedContent(foundContent);
+              setWatchParams({ season, episode });
+              setView('watch');
+              return;
+          }
+      }
+
+      // 2. Handle Detail URL
+      const match = decodedPath.match(/^\/(?:series|مسلسل|movie|فيلم)\/([^\/]+)/);
       if (match && match[1]) {
           const slug = match[1];
           const foundContent = contentList.find(c => (c.slug === slug) || (c.id === slug));
@@ -332,8 +357,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
       const handlePopState = () => {
-          // When hitting back button, save current scroll for the view we are LEAVING? 
-          // Browser back button usually handles history state, but since we use manual restoration:
+          // When hitting back button
           const newView = getInitialView();
           setView(newView); 
           
@@ -342,7 +366,7 @@ const App: React.FC = () => {
               setSelectedCategory(path.split('/category/')[1]);
           }
 
-          if (newView === 'detail' && allContent.length > 0) {
+          if ((newView === 'detail' || newView === 'watch') && allContent.length > 0) {
               resolveContentFromUrl(window.location.pathname, allContent);
           }
       };
@@ -481,24 +505,46 @@ const App: React.FC = () => {
   }, []);
 
 
-  const handleSetView = (newView: View, category?: string) => {
+  const handleSetView = (newView: View, category?: string, params?: any) => {
       // If we are leaving a list view (like home, movies, etc), save the scroll position
-      if (view !== 'detail') {
+      if (view !== 'detail' && view !== 'watch') {
           scrollPositions.current[view] = window.scrollY;
       }
 
       setView(newView);
       if (category) setSelectedCategory(category);
 
-      let path = REVERSE_VIEW_PATHS[newView];
-      
-      if (newView === 'category' && category) {
-          path = `/category/${category}`;
-      }
-      
-      if (path) {
-          if (window.location.pathname !== path) {
-            safeHistoryPush(path);
+      // Handle Watch Params specifically
+      if (newView === 'watch' && params) {
+          setWatchParams(params);
+          if (selectedContent) {
+              const slug = selectedContent.slug || selectedContent.id;
+              // Format: /مشاهدة/slug/الموسم/X/الحلقة/Y
+              const watchPath = `/مشاهدة/${slug}/الموسم/${params.season}/الحلقة/${params.episode}`;
+              safeHistoryPush(watchPath);
+          }
+      } 
+      else {
+          // Clean up watch params when leaving watch page
+          if (newView !== 'watch') setWatchParams(null);
+
+          let path = REVERSE_VIEW_PATHS[newView];
+          
+          if (newView === 'category' && category) {
+              path = `/category/${category}`;
+          }
+          
+          // Reconstruct detail path if navigating back to detail (via header for example)
+          if (newView === 'detail' && selectedContent) {
+              const slug = selectedContent.slug || selectedContent.id;
+              const prefix = selectedContent.type === 'series' ? '/مسلسل/' : '/فيلم/';
+              path = `${prefix}${slug}`;
+          }
+          
+          if (path) {
+              if (window.location.pathname !== path) {
+                safeHistoryPush(path);
+              }
           }
       }
   };
@@ -530,7 +576,6 @@ const App: React.FC = () => {
       const newPath = `${prefix}${slug}`;
 
       safeHistoryPush(newPath);
-      // NOTE: We rely on useLayoutEffect to handle the scroll-to-top instantly
   };
 
   const handleLogin = async (email: string, pass: string): Promise<LoginError> => {
@@ -865,6 +910,23 @@ const App: React.FC = () => {
                ) : (
                  <HomePage {...{allContent, pinnedContent: [], onSelectContent: handleSelectContent, isLoggedIn: !!currentUser, myList: activeProfile?.myList, onToggleMyList: handleToggleMyList, ads, siteSettings, onNavigate: handleSetView, activeProfile}} isLoading={isContentLoading} />
                ));
+           case 'watch':
+               // Render the dedicated watch page
+               return (selectedContent && watchParams) ? (
+                   <EpisodeWatchPage 
+                       content={selectedContent}
+                       seasonNumber={watchParams.season}
+                       episodeNumber={watchParams.episode}
+                       allContent={allContent}
+                       onSetView={handleSetView}
+                       ads={ads}
+                       adsEnabled={siteSettings.adsEnabled}
+                       isRamadanTheme={isRamadanTheme}
+                       isEidTheme={isEidTheme}
+                       isCosmicTealTheme={isCosmicTealTheme}
+                       isNetflixRedTheme={isNetflixRedTheme}
+                   />
+               ) : <LoadingSpinner />;
            case 'login':
                if (isAuthLoading) return <LoadingSpinner />;
                return <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
@@ -1003,7 +1065,7 @@ const App: React.FC = () => {
   };
 
   // Logic to determine visibility on mobile and desktop
-  const fullScreenViews = ['login', 'register', 'profileSelector', 'admin', 'detail', 'maintenance'];
+  const fullScreenViews = ['login', 'register', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch'];
   const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
   
   const showGlobalFooter = !isAuthLoading && !fullScreenViews.includes(view) && !siteSettings.is_maintenance_mode_enabled;
@@ -1019,7 +1081,7 @@ const App: React.FC = () => {
   const socialBarClass = mobileCleanViews.includes(view) ? 'hidden md:block' : 'fixed z-[90] bottom-20 left-4 right-4 md:bottom-4 md:left-4 md:right-auto md:w-auto pointer-events-auto';
 
   return (
-    <div className={`min-h-screen text-white font-['Cairo'] ${view === 'detail' ? '' : 'pb-16 md:pb-0'}`}>
+    <div className={`min-h-screen text-white font-['Cairo'] ${view === 'detail' || view === 'watch' ? '' : 'pb-16 md:pb-0'}`}>
         <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
             {toasts.map(toast => (
                 <div 
@@ -1037,7 +1099,7 @@ const App: React.FC = () => {
 
         {siteSettings.adsEnabled && <AdZone position="global_head" />}
 
-        {!isAuthLoading && view !== 'login' && view !== 'register' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && !siteSettings.is_maintenance_mode_enabled && (
+        {!isAuthLoading && view !== 'login' && view !== 'register' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && !siteSettings.is_maintenance_mode_enabled && (
             <Header 
                 onSetView={handleSetView} 
                 currentUser={currentUser} 

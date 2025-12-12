@@ -136,10 +136,13 @@ input:-webkit-autofill:active {
     transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), z-index 0s;
 }
 
-.episode-card-hover:hover {
-    transform: scale(1.20); /* 20% Expansion */
-    z-index: 100 !important; /* Force top */
-    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+/* Only enable hover scaling on Desktop/Tablet (md breakpoint and up) */
+@media (min-width: 768px) {
+    .episode-card-hover:hover {
+        transform: scale(1.20); /* 20% Expansion */
+        z-index: 100 !important; /* Force top */
+        box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    }
 }
 
 /* Default Mobile (2 Columns) - RTL Logic */
