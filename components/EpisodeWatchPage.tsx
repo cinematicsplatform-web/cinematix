@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Content, Episode, Server, Ad, View } from '@/types';
 import VideoPlayer from './VideoPlayer';
@@ -15,7 +14,7 @@ interface EpisodeWatchPageProps {
     content: Content;
     seasonNumber: number;
     episodeNumber: number;
-    allContent: Content[]; // For recommendations if needed, or similar logic
+    allContent: Content[];
     onSetView: (view: View, category?: string, params?: any) => void;
     ads: Ad[];
     adsEnabled: boolean;
@@ -42,17 +41,19 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
         content.seasons?.find(s => s.seasonNumber === seasonNumber), 
     [content.seasons, seasonNumber]);
 
-    // Try to find episode by index (assuming 1-based index maps to array index) or ID if logic allows
-    // Simple logic: Episodes are usually stored in order.
     const selectedEpisode = useMemo(() => {
         if (!currentSeason?.episodes) return null;
-        // Try finding by exact title matching "الحلقة X" often used, or just index
-        // Fallback to index-1
         if (episodeNumber > 0 && episodeNumber <= currentSeason.episodes.length) {
             return currentSeason.episodes[episodeNumber - 1];
         }
         return null;
     }, [currentSeason, episodeNumber]);
+
+    // --- HELPER: FALLBACK DESCRIPTION ---
+    const getEpisodeDescription = (description: string | undefined, epNum: number, sNum: number) => {
+        if (description && description.trim().length > 0) return description;
+        return `شاهد أحداث الحلقة ${epNum} من الموسم ${sNum}. استمتع بمشاهدة تطورات الأحداث في هذه الحلقة.`;
+    };
 
     // 2. Active Servers Logic
     const activeServers = useMemo(() => {
@@ -94,7 +95,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
         }
     }, [selectedEpisode, prerollAd]);
 
-    // Inject Script for Pre-roll
     useEffect(() => {
         if (showPreroll && prerollAd && prerollContainerRef.current) {
             const container = prerollContainerRef.current;
@@ -105,9 +105,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 const adContent = prerollAd.code || prerollAd.scriptCode || '';
                 const fragment = range.createContextualFragment(adContent);
                 container.appendChild(fragment);
-            } catch (e) {
-                console.error("Failed to inject pre-roll ad:", e);
-            }
+            } catch (e) {}
         }
     }, [showPreroll, prerollAd]);
 
@@ -115,7 +113,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     const [waiterAdState, setWaiterAdState] = useState<{ isOpen: boolean, ad: Ad | null, onComplete: () => void }>({ isOpen: false, ad: null, onComplete: () => {} });
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
-    // Get the effective download URL (Unified: find first available download link across all servers)
     const effectiveDownloadUrl = useMemo(() => {
         return activeServers.find(s => s.downloadUrl && s.downloadUrl.trim().length > 0)?.downloadUrl;
     }, [activeServers]);
@@ -143,35 +140,69 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     };
 
     const handleBack = () => {
-        // Navigate back to the main detail page of the series
-        // Passing the season param ensures the detail page opens the correct season tab
         onSetView('detail', undefined, { season: seasonNumber }); 
     };
 
-    // SEO
-    const pageTitle = `مشاهدة ${content.title} - الموسم ${seasonNumber} الحلقة ${episodeNumber}`;
-    
+    const mappedSeasons = useMemo(() => {
+        return content.seasons?.map(s => ({
+            season_number: s.seasonNumber,
+            episodes: s.episodes.map((ep, idx) => ({
+                episode_number: idx + 1,
+                season_number: s.seasonNumber,
+                name: ep.title,
+                overview: ep.description,
+                still_path: ep.thumbnail
+            }))
+        })) || [];
+    }, [content.seasons]);
+
+    const mappedCurrentEpisode = useMemo(() => {
+        if (!selectedEpisode) return undefined;
+        return {
+            episode_number: episodeNumber,
+            season_number: seasonNumber,
+            name: selectedEpisode.title,
+            overview: selectedEpisode.description,
+            still_path: selectedEpisode.thumbnail
+        };
+    }, [selectedEpisode, episodeNumber, seasonNumber]);
+
     // Theme Colors
     const accentColor = isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-500' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]';
     const bgAccent = isRamadanTheme ? 'bg-amber-500' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]';
     const borderAccent = isRamadanTheme ? 'border-[#FFD700]' : isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]';
 
+    // REMOVED: Full page loading spinner. Instead, we show a clean "not found" or "skeleton" shell if needed.
     if (!selectedEpisode) {
         return (
             <div className="min-h-screen bg-[var(--bg-body)] flex items-center justify-center text-white">
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold mb-4">عفواً، هذه الحلقة غير متاحة.</h2>
-                    <button onClick={handleBack} className="bg-white/10 px-6 py-2 rounded-full hover:bg-white/20">عودة للمسلسل</button>
+                <div className="text-center p-8 animate-fade-in-up">
+                    <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <CloseIcon className="w-10 h-10 text-gray-500" />
+                    </div>
+                    <h2 className="text-2xl font-bold mb-4">عفواً، هذه الحلقة غير متاحة حالياً.</h2>
+                    <p className="text-gray-400 mb-8 max-w-sm mx-auto">قد يكون جارٍ رفع الحلقة أو تم حذفها مؤقتاً.</p>
+                    <button onClick={handleBack} className="bg-white/10 px-8 py-3 rounded-full hover:bg-white/20 transition-all font-bold">الرجوع للمسلسل</button>
                 </div>
             </div>
         );
     }
 
+    const displayEpDesc = getEpisodeDescription(selectedEpisode.description, episodeNumber, seasonNumber);
+
     return (
         <div className="min-h-screen bg-[var(--bg-body)] text-white pb-20 animate-fade-in-up">
-            <SEO title={pageTitle} description={selectedEpisode.description || content.description} image={selectedEpisode.thumbnail || content.poster} />
+            <SEO 
+                type="series"
+                title={content.title} 
+                description={selectedEpisode.description || content.description} 
+                image={selectedEpisode.thumbnail || content.poster} 
+                banner={content.backdrop}
+                seasons={mappedSeasons}
+                currentEpisode={mappedCurrentEpisode}
+            />
 
-            {/* 1. Header (Back & Title) */}
+            {/* Header (Back & Title) */}
             <div className="sticky top-0 z-50 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 px-4 h-16 flex items-center justify-between shadow-lg">
                 <div className="flex items-center gap-4 w-full">
                     <button 
@@ -182,8 +213,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                     </button>
                     <div className="flex flex-col min-w-0 items-start">
                         <h1 className="text-sm md:text-base font-bold text-gray-200 truncate">{content.title}</h1>
-                        
-                        {/* Static Season/Episode Info (Dropdown Removed) */}
                         <span className={`text-[10px] md:text-xs font-bold ${accentColor}`}>
                             {content.type === 'movie' ? 'فيلم' : `الموسم ${seasonNumber} | الحلقة ${episodeNumber}`}
                         </span>
@@ -193,7 +222,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
             <div className="max-w-5xl mx-auto px-4 md:px-0 pt-6">
                 
-                {/* 2. Controls Area (Servers Only - Top) */}
+                {/* Controls Area (Servers Only) */}
                 <div className="w-full mb-4">
                     <h3 className="text-xs font-bold text-gray-400 mb-3 flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${bgAccent} animate-pulse`}></span>
@@ -221,7 +250,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
                 <AdPlacement ads={ads} placement="watch-top" isEnabled={adsEnabled} />
 
-                {/* 3. Video Player */}
+                {/* Video Player Section */}
                 <div className={`relative w-full aspect-video rounded-xl overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.5)] bg-black border ${selectedServer ? borderAccent : 'border-gray-800'} z-10 transition-colors duration-300`}>
                     {showPreroll && prerollAd ? (
                         <div className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-4">
@@ -255,7 +284,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                     )}
                 </div>
 
-                {/* MOVED: Report Button directly below player */}
                 <div className="flex justify-end mt-2 px-1">
                      <button 
                         onClick={() => setIsReportModalOpen(true)}
@@ -268,7 +296,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                     </button>
                 </div>
 
-                {/* 4. Download & Actions Area (Below Player - Centered) */}
+                {/* Download Actions */}
                 <div className="mt-6 mb-8 flex flex-col items-center gap-6">
                     {effectiveDownloadUrl && (
                         <button
@@ -282,14 +310,11 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                                 hover:scale-105 target-download-btn
                             `}
                         >
-                            {/* Gradient Background on Hover */}
                             <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300 ${bgAccent}`}></div>
-                            
                             <div className="flex flex-col text-right z-10">
                                 <span className="font-bold text-white text-lg">تحميل الحلقة</span>
                                 <span className={`text-[10px] ${accentColor} opacity-80`}>جودة عالية • رابط مباشر</span>
                             </div>
-
                             <div className={`p-3 rounded-xl bg-white/5 group-hover:bg-white/10 transition-colors z-10 border border-white/5`}>
                                 <DownloadIcon className={`w-6 h-6 text-gray-300 group-hover:text-white transition-colors`} />
                             </div>
@@ -299,24 +324,21 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
                 <div className="w-full h-px bg-white/5 mb-6"></div>
 
-                {/* 5. Footer Info (Title & Description) */}
+                {/* Episode Details */}
                 <div className="flex flex-col gap-4">
                     <div className="space-y-3">
                         <h2 className="text-2xl font-bold text-white leading-tight">
                             {selectedEpisode.title || `الحلقة ${episodeNumber}`}
                         </h2>
-                        {selectedEpisode.description && (
-                            <p className="text-sm text-gray-400 max-w-3xl leading-loose">
-                                {selectedEpisode.description}
-                            </p>
-                        )}
+                        <p className="text-sm text-gray-400 max-w-3xl leading-loose">
+                            {displayEpDesc}
+                        </p>
                     </div>
                 </div>
 
                 <AdPlacement ads={ads} placement="watch-below-player" isEnabled={adsEnabled} />
             </div>
 
-            {/* Waiter Modal */}
             {waiterAdState.isOpen && waiterAdState.ad && (
                 <AdWaiterModal 
                     isOpen={waiterAdState.isOpen}
@@ -326,7 +348,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 />
             )}
 
-            {/* Report Modal */}
             {isReportModalOpen && (
                 <ReportModal 
                     isOpen={isReportModalOpen}

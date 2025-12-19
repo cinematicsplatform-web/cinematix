@@ -76,6 +76,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const heroRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // --- HELPER: FALLBACK DESCRIPTION ---
+  const getEpisodeDescription = (description: string | undefined, epNumber: number, sNumber: number) => {
+      if (description && description.trim().length > 0) return description;
+      return `شاهد أحداث الحلقة ${epNumber} من الموسم ${sNumber}. استمتع بمشاهدة تطورات الأحداث في هذه الحلقة.`;
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
@@ -361,7 +367,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       const season = content.seasons?.find(s => s.id === seasonId);
       if (season) {
           // Critical: Use the global onSetView to update parent state and URL
-          // This prevents the parent from overriding the local state with old data
           onSetView('detail', undefined, { season: season.seasonNumber });
           setSelectedSeasonId(seasonId);
           setIsSeasonDropdownOpen(false);
@@ -468,25 +473,19 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const displayDescription = (content.type === 'series' && currentSeason?.description) ? currentSeason.description : content.description;
   const displayCast = (content.type === 'series' && currentSeason?.cast && currentSeason.cast.length > 0) ? currentSeason.cast : content.cast;
 
-  const SectionTitle = ({ title, showBar = false }: { title: string, showBar?: boolean }) => (
-    <div className="mb-4 flex items-center gap-3">
-        {showBar && (
-            <div className={`w-1.5 h-6 md:h-8 rounded-full shadow-[0_0_10px_rgba(0,167,248,0.6)] 
-                ${isRamadanTheme 
-                    ? 'bg-[#FFD700] shadow-[0_0_15px_rgba(255,215,0,0.6)]' 
-                    : isEidTheme
-                        ? 'bg-purple-500 shadow-[0_0_15px_rgba(147,112,219,0.6)]'
-                        : isCosmicTealTheme
-                            ? 'bg-gradient-to-b from-[#35F18B] to-[#2596be] shadow-[0_0_15px_rgba(53,241,139,0.6)]'
-                            : isNetflixRedTheme
-                                ? 'bg-[#E50914] shadow-[0_0_15px_rgba(229,9,20,0.6)]'
-                                : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'
-                }`}></div>
-        )}
-        <h3 className="text-xl md:text-2xl font-bold text-white">{title}</h3>
-    </div>
-  );
-  
+  const mappedSeasons = useMemo(() => {
+    return content.seasons?.map(s => ({
+        season_number: s.seasonNumber,
+        episodes: s.episodes.map((ep, idx) => ({
+            episode_number: idx + 1,
+            season_number: s.seasonNumber,
+            name: ep.title,
+            overview: ep.description,
+            still_path: ep.thumbnail
+        }))
+    })) || [];
+  }, [content.seasons]);
+
   const heroEmbedUrl = useMemo(() => {
       if (!trailerVideoId) return '';
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -520,11 +519,17 @@ const DetailPage: React.FC<DetailPageProps> = ({
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0 relative overflow-x-hidden w-full">
       
+      {/* 
+          SEO Integration: Immediate metadata for better indexing. 
+          Will render immediately as "content" is guaranteed by parent in current structure. 
+      */}
       <SEO 
+        type={content.type === 'series' ? 'series' : 'movie'}
         title={content.title}
         description={content.description}
-        poster={content.poster}
+        image={content.poster}
         banner={content.backdrop}
+        seasons={mappedSeasons}
       />
 
       {/* Hero Section */}
@@ -752,6 +757,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                     const epTitle = ep.title || `الحلقة ${index + 1}`;
                                     const thumbnailSrc = ep.thumbnail || currentSeason?.backdrop || content.backdrop;
                                     
+                                    const epDescription = getEpisodeDescription(ep.description, index + 1, currentSeason?.seasonNumber || 1);
+
                                     return (
                                         <div 
                                             key={ep.id}
@@ -792,13 +799,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                             </div>
                                             
                                             <div className="p-3 md:p-4 flex-1 flex flex-col justify-center">
-                                                {ep.description ? (
-                                                    <p className="text-xs md:text-sm text-gray-400 line-clamp-3 leading-relaxed">
-                                                        {ep.description}
-                                                    </p>
-                                                ) : (
-                                                     <p className="text-[10px] md:text-xs text-gray-500">لا يتوفر وصف.</p>
-                                                )}
+                                                <p className="text-xs md:text-sm text-gray-400 line-clamp-3 leading-relaxed">
+                                                    {epDescription}
+                                                </p>
                                             </div>
                                         </div>
                                     );
