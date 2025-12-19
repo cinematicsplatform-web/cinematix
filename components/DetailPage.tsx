@@ -55,6 +55,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
   locationPath,
   initialSeasonNumber
 }) => {
+  // Safe Title Fallback
+  const safeTitle = content?.title || 'جاري التحميل...';
+
   // Tabs State
   const [activeTab, setActiveTab] = useState<'episodes' | 'trailer' | 'details' | 'related'>('episodes');
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -101,7 +104,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   // --- IMMEDIATE INITIALIZATION ---
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(() => {
-      if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
+      if (content?.type === 'series' && content.seasons && content.seasons.length > 0) {
           if (initialSeasonNumber) {
               const explicitSeason = content.seasons.find(s => s.seasonNumber === initialSeasonNumber);
               if (explicitSeason) return explicitSeason.id;
@@ -126,28 +129,28 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   // Synchronize season ID with props (important for external navigation/back button)
   useEffect(() => {
-    if (content.type === 'series' && initialSeasonNumber && content.seasons) {
+    if (content?.type === 'series' && initialSeasonNumber && content.seasons) {
         const foundS = content.seasons.find(s => s.seasonNumber === initialSeasonNumber);
         if (foundS && foundS.id !== selectedSeasonId) {
             setSelectedSeasonId(foundS.id);
         }
     }
-  }, [initialSeasonNumber, content.seasons, content.type]);
+  }, [initialSeasonNumber, content?.seasons, content?.type]);
 
   // Reset episode selection when season changes
   useEffect(() => {
-    if (content.type === 'series' && selectedSeasonId && content.seasons) {
+    if (content?.type === 'series' && selectedSeasonId && content.seasons) {
         const currentS = content.seasons.find(s => s.id === selectedSeasonId);
         if (currentS && currentS.episodes && currentS.episodes.length > 0) {
             setSelectedEpisode(currentS.episodes[0]);
         }
     }
-  }, [selectedSeasonId, content.id]);
+  }, [selectedSeasonId, content?.id]);
 
   useEffect(() => {
       setActiveTab('episodes');
 
-      if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
+      if (content?.type === 'series' && content.seasons && content.seasons.length > 0) {
           let targetSeason = null;
           if (initialSeasonNumber) {
               targetSeason = content.seasons.find(s => s.seasonNumber === initialSeasonNumber);
@@ -171,18 +174,18 @@ const DetailPage: React.FC<DetailPageProps> = ({
           setSelectedSeasonId(null);
           setSelectedEpisode(null);
       }
-  }, [content.id, content.type, content.seasons, getLatestSeason]);
+  }, [content?.id, content?.type, content?.seasons, getLatestSeason]);
 
-  const currentSeason = useMemo(() => content.seasons?.find(s => s.id === selectedSeasonId), [content.seasons, selectedSeasonId]);
+  const currentSeason = useMemo(() => content?.seasons?.find(s => s.id === selectedSeasonId), [content?.seasons, selectedSeasonId]);
   const episodes = useMemo(() => currentSeason?.episodes || [], [currentSeason]);
   
   const activeServers = useMemo(() => {
       let servers: Server[] = [];
-      if (content.type === 'movie') {
+      if (content?.type === 'movie') {
           servers = content.servers || [];
       } 
       return servers.filter(s => s.url && s.url.trim().length > 0);
-  }, [content.type, content.servers]);
+  }, [content?.type, content?.servers]);
 
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
 
@@ -199,8 +202,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [prerollTimer, setPrerollTimer] = useState(5);
   const prerollContainerRef = useRef<HTMLDivElement>(null);
   const downloadUrl = selectedServer?.downloadUrl || activeServers[0]?.downloadUrl;
-  const isInMyList = !!myList?.includes(content.id);
-  const isContentPlayPlayable = content.type === 'movie';
+  const isInMyList = !!myList?.includes(content?.id);
+  const isContentPlayPlayable = content?.type === 'movie';
 
   const prerollAd = useMemo(() => {
       return adsEnabled ? ads.find(ad => ad.placement === 'watch-preroll' && ad.status === 'active') : null;
@@ -224,9 +227,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
       } catch (e) { return null; }
   };
 
-  const displayTrailerUrl = (content.type === 'series' && currentSeason?.trailerUrl) 
+  const displayTrailerUrl = (content?.type === 'series' && currentSeason?.trailerUrl) 
         ? currentSeason.trailerUrl 
-        : content.trailerUrl;
+        : content?.trailerUrl;
   const trailerVideoId = getVideoId(displayTrailerUrl);
 
   useEffect(() => {
@@ -236,7 +239,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       if (!trailerVideoId || isMobile) return;
       const timer = setTimeout(() => { setShowVideo(true); }, 2000); 
       return () => clearTimeout(timer);
-  }, [content.id, trailerVideoId, isMobile]);
+  }, [content?.id, trailerVideoId, isMobile]);
 
   useEffect(() => {
       let limitTimer: ReturnType<typeof setTimeout>;
@@ -316,7 +319,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       } else {
           setShowPreroll(false);
       }
-  }, [content.id, prerollAd, isContentPlayPlayable]);
+  }, [content?.id, prerollAd, isContentPlayPlayable]);
 
   useEffect(() => {
       if (showPreroll && prerollAd && prerollContainerRef.current) {
@@ -366,7 +369,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const handleSeasonSelect = (seasonId: number) => {
       const season = content.seasons?.find(s => s.id === seasonId);
       if (season) {
-          // Critical: Use the global onSetView to update parent state and URL
           onSetView('detail', undefined, { season: season.seasonNumber });
           setSelectedSeasonId(seasonId);
           setIsSeasonDropdownOpen(false);
@@ -374,7 +376,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   };
 
   const handleEpisodeSelect = (episode: Episode, seasonNum?: number, episodeIndex?: number) => {
-      if (content.type === 'series') {
+      if (content?.type === 'series') {
           const sNum = seasonNum ?? currentSeason?.seasonNumber ?? 1;
           let eNum = episodeIndex;
           if (!eNum && currentSeason) {
@@ -406,19 +408,20 @@ const DetailPage: React.FC<DetailPageProps> = ({
   };
 
   const similarContent = useMemo(() => {
+      if (!content?.id) return [];
       return allContent.filter(c => c.id !== content.id && c.categories.some(cat => content.categories.includes(cat))).slice(0, 10);
   }, [content, allContent]);
 
-  let displayBackdrop = content.backdrop;
+  let displayBackdrop = content?.backdrop;
   let imgStyle: React.CSSProperties | undefined = undefined;
   let isCustomCrop = false;
 
-  if (content.type === 'series' && currentSeason?.backdrop) {
+  if (content?.type === 'series' && currentSeason?.backdrop) {
       displayBackdrop = currentSeason.backdrop;
   }
 
   if (isMobile) {
-      if (content.type === 'series' && currentSeason) {
+      if (content?.type === 'series' && currentSeason) {
           if (currentSeason.useCustomMobileImage && currentSeason.mobileImageUrl) {
               displayBackdrop = currentSeason.mobileImageUrl;
               imgStyle = { objectPosition: 'center' };
@@ -448,7 +451,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
               }
           }
       } 
-      else {
+      else if (content) {
           if (content.mobileBackdropUrl) {
               displayBackdrop = content.mobileBackdropUrl;
               imgStyle = { objectPosition: 'center' };
@@ -468,13 +471,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
       }
   }
 
-  const videoPoster = content.type === 'movie' ? content.backdrop : (selectedEpisode?.thumbnail || content.backdrop);
-  const displayLogo = (content.type === 'series' && currentSeason?.logoUrl) ? currentSeason.logoUrl : content.logoUrl;
-  const displayDescription = (content.type === 'series' && currentSeason?.description) ? currentSeason.description : content.description;
-  const displayCast = (content.type === 'series' && currentSeason?.cast && currentSeason.cast.length > 0) ? currentSeason.cast : content.cast;
+  const videoPoster = content?.type === 'movie' ? content.backdrop : (selectedEpisode?.thumbnail || content?.backdrop);
+  const displayLogo = (content?.type === 'series' && currentSeason?.logoUrl) ? currentSeason.logoUrl : content?.logoUrl;
+  const displayDescription = (content?.type === 'series' && currentSeason?.description) ? currentSeason.description : content?.description;
+  const displayCast = (content?.type === 'series' && currentSeason?.cast && currentSeason.cast.length > 0) ? currentSeason.cast : content?.cast;
 
   const mappedSeasons = useMemo(() => {
-    return content.seasons?.map(s => ({
+    return content?.seasons?.map(s => ({
         season_number: s.seasonNumber,
         episodes: s.episodes.map((ep, idx) => ({
             episode_number: idx + 1,
@@ -484,7 +487,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
             still_path: ep.thumbnail
         }))
     })) || [];
-  }, [content.seasons]);
+  }, [content?.seasons]);
 
   const heroEmbedUrl = useMemo(() => {
       if (!trailerVideoId) return '';
@@ -519,29 +522,29 @@ const DetailPage: React.FC<DetailPageProps> = ({
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0 relative overflow-x-hidden w-full">
       
-      {/* 
-          SEO Integration: Immediate metadata for better indexing. 
-          Will render immediately as "content" is guaranteed by parent in current structure. 
-      */}
       <SEO 
-        type={content.type === 'series' ? 'series' : 'movie'}
-        title={content.title}
-        description={content.description}
-        image={content.poster}
-        banner={content.backdrop}
+        type={content?.type === 'series' ? 'series' : 'movie'}
+        title={content?.title}
+        description={content?.description}
+        image={content?.poster}
+        banner={content?.backdrop}
         seasons={mappedSeasons}
       />
 
       {/* Hero Section */}
       <div ref={heroRef} className="relative h-[80vh] w-full overflow-hidden group z-10">
         <div className="absolute inset-0 bg-black">
-            <img 
-                src={displayBackdrop} 
-                alt={content.title} 
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'} ${!isMobile ? 'md:object-top' : ''} ${isCustomCrop ? 'mobile-custom-crop' : ''}`}
-                style={imgStyle} 
-                loading="eager"
-            />
+            {displayBackdrop ? (
+                <img 
+                    src={displayBackdrop} 
+                    alt={safeTitle} 
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'} ${!isMobile ? 'md:object-top' : ''} ${isCustomCrop ? 'mobile-custom-crop' : ''}`}
+                    style={imgStyle} 
+                    loading="eager"
+                />
+            ) : (
+                <div className="absolute inset-0 bg-gray-900 animate-pulse"></div>
+            )}
             
             {heroEmbedUrl && !isMobile && (
                 <div className={`absolute inset-0 w-full h-full overflow-hidden transition-opacity duration-1000 ${showVideo ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
@@ -565,21 +568,21 @@ const DetailPage: React.FC<DetailPageProps> = ({
         <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 pb-4 md:pb-6 flex flex-col justify-end items-start z-20">
             <div className="max-w-4xl w-full flex flex-col items-center md:items-start text-center md:text-right">
                 
-                {content.isLogoEnabled && displayLogo ? (
+                {content?.isLogoEnabled && displayLogo ? (
                     <img 
                         src={displayLogo} 
-                        alt={content.title} 
+                        alt={safeTitle} 
                         className={`w-auto h-auto max-w-[245px] md:max-w-[435px] max-h-[190px] md:max-h-[300px] mb-1 md:mb-3 object-contain drop-shadow-2xl mx-auto md:mx-0 transition-transform duration-700 ${showVideo ? 'translate-y-0 scale-75 origin-bottom-right' : 'scale-100'}`}
                         draggable={false}
                     />
                 ) : (
                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-1 md:mb-3 leading-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-300 drop-shadow-lg">
-                        {content.title}
+                        {safeTitle}
                     </h1>
                 )}
 
                 {/* Season Selector */}
-                {content.type === 'series' && content.seasons && content.seasons.length > 1 && (
+                {content?.type === 'series' && content.seasons && content.seasons.length > 1 && (
                     <div className="relative mt-1 mb-2 z-50 w-full md:w-auto flex justify-center md:justify-start" ref={dropdownRef}>
                         <button
                             onClick={(e) => {
@@ -588,7 +591,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             }}
                             className={`flex items-center gap-2 text-xl md:text-2xl font-bold transition-colors duration-200 group ${isRamadanTheme ? 'text-white hover:text-[#FFD700]' : isEidTheme ? 'text-white hover:text-purple-400' : isCosmicTealTheme ? 'text-white hover:text-[#35F18B]' : isNetflixRedTheme ? 'text-white hover:text-[#E50914]' : 'text-white hover:text-[#00A7F8]'}`}
                         >
-                            <span>{`الموسم ${currentSeason?.seasonNumber}`}</span>
+                            <span>{`الموسم ${currentSeason?.seasonNumber || ''}`}</span>
                             <ChevronDownIcon className={`w-5 h-5 transition-transform duration-300 ${isSeasonDropdownOpen ? 'rotate-180' : ''}`} />
                         </button>
 
@@ -621,21 +624,21 @@ const DetailPage: React.FC<DetailPageProps> = ({
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-4 mb-2 text-sm md:text-base font-medium text-gray-200 w-full">
                      <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
                         <StarIcon className="w-5 h-5" />
-                        <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
+                        <span className="font-bold text-white">{content?.rating?.toFixed(1) || '0.0'}</span>
                     </div>
                     
                     <span className="text-gray-500 text-sm md:text-lg">|</span>
 
-                    <span className="text-white tracking-wide">{currentSeason?.releaseYear || content.releaseYear}</span>
+                    <span className="text-white tracking-wide">{currentSeason?.releaseYear || content?.releaseYear || ''}</span>
                     
-                    {content.ageRating && (
+                    {content?.ageRating && (
                         <>
                             <span className="text-gray-500 text-sm md:text-lg">|</span>
                             <span className="px-2 py-0.5 border border-gray-500 rounded text-gray-300 text-xs md:text-sm">{content.ageRating}</span>
                         </>
                     )}
                     
-                    {content.type === 'movie' && content.duration && (
+                    {content?.type === 'movie' && content.duration && (
                         <>
                             <span className="text-gray-500 text-sm md:text-lg">|</span>
                             <div className="flex items-center gap-1.5 px-2 py-0.5 border border-gray-500 rounded text-gray-300 text-xs md:text-sm backdrop-blur-sm bg-white/5">
@@ -645,7 +648,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         </>
                     )}
 
-                    {content.genres.length > 0 && (
+                    {content?.genres && content.genres.length > 0 && (
                         <>
                             <span className="text-gray-500 text-sm md:text-lg">|</span>
                             <div className="flex flex-wrap gap-1">
@@ -670,7 +673,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     <div className="flex items-center gap-4 w-full md:w-auto justify-center md:justify-start">
                         <ActionButtons 
                             onWatch={handleWatchScroll}
-                            onToggleMyList={() => onToggleMyList(content.id)}
+                            onToggleMyList={() => content?.id && onToggleMyList(content.id)}
                             isInMyList={isInMyList}
                             showMyList={isLoggedIn}
                             isRamadanTheme={isRamadanTheme}
@@ -716,7 +719,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     onClick={() => setActiveTab('episodes')}
                     className={`flex items-center gap-2 py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'episodes' ? activeTabClass : tabHoverClass}`}
                   >
-                      <span>{content.type === 'movie' ? 'المشاهدة' : `الحلقات (${episodes.length})`}</span>
+                      <span>{content?.type === 'movie' ? 'المشاهدة' : `الحلقات (${episodes.length})`}</span>
                   </button>
 
                   {trailerVideoId && (
@@ -748,7 +751,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       <div className="relative w-full bg-[var(--bg-body)] min-h-[500px]">
           {activeTab === 'episodes' && (
               <div className="animate-fade-in-up w-full">
-                  {content.type === 'series' && content.seasons && (
+                  {content?.type === 'series' && content.seasons && (
                     <div className="px-4 md:px-8 pt-8 w-full">
                         {episodes.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-10 pb-10 px-2">
@@ -772,12 +775,16 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                             `}
                                         >
                                             <div className="relative w-full aspect-video overflow-hidden bg-black flex-shrink-0">
-                                                <img 
-                                                    src={thumbnailSrc} 
-                                                    alt={epTitle}
-                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                                    loading="lazy"
-                                                />
+                                                {thumbnailSrc ? (
+                                                    <img 
+                                                        src={thumbnailSrc} 
+                                                        alt={epTitle}
+                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                        loading="lazy"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full bg-gray-800 animate-pulse"></div>
+                                                )}
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                                                 
                                                 <div className="absolute bottom-3 right-3 left-3 flex justify-between items-end z-20 pointer-events-none">
@@ -888,8 +895,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                       </div>
                                   ) : (
                                       <VideoPlayer 
-                                          tmdbId={content.id}
-                                          type={content.type}
+                                          tmdbId={content?.id}
+                                          type={content?.type}
                                           season={1}
                                           episode={1}
                                           manualSrc={selectedServer?.url} 
@@ -998,7 +1005,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                     <h3 className="text-xl md:text-2xl font-bold text-white">التصنيف</h3>
                                   </div>
                                   <div className="flex flex-wrap gap-2">
-                                      {content.genres.map((genre, index) => (
+                                      {content?.genres?.map((genre, index) => (
                                           <div key={index} className={`px-4 py-2 rounded-lg text-sm font-bold border bg-gray-800/50 border-gray-700 text-gray-300`}>
                                               {genre}
                                           </div>
@@ -1026,18 +1033,18 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                           <span className="text-gray-500 text-xs">التقييم</span>
                                           <div className="flex items-center gap-1 text-yellow-400 font-bold text-xl">
                                               <StarIcon className="w-5 h-5" />
-                                              {content.rating}
+                                              {content?.rating || '0.0'}
                                           </div>
                                       </div>
                                       <div className="bg-gray-900/60 p-4 rounded-2xl border border-gray-800 flex flex-col items-center justify-center gap-1">
                                           <span className="text-gray-500 text-xs">سنة الإنتاج</span>
-                                          <span className="text-white font-bold text-xl">{content.releaseYear}</span>
+                                          <span className="text-white font-bold text-xl">{content?.releaseYear || ''}</span>
                                       </div>
                                       <div className="bg-gray-900/60 p-4 rounded-2xl border border-gray-800 flex flex-col items-center justify-center gap-1">
                                           <span className="text-gray-500 text-xs">التصنيف العمري</span>
-                                          <span className="text-white font-bold text-xl">{content.ageRating || 'غير محدد'}</span>
+                                          <span className="text-white font-bold text-xl">{content?.ageRating || 'غير محدد'}</span>
                                       </div>
-                                      {content.type === 'movie' && (
+                                      {content?.type === 'movie' && (
                                          <div className="bg-gray-900/60 p-4 rounded-2xl border border-gray-800 flex flex-col items-center justify-center gap-1">
                                               <span className="text-gray-500 text-xs">المدة</span>
                                               <span className="text-white font-bold text-xl dir-ltr">{content.duration || '-'}</span>
@@ -1116,8 +1123,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
           <ReportModal 
               isOpen={isReportModalOpen}
               onClose={() => setIsReportModalOpen(false)}
-              contentId={content.id}
-              contentTitle={content.title}
+              contentId={content?.id || ''}
+              contentTitle={safeTitle}
               episode={selectedEpisode?.title}
               isCosmicTealTheme={isCosmicTealTheme}
               isNetflixRedTheme={isNetflixRedTheme}

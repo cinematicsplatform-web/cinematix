@@ -38,8 +38,8 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 }) => {
     // 1. Locate Season and Episode Data
     const currentSeason = useMemo(() => 
-        content.seasons?.find(s => s.seasonNumber === seasonNumber), 
-    [content.seasons, seasonNumber]);
+        content?.seasons?.find(s => s.seasonNumber === seasonNumber), 
+    [content?.seasons, seasonNumber]);
 
     const selectedEpisode = useMemo(() => {
         if (!currentSeason?.episodes) return null;
@@ -144,7 +144,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     };
 
     const mappedSeasons = useMemo(() => {
-        return content.seasons?.map(s => ({
+        return content?.seasons?.map(s => ({
             season_number: s.seasonNumber,
             episodes: s.episodes.map((ep, idx) => ({
                 episode_number: idx + 1,
@@ -154,7 +154,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 still_path: ep.thumbnail
             }))
         })) || [];
-    }, [content.seasons]);
+    }, [content?.seasons]);
 
     const mappedCurrentEpisode = useMemo(() => {
         if (!selectedEpisode) return undefined;
@@ -172,32 +172,16 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     const bgAccent = isRamadanTheme ? 'bg-amber-500' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]';
     const borderAccent = isRamadanTheme ? 'border-[#FFD700]' : isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]';
 
-    // REMOVED: Full page loading spinner. Instead, we show a clean "not found" or "skeleton" shell if needed.
-    if (!selectedEpisode) {
-        return (
-            <div className="min-h-screen bg-[var(--bg-body)] flex items-center justify-center text-white">
-                <div className="text-center p-8 animate-fade-in-up">
-                    <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <CloseIcon className="w-10 h-10 text-gray-500" />
-                    </div>
-                    <h2 className="text-2xl font-bold mb-4">عفواً، هذه الحلقة غير متاحة حالياً.</h2>
-                    <p className="text-gray-400 mb-8 max-w-sm mx-auto">قد يكون جارٍ رفع الحلقة أو تم حذفها مؤقتاً.</p>
-                    <button onClick={handleBack} className="bg-white/10 px-8 py-3 rounded-full hover:bg-white/20 transition-all font-bold">الرجوع للمسلسل</button>
-                </div>
-            </div>
-        );
-    }
-
-    const displayEpDesc = getEpisodeDescription(selectedEpisode.description, episodeNumber, seasonNumber);
+    const displayEpDesc = selectedEpisode ? getEpisodeDescription(selectedEpisode.description, episodeNumber, seasonNumber) : '';
 
     return (
         <div className="min-h-screen bg-[var(--bg-body)] text-white pb-20 animate-fade-in-up">
             <SEO 
                 type="series"
-                title={content.title} 
-                description={selectedEpisode.description || content.description} 
-                image={selectedEpisode.thumbnail || content.poster} 
-                banner={content.backdrop}
+                title={content?.title} 
+                description={selectedEpisode?.description || content?.description} 
+                image={selectedEpisode?.thumbnail || content?.poster} 
+                banner={content?.backdrop}
                 seasons={mappedSeasons}
                 currentEpisode={mappedCurrentEpisode}
             />
@@ -212,9 +196,9 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                         <ChevronRightIcon className="w-5 h-5 transform rotate-180 group-hover:-translate-x-1 transition-transform text-white" />
                     </button>
                     <div className="flex flex-col min-w-0 items-start">
-                        <h1 className="text-sm md:text-base font-bold text-gray-200 truncate">{content.title}</h1>
+                        <h1 className="text-sm md:text-base font-bold text-gray-200 truncate">{content?.title || 'جاري التحميل...'}</h1>
                         <span className={`text-[10px] md:text-xs font-bold ${accentColor}`}>
-                            {content.type === 'movie' ? 'فيلم' : `الموسم ${seasonNumber} | الحلقة ${episodeNumber}`}
+                            {content?.type === 'movie' ? 'فيلم' : `الموسم ${seasonNumber} | الحلقة ${episodeNumber}`}
                         </span>
                     </div>
                 </div>
@@ -229,7 +213,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                         سيرفرات المشاهدة
                     </h3>
                     <div className="flex items-center gap-1.5 overflow-x-auto rtl-scroll pb-2 no-scrollbar">
-                        {activeServers.map((server) => (
+                        {activeServers.length > 0 ? activeServers.map((server) => (
                             <button
                                 key={server.id}
                                 onClick={() => setSelectedServer(server)}
@@ -244,7 +228,11 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                                 <PlayIcon className="w-3 h-3" />
                                 {server.name}
                             </button>
-                        ))}
+                        )) : (
+                            <div className="flex gap-2">
+                                {[1,2,3].map(i => <div key={i} className="h-10 w-24 bg-gray-800 rounded-lg animate-pulse"></div>)}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -252,35 +240,42 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
                 {/* Video Player Section */}
                 <div className={`relative w-full aspect-video rounded-xl overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.5)] bg-black border ${selectedServer ? borderAccent : 'border-gray-800'} z-10 transition-colors duration-300`}>
-                    {showPreroll && prerollAd ? (
-                        <div className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-4">
-                            <div className="absolute top-4 right-4 z-[60] bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex items-center gap-3">
-                                <span className="text-gray-300 text-xs">إعلان</span>
-                                <div className="h-4 w-px bg-white/20"></div>
-                                {prerollTimer > 0 ? (
-                                    <span className="text-white font-bold text-sm">تخطي بعد {prerollTimer} ثانية</span>
-                                ) : (
-                                    <button onClick={() => setShowPreroll(false)} className={`font-bold text-sm flex items-center gap-1 transition-colors hover:text-white ${accentColor}`}>
-                                        <span>تخطي الإعلان</span>
-                                        <CloseIcon className="w-4 h-4" />
-                                    </button>
-                                )}
+                    {selectedEpisode ? (
+                        showPreroll && prerollAd ? (
+                            <div className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-4">
+                                <div className="absolute top-4 right-4 z-[60] bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex items-center gap-3">
+                                    <span className="text-gray-300 text-xs">إعلان</span>
+                                    <div className="h-4 w-px bg-white/20"></div>
+                                    {prerollTimer > 0 ? (
+                                        <span className="text-white font-bold text-sm">تخطي بعد {prerollTimer} ثانية</span>
+                                    ) : (
+                                        <button onClick={() => setShowPreroll(false)} className={`font-bold text-sm flex items-center gap-1 transition-colors hover:text-white ${accentColor}`}>
+                                            <span>تخطي الإعلان</span>
+                                            <CloseIcon className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="w-full h-full flex items-center justify-center pointer-events-auto bg-black">
+                                    <div ref={prerollContainerRef} className="w-full h-full flex justify-center items-center" />
+                                </div>
                             </div>
-                            <div className="w-full h-full flex items-center justify-center pointer-events-auto bg-black">
-                                <div ref={prerollContainerRef} className="w-full h-full flex justify-center items-center" />
-                            </div>
-                        </div>
+                        ) : (
+                            <VideoPlayer 
+                                tmdbId={content?.id}
+                                type={content?.type}
+                                season={seasonNumber}
+                                episode={episodeNumber}
+                                manualSrc={selectedServer?.url} 
+                                poster={selectedEpisode?.thumbnail || content?.backdrop || ''} 
+                                ads={ads}
+                                adsEnabled={adsEnabled}
+                            />
+                        )
                     ) : (
-                        <VideoPlayer 
-                            tmdbId={content.id}
-                            type={content.type}
-                            season={seasonNumber}
-                            episode={episodeNumber}
-                            manualSrc={selectedServer?.url} 
-                            poster={selectedEpisode.thumbnail || content.backdrop} 
-                            ads={ads}
-                            adsEnabled={adsEnabled}
-                        />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
+                             <div className="w-16 h-16 border-4 border-gray-700 border-t-[var(--color-accent)] rounded-full animate-spin mb-4"></div>
+                             <p className="text-gray-400 font-bold">جاري تحميل بيانات الحلقة...</p>
+                        </div>
                     )}
                 </div>
 
@@ -298,7 +293,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
                 {/* Download Actions */}
                 <div className="mt-6 mb-8 flex flex-col items-center gap-6">
-                    {effectiveDownloadUrl && (
+                    {effectiveDownloadUrl ? (
                         <button
                             onClick={handleDownloadClick}
                             className={`
@@ -319,6 +314,8 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                                 <DownloadIcon className={`w-6 h-6 text-gray-300 group-hover:text-white transition-colors`} />
                             </div>
                         </button>
+                    ) : (
+                        selectedEpisode && <div className="h-16 w-full max-w-sm bg-gray-800 rounded-2xl animate-pulse"></div>
                     )}
                 </div>
 
@@ -328,17 +325,20 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 <div className="flex flex-col gap-4">
                     <div className="space-y-3">
                         <h2 className="text-2xl font-bold text-white leading-tight">
-                            {selectedEpisode.title || `الحلقة ${episodeNumber}`}
+                            {selectedEpisode?.title || `الحلقة ${episodeNumber}`}
                         </h2>
-                        <p className="text-sm text-gray-400 max-w-3xl leading-loose">
-                            {displayEpDesc}
-                        </p>
+                        {displayEpDesc && (
+                            <p className="text-sm text-gray-400 max-w-3xl leading-loose">
+                                {displayEpDesc}
+                            </p>
+                        )}
                     </div>
                 </div>
 
                 <AdPlacement ads={ads} placement="watch-below-player" isEnabled={adsEnabled} />
             </div>
 
+            {/* Waiter Modal */}
             {waiterAdState.isOpen && waiterAdState.ad && (
                 <AdWaiterModal 
                     isOpen={waiterAdState.isOpen}
@@ -352,8 +352,8 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 <ReportModal 
                     isOpen={isReportModalOpen}
                     onClose={() => setIsReportModalOpen(false)}
-                    contentId={content.id}
-                    contentTitle={content.title}
+                    contentId={content?.id || ''}
+                    contentTitle={content?.title || ''}
                     episode={`الموسم ${seasonNumber} - الحلقة ${episodeNumber}`}
                     isCosmicTealTheme={isCosmicTealTheme}
                     isNetflixRedTheme={isNetflixRedTheme}

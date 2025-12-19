@@ -417,7 +417,6 @@ const App: React.FC = () => {
           const cred = await auth.createUserWithEmailAndPassword(newUser.email, newUser.password || '');
           if (cred.user) {
                const defaultProfile: Profile = { id: Date.now(), name: newUser.firstName || 'المستخدم', avatar: defaultAvatar, isKid: false, watchHistory: [], myList: [] };
-               // FIX: Removed 'role' property from the object literal because createUserProfileInFirestore expects Omit<User, 'id' | 'role' | 'password'>.
                await createUserProfileInFirestore(cred.user.uid, { firstName: newUser.firstName, lastName: newUser.lastName, email: newUser.email, profiles: [defaultProfile] });
                addToast('تم إنشاء الحساب بنجاح!', 'success');
                handleSetView('profileSelector');
@@ -440,8 +439,6 @@ const App: React.FC = () => {
   };
 
   // --- Missing Admin Handlers ---
-  // FIX: Added the following functions which were being passed as props to AdminPanel but were not defined: handleUpdateSiteSettings, handleUpdatePinnedItems, handleUpdateTop10Items, handleUpdateAd, handleDeleteAd, handleAddAd, handleAddAdmin, and handleDeleteUser.
-
   const handleUpdateSiteSettings = async (settings: SiteSettings) => {
       try {
           await updateSiteSettingsInDb(settings);
@@ -578,13 +575,13 @@ const App: React.FC = () => {
           case 'ramadan': return <RamadanPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('ramadan')} top10Content={getTop10ContentWithMeta('ramadan')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} />;
           case 'soon': return <SoonPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('soon')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
           case 'detail':
-               // UPDATED: Always render the DetailPage component shell to avoid full-screen flickering bar
-               // The component handles empty state gracefully or displays data if already resolved
-               return selectedContent ? (
+               // UPDATED: Render structural DetailPage shell immediately. If selectedContent is null (refresh), 
+               // it will render a skeleton-like background until data resolves.
+               return (
                    <DetailPage 
                         key={window.location.pathname}
                         locationPath={window.location.pathname}
-                        content={selectedContent}
+                        content={selectedContent || ({} as Content)}
                         initialSeasonNumber={detailParams?.seasonNumber}
                         ads={ads}
                         adsEnabled={siteSettings.adsEnabled}
@@ -599,14 +596,14 @@ const App: React.FC = () => {
                         isCosmicTealTheme={isCosmicTealTheme}
                         isNetflixRedTheme={isNetflixRedTheme}
                    />
-               ) : (isContentLoading ? <LoadingSpinner /> : <HomePage allContent={allContent} pinnedContent={[]} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} activeProfile={activeProfile} isLoading={isContentLoading} />);
+               );
           case 'watch':
-               // UPDATED: Same immediate rendering logic for watch page
-               return (selectedContent && watchParams) ? (
+               // UPDATED: Render structural EpisodeWatchPage shell immediately to prevent flicker.
+               return (
                    <EpisodeWatchPage 
-                       content={selectedContent}
-                       seasonNumber={watchParams.season}
-                       episodeNumber={watchParams.episode}
+                       content={selectedContent || ({} as Content)}
+                       seasonNumber={watchParams?.season || 1}
+                       episodeNumber={watchParams?.episode || 1}
                        allContent={allContent}
                        onSetView={handleSetView}
                        ads={ads}
@@ -616,7 +613,7 @@ const App: React.FC = () => {
                        isCosmicTealTheme={isCosmicTealTheme}
                        isNetflixRedTheme={isNetflixRedTheme}
                    />
-               ) : <LoadingSpinner />;
+               );
            case 'login': if (isAuthLoading) return <LoadingSpinner />; return <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
            case 'register': if (isAuthLoading) return <LoadingSpinner />; return <CreateAccountPage onSetView={handleSetView} onRegister={handleRegister} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
            case 'profileSelector': if (isAuthLoading) return <LoadingSpinner />; return currentUser ? <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
