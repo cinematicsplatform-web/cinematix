@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Content, Episode, Server, Ad, View } from '@/types';
 import VideoPlayer from './VideoPlayer';
@@ -168,8 +169,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
     return (
         <div className="min-h-screen bg-[var(--bg-body)] text-white pb-20 animate-fade-in-up">
-            {/* Fix: Property 'image' does not exist on SEOProps, changed to 'banner' */}
-            <SEO title={pageTitle} description={selectedEpisode.description || content.description} banner={selectedEpisode.thumbnail || content.poster} />
+            <SEO title={pageTitle} description={selectedEpisode.description || content.description} image={selectedEpisode.thumbnail || content.poster} />
 
             {/* 1. Header (Back & Title) */}
             <div className="sticky top-0 z-50 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 px-4 h-16 flex items-center justify-between shadow-lg">

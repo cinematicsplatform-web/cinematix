@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '@/types';
 import VideoPlayer from '@/components/VideoPlayer';
@@ -117,35 +116,27 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return null;
   });
 
-  const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(() => {
-      if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
-          const targetSeason = content.seasons.find(s => s.id === selectedSeasonId) || getLatestSeason(content.seasons);
-          return targetSeason?.episodes?.[0] || null;
-      }
-      return null;
-  });
+  const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
 
+  // Synchronize season ID with props (important for external navigation/back button)
   useEffect(() => {
-      if (content.type === 'series' && selectedSeasonId && content.seasons) {
-          const currentS = content.seasons.find(s => s.id === selectedSeasonId);
-          if (currentS) {
-              const slug = content.slug || content.id;
-              const targetPath = `/مسلسل/${slug}/الموسم/${currentS.seasonNumber}`;
-              const currentPath = decodeURIComponent(window.location.pathname);
-              const hasSeasonParam = currentPath.match(/\/(?:الموسم|season)\/(\d+)/i);
-              
-              if (!hasSeasonParam) {
-                  try {
-                      if (window.location.protocol !== 'blob:' && window.location.protocol !== 'file:') {
-                          window.history.replaceState(null, '', targetPath);
-                      }
-                  } catch (e) {
-                      console.warn("History replaceState failed:", e);
-                  }
-              }
-          }
-      }
-  }, [selectedSeasonId, content]);
+    if (content.type === 'series' && initialSeasonNumber && content.seasons) {
+        const foundS = content.seasons.find(s => s.seasonNumber === initialSeasonNumber);
+        if (foundS && foundS.id !== selectedSeasonId) {
+            setSelectedSeasonId(foundS.id);
+        }
+    }
+  }, [initialSeasonNumber, content.seasons, content.type]);
+
+  // Reset episode selection when season changes
+  useEffect(() => {
+    if (content.type === 'series' && selectedSeasonId && content.seasons) {
+        const currentS = content.seasons.find(s => s.id === selectedSeasonId);
+        if (currentS && currentS.episodes && currentS.episodes.length > 0) {
+            setSelectedEpisode(currentS.episodes[0]);
+        }
+    }
+  }, [selectedSeasonId, content.id]);
 
   useEffect(() => {
       setActiveTab('episodes');
@@ -169,13 +160,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
           
           if (targetSeason) {
               setSelectedSeasonId(targetSeason.id);
-              setSelectedEpisode(targetSeason.episodes?.[0] || null);
           }
       } else {
           setSelectedSeasonId(null);
           setSelectedEpisode(null);
       }
-  }, [content.id, content.type, content.seasons, getLatestSeason, locationPath, initialSeasonNumber]);
+  }, [content.id, content.type, content.seasons, getLatestSeason]);
 
   const currentSeason = useMemo(() => content.seasons?.find(s => s.id === selectedSeasonId), [content.seasons, selectedSeasonId]);
   const episodes = useMemo(() => currentSeason?.episodes || [], [currentSeason]);
@@ -304,20 +294,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
   };
 
   useEffect(() => {
-    const decodedPath = decodeURIComponent(locationPath || window.location.pathname);
-    if (content.type === 'series' && content.seasons && content.seasons.length > 0) {
-        const seasonMatch = decodedPath.match(/\/(?:الموسم|season)\/(\d+)/i);
-        if (seasonMatch && seasonMatch[1]) {
-            const sNum = parseInt(seasonMatch[1]);
-            const foundS = content.seasons.find(s => s.seasonNumber === sNum);
-            if (foundS && foundS.id !== selectedSeasonId) {
-                setSelectedSeasonId(foundS.id);
-            }
-        }
-    } 
-  }, [content.id, content.seasons, content.type, locationPath, selectedSeasonId]);
-
-  useEffect(() => {
       if (isContentPlayPlayable && prerollAd) {
           setShowPreroll(true);
           setPrerollTimer(10);
@@ -382,20 +358,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
   };
   
   const handleSeasonSelect = (seasonId: number) => {
-      setSelectedSeasonId(seasonId);
       const season = content.seasons?.find(s => s.id === seasonId);
       if (season) {
-          const slug = content.slug || content.id;
-          const newPath = `/مسلسل/${slug}/الموسم/${season.seasonNumber}`;
-          if (decodeURIComponent(window.location.pathname) !== newPath) {
-              try {
-                  if (window.location.protocol !== 'blob:' && window.location.protocol !== 'file:') {
-                      window.history.pushState(null, '', newPath);
-                  }
-              } catch (e) {
-                  console.warn("History pushState failed:", e);
-              }
-          }
+          // Critical: Use the global onSetView to update parent state and URL
+          // This prevents the parent from overriding the local state with old data
+          onSetView('detail', undefined, { season: season.seasonNumber });
+          setSelectedSeasonId(seasonId);
+          setIsSeasonDropdownOpen(false);
       }
   };
 
@@ -553,11 +522,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
       
       <SEO 
         title={content.title}
-        description={content.description.substring(0, 160)}
+        description={content.description}
         poster={content.poster}
         banner={content.backdrop}
-        keywords={`${content.title}, ${content.categories.join(', ')}, مشاهدة اون لاين`}
-        type={content.type === 'series' ? 'video.tv_show' : 'video.movie'}
       />
 
       {/* Hero Section */}
@@ -628,7 +595,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                             key={season.id}
                                             onClick={() => {
                                                 handleSeasonSelect(season.id);
-                                                setIsSeasonDropdownOpen(false);
                                             }}
                                             className={`w-full text-right px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors group ${selectedSeasonId === season.id ? 'bg-white/5' : ''}`}
                                         >

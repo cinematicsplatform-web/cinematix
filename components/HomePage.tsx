@@ -283,10 +283,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     // CRITICAL FIX: Clean Container Structure - Absolutely NO overflow-x-hidden here to allow sticky/drag gestures
     <div className="relative min-h-screen bg-[var(--bg-body)]">
         
-        <SEO 
-          title="الرئيسية"
-          description="منصتكم الأولى لمشاهدة أحدث الأفلام والمسلسلات العربية والتركية والأجنبية بجودة عالية."
-        />
+        <SEO /> {/* Standard Home Page SEO */}
 
         {/* Clean Hero Wrapper */}
         <div className="relative z-10">
