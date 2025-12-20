@@ -17,7 +17,7 @@ const firebaseConfig = {
 // Initialize Lite version for script performance
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const BASE_URL = 'https://cinematix-kappa.vercel.app';
+const BASE_URL = 'https://cinematix.watch';
 
 // Slugify helper (replicated from codebase to avoid TS import issues in JS script)
 const generateSlug = (title) => {
