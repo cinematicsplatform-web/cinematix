@@ -125,7 +125,7 @@ const App: React.FC = () => {
       
       if (VIEW_PATHS[normalizedPath]) return VIEW_PATHS[normalizedPath];
       if (normalizedPath.startsWith('/category/')) return 'category';
-      if (normalizedPath.match(/^\/مشاهدة\//)) return 'watch';
+      if (normalizedPath.match(/^\/مشاهدة\//) || normalizedPath.startsWith('/watch/')) return 'watch';
       if (normalizedPath.match(/^\/(?:series|مسلسل|movie|فيلم)\/([^\/]+)/)) return 'detail';
       return 'home';
   };
@@ -236,7 +236,11 @@ const App: React.FC = () => {
 
   const resolveContentFromUrl = useCallback((path: string, contentList: Content[]) => {
       const decodedPath = decodeURIComponent(path);
-      const watchMatch = decodedPath.match(/^\/مشاهدة\/([^\/]+)\/الموسم\/(\d+)\/الحلقة\/(\d+)/);
+      
+      // 1. Resolve Watch (Episodes) - Supports Arabic and English variants
+      const watchMatch = decodedPath.match(/^\/مشاهدة\/([^\/]+)\/الموسم\/(\d+)\/الحلقة\/(\d+)/) || 
+                         decodedPath.match(/^\/watch\/([^\/]+)\/(\d+)\/(\d+)/);
+                         
       if (watchMatch) {
           const slug = watchMatch[1];
           const season = parseInt(watchMatch[2]);
@@ -249,6 +253,20 @@ const App: React.FC = () => {
               return;
           }
       }
+
+      // 2. Resolve Movie Direct Watch Path
+      const movieWatchMatch = decodedPath.match(/^\/watch\/movie\/([^\/]+)/);
+      if (movieWatchMatch) {
+          const slug = movieWatchMatch[1];
+          const foundContent = contentList.find(c => (c.slug === slug) || (c.id === slug));
+          if (foundContent) {
+              setSelectedContent(foundContent);
+              setView('detail');
+              return;
+          }
+      }
+
+      // 3. Resolve Detail/Series (Legacy & Standard)
       const match = decodedPath.match(/^\/(?:series|مسلسل|movie|فيلم)\/([^\/]+)/);
       if (match && match[1]) {
           const slug = match[1];
@@ -366,17 +384,18 @@ const App: React.FC = () => {
       if (newView === 'watch' && params) {
           setWatchParams(params);
           setDetailParams(null);
-          if (selectedContent) safeHistoryPush(`/مشاهدة/${selectedContent.slug || selectedContent.id}/الموسم/${params.season}/الحلقة/${params.episode}`);
+          if (selectedContent) safeHistoryPush(`/watch/${selectedContent.slug || selectedContent.id}/${params.season}/${params.episode}`);
       } else {
           if (newView !== 'watch') setWatchParams(null);
           let path = REVERSE_VIEW_PATHS[newView];
           if (newView === 'category' && category) path = `/category/${category}`;
           if (newView === 'detail' && selectedContent) {
               const slug = selectedContent.slug || selectedContent.id;
-              path = `${selectedContent.type === 'series' ? '/مسلسل/' : '/فيلم/'}${slug}`;
-              if (selectedContent.type === 'series') {
+              if (selectedContent.type === 'movie') {
+                  path = `/watch/movie/${slug}`;
+              } else {
                   const sNum = params?.season || detailParams?.seasonNumber || 1;
-                  path += `/الموسم/${sNum}`;
+                  path = `/series/${slug}`;
                   if (!detailParams || detailParams.seasonNumber !== sNum) setDetailParams({ seasonNumber: sNum });
               }
           } else if (newView !== 'detail') setDetailParams(null);
@@ -398,13 +417,17 @@ const App: React.FC = () => {
               setWatchParams({ season: targetSeason, episode: episodeNumber });
               setDetailParams(null);
               setView('watch');
-              safeHistoryPush(`/مشاهدة/${slug}/الموسم/${targetSeason}/الحلقة/${episodeNumber}`);
+              safeHistoryPush(`/watch/${slug}/${targetSeason}/${episodeNumber}`);
           } else {
               setDetailParams({ seasonNumber: targetSeason });
               setView('detail');
-              safeHistoryPush(`/مسلسل/${slug}/الموسم/${targetSeason}`);
+              safeHistoryPush(`/series/${slug}`);
           }
-      } else { setDetailParams(null); setView('detail'); safeHistoryPush(`/فيلم/${slug}`); }
+      } else { 
+          setDetailParams(null); 
+          setView('detail'); 
+          safeHistoryPush(`/watch/movie/${slug}`); 
+      }
   };
 
   const handleLogin = async (email: string, pass: string): Promise<LoginError> => {
@@ -632,7 +655,7 @@ const App: React.FC = () => {
 
   const fullScreenViews = ['login', 'register', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'search'];
   const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
-  const showGlobalFooter = !isAuthLoading && !fullScreenViews.includes(view) && !siteSettings.is_maintenance_mode_enabled;
+  const showGlobalFooter = !fullScreenViews.includes(view) && !siteSettings.is_maintenance_mode_enabled;
   const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view);
   const footerClass = mobileCleanViews.includes(view) ? 'hidden md:block' : '';
   const bottomAdClass = mobileCleanViews.includes(view) ? 'hidden md:block' : 'fixed bottom-0 left-0 w-full z-[1000] bg-black/80';
@@ -649,7 +672,7 @@ const App: React.FC = () => {
             ))}
         </div>
         {siteSettings.adsEnabled && <AdZone position="global_head" />}
-        {!isAuthLoading && view !== 'login' && view !== 'register' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && !siteSettings.is_maintenance_mode_enabled && (
+        {view !== 'login' && view !== 'register' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && !siteSettings.is_maintenance_mode_enabled && (
             <Header onSetView={handleSetView} currentUser={currentUser} activeProfile={activeProfile} onLogout={handleLogout} allContent={allContent} onSelectContent={handleSelectContent} currentView={view} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} returnView={returnView} isKidProfile={activeProfile?.isKid} onOpenSearch={() => setIsSearchOpen(true)} />
         )}
         <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className={socialBarClass} />

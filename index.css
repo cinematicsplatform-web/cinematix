@@ -7,13 +7,9 @@ body, h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, select, textarea {
 /* Ensure window scroll is not blocked */
 html, body {
     overflow-y: auto; 
-    overflow-x: hidden; /* Prevent horizontal scroll causing gesture issues */
+    overflow-x: hidden;
     height: auto;
-    /* Ensure no fixed height constraints */
     min-height: 100vh;
-    /* REMOVED scroll-behavior: smooth; to prevent unwanted scrolling animations on page transitions */
-    
-    /* ENFORCE RTL DIRECTION */
     direction: rtl;
     text-align: right;
 }
@@ -22,6 +18,24 @@ html, body {
     height: auto;
     overflow: visible;
     width: 100%;
+}
+
+/* --- SKELETON / GHOST LOADING --- */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #1a2230 25%, #252d3d 50%, #1a2230 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+.skeleton-text {
+  height: 1rem;
+  border-radius: 0.25rem;
+  margin-bottom: 0.5rem;
 }
 
 /* --- THEME UTILITY CLASSES --- */
@@ -39,7 +53,7 @@ html, body {
 /* Primary Button (Gradient) */
 .btn-primary {
   background-image: linear-gradient(to right, var(--color-primary-from), var(--color-primary-to));
-  color: var(--color-text-on-primary, black); /* Dynamic text color based on theme */
+  color: var(--color-text-on-primary, black); 
   transition: all 0.3s ease;
   border: none;
 }
@@ -55,16 +69,6 @@ html, body {
   transition: color 0.3s ease;
 }
 
-/* Border Accent */
-.border-accent {
-  border-color: var(--color-accent);
-}
-
-/* Ring Accent */
-.focus-ring-accent:focus {
-  --tw-ring-color: var(--color-accent);
-}
-
 /* Scrollbar */
 .rtl-scroll::-webkit-scrollbar {
   display: none;
@@ -74,7 +78,7 @@ html, body {
   scrollbar-width: none;
 }
 
-/* Custom Scrollbar for content areas */
+/* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     background-color: rgba(0,0,0,0.2);
@@ -93,37 +97,9 @@ html, body {
     animation: fadeInUp 0.5s ease-out forwards;
 }
 
-@keyframes slideInTop {
-    from { opacity: 0; transform: translate3d(-50%, -20px, 0); }
-    to { opacity: 1; transform: translate3d(-50%, 0, 0); }
-}
-.animate-slide-in-top {
-    animation: slideInTop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-
-@keyframes shine {
-    0% { left: -100%; }
-    100% { left: 100%; }
-}
-.animate-shine {
-    animation: shine 2s infinite linear;
-}
-
 /* Safe area for mobile nav */
 .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* --- FIX: Remove White Background on Input Autofill --- */
-input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
-input:-webkit-autofill:active {
-    /* Use a long transition to prevent the background color change from happening immediately */
-    transition: background-color 5000s ease-in-out 0s;
-    -webkit-text-fill-color: white !important;
-    /* Optional: Set a box shadow to match the dark theme if transition fails */
-    -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
 }
 
 /* --- Mobile Custom Crop Utility --- */
@@ -133,44 +109,34 @@ input:-webkit-autofill:active {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Episode Card Hover Logic (Edge Detection)                                  */
-/* -------------------------------------------------------------------------- */
-
+/* Episode Card Hover Logic */
 .episode-card-hover {
     transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), z-index 0s;
 }
 
-/* Only enable hover scaling on Desktop/Tablet (md breakpoint and up) */
 @media (min-width: 768px) {
     .episode-card-hover:hover {
-        transform: scale(1.20); /* 20% Expansion */
-        z-index: 100 !important; /* Force top */
+        transform: scale(1.20);
+        z-index: 100 !important;
         box-shadow: 0 10px 40px rgba(0,0,0,0.8);
     }
 }
 
-/* Default Mobile (2 Columns) - RTL Logic */
-/* Col 1 (Right Side) -> Expand Left (Anchor Right) */
 .episode-card-hover:nth-child(2n+1) { transform-origin: right center; }
-/* Col 2 (Left Side) -> Expand Right (Anchor Left) */
 .episode-card-hover:nth-child(2n) { transform-origin: left center; }
 
-/* MD (3 Columns) */
 @media (min-width: 768px) {
-    .episode-card-hover:nth-child(n) { transform-origin: center center; } /* Reset */
+    .episode-card-hover:nth-child(n) { transform-origin: center center; }
     .episode-card-hover:nth-child(3n+1) { transform-origin: right center; }
     .episode-card-hover:nth-child(3n) { transform-origin: left center; }
 }
 
-/* LG (4 Columns) */
 @media (min-width: 1024px) {
     .episode-card-hover:nth-child(n) { transform-origin: center center; }
     .episode-card-hover:nth-child(4n+1) { transform-origin: right center; }
     .episode-card-hover:nth-child(4n) { transform-origin: left center; }
 }
 
-/* XL (5 Columns) */
 @media (min-width: 1280px) {
     .episode-card-hover:nth-child(n) { transform-origin: center center; }
     .episode-card-hover:nth-child(5n+1) { transform-origin: right center; }

@@ -4,7 +4,14 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Use same config as frontend - accessible in public build context
+/**
+ * Cinematix Sitemap Generator (Slug-Based Strategy)
+ * Target URLs:
+ * - Series: /series/${slug}
+ * - Movies: /watch/movie/${slug}
+ * - Episodes: /watch/${series_slug}/${season_num}/${episode_num}
+ */
+
 const firebaseConfig = {
   apiKey: "AIzaSyBVK0Zla5VD05Hgf4QqExAWUuXX64odyes",
   authDomain: "cinematic-d3697.firebaseapp.com",
@@ -14,12 +21,11 @@ const firebaseConfig = {
   appId: "1:247576999692:web:309f001a211dc1b150fb29",
 };
 
-// Initialize Lite version for script performance
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const BASE_URL = 'https://cinematix.watch';
 
-// Slugify helper (replicated from codebase to avoid TS import issues in JS script)
+// Utility to generate a slug if the manual slug field is missing
 const generateSlug = (title) => {
     if (!title) return '';
     return title
@@ -34,11 +40,12 @@ const generateSlug = (title) => {
 };
 
 async function generateSitemap() {
-    console.log('Generating sitemap...');
+    console.log('🚀 Generating Dynamic Slug-Based Sitemap...');
     
     try {
         const contentRef = collection(db, 'content');
         const snapshot = await getDocs(contentRef);
+        const lastModDate = new Date().toISOString().split('T')[0];
         
         let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -57,65 +64,52 @@ async function generateSitemap() {
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
-  <url>
-    <loc>${BASE_URL}/kids</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>${BASE_URL}/ramadan</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
 `;
 
         snapshot.forEach(doc => {
             const data = doc.data();
             const id = doc.id;
             const title = data.title || '';
+            // Use manual slug field, fallback to ID or title-generated slug
             const slug = data.slug || generateSlug(title) || id;
             const type = data.type || 'movie';
-            const updatedAt = data.updatedAt ? new Date(data.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            const updatedAt = data.updatedAt ? new Date(data.updatedAt).toISOString().split('T')[0] : lastModDate;
             
-            // 1. Content Detail Page
-            const prefix = type === 'series' ? 'مسلسل' : 'فيلم';
-            // Proper encoding of Arabic characters in URL
-            const urlPath = encodeURI(`${prefix}/${slug}`);
-            
-            xml += `  <url>
-    <loc>${BASE_URL}/${urlPath}</loc>
+            if (type === 'movie') {
+                // Rule: Movies land on the watch-ready detail page
+                xml += `  <url>
+    <loc>${BASE_URL}/watch/movie/${slug}</loc>
     <lastmod>${updatedAt}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>\n`;
-
-            // 2. Series Deep Linking (Seasons & Episodes)
-            if (type === 'series' && data.seasons) {
-                data.seasons.forEach(season => {
-                    const sNum = season.seasonNumber;
-                    const seasonPath = encodeURI(`مسلسل/${slug}/الموسم/${sNum}`);
-                    
-                    xml += `  <url>
-    <loc>${BASE_URL}/${seasonPath}</loc>
+            } else {
+                // Rule A: Series Main Landing (Details Page)
+                xml += `  <url>
+    <loc>${BASE_URL}/series/${slug}</loc>
     <lastmod>${updatedAt}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
   </url>\n`;
 
-                    if (season.episodes) {
-                        season.episodes.forEach((ep, index) => {
-                            const eNum = index + 1;
-                            const episodePath = encodeURI(`مسلسل/${slug}/الموسم/${sNum}/الحلقة/${eNum}`);
-                            
-                            xml += `  <url>
-    <loc>${BASE_URL}/${episodePath}</loc>
+                // Rule B Shortcut: Index individual episodes for Google
+                if (data.seasons) {
+                    data.seasons.forEach(season => {
+                        const sNum = season.seasonNumber;
+                        if (season.episodes) {
+                            season.episodes.forEach((ep, index) => {
+                                const eNum = index + 1;
+                                // Path: /watch/${series_slug}/${season_num}/${episode_num}
+                                xml += `  <url>
+    <loc>${BASE_URL}/watch/${slug}/${sNum}/${eNum}</loc>
     <lastmod>${updatedAt}</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>\n`;
-                        });
-                    }
-                });
+                            });
+                        }
+                    });
+                }
             }
         });
 
@@ -129,10 +123,10 @@ async function generateSitemap() {
         }
 
         fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), xml);
-        console.log(`✅ Sitemap generated successfully with ${snapshot.size} items.`);
+        console.log(`✅ Success! Generated sitemap.xml to /public folder using SEO Slugs.`);
 
     } catch (error) {
-        console.error('❌ Error generating sitemap:', error);
+        console.error('❌ Generator Failed:', error);
         process.exit(1);
     }
 }

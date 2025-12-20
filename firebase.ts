@@ -39,15 +39,16 @@ const app = firebase.app();
 
 export const db = app.firestore();
 
-// CRITICAL FIX: Enable experimentalForceLongPolling to resolve "Backend didn't respond within 10 seconds"
-// and "Could not reach Cloud Firestore backend". This is essential for sandboxed environments
-// like AI Studio or corporate networks that block WebSockets.
+/**
+ * CRITICAL FIX: Enable experimentalForceLongPolling to resolve "Backend didn't respond within 10 seconds"
+ * and "Could not reach Cloud Firestore backend". This forces the SDK to use HTTP Long Polling 
+ * instead of WebSockets, which are often blocked in restricted network environments.
+ */
 db.settings({
-  ignoreUndefinedProperties: true,
-  merge: true, 
-  experimentalForceLongPolling: true, // Force HTTP instead of WebSockets
-  experimentalAutoDetectLongPolling: false, // Disable detection to ensure immediate fallback
-} as any); 
+  experimentalForceLongPolling: true,
+  experimentalAutoDetectLongPolling: false,
+  ignoreUndefinedProperties: true
+});
 
 // Enable offline persistence only on client-side
 if (typeof window !== 'undefined') {
@@ -60,7 +61,6 @@ if (typeof window !== 'undefined') {
               msg.includes('backing store') || 
               msg.includes('indexedDB')
           ) {
-              // Silently ignore persistence errors in environments that don't support it
               console.debug('Firestore offline persistence disabled:', err.code);
           }
       });
