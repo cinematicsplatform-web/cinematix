@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '@/types';
 import VideoPlayer from '@/components/VideoPlayer';
@@ -154,14 +155,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       }
   }, [isMuted, showVideo]);
 
-  const [waiterAdState, setWaiterAdState] = useState<{ isOpen: boolean, ad: Ad | null, onComplete: () => void }>({ isOpen: false, ad: null, onComplete: () => {} });
-
-  const handleEpisodeSelect = (episode: Episode, seasonNum?: number, episodeIndex?: number) => {
-      const sNum = seasonNum ?? currentSeason?.seasonNumber ?? 1;
-      const eNum = episodeIndex || currentSeason?.episodes.findIndex(e => e.id === episode.id) + 1;
-      onSelectContent(content, sNum, eNum);
-  };
-
   const similarContent = useMemo(() => {
     if (!content?.id) return [];
     return allContent.filter(c => c.id !== content.id && c.categories.some(cat => content.categories.includes(cat))).slice(0, 10);
@@ -169,6 +162,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   const activeTabClass = isRamadanTheme ? 'text-white border-[#FFD700]' : isEidTheme ? 'text-white border-purple-500' : isCosmicTealTheme ? 'text-white border-[#35F18B]' : isNetflixRedTheme ? 'text-white border-[#E50914]' : 'text-white border-[#00A7F8]';
   const tabHoverClass = 'text-gray-400 border-transparent hover:text-white';
+
+  const handleEpisodeSelect = (episode: Episode, seasonNum?: number, episodeIndex?: number) => {
+      const sNum = seasonNum ?? currentSeason?.seasonNumber ?? 1;
+      const eNum = episodeIndex || currentSeason?.episodes.findIndex(e => e.id === episode.id) + 1;
+      onSelectContent(content, sNum, eNum);
+  };
 
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0 relative overflow-x-hidden w-full">
@@ -227,7 +226,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                           {episodes.map((ep, index) => {
                               const eNum = index + 1;
                               const sNum = currentSeason?.seasonNumber || 1;
-                              // --- RULE B: SLUG-BASED SHORTCUT LINK ---
                               const watchUrl = `/watch/${seriesSlug}/${sNum}/${eNum}`;
                               
                               return (

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Content } from '@/types';
 import { PlayIcon } from './icons/PlayIcon';
@@ -132,7 +133,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
 
   const aspectRatioClass = isHorizontal ? 'aspect-video' : 'aspect-[2/3]';
 
-  // --- RULE A: SLUG-BASED INTERNAL LINKING ---
+  // تحديد الرابط الصحيح لمحركات البحث
   const slug = content.slug || content.id;
   const detailUrl = content.type === 'movie' 
     ? `/watch/movie/${slug}` 

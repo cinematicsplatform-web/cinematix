@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import type { Content } from '@/types';
 import { PlayIcon } from './icons/PlayIcon';
@@ -15,8 +16,6 @@ interface HybridCardProps {
     isLoggedIn: boolean;
     myList?: string[];
     onToggleMyList: (contentId: string) => void;
-    
-    // Theme Props
     isRamadanTheme?: boolean;
     isEidTheme?: boolean;
     isCosmicTealTheme?: boolean;
@@ -46,11 +45,8 @@ const HybridCard: React.FC<HybridCardProps> = ({
     const iframeRef = useRef<HTMLIFrameElement>(null);
     
     const isInMyList = !!myList?.includes(content.id);
-
-    // Derived States
     const isExpanded = expandedIndex === index;
 
-    // Get Latest Season logic
     const latestSeason = content.type === 'series' && content.seasons && content.seasons.length > 0
         ? [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
         : null;
@@ -129,7 +125,6 @@ const HybridCard: React.FC<HybridCardProps> = ({
     const idleWidthClass = 'w-[calc((100vw-40px)/2.25)] md:w-[calc((100vw-64px)/4.2)] lg:w-[calc((100vw-64px)/6)]';
     const expandedWidthClass = 'w-[90vw] md:w-[calc(((100vw-64px)/4.2)*2.8)] lg:w-[calc(((100vw-64px)/6)*2.8)]';
 
-    // SEO URL Logic
     const detailUrl = content.type === 'movie' 
         ? `/watch/movie/${content.slug || content.id}` 
         : `/series/${content.slug || content.id}`;
@@ -142,25 +137,19 @@ const HybridCard: React.FC<HybridCardProps> = ({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onClick={(e) => {
-              // Only navigate if the card is already expanded (UX requirement)
-              // But search engines will just use the href.
               if(isExpanded) {
                 e.preventDefault();
                 onSelectContent(content);
               } else {
-                // If clicked while not expanded on mobile, we expand it
                 e.preventDefault();
                 onSetExpandedIndex(index);
               }
             }}
         >
             <div className={`relative w-full h-full rounded-lg overflow-hidden transition-all duration-500 ${isExpanded ? 'shadow-2xl' : 'shadow-lg'}`}>
-                {/* Spacer to maintain aspect ratio */}
                 <div className={`${idleWidthClass} ${isExpanded ? 'aspect-video' : 'aspect-[2/3]'} invisible pointer-events-none float-left transition-all duration-500`} aria-hidden="true" />
 
                 <div className="absolute inset-0 w-full h-full">
-                    
-                    {/* Video/Backdrop Layer with Full Width and Vertical Symmetrical Crop */}
                     <div className={`absolute inset-0 w-full h-full z-10 transition-opacity duration-500 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
                         {showVideo && hasTrailer ? (
                             <div className="relative w-full h-full overflow-hidden bg-black">
@@ -178,12 +167,10 @@ const HybridCard: React.FC<HybridCardProps> = ({
                         <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/40 to-transparent"></div>
                     </div>
 
-                    {/* Poster Layer (Visible when idle) */}
                     <div className={`absolute inset-0 w-full h-full z-20 transition-opacity duration-500 ${isExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                         <img src={posterSrc} alt={content.title} className="w-full h-full object-cover" loading="lazy" />
                     </div>
 
-                    {/* Content UI Layer */}
                     <div className={`absolute inset-0 z-30 flex flex-col justify-end p-4 md:p-6 transition-opacity duration-300 delay-100 ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                         <div className="absolute bottom-4 left-4 z-40">
                              {showVideo && (
