@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Content, SiteSettings, Ad, View } from '@/types';
 import Hero from './Hero';
@@ -271,7 +270,7 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
     <div className="relative min-h-screen bg-black text-white font-sans selection:bg-amber-500 selection:text-black">
         
         <SEO 
-            title="رمضان 2026 - سينماتيكس" 
+            title="مسلسلات رمضان" 
             description="تغطية حصرية لمسلسلات وبرامج رمضان 2026. تابع أحدث الحلقات والبرامج الدينية والترفيهية."
             type="website"
         />

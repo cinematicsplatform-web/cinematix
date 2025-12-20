@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Content, Ad, View, SiteSettings } from '@/types';
 import { ContentType } from '@/types';
@@ -136,7 +135,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
     <div className="relative min-h-screen bg-[var(--bg-body)]">
         
         <SEO 
-            title="أفلام - سينماتيكس" 
+            title="أفلام" 
             description="مكتبة ضخمة من الأفلام العربية والأجنبية والتركية والهندية بجودة عالية."
             type="website"
         />

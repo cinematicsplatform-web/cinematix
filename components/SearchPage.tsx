@@ -24,10 +24,20 @@ const SearchResultCard: React.FC<{ content: any; onClick: () => void }> = ({ con
     const showSeasonBadge = isSeasonItem || (content.type === 'series' && seasonCount > 1);
     const genreText = content.genres?.slice(0, 2).join(' • ');
 
+    // SEO URL Logic
+    const detailUrl = content.type === 'movie' 
+      ? `/watch/movie/${content.slug || content.id}` 
+      : `/series/${content.slug || content.id}`;
+
     return (
-        <div 
-            onClick={onClick}
-            className="relative group w-full cursor-pointer overflow-hidden rounded-xl bg-[#1a2230] border border-gray-800 transition-all duration-300 ease-out origin-center hover:scale-[1.02] hover:border-gray-600 hover:shadow-2xl md:hover:scale-105"
+        <a 
+            href={detailUrl}
+            aria-label={`شاهد ${content.title}`}
+            onClick={(e) => {
+              e.preventDefault();
+              onClick();
+            }}
+            className="relative group block no-underline text-inherit w-full cursor-pointer overflow-hidden rounded-xl bg-[#1a2230] border border-gray-800 transition-all duration-300 ease-out origin-center hover:scale-[1.02] hover:border-gray-600 hover:shadow-2xl md:hover:scale-105"
         >
             <div className="aspect-video w-full relative overflow-hidden">
                 <img 
@@ -83,7 +93,7 @@ const SearchResultCard: React.FC<{ content: any; onClick: () => void }> = ({ con
                     )}
                 </div>
             </div>
-        </div>
+        </a>
     );
 };
 

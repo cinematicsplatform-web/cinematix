@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Content, Ad, View } from '@/types';
 import ContentCarousel from './ContentCarousel';
@@ -130,7 +129,7 @@ const KidsPage: React.FC<KidsPageProps> = ({
     <div className="relative min-h-screen bg-[var(--bg-body)] text-white"> 
 
       <SEO 
-        title="أطفال - سينماتيكس" 
+        title="أطفال و أنمي" 
         description="عالم من المرح والتعليم، أفلام كرتون ومسلسلات أنميشن للأطفال."
         type="website"
       />

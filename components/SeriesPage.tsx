@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Content, Category, Ad, View, SiteSettings } from '@/types';
 import { ContentType } from '@/types';
@@ -156,7 +155,7 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
     <div className="relative min-h-screen bg-[var(--bg-body)]">
         
         <SEO 
-            title="المسلسلات - سينماتيكس" 
+            title="مسلسلات" 
             description="تصفح أحدث المسلسلات العربية والتركية والأجنبية بجودة عالية على سينماتيكس."
             type="website"
         />

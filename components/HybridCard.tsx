@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { Content } from '@/types';
 import { PlayIcon } from './icons/PlayIcon';
@@ -130,17 +129,36 @@ const HybridCard: React.FC<HybridCardProps> = ({
     const idleWidthClass = 'w-[calc((100vw-40px)/2.25)] md:w-[calc((100vw-64px)/4.2)] lg:w-[calc((100vw-64px)/6)]';
     const expandedWidthClass = 'w-[90vw] md:w-[calc(((100vw-64px)/4.2)*2.8)] lg:w-[calc(((100vw-64px)/6)*2.8)]';
 
+    // SEO URL Logic
+    const detailUrl = content.type === 'movie' 
+        ? `/watch/movie/${content.slug || content.id}` 
+        : `/series/${content.slug || content.id}`;
+
     return (
-        <div 
-            className={`relative flex-shrink-0 transition-[width] duration-500 ease-in-out ${isExpanded ? expandedWidthClass : idleWidthClass} z-0`}
+        <a 
+            href={detailUrl}
+            aria-label={`مشاهدة ${content.title}`}
+            className={`relative flex-shrink-0 block no-underline text-inherit transition-[width] duration-500 ease-in-out ${isExpanded ? expandedWidthClass : idleWidthClass} z-0`}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
+            onClick={(e) => {
+              // Only navigate if the card is already expanded (UX requirement)
+              // But search engines will just use the href.
+              if(isExpanded) {
+                e.preventDefault();
+                onSelectContent(content);
+              } else {
+                // If clicked while not expanded on mobile, we expand it
+                e.preventDefault();
+                onSetExpandedIndex(index);
+              }
+            }}
         >
             <div className={`relative w-full h-full rounded-lg overflow-hidden transition-all duration-500 ${isExpanded ? 'shadow-2xl' : 'shadow-lg'}`}>
                 {/* Spacer to maintain aspect ratio */}
                 <div className={`${idleWidthClass} ${isExpanded ? 'aspect-video' : 'aspect-[2/3]'} invisible pointer-events-none float-left transition-all duration-500`} aria-hidden="true" />
 
-                <div className="absolute inset-0 w-full h-full cursor-pointer" onClick={() => { if(isExpanded) onSelectContent(content); }}>
+                <div className="absolute inset-0 w-full h-full">
                     
                     {/* Video/Backdrop Layer with Full Width and Vertical Symmetrical Crop */}
                     <div className={`absolute inset-0 w-full h-full z-10 transition-opacity duration-500 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
@@ -170,7 +188,7 @@ const HybridCard: React.FC<HybridCardProps> = ({
                         <div className="absolute bottom-4 left-4 z-40">
                              {showVideo && (
                                 <button 
-                                    onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMuted(!isMuted); }}
                                     className="w-9 h-9 rounded-full border border-gray-500 hover:border-white flex items-center justify-center text-white bg-black/40 backdrop-blur-sm transition-colors"
                                 >
                                     <SpeakerIcon isMuted={isMuted} className="w-4 h-4" />
@@ -200,7 +218,7 @@ const HybridCard: React.FC<HybridCardProps> = ({
                             </div>
 
                             <div className="mt-2 w-fit bg-white/10 backdrop-blur-[2px] border border-white/10 rounded-full p-2 flex items-center gap-3 shadow-lg relative z-50">
-                                <div className="flex items-center gap-3 pr-1 cursor-pointer group/play" onClick={(e) => { e.stopPropagation(); onSelectContent(content); }}>
+                                <div className="flex items-center gap-3 pr-1 cursor-pointer group/play">
                                     <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#00A7F8] flex items-center justify-center shadow-[0_0_20px_rgba(0,167,248,0.5)] group-hover/play:scale-110 transition-transform">
                                         <PlayIcon className="w-5 h-5 md:w-6 md:h-6 fill-white text-white ml-0.5" />
                                     </div>
@@ -210,7 +228,7 @@ const HybridCard: React.FC<HybridCardProps> = ({
                                     </div>
                                 </div>
                                 <button 
-                                    onClick={(e) => { e.stopPropagation(); onToggleMyList(content.id); }}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleMyList(content.id); }}
                                     className="flex items-center gap-2 rounded-full hover:bg-white/5 transition-colors group/list pr-2 pl-1 translate-x-1"
                                 >
                                     <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full border-2 flex items-center justify-center transition-all ${isInMyList ? 'bg-white border-white text-black' : 'bg-transparent border-gray-400 text-white group-hover/list:border-white'}`}>
@@ -223,7 +241,7 @@ const HybridCard: React.FC<HybridCardProps> = ({
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
     );
 };
 

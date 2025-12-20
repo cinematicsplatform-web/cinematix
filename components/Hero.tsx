@@ -466,11 +466,12 @@ const Hero: React.FC<HeroProps> = ({
                                         isCosmicTealTheme={isCosmicTealTheme}
                                         isNetflixRedTheme={isNetflixRedTheme}
                                         showMyList={isLoggedIn}
+                                        content={content}
                                     />
                                     
                                     {shouldShowVideo && (
                                         <button 
-                                            onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsMuted(!isMuted); }}
                                             className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group scale-[1.15] origin-center"
                                             title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
                                         >

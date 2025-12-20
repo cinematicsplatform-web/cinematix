@@ -18,11 +18,12 @@ interface SEOProps {
   title?: string;
   description?: string;
   seasons?: SeasonMeta[];
-  currentEpisode?: EpisodeMeta;
+  currentEpisode?: EpisodeMeta; // Legacy/Object support
+  seasonNumber?: number; // New: Explicit season number
+  episodeNumber?: number; // New: Explicit episode number
   type?: 'movie' | 'series' | 'website';
   poster?: string;
   banner?: string;
-  // Added 'image' prop to fix errors where callers used it instead of 'poster' or 'banner'
   image?: string;
   url?: string;
 }
@@ -32,40 +33,64 @@ const SEO: React.FC<SEOProps> = ({
   description = "منصتكم الأولى للترفيه العربي والتركي والأجنبي. شاهدوا أحدث الأفلام والمسلسلات بجودة عالية في أي وقت ومن أي مكان.",
   seasons = [],
   currentEpisode,
+  seasonNumber,
+  episodeNumber,
   type = 'website',
   poster,
   banner,
-  // Destructure the newly added 'image' prop
   image,
   url = ''
 }) => {
-  const siteName = "سينماتيكس | Cinematix";
+  const siteName = "سينماتيكس";
   const domain = 'https://cinematix.watch';
   const canonicalUrl = url.startsWith('http') ? url : `${domain}${url}`;
   
-  // 1. Dynamic Browser Title Logic
-  const generateTitle = () => {
-    if (!title) return siteName;
-    if (currentEpisode) {
-      return `${title} - S${currentEpisode.season_number} E${currentEpisode.episode_number} | Cinematix`;
+  // 1. Dynamic Title Construction Logic
+  const generateFullTitle = () => {
+    if (!title) return "سينماتيكس | Cinematix";
+
+    let displayTitle = title;
+    
+    // Add Type Prefix if not already present (e.g., "فيلم " or "مسلسل ")
+    const moviePrefix = "فيلم ";
+    const seriesPrefix = "مسلسل ";
+    
+    if (type === 'movie' && !displayTitle.startsWith(moviePrefix)) {
+        displayTitle = moviePrefix + displayTitle;
+    } else if (type === 'series' && !displayTitle.startsWith(seriesPrefix)) {
+        displayTitle = seriesPrefix + displayTitle;
     }
-    return `${title} | Cinematix`;
+
+    // Determine Season/Episode context from explicit props or legacy currentEpisode object
+    const sNum = seasonNumber || currentEpisode?.season_number;
+    const eNum = episodeNumber || currentEpisode?.episode_number;
+
+    if (sNum) {
+      displayTitle += ` - الموسم ${sNum}`;
+    }
+
+    if (eNum) {
+      displayTitle += ` الحلقة ${eNum}`;
+    }
+
+    return `${displayTitle} | ${siteName}`;
   };
+
+  const fullTitle = generateFullTitle();
 
   // 2. Smart Description Helper Logic
   const generateDescription = () => {
-    if (currentEpisode) {
-      const epName = currentEpisode.name || `الحلقة ${currentEpisode.episode_number}`;
-      const epOverview = currentEpisode.overview || `شاهد أحداث الحلقة ${currentEpisode.episode_number} من الموسم ${currentEpisode.season_number}. استمتع بمشاهدة تطورات الأحداث.`;
-      return `${epName}: ${epOverview}`;
+    const eNum = episodeNumber || currentEpisode?.episode_number;
+    const sNum = seasonNumber || currentEpisode?.season_number;
+
+    if (eNum && sNum) {
+      const epName = currentEpisode?.name || `الحلقة ${eNum}`;
+      return `${epName}: شاهد أحداث الحلقة ${eNum} من الموسم ${sNum} لمسلسل ${title}. استمتع بمشاهدة تطورات الأحداث بجودة عالية على سينماتيكس.`;
     }
     return description;
   };
 
-  const fullTitle = generateTitle();
   const finalDescription = generateDescription();
-  
-  // Updated logic to use the new 'image' prop if provided
   const seoImage = image || banner || poster || "/android-chrome-512x512.png";
   const absoluteImageUrl = seoImage.startsWith('http') 
     ? seoImage 
@@ -108,7 +133,6 @@ const SEO: React.FC<SEOProps> = ({
       };
     }
 
-    // Default Website Schema
     return {
       "@context": "https://schema.org",
       "@type": "WebSite",
@@ -133,7 +157,7 @@ const SEO: React.FC<SEOProps> = ({
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={finalDescription} />
       <meta property="og:image" content={absoluteImageUrl} />
-      <meta property="og:site_name" content={siteName} />
+      <meta property="og:site_name" content="سينماتيكس | Cinematix" />
       <meta property="og:locale" content="ar_AR" />
 
       {/* Twitter */}

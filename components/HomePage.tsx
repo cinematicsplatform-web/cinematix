@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import type { Content, Category, Ad, SiteSettings, View, Profile } from '@/types';
 import { ContentType } from '@/types'; 
@@ -111,7 +110,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                 <div className={`w-1.5 h-6 md:h-8 rounded-full shadow-[0_0_10px_rgba(0,167,248,0.6)] ${isRamadan ? 'bg-[#FFD700]' : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'}`}></div>
                 <div className="flex items-center gap-2">
                     <span>افلام أنميشن</span>
-                    <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f423/512.webp" alt="chick" className="w-6 h-6 md:w-8 md:h-8" />
+                    <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f423/512.webp" alt="chick" className="w-5 h-5" />
                 </div>
             </div>
         );
@@ -283,7 +282,11 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     // CRITICAL FIX: Clean Container Structure - Absolutely NO overflow-x-hidden here to allow sticky/drag gestures
     <div className="relative min-h-screen bg-[var(--bg-body)]">
         
-        <SEO /> {/* Standard Home Page SEO */}
+        <SEO 
+            title="الرئيسية" 
+            description="سينماتيكس - مشاهدة أفلام ومسلسلات اون لاين"
+            type="website"
+        />
 
         {/* Clean Hero Wrapper */}
         <div className="relative z-10">

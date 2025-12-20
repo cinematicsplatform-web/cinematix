@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useCallback } from 'react';
 import type { Content, SectionDisplayType } from '@/types';
 import ContentCard from './ContentCard';
@@ -128,8 +127,8 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
                 )}
             </div>
 
-            {/* See All Button */}
-            {onSeeAll && (
+            {/* See All Button - Hidden for Top 10 / Ranked Carousels */}
+            {onSeeAll && !showRanking && (
                 <button 
                     onClick={onSeeAll}
                     className="

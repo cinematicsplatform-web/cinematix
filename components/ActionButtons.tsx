@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { PlayIcon } from './icons/PlayIcon';
 import { PlusIcon } from './icons/PlusIcon';
 import { CheckIcon } from './CheckIcon';
+import type { Content } from '@/types';
 
 interface ActionButtonsProps {
   onWatch: () => void;
@@ -14,6 +14,7 @@ interface ActionButtonsProps {
   isNetflixRedTheme?: boolean;
   showMyList?: boolean;
   className?: string;
+  content?: Content; // Added to generate URL
 }
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({ 
@@ -25,7 +26,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   isEidTheme,
   isCosmicTealTheme,
   isNetflixRedTheme,
-  className = ""
+  className = "",
+  content
 }) => {
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -36,6 +38,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   }, [isInMyList]);
 
   const handleToggle = (e: React.MouseEvent) => {
+      e.preventDefault();
       e.stopPropagation();
       if (onToggleMyList) {
           if (!isInMyList) {
@@ -69,11 +72,24 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   
   const myListActiveClass = "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]";
 
+  // URL Generation for SEO
+  let watchUrl = "#";
+  if (content) {
+      const slug = content.slug || content.id;
+      watchUrl = content.type === 'movie' ? `/watch/movie/${slug}` : `/series/${slug}`;
+  }
+
   return (
     <div className={`w-full md:w-auto flex flex-row items-stretch gap-3 md:gap-4 z-30 relative action-buttons-container ${className}`}>
-      {/* Watch Button - Optimized for Mobile (flex-1, reduced padding) */}
-      <button 
-        onClick={(e) => { e.stopPropagation(); onWatch?.(); }}
+      {/* Watch Button - Optimized as 'a' tag for SEO */}
+      <a 
+        href={watchUrl}
+        aria-label={content ? `شاهد ${content.title}` : "شاهد الآن"}
+        onClick={(e) => { 
+          e.preventDefault(); 
+          e.stopPropagation(); 
+          onWatch?.(); 
+        }}
         className={`
           flex-1 md:flex-none
           flex items-center justify-center gap-2 md:gap-3
@@ -83,6 +99,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           text-base md:text-xl
           transform transition-all duration-200
           active:scale-95
+          no-underline
           whitespace-nowrap
           target-watch-btn
           shrink
@@ -92,7 +109,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       >
         <PlayIcon className="w-5 h-5 md:w-8 md:h-8 fill-current" />
         <span>شاهد الآن</span>
-      </button>
+      </a>
       
       {/* My List Button - Optimized for Mobile */}
       {showMyList && onToggleMyList && (
