@@ -1,28 +1,9 @@
+
 {
   "rewrites": [
     {
-      "source": "/sitemap-index.xml",
-      "destination": "/sitemap-index.xml"
-    },
-    {
-      "source": "/movie-sitemap.xml",
-      "destination": "/movie-sitemap.xml"
-    },
-    {
-      "source": "/series-sitemap.xml",
-      "destination": "/series-sitemap.xml"
-    },
-    {
-      "source": "/season-sitemap.xml",
-      "destination": "/season-sitemap.xml"
-    },
-    {
-      "source": "/episode-sitemap.xml",
-      "destination": "/episode-sitemap.xml"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "/robots.txt"
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
     },
     {
       "source": "/(.*)",
@@ -31,41 +12,15 @@
   ],
   "headers": [
     {
-      "source": "/(.*).xml",
+      "source": "/sitemap.xml",
       "headers": [
         {
           "key": "Content-Type",
-          "value": "application/xml; charset=utf-8"
+          "value": "text/xml"
         },
         {
           "key": "Cache-Control",
-          "value": "public, max-age=3600, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        }
-      ]
-    },
-    {
-      "source": "/",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "text/html; charset=utf-8"
+          "value": "s-maxage=3600, stale-while-revalidate"
         }
       ]
     }
