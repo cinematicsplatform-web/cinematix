@@ -40,7 +40,7 @@ const SEO: React.FC<SEOProps> = ({
   url = ''
 }) => {
   const siteName = "سينماتيكس | Cinematix";
-  const domain = 'https://cinematix-kappa.vercel.app';
+  const domain = 'https://cinematix.watch';
   const canonicalUrl = url.startsWith('http') ? url : `${domain}${url}`;
   
   // 1. Dynamic Browser Title Logic

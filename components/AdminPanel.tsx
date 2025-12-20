@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { db, generateSlug, getContentRequests, deleteContentRequest, getUserProfile, getPinnedContent, updatePinnedContentForPage } from '../firebase';
 import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, Top10State, PageKey, ThemeType, Category, Genre, Season, Episode, Server, ContentRequest } from '../types';
@@ -141,14 +138,12 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
 
     return (
         <div className="bg-[#0f1014] min-h-screen text-white relative">
-            {/* Sticky Header with Backdrop Blur */}
             <div className="sticky top-0 z-50 bg-[#0f1014]/95 backdrop-blur-md border-b border-white/5 px-4 sm:px-6 lg:px-8 py-4 mb-6 flex flex-row justify-between items-center gap-4 shadow-sm">
                 <h1 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">لوحة التحكم</h1>
                 <button onClick={() => props.onSetView('home')} className="bg-[#1f2937] hover:bg-[#374151] border border-gray-700 font-bold py-2 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl text-sm md:text-base">العودة للموقع</button>
             </div>
 
             <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-                {/* Navigation Pills */}
                 <div className="mb-8 overflow-x-auto py-2 rtl-scroll">
                     <div className="flex gap-2">
                         {(['dashboard', 'content', 'top_content', 'top10', 'users', 'requests', 'ads', 'themes', 'settings', 'analytics', 'notifications'] as AdminTab[]).map(tab => (
@@ -429,9 +424,8 @@ const ContentManagementTab: React.FC<any> = ({content, onNew, onEdit, onRequestD
                     <button onClick={onNew} className="flex-1 md:flex-none bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-extrabold py-3 px-8 rounded-xl hover:shadow-[0_0_20px_rgba(0,167,248,0.4)] transition-all transform hover:scale-105 whitespace-nowrap">+ إضافة محتوى</button>
                 </div>
             </div>
-            {processingExcel && (<div className="mb-6 bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 animate-pulse shadow-lg"><div className="flex justify-between mb-3 text-sm text-[#00A7F8] font-bold"><span>جاري الاستيراد...</span><span>{progress}</span></div><div className="w-full bg-gray-800 rounded-full h-3"><div className="bg-[#00A7F8] h-3 rounded-full w-2/3 transition-all duration-500 shadow-[0_0_10px_#00A7F8]"></div></div><p className="text-xs text-gray-500 mt-3 text-center">الرجاء عدم إغلاق الصفحة حتى تكتمل العملية.</p></div>)}
+            {processingExcel && (<div className="mb-6 bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 animate-pulse shadow-lg"><div className="flex justify-between mb-3 text-sm text-[#00A7F8] font-bold"><span>جاري الاستيرار...</span><span>{progress}</span></div><div className="w-full bg-gray-800 rounded-full h-3"><div className="bg-[#00A7F8] h-3 rounded-full w-2/3 transition-all duration-500 shadow-[0_0_10px_#00A7F8]"></div></div><p className="text-xs text-gray-500 mt-3 text-center">الرجاء عدم إغلاق الصفحة حتى تكتمل العملية.</p></div>)}
             
-            {/* CONTENT DISPLAY AREA - GRID SYSTEM */}
             {isLoading ? (
                 <div className="text-center py-32 text-gray-500">جاري تحميل المحتوى من قاعدة البيانات...</div> 
             ) : (
@@ -443,24 +437,16 @@ const ContentManagementTab: React.FC<any> = ({content, onNew, onEdit, onRequestD
                         </div>
                     )}
 
-                    {/* Poster Grid Layout */}
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
                         {filteredContent.map((c:any) => (
                             <div key={c.id} className="group relative aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer bg-gray-800 border border-gray-700/50 shadow-lg hover:shadow-[0_0_25px_rgba(0,167,248,0.2)] transition-all duration-300 hover:scale-[1.02]">
-                                {/* Poster Image */}
                                 <img src={c.poster} alt={c.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
-                                
-                                {/* Top Badge */}
                                 <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
                                     <span className={`px-2 py-1 rounded-md text-[10px] font-bold backdrop-blur-md border ${c.type === 'movie' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-purple-500/20 text-purple-300 border-purple-500/30'}`}>
                                         {c.type === 'movie' ? 'فيلم' : 'مسلسل'}
                                     </span>
                                 </div>
-
-                                {/* Dark Gradient Overlay */}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                                {/* Content Info */}
                                 <div className="absolute bottom-0 left-0 w-full p-4 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
                                     <h3 className="text-white font-bold text-lg leading-tight line-clamp-1 mb-1 drop-shadow-md">{c.title}</h3>
                                     <div className="flex items-center justify-between text-xs text-gray-300 mb-3">
@@ -469,21 +455,9 @@ const ContentManagementTab: React.FC<any> = ({content, onNew, onEdit, onRequestD
                                             {c.visibility === 'general' ? 'عام' : 'مقيد'}
                                         </span>
                                     </div>
-
-                                    {/* Action Buttons (Slide Up on Hover) */}
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-4 group-hover:translate-y-0">
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); onEdit(c); }} 
-                                            className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white py-2 rounded-lg text-xs font-bold border border-white/10 transition-colors"
-                                        >
-                                            تعديل
-                                        </button>
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); onRequestDelete(c.id, c.title); }} 
-                                            className="flex-1 bg-red-500/20 hover:bg-red-500/40 backdrop-blur-md text-red-300 py-2 rounded-lg text-xs font-bold border border-red-500/20 transition-colors"
-                                        >
-                                            حذف
-                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); onEdit(c); }} className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white py-2 rounded-lg text-xs font-bold border border-white/10 transition-colors">تعديل</button>
+                                        <button onClick={(e) => { e.stopPropagation(); onRequestDelete(c.id, c.title); }} className="flex-1 bg-red-500/20 hover:bg-red-500/40 backdrop-blur-md text-red-300 py-2 rounded-lg text-xs font-bold border border-red-500/20 transition-colors">حذف</button>
                                     </div>
                                 </div>
                             </div>
@@ -510,13 +484,9 @@ const SiteSettingsTab: React.FC<{
     const handleChange = (field: keyof SiteSettings, value: any) => { onSetSiteSettings({ ...siteSettings, [field]: value }); };
     const handleNestedChange = (parent: keyof SiteSettings, child: string, value: any) => { onSetSiteSettings({ ...siteSettings, [parent]: { ...(siteSettings[parent] as any), [child]: value } }); };
     
-    // --- UPDATED SITEMAP GENERATION ---
     const generateSpecificSitemap = (type: 'index' | 'movies' | 'series' | 'seasons' | 'episodes') => {
-        const baseUrl = 'https://cinematix-kappa.vercel.app';
+        const baseUrl = 'https://cinematix.watch';
         const date = new Date().toISOString().split('T')[0];
-        
-        // --- SAFE URL ESCAPING FUNCTION ---
-        // Prevents Fatal XML Parse Error (EntityRef: expecting ';')
         const escapeXml = (unsafe: string) => {
             return unsafe.replace(/[<>&'"]/g, function (c) {
                 switch (c) {
@@ -529,280 +499,151 @@ const SiteSettingsTab: React.FC<{
                 }
             });
         };
-
         let xmlContent = '';
         let fileName = '';
-
         if (type === 'index') {
             fileName = 'sitemap-index.xml';
-            xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <sitemap>
-    <loc>${escapeXml(`${baseUrl}/movie-sitemap.xml`)}</loc>
-    <lastmod>${date}</lastmod>
-  </sitemap>
-  <sitemap>
-    <loc>${escapeXml(`${baseUrl}/series-sitemap.xml`)}</loc>
-    <lastmod>${date}</lastmod>
-  </sitemap>
-  <sitemap>
-    <loc>${escapeXml(`${baseUrl}/season-sitemap.xml`)}</loc>
-    <lastmod>${date}</lastmod>
-  </sitemap>
-  <sitemap>
-    <loc>${escapeXml(`${baseUrl}/episode-sitemap.xml`)}</loc>
-    <lastmod>${date}</lastmod>
-  </sitemap>
-</sitemapindex>`;
+            xmlContent = `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <sitemap>\n    <loc>${escapeXml(`${baseUrl}/movie-sitemap.xml`)}</loc>\n    <lastmod>${date}</lastmod>\n  </sitemap>\n  <sitemap>\n    <loc>${escapeXml(`${baseUrl}/series-sitemap.xml`)}</loc>\n    <lastmod>${date}</lastmod>\n  </sitemap>\n  <sitemap>\n    <loc>${escapeXml(`${baseUrl}/season-sitemap.xml`)}</loc>\n    <lastmod>${date}</lastmod>\n  </sitemap>\n  <sitemap>\n    <loc>${escapeXml(`${baseUrl}/episode-sitemap.xml`)}</loc>\n    <lastmod>${date}</lastmod>\n  </sitemap>\n</sitemapindex>`;
         } else {
-            // Header for all content sitemaps
             xmlContent = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n`;
-
             if (type === 'movies') {
                 fileName = 'movie-sitemap.xml';
-                const movies = allContent.filter(c => c.type === 'movie');
-                movies.forEach(item => {
+                allContent.filter(c => c.type === 'movie').forEach(item => {
                     const slug = item.slug || item.id;
-                    const url = `${baseUrl}/فيلم/${slug}`;
-                    const itemDate = item.updatedAt ? item.updatedAt.split('T')[0] : date;
-                    const desc = escapeXml(item.description || item.title);
-                    const title = escapeXml(item.title);
-                    const thumbnail = item.poster || '';
-
-                    // Apply escapeXml to URL to fix EntityRef errors
-                    xmlContent += `  <url>\n    <loc>${escapeXml(url)}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.9</priority>\n`;
-                    xmlContent += `    <video:video>\n      <video:thumbnail_loc>${escapeXml(thumbnail)}</video:thumbnail_loc>\n      <video:title>${title}</video:title>\n      <video:description>${desc.substring(0, 1000)}</video:description>\n      <video:publication_date>${item.releaseYear}-01-01T00:00:00+00:00</video:publication_date>\n    </video:video>\n`;
-                    xmlContent += `  </url>\n`;
+                    xmlContent += `  <url>\n    <loc>${escapeXml(`${baseUrl}/فيلم/${slug}`)}</loc>\n    <lastmod>${item.updatedAt ? item.updatedAt.split('T')[0] : date}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.9</priority>\n    <video:video>\n      <video:thumbnail_loc>${escapeXml(item.poster || '')}</video:thumbnail_loc>\n      <video:title>${escapeXml(item.title)}</video:title>\n      <video:description>${escapeXml(item.description || item.title).substring(0, 1000)}</video:description>\n      <video:publication_date>${item.releaseYear}-01-01T00:00:00+00:00</video:publication_date>\n    </video:video>\n  </url>\n`;
                 });
             } else if (type === 'series') {
                 fileName = 'series-sitemap.xml';
-                const series = allContent.filter(c => c.type === 'series');
-                series.forEach(item => {
-                    const slug = item.slug || item.id;
-                    const url = `${baseUrl}/مسلسل/${slug}`;
-                    const itemDate = item.updatedAt ? item.updatedAt.split('T')[0] : date;
-                    // Apply escapeXml to URL
-                    xmlContent += `  <url>\n    <loc>${escapeXml(url)}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n`;
+                allContent.filter(c => c.type === 'series').forEach(item => {
+                    xmlContent += `  <url>\n    <loc>${escapeXml(`${baseUrl}/مسلسل/${item.slug || item.id}`)}</loc>\n    <lastmod>${item.updatedAt ? item.updatedAt.split('T')[0] : date}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n`;
                 });
             } else if (type === 'seasons') {
                 fileName = 'season-sitemap.xml';
-                const series = allContent.filter(c => c.type === 'series');
-                series.forEach(item => {
-                    const slug = item.slug || item.id;
-                    const itemDate = item.updatedAt ? item.updatedAt.split('T')[0] : date;
+                allContent.filter(c => c.type === 'series').forEach(item => {
                     item.seasons?.forEach(season => {
-                        const url = `${baseUrl}/مسلسل/${slug}/الموسم/${season.seasonNumber}`;
-                        // Apply escapeXml to URL
-                        xmlContent += `  <url>\n    <loc>${escapeXml(url)}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+                        xmlContent += `  <url>\n    <loc>${escapeXml(`${baseUrl}/مسلسل/${item.slug || item.id}/الموسم/${season.seasonNumber}`)}</loc>\n    <lastmod>${item.updatedAt ? item.updatedAt.split('T')[0] : date}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
                     });
                 });
             } else if (type === 'episodes') {
                 fileName = 'episode-sitemap.xml';
-                const series = allContent.filter(c => c.type === 'series');
-                series.forEach(item => {
-                    const slug = item.slug || item.id;
-                    const itemDate = item.updatedAt ? item.updatedAt.split('T')[0] : date;
-                    const title = escapeXml(item.title);
-                    
+                allContent.filter(c => c.type === 'series').forEach(item => {
                     item.seasons?.forEach(season => {
                         season.episodes.forEach((ep, index) => {
                             const epNum = index + 1;
-                            const url = `${baseUrl}/مسلسل/${slug}/الموسم/${season.seasonNumber}/الحلقة/${epNum}`;
-                            const epTitle = `${title} - الموسم ${season.seasonNumber} الحلقة ${epNum}`;
-                            const epThumb = ep.thumbnail || item.poster || '';
-                            const desc = escapeXml(item.description || item.title);
-
-                            // Apply escapeXml to URL
-                            xmlContent += `  <url>\n    <loc>${escapeXml(url)}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n`;
-                            xmlContent += `    <video:video>\n      <video:thumbnail_loc>${escapeXml(epThumb)}</video:thumbnail_loc>\n      <video:title>${escapeXml(epTitle)}</video:title>\n      <video:description>${desc.substring(0, 1000)}</video:description>\n      <video:publication_date>${item.releaseYear}-01-01T00:00:00+00:00</video:publication_date>\n    </video:video>\n`;
-                            xmlContent += `  </url>\n`;
+                            xmlContent += `  <url>\n    <loc>${escapeXml(`${baseUrl}/مسلسل/${item.slug || item.id}/الموسم/${season.seasonNumber}/الحلقة/${epNum}`)}</loc>\n    <lastmod>${item.updatedAt ? item.updatedAt.split('T')[0] : date}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n    <video:video>\n      <video:thumbnail_loc>${escapeXml(ep.thumbnail || item.poster || '')}</video:thumbnail_loc>\n      <video:title>${escapeXml(`${item.title} - الموسم ${season.seasonNumber} الحلقة ${epNum}`)}</video:title>\n      <video:description>${escapeXml(item.description || item.title).substring(0, 1000)}</video:description>\n      <video:publication_date>${item.releaseYear}-01-01T00:00:00+00:00</video:publication_date>\n    </video:video>\n  </url>\n`;
                         });
                     });
                 });
             }
-
             xmlContent += `</urlset>`;
         }
-
-        // Trigger Download
         const blob = new Blob([xmlContent], { type: 'text/xml' });
         const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
+        const a = document.createElement('a'); a.href = blobUrl; a.download = fileName; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(blobUrl);
     };
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl">
                 <h3 className="text-xl font-bold text-[#00A7F8] mb-6">تحسين محركات البحث (SEO)</h3>
-                
                 <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-600/50 mb-4">
                     <h4 className="font-bold text-white mb-2">مولد خرائط الموقع (Split Sitemaps)</h4>
                     <p className="text-xs text-gray-400 mb-6 leading-relaxed">قم بتنزيل الملفات التالية ورفعها إلى مجلد `public` في مشروعك لضمان الفهرسة الكاملة في جوجل.</p>
-                    
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        <button onClick={() => generateSpecificSitemap('index')} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 shadow-lg">
-                            <DocumentArrowDownIcon /> 1. Sitemap Index
-                        </button>
-                        <button onClick={() => generateSpecificSitemap('movies')} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-gray-600">
-                            <DocumentArrowDownIcon /> 2. Movies XML
-                        </button>
-                        <button onClick={() => generateSpecificSitemap('series')} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-gray-600">
-                            <DocumentArrowDownIcon /> 3. Series XML
-                        </button>
-                        <button onClick={() => generateSpecificSitemap('seasons')} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-gray-600">
-                            <DocumentArrowDownIcon /> 4. Seasons XML
-                        </button>
-                        <button onClick={() => generateSpecificSitemap('episodes')} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-gray-600">
-                            <DocumentArrowDownIcon /> 5. Episodes XML
-                        </button>
+                        <button onClick={() => generateSpecificSitemap('index')} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 shadow-lg"><DocumentArrowDownIcon /> 1. Sitemap Index</button>
+                        <button onClick={() => generateSpecificSitemap('movies')} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-gray-600"><DocumentArrowDownIcon /> 2. Movies XML</button>
+                        <button onClick={() => generateSpecificSitemap('series')} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-gray-600"><DocumentArrowDownIcon /> 3. Series XML</button>
+                        <button onClick={() => generateSpecificSitemap('seasons')} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-gray-600"><DocumentArrowDownIcon /> 4. Seasons XML</button>
+                        <button onClick={() => generateSpecificSitemap('episodes')} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-gray-600"><DocumentArrowDownIcon /> 5. Episodes XML</button>
                     </div>
                 </div>
             </div>
             
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 space-y-6 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-4">أوضاع الموقع</h3><div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50"><span>وضع الصيانة (يغلق الموقع للزوار)</span><ToggleSwitch checked={siteSettings.is_maintenance_mode_enabled} onChange={(c) => handleChange('is_maintenance_mode_enabled', c)} /></div><div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50"><span>تفعيل الإعلانات في الموقع</span><ToggleSwitch checked={siteSettings.adsEnabled} onChange={(c) => handleChange('adsEnabled', c)} /></div><div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50"><span>عرض كاروسيل رمضان في الصفحة الرئيسية</span><ToggleSwitch checked={siteSettings.isShowRamadanCarousel} onChange={(c) => handleChange('isShowRamadanCarousel', c)} /></div></div>
-            <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 space-y-6 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-4">إعدادات قوائم أفضل 10 (Top 10)</h3><p className="text-xs text-gray-400 -mt-4 mb-4">تحكم في ظهور شريط "أفضل 10 أعمال" (المحتوى المثبت) في الصفحات المختلفة.</p><div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50"><span>عرض في الصفحة الرئيسية</span><ToggleSwitch checked={siteSettings.showTop10Home} onChange={(c) => handleChange('showTop10Home', c)} /></div><div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50"><span>عرض في صفحة الأفلام</span><ToggleSwitch checked={siteSettings.showTop10Movies} onChange={(c) => handleChange('showTop10Movies', c)} /></div><div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50"><span>عرض في صفحة المسلسلات</span><ToggleSwitch checked={siteSettings.showTop10Series} onChange={(c) => handleChange('showTop10Series', c)} /></div></div>
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold text-[#00A7F8]">شريط الإعلانات العلوي (ShoutBar)</h3><ToggleSwitch checked={siteSettings.shoutBar.isVisible} onChange={(c) => handleNestedChange('shoutBar', 'isVisible', c)} /></div><input value={siteSettings.shoutBar.text} onChange={(e) => handleNestedChange('shoutBar', 'text', e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-5 py-3 text-white focus:outline-none focus:border-[#00A7F8]" placeholder="نص الشريط المتحرك..."/></div>
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-6">روابط التواصل الاجتماعي</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-6">{Object.keys(siteSettings.socialLinks).map((key) => (<div key={key}><label className="block text-xs font-bold text-gray-400 mb-2 capitalize">{key}</label><input value={(siteSettings.socialLinks as any)[key]} onChange={(e) => handleNestedChange('socialLinks', key, e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#00A7F8] text-white dir-ltr"/></div>))}</div></div>
-             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold text-[#00A7F8]">العد التنازلي (رمضان / مناسبات)</h3><ToggleSwitch checked={siteSettings.isCountdownVisible} onChange={(c) => handleChange('isCountdownVisible', c)} /></div><label className="block text-xs font-bold text-gray-400 mb-2">تاريخ الانتهاء</label><input type="datetime-local" value={siteSettings.countdownDate.substring(0, 16)} onChange={(e) => handleChange('countdownDate', e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00A7F8]"/></div>
-            
-            <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl">
-                <h3 className="text-xl font-bold text-[#00A7F8] mb-6">إعدادات الإشعارات (Firebase Cloud Messaging)</h3>
-                <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                    <label className="block text-xs font-bold text-gray-300 mb-3">Service Account JSON (مطلوب لـ FCM HTTP v1)</label>
-                    <textarea 
-                        value={siteSettings.serviceAccountJson || ''}
-                        onChange={(e) => handleChange('serviceAccountJson', e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white font-mono text-xs focus:border-[#00A7F8] focus:outline-none h-48 dir-ltr"
-                        placeholder='{ "type": "service_account", "project_id": "...", ... }'
-                    />
-                    <p className="text-[10px] text-gray-400 mt-3 leading-relaxed">
-                        انسخ محتوى ملف JSON الخاص بـ Service Account هنا. هذا مطلوب لإرسال الإشعارات عبر API v1 الجديد.
-                        <br/>
-                        <span className="text-red-400 font-bold">تحذير أمني:</span> هذا المفتاح يمنح صلاحيات كاملة. لا تشاركه مع أحد.
-                    </p>
-                </div>
-            </div>
-
+            <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-6">إعدادات الإشعارات (Firebase Cloud Messaging)</h3><div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50"><label className="block text-xs font-bold text-gray-300 mb-3">Service Account JSON (مطلوب لـ FCM HTTP v1)</label><textarea value={siteSettings.serviceAccountJson || ''} onChange={(e) => handleChange('serviceAccountJson', e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white font-mono text-xs focus:border-[#00A7F8] focus:outline-none h-48 dir-ltr" placeholder='{ "type": "service_account", "project_id": "...", ... }'/><p className="text-[10px] text-gray-400 mt-3 leading-relaxed">انسخ محتوى ملف JSON الخاص بـ Service Account هنا. هذا مطلوب لإرسال الإشعارات عبر API v1 الجديد.</p></div></div>
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-6">سياسة الخصوصية</h3><textarea value={siteSettings.privacyPolicy} onChange={(e) => handleChange('privacyPolicy', e.target.value)} className="w-full h-48 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#00A7F8]"/></div>
-            <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-6">سياسة حقوق الملكية</h3><textarea value={siteSettings.copyrightPolicy || ''} onChange={(e) => handleChange('copyrightPolicy', e.target.value)} className="w-full h-48 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#00A7F8]" placeholder="أدخل نص سياسة حقوق الملكية هنا..."/></div>
+            <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-4">سياسة حقوق الملكية</h3><textarea value={siteSettings.copyrightPolicy || ''} onChange={(e) => handleChange('copyrightPolicy', e.target.value)} className="w-full h-48 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#00A7F8]" placeholder="أدخل نص سياسة حقوق الملكية هنا..."/></div>
         </div>
     );
 };
 
-const NotificationTab: React.FC<{ addToast: AdminPanelProps['addToast'], serviceAccountJson?: string }> = ({ addToast, serviceAccountJson }) => {
-    const [title, setTitle] = useState(''); 
-    const [body, setBody] = useState(''); 
-    const [image, setImage] = useState(''); 
-    const [url, setUrl] = useState(''); 
-    const [isSending, setIsSending] = useState(false); 
-    
-    const handleSend = async (e: React.FormEvent) => { 
-        e.preventDefault(); 
-        if (!title || !body) { addToast('الرجاء تعبئة العنوان والرسالة.', 'error'); return; } 
-        if (!serviceAccountJson) { addToast('يجب إدخال Service Account JSON في الإعدادات أولاً.', 'error'); return; } 
-        
-        setIsSending(true); 
-        try { 
-            const accessToken = await getAccessToken(serviceAccountJson); 
-            if (!accessToken) { 
-                addToast('فشل في إنشاء رمز الوصول (Access Token). تأكد من صحة ملف JSON.', 'error'); 
-                setIsSending(false); 
-                return; 
-            } 
-            
-            const parsedServiceAccount = JSON.parse(serviceAccountJson); 
-            const projectId = parsedServiceAccount.project_id; 
-            const usersSnapshot = await db.collection('users').get(); 
-            const tokens: string[] = []; 
-            
-            usersSnapshot.forEach(doc => { 
-                const userData = doc.data(); 
-                if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) { 
-                    userData.fcmTokens.forEach((token: string) => { 
-                        if (token && !tokens.includes(token)) { tokens.push(token); } 
-                    }); 
-                } 
-            }); 
-            
-            if (tokens.length === 0) { 
-                addToast('لم يتم العثور على أي مستخدمين مسجلين للإشعارات.', 'info'); 
-                setIsSending(false); 
-                return; 
-            } 
-            
-            console.log(`Sending notification to ${tokens.length} devices...`); 
-            
-            const results = await Promise.all(tokens.map(async (token) => {
-                try {
-                    await sendFCMv1Message(token, { title, body, image, data: { url } }, accessToken, projectId);
-                    return { status: 'fulfilled' };
-                } catch (e) {
-                    return { status: 'rejected' };
-                }
-            }));
-            
-            const successCount = results.filter(r => r.status === 'fulfilled').length;
-            addToast(`تم إرسال الإشعار بنجاح إلى ${successCount} جهاز.`, 'success');
-            
-        } catch (error: any) {
-            console.error("Notification Error:", error);
-            addToast(`حدث خطأ: ${error.message}`, 'error');
-        } finally {
-            setIsSending(false);
-        }
+const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson }) => {
+    const [title, setTitle] = useState('');
+    const [body, setBody] = useState('');
+    const [image, setImage] = useState('');
+    const [url, setUrl] = useState('/');
+    const [sending, setSending] = useState(false);
+    const handleSendNotification = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!serviceAccountJson) { addToast('يجب إضافة ملف الخدمة (Service Account) أولاً.', 'error'); return; }
+        setSending(true);
+        try {
+            const accessToken = await getAccessToken(serviceAccountJson);
+            if (!accessToken) throw new Error("فشل توليد رمز الوصول");
+            const parsedServiceAccount = JSON.parse(serviceAccountJson);
+            const projectId = parsedServiceAccount.project_id;
+            const usersSnapshot = await db.collection("users").get();
+            const allTokens: string[] = [];
+            usersSnapshot.docs.forEach(doc => {
+                const data = doc.data();
+                if (data.fcmTokens && Array.isArray(data.fcmTokens)) allTokens.push(...data.fcmTokens);
+            });
+            const uniqueTokens = Array.from(new Set(allTokens));
+            if (uniqueTokens.length === 0) { addToast('لا يوجد مستخدمون لديهم رموز إشعارات مفعلة.', 'info'); setSending(false); return; }
+            const notificationData = { title, body, image: image || '/icon-192.png', data: { url } };
+            await Promise.all(uniqueTokens.map(token => sendFCMv1Message(token, notificationData, accessToken, projectId)));
+            addToast(`تم إرسال الإشعار لـ ${uniqueTokens.length} جهاز بنجاح!`, 'success');
+            setTitle(''); setBody(''); setImage(''); setUrl('/');
+        } catch (error: any) { addToast('فشل إرسال الإشعارات: ' + error.message, 'error'); } finally { setSending(false); }
     };
-
     return (
         <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl max-w-2xl mx-auto">
-            <h3 className="text-xl font-bold text-[#00A7F8] mb-6">إرسال إشعار للمستخدمين</h3>
-            <form onSubmit={handleSend} className="space-y-4">
-                <div>
-                    <label className="block text-xs font-bold text-gray-400 mb-2">عنوان الإشعار</label>
-                    <input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00A7F8]" placeholder="مثال: فيلم جديد!" required />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold text-gray-400 mb-2">نص الرسالة</label>
-                    <textarea value={body} onChange={e => setBody(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00A7F8]" rows={3} placeholder="تم إضافة فيلم..." required />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold text-gray-400 mb-2">رابط الصورة (اختياري)</label>
-                    <input value={image} onChange={e => setImage(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00A7F8]" placeholder="https://..." />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold text-gray-400 mb-2">رابط التوجيه (Deep Link)</label>
-                    <input value={url} onChange={e => setUrl(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00A7F8]" placeholder="/movies" />
-                </div>
-                <button type="submit" disabled={isSending} className="w-full bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-bold py-3 rounded-xl hover:shadow-[0_0_15px_rgba(0,167,248,0.4)] transition-all disabled:opacity-50">
-                    {isSending ? 'جاري الإرسال...' : 'إرسال'}
-                </button>
+            <h3 className="text-xl font-bold mb-6 text-[#00A7F8] flex items-center gap-2"><PaperAirplaneIcon /> إرسال إشعار عام (Push Notification)</h3>
+            <form onSubmit={handleSendNotification} className="space-y-6">
+                <div><label className="block text-xs font-bold text-gray-400 mb-2">عنوان الإشعار</label><input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white" required/></div>
+                <div><label className="block text-xs font-bold text-gray-400 mb-2">محتوى الإشعار</label><textarea value={body} onChange={e => setBody(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white h-24" required/></div>
+                <div><label className="block text-xs font-bold text-gray-400 mb-2">رابط الصورة (اختياري)</label><input value={image} onChange={e => setImage(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white dir-ltr"/></div>
+                <div><label className="block text-xs font-bold text-gray-400 mb-2">رابط التوجيه عند الضغط</label><input value={url} onChange={e => setUrl(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white dir-ltr"/></div>
+                <button type="submit" disabled={sending} className="w-full bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-bold py-4 rounded-xl shadow-lg disabled:opacity-50">{sending ? 'جاري الإرسال...' : 'إرسال الإشعار للكل'}</button>
             </form>
         </div>
     );
 };
 
-const AnalyticsTab: React.FC<{ allContent: Content[], allUsers: User[] }> = ({ allContent, allUsers }) => {
+const AnalyticsTab: React.FC<any> = ({ allContent, allUsers }) => {
+    const totalMovies = allContent.filter((c: any) => c.type === 'movie').length;
+    const totalSeries = allContent.filter((c: any) => c.type === 'series').length;
+    const totalUsers = allUsers.length;
+    const genreStats = useMemo(() => {
+        const stats: Record<string, number> = {};
+        allContent.forEach((c: any) => { if (c.genres) c.genres.forEach((g: string) => { stats[g] = (stats[g] || 0) + 1; }); });
+        return Object.entries(stats).sort((a, b) => b[1] - a[1]);
+    }, [allContent]);
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in-up">
-            <div className="bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 shadow-xl">
-                <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider">إجمالي المحتوى</h3>
-                <p className="text-5xl font-black mt-4 text-white">{allContent.length}</p>
+        <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl">
+                    <h3 className="text-xl font-bold mb-6 text-[#00FFB0]">توزيع المحتوى حسب النوع</h3>
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center"><span className="text-gray-400">أفلام</span><div className="flex-1 mx-4 h-2 bg-gray-800 rounded-full overflow-hidden"><div className="bg-blue-500 h-full" style={{ width: `${(totalMovies / (totalMovies + totalSeries || 1)) * 100}%` }}></div></div><span className="font-bold">{totalMovies}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-gray-400">مسلسلات</span><div className="flex-1 mx-4 h-2 bg-gray-800 rounded-full overflow-hidden"><div className="bg-purple-500 h-full" style={{ width: `${(totalSeries / (totalMovies + totalSeries || 1)) * 100}%` }}></div></div><span className="font-bold">{totalSeries}</span></div>
+                    </div>
+                </div>
+                <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl">
+                    <h3 className="text-xl font-bold mb-6 text-[#00A7F8]">أكثر التصنيفات انتشاراً</h3>
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                        {genreStats.slice(0, 10).map(([genre, count]) => (<div key={genre} className="flex justify-between items-center p-3 bg-gray-800/50 rounded-xl border border-gray-700"><span className="text-gray-300 font-bold">{genre}</span><span className="bg-gray-700 px-3 py-1 rounded-lg text-xs font-mono">{count}</span></div>))}
+                    </div>
+                </div>
             </div>
-            <div className="bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 shadow-xl">
-                <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider">المستخدمين</h3>
-                <p className="text-5xl font-black mt-4 text-white">{allUsers.length}</p>
-            </div>
-             <div className="bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 shadow-xl">
-                <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider">الإصدار</h3>
-                <p className="text-5xl font-black mt-4 text-white">v1.0</p>
+            <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl">
+                <h3 className="text-xl font-bold mb-6 text-white">إجمالي المستخدمين المسجلين</h3>
+                <div className="flex items-center gap-6"><div className="text-5xl font-black text-[#00FFB0]">{totalUsers}</div><div className="text-gray-400">مستخدم مسجل في القاعدة</div></div>
             </div>
         </div>
     );
-}
+};
 
 export default AdminPanel;
