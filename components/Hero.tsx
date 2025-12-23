@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Content } from '@/types';
 import ActionButtons from './ActionButtons';
@@ -64,18 +65,18 @@ const Hero: React.FC<HeroProps> = ({
         setUnboundedIndex(prev => prev + 1);
     }, []);
 
-    // Listen for YouTube events to detect when video is close to ending (3 seconds before)
+    // Listen for YouTube events to detect when video is close to ending (5 seconds before)
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             try {
                 if (typeof event.data === 'string') {
                     const data = JSON.parse(event.data);
                     
-                    // Check for video time information to trigger transition 3 seconds before end
+                    // Check for video time information to trigger transition 5 seconds before end
                     if (data.info && typeof data.info.currentTime === 'number' && typeof data.info.duration === 'number') {
                         const { currentTime, duration } = data.info;
                         // Trigger only if duration is meaningful and we haven't transitioned yet for this slide
-                        if (duration > 5 && (duration - currentTime) <= 3) {
+                        if (duration > 6 && (duration - currentTime) <= 5) {
                             if (!hasTransitionedRef.current) {
                                 hasTransitionedRef.current = true;
                                 handleNext();
@@ -83,7 +84,7 @@ const Hero: React.FC<HeroProps> = ({
                         }
                     }
 
-                    // YouTube Player State 0 means "ENDED" - fallback if time check was missed
+                    // YouTube Player State 0 means "ENDED" - fallback if time check was missed or video is short
                     if ((data.event === 'infoDelivery' && data.info && data.info.playerState === 0) ||
                         (data.event === 'onStateChange' && data.info === 0)) {
                         if (!hasTransitionedRef.current) {
