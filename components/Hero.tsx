@@ -263,20 +263,56 @@ const Hero: React.FC<HeroProps> = ({
                                         <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white drop-shadow-lg leading-tight">{content.title}</h1>
                                     )}
                                 </div>
+
                                 <div className={`flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-xs md:text-base font-medium text-gray-200 transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'mb-1 md:mb-2 opacity-80' : 'mb-1 md:mb-3 opacity-100'}`}>
+                                    {/* التقييم */}
                                     <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/10">
                                         <StarIcon className="w-3 h-3 md:w-4 md:h-4" />
                                         <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
                                     </div>
+                                    
                                     <span className="text-gray-500 text-sm md:text-lg">|</span>
-                                    <span>{content.releaseYear}</span>
+                                    
+                                    {/* السنة */}
+                                    <span className="text-white font-semibold">{content.releaseYear}</span>
+                                    
+                                    {/* المدة */}
+                                    {content.type === 'movie' && content.duration && (
+                                        <>
+                                            <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                            <div className="flex items-center gap-1 px-2 py-0.5 border border-gray-500 rounded text-gray-300 text-[10px] md:text-xs backdrop-blur-sm bg-white/5">
+                                                <ClockIcon className="w-3 h-3 md:w-4 md:h-4" />
+                                                <span dir="ltr">{content.duration}</span>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* التصنيف العمري */}
                                     {content.ageRating && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
-                                            <span className="border border-gray-500 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded text-[10px] md:text-xs backdrop-blur-sm bg-white/5">{content.ageRating}</span>
+                                            <span className="border border-gray-500 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded text-[10px] md:text-xs backdrop-blur-sm bg-white/5 font-bold">{content.ageRating}</span>
+                                        </>
+                                    )}
+
+                                    {/* التصنيف النوعي الملون - أصبح الأخير بناءً على طلبك */}
+                                    {content.genres && content.genres.length > 0 && (
+                                        <>
+                                            <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                            <div className="flex items-center gap-2">
+                                                {content.genres.slice(0, 3).map((genre, index) => (
+                                                    <React.Fragment key={index}>
+                                                        <span className={`font-medium ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]'}`}>
+                                                            {genre}
+                                                        </span>
+                                                        {index < Math.min(content.genres.length, 3) - 1 && <span className="text-gray-500 text-[10px] md:text-xs">|</span>}
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
                                         </>
                                     )}
                                 </div>
+
                                 {!hideDescription && (
                                     <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-3 md:mb-4'}`}>
                                         <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-2 md:line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-xl font-medium">{content.description}</p>
@@ -291,11 +327,11 @@ const Hero: React.FC<HeroProps> = ({
                                     )}
                                 </div>
                                 {hasMultiple && (
-                                  <div className="flex gap-1.5 pointer-events-none justify-center w-full mt-4 md:hidden" dir="rtl">
-                                    {contents.map((_, idx) => (
-                                        <button key={idx} className={`h-1.5 transition-all duration-300 pointer-events-auto cursor-pointer rounded-full ${activeIndex === idx ? (isRamadanTheme ? 'bg-amber-500 w-6' : isEidTheme ? 'bg-purple-500 w-6' : isCosmicTealTheme ? 'bg-[#35F18B] w-6 shadow-[0_0_10px_#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914] w-6 shadow-[0_0_10px_rgba(229,9,20,0.5)]' : 'bg-[#00A7F8] w-6') : 'bg-white/30 hover:bg-white/60 w-2'}`} onClick={(e) => { e.stopPropagation(); handleManualSlide(idx); }} />
-                                    ))}
-                                  </div>
+                                    <div className="flex gap-1.5 pointer-events-none justify-center w-full mt-4 md:hidden" dir="rtl">
+                                        {contents.map((_, idx) => (
+                                            <button key={idx} className={`h-1.5 transition-all duration-300 pointer-events-auto cursor-pointer rounded-full ${activeIndex === idx ? (isRamadanTheme ? 'bg-amber-500 w-6' : isEidTheme ? 'bg-purple-500 w-6' : isCosmicTealTheme ? 'bg-[#35F18B] w-6 shadow-[0_0_10px_#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914] w-6 shadow-[0_0_10px_rgba(229,9,20,0.5)]' : 'bg-[#00A7F8] w-6') : 'bg-white/30 hover:bg-white/60 w-2'}`} onClick={(e) => { e.stopPropagation(); handleManualSlide(idx); }} />
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </div>
