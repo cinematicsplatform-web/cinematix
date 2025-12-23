@@ -8,7 +8,6 @@ import SEO from '@/components/SEO';
 import AdZone from '@/components/AdZone';
 import AdWaiterModal from '@/components/AdWaiterModal';
 import ReportModal from '@/components/ReportModal';
-import { LoadingDots } from '../App';
 
 // Icons
 import { StarIcon } from '@/components/icons/StarIcon';
@@ -81,7 +80,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [videoEnded, setVideoEnded] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  
+   
   // Refs
   const heroRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -135,14 +134,14 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const displayBackdrop = currentSeason?.backdrop || content?.backdrop || '';
   const displayLogo = currentSeason?.logoUrl || content?.logoUrl || '';
   const displayDescription = currentSeason?.description || content?.description || '';
-  
+   
   const activeServers = (content?.type === 'movie' ? content.servers : []) || [];
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
 
   useEffect(() => {
       if (activeServers.length > 0) setSelectedServer(activeServers.find(s => s.isActive) || activeServers[0]);
   }, [activeServers]); 
-  
+   
   // Mobile Check
   const [isMobile, setIsMobile] = useState(false);
   useLayoutEffect(() => {
@@ -226,13 +225,30 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const activeTabClass = isRamadanTheme ? 'text-white border-[#FFD700]' : isEidTheme ? 'text-white border-purple-500' : isCosmicTealTheme ? 'text-white border-[#35F18B]' : isNetflixRedTheme ? 'text-white border-[#E50914]' : 'text-white border-[#00A7F8]';
   const tabHoverClass = 'text-gray-400 border-transparent hover:text-white';
 
+  const activeSeasonHighlight = isRamadanTheme 
+  ? 'text-[#FFD700]' 
+  : isEidTheme
+      ? 'text-purple-400' 
+      : isCosmicTealTheme
+          ? 'text-[#35F18B]' 
+          : isNetflixRedTheme
+              ? 'text-[#E50914]' 
+              : 'text-[#00A7F8]';
+
+  const handleSeasonSelect = (seasonId: number) => {
+      const season = content.seasons?.find(s => s.id === seasonId);
+      if (season) {
+          if(onSetView) onSetView('detail', undefined, { season: season.seasonNumber });
+          setSelectedSeasonId(seasonId);
+          setIsSeasonDropdownOpen(false);
+      }
+  };
+
   const handleEpisodeSelect = (episode: Episode, seasonNum?: number, episodeIndex?: number) => {
       const sNum = seasonNum ?? currentSeason?.seasonNumber ?? 1;
       const eNum = episodeIndex || currentSeason?.episodes.findIndex(e => e.id === episode.id) + 1;
       onSelectContent(content, sNum, eNum);
   };
-
-  const currentThemeStr = isRamadanTheme ? 'ramadan' : isEidTheme ? 'eid' : isCosmicTealTheme ? 'cosmic-teal' : isNetflixRedTheme ? 'netflix-red' : 'default';
 
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0 relative overflow-x-hidden w-full">
@@ -256,9 +272,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}
                 />
             ) : (
-                <div className="absolute inset-0 bg-[#161b22] skeleton-shimmer flex items-center justify-center">
-                    <LoadingDots theme={currentThemeStr} />
-                </div>
+                <div className="absolute inset-0 bg-[#161b22] skeleton-shimmer"></div>
             )}
             
             {heroEmbedUrl && !isMobile && isLoaded && (
@@ -295,6 +309,46 @@ const DetailPage: React.FC<DetailPageProps> = ({
                 ) : (
                     <div className="w-64 md:w-96 h-12 md:h-20 bg-gray-800/40 rounded-xl skeleton-shimmer mb-4 border border-white/5"></div>
                 )}
+
+                {/* --- ADDED: SEASON SELECTOR --- */}
+                {isLoaded && content.type === 'series' && content.seasons && content.seasons.length > 1 && (
+                    <div className="relative mt-1 mb-2 z-50 w-full md:w-auto flex justify-center md:justify-start" ref={dropdownRef}>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsSeasonDropdownOpen(!isSeasonDropdownOpen);
+                            }}
+                            className={`flex items-center gap-2 text-xl md:text-2xl font-bold transition-colors duration-200 group ${isRamadanTheme ? 'text-white hover:text-[#FFD700]' : isEidTheme ? 'text-white hover:text-purple-400' : isCosmicTealTheme ? 'text-white hover:text-[#35F18B]' : isNetflixRedTheme ? 'text-white hover:text-[#E50914]' : 'text-white hover:text-[#00A7F8]'}`}
+                        >
+                            <span>{`الموسم ${currentSeason?.seasonNumber}`}</span>
+                            <ChevronDownIcon className={`w-5 h-5 transition-transform duration-300 ${isSeasonDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {isSeasonDropdownOpen && (
+                            <div className="absolute top-full right-0 mt-2 w-64 bg-[#1f2937] border border-gray-700 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden z-[100] animate-fade-in-up origin-top-right">
+                                <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                                    {[...content.seasons].sort((a, b) => a.seasonNumber - b.seasonNumber).map(season => (
+                                        <button
+                                            key={season.id}
+                                            onClick={() => {
+                                                handleSeasonSelect(season.id);
+                                            }}
+                                            className={`w-full text-right px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors group ${selectedSeasonId === season.id ? 'bg-white/5' : ''}`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className={`text-lg font-bold ${selectedSeasonId === season.id ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}>
+                                                    {`الموسم ${season.seasonNumber}`}
+                                                </span>
+                                                {selectedSeasonId === season.id && <CheckIcon className={`w-4 h-4 ${activeSeasonHighlight}`} />}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+                {/* --- END ADDED SECTION --- */}
 
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-2 text-sm md:text-base font-medium text-gray-200 w-full">
                     {isLoaded ? (
@@ -434,9 +488,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                               /* --- EPISODE SKELETONS --- */
                               Array.from({ length: 10 }).map((_, i) => (
                                   <div key={i} className="rounded-xl bg-gray-800/40 border border-gray-700/50 overflow-hidden h-full flex flex-col skeleton-shimmer">
-                                      <div className="relative w-full aspect-video bg-gray-700/30 flex items-center justify-center">
-                                          <LoadingDots theme={currentThemeStr} />
-                                      </div>
+                                      <div className="relative w-full aspect-video bg-gray-700/30"></div>
                                       <div className="p-4 space-y-3">
                                           <div className="h-4 bg-gray-700/40 rounded w-1/2"></div>
                                           <div className="space-y-2">
@@ -477,107 +529,120 @@ const DetailPage: React.FC<DetailPageProps> = ({
           {activeTab === 'details' && (
               <div className="px-4 md:px-8 py-8 animate-fade-in-up w-full">
                   <div className="max-w-7xl mx-auto w-full flex flex-col gap-12">
-                      <div className="flex-1 space-y-10">
-                          {isLoaded ? (
-                              <>
-                                {/* 1. Story Section */}
-                                <div>
-                                    <h3 className="text-xl md:text-2xl font-black text-white mb-4 border-r-4 border-[var(--color-accent)] pr-4">القصة</h3>
-                                    <p className="text-gray-300 text-lg leading-loose text-justify">{displayDescription}</p>
-                                </div>
-
-                                {/* 2. Metadata Grid */}
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 bg-gray-800/20 p-6 rounded-2xl border border-white/5">
-                                    <div className="space-y-1">
-                                        <span className="text-gray-500 text-xs font-bold block uppercase tracking-wider">سنة الإنتاج</span>
-                                        <span className="text-white font-bold text-lg">{content.releaseYear}</span>
-                                    </div>
-                                    
-                                    {content.type === 'movie' && content.duration && (
-                                        <div className="space-y-1">
-                                            <span className="text-gray-500 text-xs font-bold block uppercase tracking-wider">وقت العمل</span>
-                                            <span className="text-white font-bold text-lg">{content.duration}</span>
-                                        </div>
-                                    )}
-
-                                    {content.type === 'series' && (
-                                        <>
-                                            <div className="space-y-1">
-                                                <span className="text-gray-500 text-xs font-bold block uppercase tracking-wider">عدد المواسم</span>
-                                                <span className="text-white font-bold text-lg">{content.seasons?.length || 0} مواسم</span>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <span className="text-gray-500 text-xs font-bold block uppercase tracking-wider">إجمالي الحلقات</span>
-                                                <span className="text-white font-bold text-lg">{content.seasons?.reduce((acc, s) => acc + (s.episodes?.length || 0), 0) || 0} حلقة</span>
-                                            </div>
-                                        </>
-                                    )}
-
-                                    <div className="space-y-1">
-                                        <span className="text-gray-500 text-xs font-bold block uppercase tracking-wider">التقييم</span>
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-yellow-400 font-black text-lg">{content.rating.toFixed(1)}</span>
-                                            <StarIcon className="w-4 h-4 text-yellow-500" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* 3. Genres Section */}
-                                <div>
-                                    <h3 className="text-xl md:text-2xl font-black text-white mb-4 border-r-4 border-[var(--color-accent)] pr-4">التصنيف النوعي</h3>
-                                    <div className="flex flex-wrap gap-2">
-                                        {content?.genres?.map((genre, index) => (
-                                            <div key={index} className="px-5 py-2.5 rounded-xl text-sm font-black border border-gray-700 bg-gray-800/40 text-gray-300 hover:bg-[var(--color-accent)] hover:text-black transition-all cursor-default">
-                                                {genre}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* 4. Cast Section */}
-                                {content.cast && content.cast.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12">
+                          {/* Main Text Content */}
+                          <div className="md:col-span-8 space-y-10">
+                              {isLoaded ? (
+                                  <>
                                     <div>
-                                        <h3 className="text-xl md:text-2xl font-black text-white mb-4 border-r-4 border-[var(--color-accent)] pr-4">الأبطال</h3>
-                                        <div className="flex flex-wrap gap-3">
-                                            {content.cast.map((actor, i) => (
-                                                <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-gray-300 text-sm font-bold hover:border-[var(--color-accent)] transition-colors">
-                                                    <div className="w-2 h-2 rounded-full bg-[var(--color-accent)]"></div>
-                                                    {actor}
+                                        <h3 className="text-xl md:text-2xl font-bold text-white mb-4 border-r-4 border-[var(--color-accent)] pr-4">القصة</h3>
+                                        <p className="text-gray-300 text-lg leading-loose text-justify">{displayDescription}</p>
+                                    </div>
+                                     
+                                    {content.cast && content.cast.length > 0 && (
+                                        <div>
+                                            <h3 className="text-xl md:text-2xl font-bold text-white mb-4 border-r-4 border-[var(--color-accent)] pr-4">الأبطال</h3>
+                                            <div className="flex flex-wrap gap-2">
+                                                {content.cast.map((actor, idx) => (
+                                                    <span key={idx} className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:bg-white/10 transition-colors">
+                                                        {actor}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <h3 className="text-xl md:text-2xl font-bold text-white mb-4 border-r-4 border-[var(--color-accent)] pr-4">التصنيف النوعي</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {content?.genres?.map((genre, index) => (
+                                                <div key={index} className="px-4 py-2 rounded-xl text-sm font-bold border border-gray-700 bg-gray-800/50 text-gray-300 hover:border-gray-500 transition-colors">
+                                                    {genre}
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
-                                )}
-                              </>
-                          ) : (
-                              /* --- DETAILS SKELETON --- */
-                              <div className="space-y-12">
-                                  <div className="space-y-4">
-                                      <div className="h-6 bg-gray-800/40 rounded w-32 skeleton-shimmer"></div>
-                                      <div className="space-y-2">
-                                          <div className="h-4 bg-gray-800/40 rounded w-full skeleton-shimmer"></div>
-                                          <div className="h-4 bg-gray-800/40 rounded w-full skeleton-shimmer"></div>
-                                          <div className="h-4 bg-gray-800/40 rounded w-2/3 skeleton-shimmer"></div>
+                                  </>
+                              ) : (
+                                  <div className="space-y-12">
+                                      <div className="space-y-4">
+                                          <div className="h-6 bg-gray-800/40 rounded w-32 skeleton-shimmer"></div>
+                                          <div className="space-y-2">
+                                              <div className="h-4 bg-gray-800/40 rounded w-full skeleton-shimmer"></div>
+                                              <div className="h-4 bg-gray-800/40 rounded w-full skeleton-shimmer"></div>
+                                              <div className="h-4 bg-gray-800/40 rounded w-2/3 skeleton-shimmer"></div>
+                                          </div>
                                       </div>
                                   </div>
-                                  
-                                  {/* Grid Skeleton */}
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                      {[1,2,3,4].map(i => (
-                                          <div key={i} className="h-16 bg-gray-800/40 rounded-xl skeleton-shimmer"></div>
-                                      ))}
-                                  </div>
+                              )}
+                          </div>
 
-                                  <div className="space-y-4">
-                                      <div className="h-6 bg-gray-800/40 rounded w-32 skeleton-shimmer"></div>
-                                      <div className="flex flex-wrap gap-2">
-                                          <div className="h-10 bg-gray-800/40 rounded-xl w-24 skeleton-shimmer"></div>
-                                          <div className="h-10 bg-gray-800/40 rounded-xl w-24 skeleton-shimmer"></div>
-                                          <div className="h-10 bg-gray-800/40 rounded-xl w-24 skeleton-shimmer"></div>
+                          {/* Quick Info Sidebar */}
+                          <div className="md:col-span-4 space-y-6">
+                              <div className="bg-[var(--bg-card)] border border-white/5 rounded-3xl p-6 md:p-8 shadow-xl">
+                                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                                      <span className="w-1.5 h-6 bg-[var(--color-accent)] rounded-full"></span>
+                                      معلومات سريعة
+                                  </h3>
+                                  
+                                  {isLoaded ? (
+                                      <div className="space-y-6">
+                                          <div className="flex justify-between items-center group">
+                                              <span className="text-gray-400 text-sm font-bold">سنة الإنتاج</span>
+                                              <span className="text-white font-black">{currentSeason?.releaseYear || content.releaseYear}</span>
+                                          </div>
+                                          
+                                          <div className="w-full h-px bg-white/5"></div>
+
+                                          <div className="flex justify-between items-center group">
+                                              <span className="text-gray-400 text-sm font-bold">وقت العمل</span>
+                                              <span className="text-white font-black" dir="ltr">{content.duration || (content.type === 'series' ? '45m+' : 'N/A')}</span>
+                                          </div>
+
+                                          <div className="w-full h-px bg-white/5"></div>
+
+                                          <div className="flex justify-between items-center group">
+                                              <span className="text-gray-400 text-sm font-bold">التصنيف العمري</span>
+                                              <span className="px-2 py-0.5 border border-gray-600 rounded text-xs font-bold text-gray-300">{content.ageRating}</span>
+                                          </div>
+
+                                          {content.type === 'series' && (
+                                              <>
+                                                  <div className="w-full h-px bg-white/5"></div>
+                                                  <div className="flex justify-between items-center group">
+                                                      <span className="text-gray-400 text-sm font-bold">عدد المواسم</span>
+                                                      <span className="text-white font-black">{content.seasons?.length || 1}</span>
+                                                  </div>
+                                                  <div className="w-full h-px bg-white/5"></div>
+                                                  <div className="flex justify-between items-center group">
+                                                      <span className="text-gray-400 text-sm font-bold">عدد الحلقات (الموسم)</span>
+                                                      <span className="text-white font-black">{episodes.length}</span>
+                                                  </div>
+                                              </>
+                                          )}
+                                          
+                                          <div className="w-full h-px bg-white/5"></div>
+                                          
+                                          <div className="flex justify-between items-center group">
+                                              <span className="text-gray-400 text-sm font-bold">التقييم</span>
+                                              <div className="flex items-center gap-1.5 text-yellow-500">
+                                                  <StarIcon className="w-4 h-4" />
+                                                  <span className="font-black">{content.rating.toFixed(1)}</span>
+                                              </div>
+                                          </div>
                                       </div>
-                                  </div>
+                                  ) : (
+                                      <div className="space-y-6">
+                                          {[1, 2, 3, 4, 5].map(i => (
+                                              <div key={i} className="flex justify-between">
+                                                  <div className="w-20 h-4 bg-gray-800/40 rounded skeleton-shimmer"></div>
+                                                  <div className="w-12 h-4 bg-gray-800/40 rounded skeleton-shimmer"></div>
+                                              </div>
+                                          ))}
+                                      </div>
+                                  )}
                               </div>
-                          )}
+                          </div>
                       </div>
                   </div>
               </div>

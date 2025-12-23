@@ -6,7 +6,6 @@ import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
 import SEO from './SEO';
 import AdZone from './AdZone'; 
-import { LoadingDots } from '../App';
 
 interface MoviesPageProps {
   allContent: Content[];
@@ -113,12 +112,10 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
     return () => clearTimeout(timer);
   }, [isLoading, allMovies.length]);
 
-  const currentTheme = isRamadanTheme ? 'ramadan' : isEidTheme ? 'eid' : isCosmicTealTheme ? 'cosmic-teal' : isNetflixRedTheme ? 'netflix-red' : 'default';
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-        <LoadingDots theme={currentTheme} />
+        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
       </div>
     );
   }
@@ -127,7 +124,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
     if (!showEmptyMessage) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-                <LoadingDots theme={currentTheme} />
+                <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
             </div>
         );
     }
