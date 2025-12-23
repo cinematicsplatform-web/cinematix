@@ -45,8 +45,9 @@ const Hero: React.FC<HeroProps> = ({
     const containerRef = useRef<HTMLDivElement>(null);
     const activeIframeRef = useRef<HTMLIFrameElement>(null);
     
-    // Ref to ensure we only trigger the "next slide" action once per video
+    // Refs for precise timing control
     const hasTransitionedRef = useRef<boolean>(false);
+    const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [isMobile, setIsMobile] = useState(false);
 
@@ -67,28 +68,38 @@ const Hero: React.FC<HeroProps> = ({
         setUnboundedIndex(prev => prev + 1);
     }, []);
 
-    // Listen for YouTube events to detect when video is close to ending (5 seconds before)
+    // المنطق الجديد: حساب الوقت وضبط مؤقت مسبق
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             try {
                 if (typeof event.data === 'string') {
                     const data = JSON.parse(event.data);
                     
-                    // Check for video time information to trigger transition 5 seconds before end
-                    if (data.info && typeof data.info.currentTime === 'number' && typeof data.info.duration === 'number') {
-                        const { currentTime, duration } = data.info;
-                        
-                        // Trigger only if duration is meaningful and we haven't transitioned yet for this slide
-                        // (duration > 6 check prevents skipping immediately on very short clips/bugs)
-                        if (duration > 6 && (duration - currentTime) <= 5) {
-                            if (!hasTransitionedRef.current) {
-                                hasTransitionedRef.current = true;
-                                handleNext();
+                    // 1. التقاط مدة الفيديو وضبط المؤقت مرة واحدة فقط
+                    if (data.info && typeof data.info.duration === 'number' && data.info.duration > 0) {
+                        const duration = data.info.duration;
+                        const currentTime = data.info.currentTime || 0;
+
+                        // شرط: لم نقم بالنقل بعد + لم نضبط المؤقت بعد + الفيديو أطول من 10 ثواني
+                        if (!hasTransitionedRef.current && !transitionTimeoutRef.current && duration > 10) {
+                            
+                            // نحسب الوقت المتبقي حتى نصل للحظة (النهاية - 5 ثواني)
+                            // المعادلة: (المدة الكلية - الوقت الحالي - 5 ثواني) * 1000
+                            const timeToTrigger = (duration - currentTime - 5) * 1000;
+
+                            if (timeToTrigger > 0) {
+                                // ضبط المؤقت
+                                transitionTimeoutRef.current = setTimeout(() => {
+                                    if (!hasTransitionedRef.current) {
+                                        hasTransitionedRef.current = true;
+                                        handleNext();
+                                    }
+                                }, timeToTrigger);
                             }
                         }
                     }
 
-                    // YouTube Player State 0 means "ENDED" - fallback if time check was missed or video is short
+                    // 2. شبكة أمان: في حالة فشل المؤقت أو الفيديو قصير، نستخدم حدث الانتهاء الطبيعي
                     if ((data.event === 'infoDelivery' && data.info && data.info.playerState === 0) ||
                         (data.event === 'onStateChange' && data.info === 0)) {
                         if (!hasTransitionedRef.current) {
@@ -104,11 +115,18 @@ const Hero: React.FC<HeroProps> = ({
     }, [handleNext]);
 
     useEffect(() => {
+        // Reset States for new Slide
         setShowVideo(false);
         setIsMuted(true);
         setIsPaused(false);
         setIsDirectJump(false);
-        hasTransitionedRef.current = false; // Reset transition flag for the new content
+        
+        // تنظيف المؤشرات والمؤقتات السابقة
+        hasTransitionedRef.current = false;
+        if (transitionTimeoutRef.current) {
+            clearTimeout(transitionTimeoutRef.current);
+            transitionTimeoutRef.current = null;
+        }
 
         if (!activeContent || !activeContent.trailerUrl || isMobile) return;
 
@@ -116,7 +134,14 @@ const Hero: React.FC<HeroProps> = ({
             setShowVideo(true);
         }, 1500);
 
-        return () => clearTimeout(trailerTimer);
+        return () => {
+            clearTimeout(trailerTimer);
+            // تنظيف إضافي عند تغيير السلايد
+            if (transitionTimeoutRef.current) {
+                clearTimeout(transitionTimeoutRef.current);
+                transitionTimeoutRef.current = null;
+            }
+        };
     }, [activeContent?.id, isMobile]);
 
     useEffect(() => {
@@ -285,6 +310,7 @@ const Hero: React.FC<HeroProps> = ({
                                 </div>
 
                                 <div className={`flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-xs md:text-base font-medium text-gray-200 transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'mb-1 md:mb-2 opacity-80' : 'mb-1 md:mb-3 opacity-100'}`}>
+                                    {/* التقييم */}
                                     <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/10">
                                         <StarIcon className="w-3 h-3 md:w-4 md:h-4" />
                                         <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
@@ -292,8 +318,10 @@ const Hero: React.FC<HeroProps> = ({
                                     
                                     <span className="text-gray-500 text-sm md:text-lg">|</span>
                                     
+                                    {/* السنة */}
                                     <span className="text-white font-semibold">{content.releaseYear}</span>
                                     
+                                    {/* المدة */}
                                     {content.type === 'movie' && content.duration && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
@@ -304,6 +332,7 @@ const Hero: React.FC<HeroProps> = ({
                                         </>
                                     )}
 
+                                    {/* التصنيف النوعي الملون */}
                                     {content.genres && content.genres.length > 0 && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
@@ -320,6 +349,7 @@ const Hero: React.FC<HeroProps> = ({
                                         </>
                                     )}
 
+                                    {/* التصنيف العمري */}
                                     {content.ageRating && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
