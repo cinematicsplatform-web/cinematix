@@ -25,7 +25,7 @@ const Hero: React.FC<HeroProps> = ({
     isLoggedIn, 
     myList, 
     onToggleMyList, 
-    autoSlideInterval = 5000, 
+    autoSlideInterval = 3000, 
     isRamadanTheme,
     isEidTheme,
     isCosmicTealTheme,
@@ -33,14 +33,22 @@ const Hero: React.FC<HeroProps> = ({
     hideDescription = false
 }) => {
     const [unboundedIndex, setUnboundedIndex] = useState(0);
+    const [isDirectJump, setIsDirectJump] = useState(false);
     const [showVideo, setShowVideo] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     const [isPaused, setIsPaused] = useState(false);
-    const [dragOffset, setDragOffset] = useState(0);
+    
     const [isDragging, setIsDragging] = useState(false);
     const [startPos, setStartPos] = useState(0);
+    const [dragOffset, setDragOffset] = useState(0);
     
+    const containerRef = useRef<HTMLDivElement>(null);
     const activeIframeRef = useRef<HTMLIFrameElement>(null);
+    const forceStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    
+    // مؤشر لمنع تكرار الانتقال
+    const hasTransitionedRef = useRef<boolean>(false);
+
     const [isMobile, setIsMobile] = useState(false);
 
     const len = contents.length;
@@ -56,54 +64,74 @@ const Hero: React.FC<HeroProps> = ({
     }, []);
 
     const handleNext = useCallback(() => {
+        setIsDirectJump(false);
         setUnboundedIndex(prev => prev + 1);
+        hasTransitionedRef.current = false; // Reset for next slide
     }, []);
 
-    const handlePrev = useCallback(() => {
-        setUnboundedIndex(prev => prev - 1);
-    }, []);
-
-    // 60-Second Rotation Logic (The "Ad/Video" rotation timer)
+    // المنطق الجديد: الانتقال عند انتهاء الفيديو تماماً
     useEffect(() => {
-        if (!hasMultiple || isDragging || isPaused) return;
+        const handleMessage = (event: MessageEvent) => {
+            try {
+                if (typeof event.data === 'string') {
+                    const data = JSON.parse(event.data);
+                    
+                    // الاستماع لحالة "الانتهاء" (ENDED) من يوتيوب وهي رقم 0
+                    if ((data.event === 'infoDelivery' && data.info && data.info.playerState === 0) ||
+                        (data.event === 'onStateChange' && data.info === 0)) {
+                        
+                        if (!hasTransitionedRef.current) {
+                            hasTransitionedRef.current = true;
+                            handleNext(); 
+                        }
+                    }
+                }
+            } catch (e) { }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [handleNext]);
 
-        // If video is showing, we use a 60s rotation as requested.
-        // If just an image, we use the standard interval.
-        const currentInterval = showVideo ? 60000 : autoSlideInterval;
-
-        const timer = setTimeout(() => {
-            handleNext();
-        }, currentInterval);
-
-        return () => clearTimeout(timer);
-    }, [hasMultiple, isDragging, isPaused, showVideo, handleNext, autoSlideInterval]);
-
-    // Handle Video State Reset on Slide Change
     useEffect(() => {
+        // إعادة تعيين الحالة عند تغيير الشريحة
         setShowVideo(false);
         setIsMuted(true);
+        setIsPaused(false);
+        setIsDirectJump(false);
+        hasTransitionedRef.current = false;
 
         if (!activeContent || !activeContent.trailerUrl || isMobile) return;
 
-        // Delay video start slightly for smoother transition
+        // تشغيل الفيديو بعد ثانية ونصف
         const trailerTimer = setTimeout(() => {
             setShowVideo(true);
         }, 1500);
 
-        return () => clearTimeout(trailerTimer);
+        return () => {
+            clearTimeout(trailerTimer);
+        };
     }, [activeContent?.id, isMobile]);
 
-    const getVideoId = (url: string | undefined) => {
-        if (!url) return null;
-        try {
-            if (url.includes('youtu.be/')) return url.split('youtu.be/')[1].split('?')[0];
-            if (url.includes('v=')) return url.split('v=')[1].split('&')[0];
-            if (url.includes('embed/')) return url.split('embed/')[1].split('?')[0];
-            return null;
-        } catch (e) { return null; }
-    };
+    // منطق الإيقاف الإجباري والانتقال بعد 60 ثانية (مشابه لصفحة المشاهدة)
+    useEffect(() => {
+        if (showVideo) {
+            forceStopTimerRef.current = setTimeout(() => {
+                if (!hasTransitionedRef.current) {
+                    hasTransitionedRef.current = true;
+                    handleNext();
+                }
+            }, 60000); // 60 ثانية
+        } else {
+            if (forceStopTimerRef.current) {
+                clearTimeout(forceStopTimerRef.current);
+                forceStopTimerRef.current = null;
+            }
+        }
+        return () => {
+            if (forceStopTimerRef.current) clearTimeout(forceStopTimerRef.current);
+        };
+    }, [showVideo, handleNext]);
 
-    // YouTube Messaging for Mute/Unmute
     useEffect(() => {
         if (showVideo && activeIframeRef.current) {
             const command = isMuted ? 'mute' : 'unMute';
@@ -117,24 +145,63 @@ const Hero: React.FC<HeroProps> = ({
         }
     }, [isMuted, showVideo]);
 
-    // Drag Handlers
+    // التحكم في السلايدر التلقائي (يتوقف إذا كان الفيديو يعمل)
+    useEffect(() => {
+        if (!hasMultiple || isDragging || isPaused || showVideo) return;
+
+        const timer = setTimeout(() => {
+            handleNext();
+        }, autoSlideInterval);
+
+        return () => clearTimeout(timer);
+    }, [hasMultiple, isDragging, isPaused, showVideo, handleNext, autoSlideInterval]);
+
+    const getVideoId = (url: string | undefined) => {
+        if (!url) return null;
+        try {
+            if (url.includes('youtu.be/')) return url.split('youtu.be/')[1].split('?')[0];
+            if (url.includes('v=')) return url.split('v=')[1].split('&')[0];
+            if (url.includes('embed/')) return url.split('embed/')[1].split('?')[0];
+            return null;
+        } catch (e) { return null; }
+    };
+
+    const handleManualSlide = useCallback((targetIndex: number) => {
+        if (targetIndex === activeIndex) return;
+        setIsDirectJump(true);
+        const currentMod = activeIndex;
+        let diff = targetIndex - currentMod;
+        if (diff > len / 2) diff -= len;
+        else if (diff < -len / 2) diff += len;
+        setUnboundedIndex(prev => prev + diff);
+        hasTransitionedRef.current = false;
+    }, [activeIndex, len]);
+
     const handleStart = (clientX: number) => {
         if (!hasMultiple) return;
         setIsDragging(true);
         setStartPos(clientX);
+        setDragOffset(0);
+        setIsDirectJump(false);
     };
 
     const handleMove = (clientX: number) => {
         if (!isDragging) return;
-        setDragOffset(clientX - startPos);
+        const diff = clientX - startPos;
+        setDragOffset(diff);
     };
 
     const handleEnd = () => {
         if (!isDragging) return;
         setIsDragging(false);
-        const threshold = window.innerWidth * 0.15;
-        if (dragOffset > threshold) handlePrev();
-        else if (dragOffset < -threshold) handleNext();
+        const threshold = window.innerWidth * 0.2;
+        if (dragOffset > threshold) {
+            setUnboundedIndex(prev => prev - 1);
+            hasTransitionedRef.current = false;
+        } else if (dragOffset < -threshold) {
+            setUnboundedIndex(prev => prev + 1);
+            hasTransitionedRef.current = false;
+        }
         setDragOffset(0);
     };
 
@@ -144,11 +211,12 @@ const Hero: React.FC<HeroProps> = ({
 
     return (
         <div 
+            ref={containerRef}
             className={`relative h-[80vh] md:h-[85vh] w-full overflow-hidden group ${containerBgColor} select-none touch-pan-y`}
             onMouseDown={(e) => handleStart(e.clientX)}
             onMouseMove={(e) => handleMove(e.clientX)}
             onMouseUp={handleEnd}
-            onMouseLeave={() => { handleEnd(); setIsPaused(false); }}
+            onMouseLeave={(e) => { handleEnd(); setIsPaused(false); }}
             onMouseEnter={() => setIsPaused(true)}
             onTouchStart={(e) => handleStart(e.targetTouches[0].clientX)}
             onTouchMove={(e) => handleMove(e.targetTouches[0].clientX)}
@@ -157,132 +225,149 @@ const Hero: React.FC<HeroProps> = ({
         >
             {contents.map((content, index) => {
                 const isActive = index === activeIndex;
-                const posX = content.mobileCropPositionX ?? 50;
+                const posX = content.mobileCropPositionX ?? content.mobileCropPosition ?? 50;
                 const posY = content.mobileCropPositionY ?? 50;
-                
-                // Optimized YouTube URL: 
-                // rel=0 (related videos only from same channel)
-                // loop=1 + playlist=ID (native loop)
-                // iv_load_policy=3 (no annotations)
-                // controls=0 (no UI)
+                const imgStyle: React.CSSProperties = { '--mob-x': `${posX}%`, '--mob-y': `${posY}%` } as React.CSSProperties;
+                const cropClass = (content.enableMobileCrop && !content.mobileBackdropUrl) ? 'mobile-custom-crop' : '';
+
                 let embedUrl = '';
-                const vId = getVideoId(content.trailerUrl);
-                if (isActive && vId) {
-                    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                    embedUrl = `https://www.youtube.com/embed/${vId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=1&playlist=${vId}&playsinline=1&enablejsapi=1&iv_load_policy=3&disablekb=1&origin=${origin}`;
+                if (isActive && content.trailerUrl) {
+                    const videoId = getVideoId(content.trailerUrl);
+                    if (videoId) {
+                        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${origin}`;
+                    }
                 }
+                const shouldShowVideo = isActive && showVideo && embedUrl && !isMobile;
 
                 let offset = (index - unboundedIndex) % len;
                 if (offset < 0) offset += len; 
                 if (offset > len / 2) offset -= len;
-                
+                const baseTranslate = offset * 100;
+                const transitionStyle = isDragging ? 'none' : 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
+                const textOpacityClass = isDirectJump ? (isActive ? 'opacity-100' : 'opacity-0') : 'opacity-100';
+
                 return (
                     <div 
                         key={`${content.id}-${index}`} 
-                        className="absolute inset-0 w-full h-full will-change-transform"
+                        className="absolute top-0 left-0 w-full h-full will-change-transform"
                         style={{ 
-                            transform: `translateX(calc(${offset * 100}% + ${dragOffset}px))`,
-                            transition: isDragging ? 'none' : 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                            transform: `translateX(calc(${baseTranslate}% + ${dragOffset}px))`,
+                            transition: transitionStyle,
                             zIndex: isActive ? 20 : 10 
                         }}
                     >
-                        <div className="absolute inset-0">
-                            {isActive && showVideo && embedUrl && !isMobile && (
-                                <div className="absolute inset-0 overflow-hidden z-0 animate-fade-in"> 
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[105%] h-[105%] aspect-video pointer-events-none">
+                        <div className="absolute inset-0 w-full h-full">
+                            {shouldShowVideo && (
+                                <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in-up pointer-events-none"> 
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
                                         <iframe 
                                             ref={activeIframeRef}
                                             src={embedUrl} 
-                                            className="w-full h-full" 
-                                            allow="autoplay; encrypted-media" 
+                                            className="w-full h-full pointer-events-none" 
+                                            allow="autoplay; encrypted-media; picture-in-picture" 
+                                            title={`Trailer for ${content.title}`}
                                             frameBorder="0"
-                                        />
+                                        ></iframe>
                                     </div>
                                 </div>
                             )}
 
-                            <picture className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${isActive && showVideo && !isMobile ? 'opacity-0' : 'opacity-100'}`}>
+                            <picture className={`absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-1000 ${shouldShowVideo ? 'opacity-0' : 'opacity-100'}`}>
                                 {content.mobileBackdropUrl && <source media="(max-width: 767px)" srcSet={content.mobileBackdropUrl} />}
                                 <img 
                                     src={content.backdrop} 
                                     alt={content.title} 
-                                    className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none"
-                                    style={{ objectPosition: content.enableMobileCrop ? `${posX}% ${posY}%` : 'center' }}
+                                    className={`absolute inset-0 w-full h-full object-cover z-10 pointer-events-none ${cropClass}`}
+                                    style={imgStyle}
+                                    draggable={false}
                                     loading={isActive ? "eager" : "lazy"}
                                 />
                             </picture>
 
-                            <div className="absolute inset-0 z-20 bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/60 via-40% to-transparent" />
-                            <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-body)]/90 via-transparent to-transparent z-20 hidden md:block" />
+                            <div className={`absolute inset-0 z-20 pointer-events-none ${isRamadanTheme ? "bg-gradient-to-t from-black via-black/80 via-25% to-transparent" : "bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/60 via-40% to-transparent"}`}></div>
+                            <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-body)]/90 via-[var(--bg-body)]/40 via-50% to-transparent z-20 hidden md:block pointer-events-none"></div>
                         </div>
 
-                        <div className={`absolute inset-0 z-30 flex flex-col justify-end px-4 md:px-12 pb-4 md:pb-32 text-white transition-opacity duration-500 ${isActive ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                            <div className="max-w-3xl w-full flex flex-col items-center md:items-start text-center md:text-right">
+                        <div className={`absolute inset-0 z-30 flex flex-col justify-end px-4 md:px-12 pb-4 md:pb-32 text-white pointer-events-none transition-opacity duration-500 ease-in-out ${textOpacityClass}`}>
+                            <div className="max-w-3xl w-full flex flex-col items-center md:items-start text-center md:text-right pointer-events-auto">
                                 {content.bannerNote && (
-                                    <div className={`mb-2 text-sm font-bold px-3 py-1 rounded-lg backdrop-blur-md border border-white/10 animate-fade-in-up ${isNetflixRedTheme ? 'bg-[#E50914]/20' : 'bg-white/10 text-[var(--color-accent)]'}`}>
+                                    <div className={`mb-1 md:mb-2 text-sm font-medium shadow-sm w-fit animate-fade-in-up ${isRamadanTheme ? 'bg-[#D4AF37]/10 text-white border border-[#D4AF37]/10 px-3 py-1 rounded-lg backdrop-blur-md' : isEidTheme ? 'bg-purple-600/10 text-white border border-purple-500/10 px-3 py-1 rounded-lg backdrop-blur-md' : isCosmicTealTheme ? 'bg-[#35F18B]/10 text-white border border-[#35F18B]/10 px-3 py-1 rounded-lg backdrop-blur-md' : isNetflixRedTheme ? 'bg-[#E50914]/20 text-white border border-[#E50914]/20 px-3 py-1 rounded-lg backdrop-blur-md' : 'bg-[rgba(15,35,55,0.5)] text-[#00D2FF] border border-[rgba(0,210,255,0.3)] rounded-[6px] px-[12px] py-[4px] backdrop-blur-[4px]'}`}>
                                         {content.bannerNote}
                                     </div>
                                 )}
-                                
-                                <div className={`transition-all duration-700 transform ${showVideo && isActive ? 'translate-y-4 scale-90 mb-2' : 'translate-y-0 scale-100 mb-4 md:mb-6'}`}>
+                                <div className={`transition-all duration-700 ease-in-out transform origin-center md:origin-right ${shouldShowVideo ? 'translate-y-4 scale-75 mb-1 md:mb-2' : 'translate-y-0 scale-100 mb-2 md:mb-6'}`}>
                                     {content.isLogoEnabled && content.logoUrl ? (
-                                        <img src={content.logoUrl} alt={content.title} className="w-auto h-auto max-w-[200px] md:max-w-[400px] max-h-[180px] md:max-h-[250px] object-contain drop-shadow-2xl" />
+                                        <img src={content.logoUrl} alt={content.title} className="w-auto h-auto max-w-[190px] md:max-w-[380px] max-h-[165px] md:max-h-[245px] object-contain drop-shadow-2xl mx-auto md:mx-0" draggable={false} />
                                     ) : (
-                                        <h1 className="text-3xl sm:text-5xl md:text-6xl font-black drop-shadow-lg leading-tight">{content.title}</h1>
+                                        <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white drop-shadow-lg leading-tight">{content.title}</h1>
                                     )}
                                 </div>
 
-                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-3 text-xs md:text-base font-bold text-gray-200">
-                                    <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-                                        <StarIcon className="w-4 h-4" />
-                                        <span className="text-white">{content.rating.toFixed(1)}</span>
+                                <div className={`flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-xs md:text-base font-medium text-gray-200 transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'mb-1 md:mb-2 opacity-80' : 'mb-1 md:mb-3 opacity-100'}`}>
+                                    <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/10">
+                                        <StarIcon className="w-3 h-3 md:w-4 md:h-4" />
+                                        <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
                                     </div>
-                                    <span className="opacity-40">|</span>
-                                    <span>{content.releaseYear}</span>
+                                    
+                                    <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                    
+                                    <span className="text-white font-semibold">{content.releaseYear}</span>
+                                    
                                     {content.type === 'movie' && content.duration && (
                                         <>
-                                            <span className="opacity-40">|</span>
-                                            <div className="flex items-center gap-1 px-2 py-0.5 border border-white/20 rounded text-[10px] md:text-xs bg-white/5">
-                                                <ClockIcon className="w-3.5 h-3.5" />
+                                            <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                            <div className="flex items-center gap-1 px-2 py-0.5 border border-gray-500 rounded text-gray-300 text-[10px] md:text-xs backdrop-blur-sm bg-white/5">
+                                                <ClockIcon className="w-3 h-3 md:w-4 md:h-4" />
                                                 <span dir="ltr">{content.duration}</span>
                                             </div>
                                         </>
                                     )}
+
+                                    {content.genres && content.genres.length > 0 && (
+                                        <>
+                                            <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                            <div className="flex items-center gap-2">
+                                                {content.genres.slice(0, 3).map((genre, index) => (
+                                                    <React.Fragment key={index}>
+                                                        <span className={`font-medium ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]'}`}>
+                                                            {genre}
+                                                        </span>
+                                                        {index < Math.min(content.genres.length, 3) - 1 && <span className="text-gray-500 text-[10px] md:text-xs">|</span>}
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+
                                     {content.ageRating && (
                                         <>
-                                            <span className="opacity-40">|</span>
-                                            <span className="border border-white/20 px-2 py-0.5 rounded text-[10px] md:text-xs font-black">{content.ageRating}</span>
+                                            <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                            <span className="border border-gray-500 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded text-[10px] md:text-xs backdrop-blur-sm bg-white/5 font-bold">{content.ageRating}</span>
                                         </>
                                     )}
                                 </div>
 
                                 {!hideDescription && (
-                                    <p className={`text-gray-300 text-sm md:text-lg line-clamp-2 md:line-clamp-3 leading-relaxed mb-6 max-w-xl transition-opacity duration-700 ${showVideo && isActive ? 'opacity-0' : 'opacity-100'}`}>
-                                        {content.description}
-                                    </p>
+                                    <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-3 md:mb-4'}`}>
+                                        <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-2 md:line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-xl font-medium">{content.description}</p>
+                                    </div>
                                 )}
-
-                                <div className="flex items-center gap-4 w-full justify-center md:justify-start">
-                                    <ActionButtons 
-                                        onWatch={() => onWatchNow(content)} 
-                                        onToggleMyList={() => onToggleMyList(content.id)} 
-                                        isInMyList={!!myList?.includes(content.id)} 
-                                        isRamadanTheme={isRamadanTheme} 
-                                        isEidTheme={isEidTheme} 
-                                        isCosmicTealTheme={isCosmicTealTheme} 
-                                        isNetflixRedTheme={isNetflixRedTheme} 
-                                        showMyList={isLoggedIn} 
-                                        content={content} 
-                                    />
-                                    {isActive && showVideo && !isMobile && (
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }} 
-                                            className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all group active:scale-90"
-                                        >
-                                            <SpeakerIcon isMuted={isMuted} className="w-7 h-7 text-white" />
+                                <div className="flex items-center gap-4 w-full justify-center md:justify-start relative z-40 mt-1 md:mt-2">
+                                    <ActionButtons onWatch={() => onWatchNow(content)} onToggleMyList={() => onToggleMyList(content.id)} isInMyList={!!myList?.includes(content.id)} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} showMyList={isLoggedIn} content={content} />
+                                    {shouldShowVideo && (
+                                        <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsMuted(!isMuted); }} className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group scale-[1.15] origin-center" title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}>
+                                            <SpeakerIcon isMuted={isMuted} className="w-7 h-7 text-white group-hover:scale-110 transition-transform" />
                                         </button>
                                     )}
                                 </div>
+                                {hasMultiple && (
+                                    <div className="flex gap-1.5 pointer-events-none justify-center w-full mt-4 md:hidden" dir="rtl">
+                                        {contents.map((_, idx) => (
+                                            <button key={idx} className={`h-1.5 transition-all duration-300 pointer-events-auto cursor-pointer rounded-full ${activeIndex === idx ? (isRamadanTheme ? 'bg-amber-500 w-6' : isEidTheme ? 'bg-purple-500 w-6' : isCosmicTealTheme ? 'bg-[#35F18B] w-6 shadow-[0_0_10px_#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914] w-6 shadow-[0_0_10px_rgba(229,9,20,0.5)]' : 'bg-[#00A7F8] w-6') : 'bg-white/30 hover:bg-white/60 w-2'}`} onClick={(e) => { e.stopPropagation(); handleManualSlide(idx); }} />
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -290,14 +375,21 @@ const Hero: React.FC<HeroProps> = ({
             })}
 
             {hasMultiple && (
-                <div className="absolute bottom-6 left-0 right-0 z-40 flex justify-center gap-2 md:hidden">
-                    {contents.map((_, idx) => (
-                        <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${activeIndex === idx ? 'bg-[var(--color-accent)] w-6' : 'bg-white/30 w-1.5'}`} />
-                    ))}
+                <div className="hidden md:flex absolute bottom-0 left-0 right-0 w-full z-40 justify-center items-end gap-10 animate-fade-in-up px-4 pb-0 pointer-events-none">
+                    {contents.map((c, idx) => {
+                        const isActiveItem = idx === activeIndex;
+                        const indicatorColor = isRamadanTheme ? 'bg-[#FFD700]' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]';
+                        return (
+                            <button key={`thumb-${c.id}`} onClick={(e) => { e.stopPropagation(); handleManualSlide(idx); }} className={`relative transition-all duration-500 ease-out group flex flex-col items-center gap-2 pb-2 pointer-events-auto ${isActiveItem ? `opacity-100 scale-110 filter-none` : 'opacity-50 grayscale hover:opacity-100 hover:grayscale-0 hover:scale-105'}`}>
+                                {c.logoUrl ? <img src={c.logoUrl} alt={c.title} className="h-20 w-auto object-contain max-w-[140px] drop-shadow-lg" loading="lazy" /> : <span className="text-sm font-bold text-white max-w-[100px] truncate block bg-black/50 px-3 py-1 rounded">{c.title}</span>}
+                                <div className={`h-[3px] rounded-full transition-all duration-300 mt-1 ${isActiveItem ? `w-12 opacity-100 ${indicatorColor} shadow-[0_0_8px_rgba(255,255,255,0.3)]` : 'w-0 opacity-0 bg-transparent'}`}></div>
+                            </button>
+                        );
+                    })}
                 </div>
             )}
         </div>
-    );
+      );
 };
 
 export default Hero;
