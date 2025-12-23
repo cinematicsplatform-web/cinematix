@@ -45,9 +45,10 @@ const Hero: React.FC<HeroProps> = ({
     const containerRef = useRef<HTMLDivElement>(null);
     const activeIframeRef = useRef<HTMLIFrameElement>(null);
     
-    // Refs for precise timing control
+    // Refs للتحكم في التوقيت بدقة
     const hasTransitionedRef = useRef<boolean>(false);
     const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const videoDurationRef = useRef<number | null>(null);
 
     const [isMobile, setIsMobile] = useState(false);
 
@@ -68,48 +69,54 @@ const Hero: React.FC<HeroProps> = ({
         setUnboundedIndex(prev => prev + 1);
     }, []);
 
-    // --- LOGIC: Smart Transition 5 Seconds Before End ---
+    // --- المنطق الصارم: الانتقال بناءً على مدة الفيديو ---
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             try {
                 if (typeof event.data === 'string') {
                     const data = JSON.parse(event.data);
                     
-                    // Logic 1: Constant synchronization based on playback time
-                    if (data.info && typeof data.info.currentTime === 'number' && typeof data.info.duration === 'number') {
-                        const { currentTime, duration } = data.info;
-                        const remainingTime = duration - currentTime;
-
-                        // If already within the last 5 seconds, jump immediately
-                        if (duration > 10 && remainingTime <= 5) {
-                            if (!hasTransitionedRef.current) {
-                                hasTransitionedRef.current = true;
+                    // 1. التقاط مدة الفيديو عند البداية وضبط "المنبه" فوراً
+                    if (data.info && typeof data.info.duration === 'number' && data.info.duration > 0) {
+                        const duration = data.info.duration;
+                        
+                        // إذا كانت هذه أول مرة نعرف فيها مدة هذا الفيديو
+                        if (videoDurationRef.current !== duration) {
+                            videoDurationRef.current = duration;
+                            
+                            // نحسب متى يجب أن نقلب (المدة - 5.5 ثانية)
+                            // زودنا نص ثانية أمان عشان نضمن إننا قبل الـ 5 ثواني
+                            const safeMargin = 5.5; 
+                            
+                            if (duration > 10 && !hasTransitionedRef.current) {
+                                // تنظيف أي مؤقت قديم
                                 if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
-                                handleNext();
-                            }
-                        } 
-                        // Otherwise, schedule a timer for exactly when the 5s mark will hit
-                        else if (duration > 10 && !hasTransitionedRef.current) {
-                            // Clear any old estimated timer
-                            if (transitionTimeoutRef.current) {
-                                clearTimeout(transitionTimeoutRef.current);
-                            }
-                            
-                            // Set a new precise timer: (Remaining Time - 5 seconds) * 1000ms
-                            const timeUntilTrigger = (remainingTime - 5) * 1000;
-                            
-                            if (timeUntilTrigger > 0) {
+
+                                // ضبط مؤقت جديد بناءً على المدة الكلية
+                                // لاحظ: هذا المؤقت يعتمد على وقت النظام، لذا سيعمل حتى لو الفيديو قطع شوية
+                                const timeToTrigger = (duration - safeMargin) * 1000;
+                                
                                 transitionTimeoutRef.current = setTimeout(() => {
                                     if (!hasTransitionedRef.current) {
                                         hasTransitionedRef.current = true;
                                         handleNext();
                                     }
-                                }, timeUntilTrigger);
+                                }, timeToTrigger);
                             }
                         }
                     }
 
-                    // Logic 2: Fallback for 'ENDED' state (in case of lag/bugs)
+                    // 2. فحص احتياطي (Live Check) في حال وصل تحديث والوقت المتبقي قليل جداً
+                    if (data.info && typeof data.info.currentTime === 'number' && data.info.duration) {
+                         const remaining = data.info.duration - data.info.currentTime;
+                         if (remaining <= 5.5 && !hasTransitionedRef.current && data.info.duration > 10) {
+                             hasTransitionedRef.current = true;
+                             if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+                             handleNext();
+                         }
+                    }
+
+                    // 3. شبكة الأمان الأخيرة: لو الفيديو خلص (State = 0)
                     if ((data.event === 'infoDelivery' && data.info && data.info.playerState === 0) ||
                         (data.event === 'onStateChange' && data.info === 0)) {
                         if (!hasTransitionedRef.current) {
@@ -125,15 +132,16 @@ const Hero: React.FC<HeroProps> = ({
         return () => window.removeEventListener('message', handleMessage);
     }, [handleNext]);
 
+    // إعادة تعيين المتغيرات عند تغيير السلايد
     useEffect(() => {
-        // Reset States for new Slide
         setShowVideo(false);
         setIsMuted(true);
         setIsPaused(false);
         setIsDirectJump(false);
         
-        // Reset transition flags
+        // تصفير كل العدادات والمؤشرات للفيديو الجديد
         hasTransitionedRef.current = false;
+        videoDurationRef.current = null;
         if (transitionTimeoutRef.current) {
             clearTimeout(transitionTimeoutRef.current);
             transitionTimeoutRef.current = null;
