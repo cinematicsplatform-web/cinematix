@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Content } from '@/types';
 import ActionButtons from './ActionButtons';
@@ -45,7 +44,10 @@ const Hero: React.FC<HeroProps> = ({
     
     const containerRef = useRef<HTMLDivElement>(null);
     const activeIframeRef = useRef<HTMLIFrameElement>(null);
+    
+    // Ref to ensure we only trigger the "next slide" action once per video
     const hasTransitionedRef = useRef<boolean>(false);
+
     const [isMobile, setIsMobile] = useState(false);
 
     const len = contents.length;
@@ -75,7 +77,9 @@ const Hero: React.FC<HeroProps> = ({
                     // Check for video time information to trigger transition 5 seconds before end
                     if (data.info && typeof data.info.currentTime === 'number' && typeof data.info.duration === 'number') {
                         const { currentTime, duration } = data.info;
+                        
                         // Trigger only if duration is meaningful and we haven't transitioned yet for this slide
+                        // (duration > 6 check prevents skipping immediately on very short clips/bugs)
                         if (duration > 6 && (duration - currentTime) <= 5) {
                             if (!hasTransitionedRef.current) {
                                 hasTransitionedRef.current = true;
@@ -287,6 +291,7 @@ const Hero: React.FC<HeroProps> = ({
                                     </div>
                                     
                                     <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                    
                                     <span className="text-white font-semibold">{content.releaseYear}</span>
                                     
                                     {content.type === 'movie' && content.duration && (
@@ -296,13 +301,6 @@ const Hero: React.FC<HeroProps> = ({
                                                 <ClockIcon className="w-3 h-3 md:w-4 md:h-4" />
                                                 <span dir="ltr">{content.duration}</span>
                                             </div>
-                                        </>
-                                    )}
-
-                                    {content.ageRating && (
-                                        <>
-                                            <span className="text-gray-500 text-sm md:text-lg">|</span>
-                                            <span className="border border-gray-500 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded text-[10px] md:text-xs backdrop-blur-sm bg-white/5 font-bold">{content.ageRating}</span>
                                         </>
                                     )}
 
@@ -319,6 +317,13 @@ const Hero: React.FC<HeroProps> = ({
                                                     </React.Fragment>
                                                 ))}
                                             </div>
+                                        </>
+                                    )}
+
+                                    {content.ageRating && (
+                                        <>
+                                            <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                            <span className="border border-gray-500 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded text-[10px] md:text-xs backdrop-blur-sm bg-white/5 font-bold">{content.ageRating}</span>
                                         </>
                                     )}
                                 </div>
