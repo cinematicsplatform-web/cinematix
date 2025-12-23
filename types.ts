@@ -179,6 +179,7 @@ export interface User {
   role: UserRole;
   profiles: Profile[];
   fcmTokens?: string[]; 
+  setupCompleted?: boolean;
 }
 
 export const adPlacements = [

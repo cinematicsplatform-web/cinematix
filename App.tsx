@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 // FIX: Switched to Firebase v8 compatible namespaced imports.
 import firebase from 'firebase/compat/app';
@@ -361,13 +362,29 @@ const App: React.FC = () => {
                   requestNotificationPermission(firebaseUser.uid);
                   const profile = await getUserProfile(firebaseUser.uid);
                   if (profile) {
-                      const user: User = { id: firebaseUser.uid, email: firebaseUser.email || '', role: profile.role || UserRole.User, profiles: profile.profiles || [], firstName: profile.firstName, lastName: profile.lastName };
+                      const user: User = { 
+                          id: firebaseUser.uid, 
+                          email: firebaseUser.email || '', 
+                          role: profile.role || UserRole.User, 
+                          profiles: profile.profiles || [], 
+                          firstName: profile.firstName, 
+                          lastName: profile.lastName,
+                          setupCompleted: profile.setupCompleted || false
+                      };
                       setCurrentUser(user);
-                      const savedProfileId = localStorage.getItem('cinematix_active_profile');
-                      if (savedProfileId) {
-                          const savedProfile = user.profiles.find(p => p.id === Number(savedProfileId));
-                          if (savedProfile) setActiveProfile(savedProfile);
+
+                      // NEW LOGIC: If setup not completed, redirect to onboarding automatically
+                      if (user.setupCompleted === false && user.profiles.length > 0) {
+                          setActiveProfile(user.profiles[0]);
+                          handleSetView('onboarding');
+                      } else {
+                        const savedProfileId = localStorage.getItem('cinematix_active_profile');
+                        if (savedProfileId) {
+                            const savedProfile = user.profiles.find(p => p.id === Number(savedProfileId));
+                            if (savedProfile) setActiveProfile(savedProfile);
+                        }
                       }
+                      
                       if (user.role === UserRole.Admin) {
                            const usersList = await getUsers();
                            setAllUsers(usersList);
@@ -470,16 +487,22 @@ const App: React.FC = () => {
                  firstName: newUser.firstName, 
                  lastName: newUser.lastName, 
                  email: newUser.email, 
-                 profiles: [defaultProfile] 
+                 profiles: [defaultProfile],
+                 setupCompleted: false // NEW FLAG
                });
 
                addToast('تم إنشاء الحساب بنجاح!', 'success');
-               // NEW FLOW: Redirect directly to onboarding after registration
-               // Skip ProfileSelector entirely for first-time account setup
                setActiveProfile(defaultProfile);
                handleSetView('onboarding');
           }
-      } catch (error: any) { addToast(error.message, 'error'); }
+      } catch (error: any) {
+          if (error.code === 'auth/email-already-in-use') {
+            alert("هذا البريد الإلكتروني مسجل بالفعل، حاول تسجيل الدخول بدلاً من ذلك.");
+          } else {
+            console.error(error);
+            alert("حدث خطأ غير متوقع: " + error.message);
+          }
+      }
   };
 
   const handleLogout = async () => { localStorage.removeItem('cinematix_active_profile'); await auth.signOut(); setCurrentUser(null); setActiveProfile(null); handleSetView('home'); addToast('تم تسجيل الخروج.', 'info'); };
@@ -489,8 +512,15 @@ const App: React.FC = () => {
       if (currentUser && activeProfile) {
           const updatedProfile = { ...activeProfile, ...profileData };
           const updatedProfiles = currentUser.profiles.map(p => p.id === activeProfile.id ? updatedProfile : p);
-          await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles });
+          
+          // Update setup flag to true so next login goes to ProfileSelector
+          await updateUserProfileInFirestore(currentUser.id, { 
+            profiles: updatedProfiles,
+            setupCompleted: true 
+          });
+          
           setActiveProfile(updatedProfile);
+          setCurrentUser(prev => prev ? { ...prev, setupCompleted: true, profiles: updatedProfiles } : null);
           addToast('تم إعداد حسابك بنجاح!', 'success');
           handleSetView('home');
       }
@@ -559,9 +589,8 @@ const App: React.FC = () => {
           return <MaintenancePage socialLinks={siteSettings.socialLinks} onSetView={handleSetView} />;
       }
       
-      // EXISTING USERS LOGIC: If logged in but no profile selected, show selector
-      // EXCEPTION: If the user is currently in the 'onboarding' view (new user), don't force them back to selector
-      if (!isAuthLoading && currentUser && !activeProfile && view !== 'profileSelector' && view !== 'accountSettings' && view !== 'admin' && view !== 'onboarding') {
+      // LOGIC: If setup is completed BUT no profile selected, show selector
+      if (!isAuthLoading && currentUser && currentUser.setupCompleted && !activeProfile && view !== 'profileSelector' && view !== 'accountSettings' && view !== 'admin' && view !== 'onboarding') {
           return <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} />;
       }
 
