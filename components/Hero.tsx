@@ -25,7 +25,7 @@ const Hero: React.FC<HeroProps> = ({
     isLoggedIn, 
     myList, 
     onToggleMyList, 
-    autoSlideInterval = 3000, // Updated default to 3s for images
+    autoSlideInterval = 3000, 
     isRamadanTheme,
     isEidTheme,
     isCosmicTealTheme,
@@ -44,6 +44,7 @@ const Hero: React.FC<HeroProps> = ({
     
     const containerRef = useRef<HTMLDivElement>(null);
     const activeIframeRef = useRef<HTMLIFrameElement>(null);
+    const hasTransitionedRef = useRef<boolean>(false);
     const [isMobile, setIsMobile] = useState(false);
 
     const len = contents.length;
@@ -58,22 +59,37 @@ const Hero: React.FC<HeroProps> = ({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Function to move to next slide
     const handleNext = useCallback(() => {
         setIsDirectJump(false);
         setUnboundedIndex(prev => prev + 1);
     }, []);
 
-    // Listen for YouTube events to detect when video ends
+    // Listen for YouTube events to detect when video is close to ending (3 seconds before)
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             try {
                 if (typeof event.data === 'string') {
                     const data = JSON.parse(event.data);
-                    // YouTube Player State 0 means "ENDED"
+                    
+                    // Check for video time information to trigger transition 3 seconds before end
+                    if (data.info && typeof data.info.currentTime === 'number' && typeof data.info.duration === 'number') {
+                        const { currentTime, duration } = data.info;
+                        // Trigger only if duration is meaningful and we haven't transitioned yet for this slide
+                        if (duration > 5 && (duration - currentTime) <= 3) {
+                            if (!hasTransitionedRef.current) {
+                                hasTransitionedRef.current = true;
+                                handleNext();
+                            }
+                        }
+                    }
+
+                    // YouTube Player State 0 means "ENDED" - fallback if time check was missed
                     if ((data.event === 'infoDelivery' && data.info && data.info.playerState === 0) ||
                         (data.event === 'onStateChange' && data.info === 0)) {
-                        handleNext();
+                        if (!hasTransitionedRef.current) {
+                            hasTransitionedRef.current = true;
+                            handleNext();
+                        }
                     }
                 }
             } catch (e) { }
@@ -87,10 +103,10 @@ const Hero: React.FC<HeroProps> = ({
         setIsMuted(true);
         setIsPaused(false);
         setIsDirectJump(false);
+        hasTransitionedRef.current = false; // Reset transition flag for the new content
 
         if (!activeContent || !activeContent.trailerUrl || isMobile) return;
 
-        // Start video after 1.5s to show poster briefly, but before the 3s rotation
         const trailerTimer = setTimeout(() => {
             setShowVideo(true);
         }, 1500);
@@ -111,7 +127,6 @@ const Hero: React.FC<HeroProps> = ({
         }
     }, [isMuted, showVideo]);
 
-    // Auto Slider Logic (Images rotate every 3s, Videos pause the timer)
     useEffect(() => {
         if (!hasMultiple || isDragging || isPaused || showVideo) return;
 
@@ -265,18 +280,14 @@ const Hero: React.FC<HeroProps> = ({
                                 </div>
 
                                 <div className={`flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-xs md:text-base font-medium text-gray-200 transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'mb-1 md:mb-2 opacity-80' : 'mb-1 md:mb-3 opacity-100'}`}>
-                                    {/* التقييم */}
                                     <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/10">
                                         <StarIcon className="w-3 h-3 md:w-4 md:h-4" />
                                         <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
                                     </div>
                                     
                                     <span className="text-gray-500 text-sm md:text-lg">|</span>
-                                    
-                                    {/* السنة */}
                                     <span className="text-white font-semibold">{content.releaseYear}</span>
                                     
-                                    {/* المدة */}
                                     {content.type === 'movie' && content.duration && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
@@ -287,7 +298,6 @@ const Hero: React.FC<HeroProps> = ({
                                         </>
                                     )}
 
-                                    {/* التصنيف العمري */}
                                     {content.ageRating && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
@@ -295,7 +305,6 @@ const Hero: React.FC<HeroProps> = ({
                                         </>
                                     )}
 
-                                    {/* التصنيف النوعي الملون - أصبح الأخير بناءً على طلبك */}
                                     {content.genres && content.genres.length > 0 && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
