@@ -58,25 +58,26 @@ const Hero: React.FC<HeroProps> = ({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // دالة الانتقال للعنصر التالي
     const handleNext = useCallback(() => {
         setIsDirectJump(false);
         setUnboundedIndex(prev => prev + 1);
     }, []);
 
-    // الاستماع لرسائل يوتيوب (للانتقال عند انتهاء الفيديو)
+    // تم حذف دالة restartVideo ومؤقت الـ 60 ثانية من هنا
+
+    // الاستماع لأحداث يوتيوب لاكتشاف انتهاء الفيديو
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             try {
                 if (typeof event.data === 'string') {
                     const data = JSON.parse(event.data);
                     
-                    // الرقم 0 في يوتيوب يعني ENDED (انتهى الفيديو)
+                    // الحالة 0 تعني أن الفيديو انتهى (Ended)
                     const isEnded = (data.event === 'infoDelivery' && data.info && data.info.playerState === 0) ||
                                     (data.event === 'onStateChange' && (data.info === 0 || data.data === 0));
 
                     if (isEnded) {
-                        // التعديل هنا: بمجرد انتهاء الفيديو، اقلب للصفحة التالية فوراً
+                        // بمجرد انتهاء الفيديو، انتقل للعنصر التالي
                         handleNext();
                     }
                 }
@@ -86,7 +87,6 @@ const Hero: React.FC<HeroProps> = ({
         return () => window.removeEventListener('message', handleMessage);
     }, [handleNext]);
 
-    // إعادة ضبط الحالة عند تغير المحتوى
     useEffect(() => {
         setShowVideo(false);
         setIsMuted(true);
@@ -95,7 +95,6 @@ const Hero: React.FC<HeroProps> = ({
 
         if (!activeContent || !activeContent.trailerUrl || isMobile) return;
 
-        // تشغيل الفيديو بعد ثانية ونصف من ظهور الصورة
         const trailerTimer = setTimeout(() => {
             setShowVideo(true);
         }, 1500);
@@ -103,7 +102,6 @@ const Hero: React.FC<HeroProps> = ({
         return () => clearTimeout(trailerTimer);
     }, [activeContent?.id, isMobile]);
 
-    // التحكم في الصوت عند بدء الفيديو
     useEffect(() => {
         if (showVideo && activeIframeRef.current) {
             const command = isMuted ? 'mute' : 'unMute';
@@ -117,8 +115,8 @@ const Hero: React.FC<HeroProps> = ({
         }
     }, [isMuted, showVideo]);
 
-    // السلايدر التلقائي (يعمل فقط إذا لم يكن الفيديو قيد التشغيل)
     useEffect(() => {
+        // السلايدر التلقائي يعمل فقط إذا لم يكن الفيديو قيد التشغيل
         if (!hasMultiple || isDragging || isPaused || showVideo) return;
 
         const timer = setTimeout(() => {
@@ -201,8 +199,8 @@ const Hero: React.FC<HeroProps> = ({
                     const videoId = getVideoId(content.trailerUrl);
                     if (videoId) {
                         const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                        // تم إزالة loop=1 و playlist لضمان انتهاء الفيديو وإرسال الحدث
-                        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${origin}`;
+                        // تم إزالة loop=1 و playlist لضمان توقف الفيديو عند النهاية وإطلاق الحدث
+                        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=${origin}`;
                     }
                 }
                 const shouldShowVideo = isActive && showVideo && embedUrl && !isMobile;
@@ -276,11 +274,14 @@ const Hero: React.FC<HeroProps> = ({
                                         <StarIcon className="w-3 h-3 md:w-4 md:h-4" />
                                         <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
                                     </div>
-                                    
                                     <span className="text-gray-500 text-sm md:text-lg">|</span>
-                                    
-                                    <span className="text-white font-semibold">{content.releaseYear}</span>
-                                    
+                                    <span>{content.releaseYear}</span>
+                                    {content.ageRating && (
+                                        <>
+                                            <span className="text-gray-500 text-sm md:text-lg">|</span>
+                                            <span className="border border-gray-500 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded text-[10px] md:text-xs backdrop-blur-sm bg-white/5">{content.ageRating}</span>
+                                        </>
+                                    )}
                                     {content.type === 'movie' && content.duration && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
@@ -290,27 +291,19 @@ const Hero: React.FC<HeroProps> = ({
                                             </div>
                                         </>
                                     )}
-
                                     {content.genres && content.genres.length > 0 && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
                                             <div className="flex items-center gap-2">
                                                 {content.genres.slice(0, 3).map((genre, index) => (
                                                     <React.Fragment key={index}>
-                                                        <span className={`font-medium ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]'}`}>
+                                                        <span className={isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]'}>
                                                             {genre}
                                                         </span>
                                                         {index < Math.min(content.genres.length, 3) - 1 && <span className="text-gray-500 text-[10px] md:text-xs">|</span>}
                                                     </React.Fragment>
                                                 ))}
                                             </div>
-                                        </>
-                                    )}
-
-                                    {content.ageRating && (
-                                        <>
-                                            <span className="text-gray-500 text-sm md:text-lg">|</span>
-                                            <span className="border border-gray-500 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded text-[10px] md:text-xs backdrop-blur-sm bg-white/5 font-bold">{content.ageRating}</span>
                                         </>
                                     )}
                                 </div>
