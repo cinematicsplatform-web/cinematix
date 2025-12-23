@@ -184,7 +184,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
                     <div className="relative w-full h-full">
                         <img src="https://shahid.mbc.net/staticFiles/production/static/images/top10.svg" alt="Top 10" className="w-full h-auto" draggable={false}/>
                         <div className="absolute inset-x-0 top-0 h-[74%] flex items-center justify-center translate-y-[22%] pt-[2%]">
-                            <span className="text-white select-none" style={{ fontFamily: "'Roboto', sans-serif", fontWeight: 900, fontSize: 'clamp(22px, 4.6vw, 44px)', lineHeight: '1', letterSpacing: '-1px', textShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>{rank}</span>
+                            <span className="rank-font text-white select-none" style={{ fontSize: 'clamp(22px, 4.6vw, 44px)', lineHeight: '1', letterSpacing: '-1px', textShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>{rank}</span>
                         </div>
                     </div>
                 </div>

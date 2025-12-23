@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '@/types';
 import VideoPlayer from '@/components/VideoPlayer';
@@ -84,6 +85,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   // Refs
   const heroRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const forceStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const getEpisodeDescription = (description: string | undefined, epNumber: number, sNumber: number) => {
       if (description && description.trim().length > 0) return description;
@@ -182,6 +184,24 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return () => clearTimeout(timer);
   }, [content?.id, trailerVideoId, isMobile, selectedSeasonId]);
 
+  // منطق الإيقاف الإجباري بعد 60 ثانية
+  useEffect(() => {
+    if (showVideo) {
+        forceStopTimerRef.current = setTimeout(() => {
+            setShowVideo(false);
+            setVideoEnded(true);
+        }, 60000); // 60 ثانية
+    } else {
+        if (forceStopTimerRef.current) {
+            clearTimeout(forceStopTimerRef.current);
+            forceStopTimerRef.current = null;
+        }
+    }
+    return () => {
+        if (forceStopTimerRef.current) clearTimeout(forceStopTimerRef.current);
+    };
+  }, [showVideo]);
+
   useEffect(() => {
       const handleMessage = (event: MessageEvent) => {
           try {
@@ -270,7 +290,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     key={displayBackdrop} 
                     src={displayBackdrop} 
                     alt={content.title} 
-                    // الصورة تختفي عندما يبدأ الفيديو (showVideo === true)
                     className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}
                 />
             ) : (
@@ -401,8 +420,18 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 content={content}
                             />
 
-                            {/* تم إخفاء زر الصوت بناءً على الطلب */}
+                            {/* زر الصوت: يظهر فقط أثناء تشغيل الإعلان */}
+                            {showVideo && (
+                                <button 
+                                    onClick={toggleMute} 
+                                    className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group scale-[1.15] origin-center" 
+                                    title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
+                                >
+                                    <SpeakerIcon isMuted={isMuted} className="w-7 h-7 text-white group-hover:scale-110 transition-transform" />
+                                </button>
+                            )}
                             
+                            {/* زر التكبير: يظهر أثناء تشغيل الإعلان أو بعد انتهائه إذا كان متاحاً */}
                             {trailerVideoId && (showVideo || videoEnded) && (
                                 <button 
                                     onClick={() => { setActiveTab('trailer'); tabsRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
@@ -503,7 +532,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
               </div>
           )}
 
-          {activeTab === 'trailer' && trailerVideoId && !isSoon && (
+          {activeTab === 'trailer' && trailerVideoId && (
               <div className="px-4 md:px-8 py-8 animate-fade-in-up w-full">
                   <div className="max-w-5xl mx-auto w-full">
                       <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-2xl border border-gray-800 bg-black">
