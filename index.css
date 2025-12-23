@@ -1,3 +1,4 @@
+
 /* Global overrides */
 body, h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, select, textarea {
     font-family: 'Cairo', sans-serif !important;
@@ -35,23 +36,6 @@ html, body {
   height: 1rem;
   border-radius: 0.25rem;
   margin-bottom: 0.5rem;
-}
-
-/* --- BOUNCING DOTS ANIMATION --- */
-@keyframes bounce-up {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
-}
-@keyframes bounce-down {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(12px); }
-}
-
-.dot-bounce-up {
-  animation: bounce-up 1s ease-in-out infinite;
-}
-.dot-bounce-down {
-  animation: bounce-down 1s ease-in-out infinite;
 }
 
 /* --- THEME UTILITY CLASSES --- */
