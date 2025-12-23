@@ -25,7 +25,7 @@ const Hero: React.FC<HeroProps> = ({
     isLoggedIn, 
     myList, 
     onToggleMyList, 
-    autoSlideInterval = 3000, 
+    autoSlideInterval = 5000, 
     isRamadanTheme,
     isEidTheme,
     isCosmicTealTheme,
@@ -44,10 +44,6 @@ const Hero: React.FC<HeroProps> = ({
     
     const containerRef = useRef<HTMLDivElement>(null);
     const activeIframeRef = useRef<HTMLIFrameElement>(null);
-    
-    // متغير للتأكد من أن الانتقال يحدث مرة واحدة فقط عند النهاية
-    const hasTransitionedRef = useRef<boolean>(false);
-
     const [isMobile, setIsMobile] = useState(false);
 
     const len = contents.length;
@@ -62,27 +58,26 @@ const Hero: React.FC<HeroProps> = ({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
+    // دالة الانتقال للعنصر التالي
     const handleNext = useCallback(() => {
         setIsDirectJump(false);
         setUnboundedIndex(prev => prev + 1);
     }, []);
 
-    // --- المنطق الجديد: الانتقال عند انتهاء الفيديو تماماً ---
+    // الاستماع لرسائل يوتيوب (للانتقال عند انتهاء الفيديو)
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             try {
                 if (typeof event.data === 'string') {
                     const data = JSON.parse(event.data);
                     
-                    // الاستماع لحالة "الانتهاء" (ENDED) من يوتيوب وهي رقم 0
-                    if ((data.event === 'infoDelivery' && data.info && data.info.playerState === 0) ||
-                        (data.event === 'onStateChange' && data.info === 0)) {
-                        
-                        // بمجرد انتهاء الفيديو، ننقل للسلايد التالي
-                        if (!hasTransitionedRef.current) {
-                            hasTransitionedRef.current = true;
-                            handleNext();
-                        }
+                    // الرقم 0 في يوتيوب يعني ENDED (انتهى الفيديو)
+                    const isEnded = (data.event === 'infoDelivery' && data.info && data.info.playerState === 0) ||
+                                    (data.event === 'onStateChange' && (data.info === 0 || data.data === 0));
+
+                    if (isEnded) {
+                        // التعديل هنا: بمجرد انتهاء الفيديو، اقلب للصفحة التالية فوراً
+                        handleNext();
                     }
                 }
             } catch (e) { }
@@ -91,28 +86,24 @@ const Hero: React.FC<HeroProps> = ({
         return () => window.removeEventListener('message', handleMessage);
     }, [handleNext]);
 
+    // إعادة ضبط الحالة عند تغير المحتوى
     useEffect(() => {
-        // إعادة تعيين الحالة عند تغيير الشريحة
         setShowVideo(false);
         setIsMuted(true);
         setIsPaused(false);
         setIsDirectJump(false);
-        
-        // تصفير مؤشر الانتقال
-        hasTransitionedRef.current = false;
 
         if (!activeContent || !activeContent.trailerUrl || isMobile) return;
 
-        // تشغيل الفيديو بعد ثانية ونصف
+        // تشغيل الفيديو بعد ثانية ونصف من ظهور الصورة
         const trailerTimer = setTimeout(() => {
             setShowVideo(true);
         }, 1500);
 
-        return () => {
-            clearTimeout(trailerTimer);
-        };
+        return () => clearTimeout(trailerTimer);
     }, [activeContent?.id, isMobile]);
 
+    // التحكم في الصوت عند بدء الفيديو
     useEffect(() => {
         if (showVideo && activeIframeRef.current) {
             const command = isMuted ? 'mute' : 'unMute';
@@ -126,9 +117,8 @@ const Hero: React.FC<HeroProps> = ({
         }
     }, [isMuted, showVideo]);
 
-    // التحكم في السلايدر التلقائي (يتوقف إذا كان الفيديو يعمل)
+    // السلايدر التلقائي (يعمل فقط إذا لم يكن الفيديو قيد التشغيل)
     useEffect(() => {
-        // إذا كان الفيديو شغال (showVideo == true)، التايمر ده مش هيشتغل
         if (!hasMultiple || isDragging || isPaused || showVideo) return;
 
         const timer = setTimeout(() => {
@@ -211,6 +201,7 @@ const Hero: React.FC<HeroProps> = ({
                     const videoId = getVideoId(content.trailerUrl);
                     if (videoId) {
                         const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                        // تم إزالة loop=1 و playlist لضمان انتهاء الفيديو وإرسال الحدث
                         embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${origin}`;
                     }
                 }
@@ -220,7 +211,7 @@ const Hero: React.FC<HeroProps> = ({
                 if (offset < 0) offset += len; 
                 if (offset > len / 2) offset -= len;
                 const baseTranslate = offset * 100;
-                const transitionStyle = isDragging ? 'none' : 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
+                const transitionStyle = isDragging ? 'none' : 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
                 const textOpacityClass = isDirectJump ? (isActive ? 'opacity-100' : 'opacity-0') : 'opacity-100';
 
                 return (
@@ -235,10 +226,10 @@ const Hero: React.FC<HeroProps> = ({
                     >
                         <div className="absolute inset-0 w-full h-full">
                             {shouldShowVideo && (
-                                <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in-up pointer-events-none"> 
+                                <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in pointer-events-auto"> 
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
                                         <iframe 
-                                            ref={activeIframeRef}
+                                            ref={isActive ? activeIframeRef : null}
                                             src={embedUrl} 
                                             className="w-full h-full pointer-events-none" 
                                             allow="autoplay; encrypted-media; picture-in-picture" 
@@ -281,7 +272,6 @@ const Hero: React.FC<HeroProps> = ({
                                 </div>
 
                                 <div className={`flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-xs md:text-base font-medium text-gray-200 transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'mb-1 md:mb-2 opacity-80' : 'mb-1 md:mb-3 opacity-100'}`}>
-                                    {/* التقييم */}
                                     <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/10">
                                         <StarIcon className="w-3 h-3 md:w-4 md:h-4" />
                                         <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
@@ -289,10 +279,8 @@ const Hero: React.FC<HeroProps> = ({
                                     
                                     <span className="text-gray-500 text-sm md:text-lg">|</span>
                                     
-                                    {/* السنة */}
                                     <span className="text-white font-semibold">{content.releaseYear}</span>
                                     
-                                    {/* المدة */}
                                     {content.type === 'movie' && content.duration && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
@@ -303,7 +291,6 @@ const Hero: React.FC<HeroProps> = ({
                                         </>
                                     )}
 
-                                    {/* التصنيف النوعي الملون */}
                                     {content.genres && content.genres.length > 0 && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
@@ -320,7 +307,6 @@ const Hero: React.FC<HeroProps> = ({
                                         </>
                                     )}
 
-                                    {/* التصنيف العمري */}
                                     {content.ageRating && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
@@ -360,3 +346,17 @@ const Hero: React.FC<HeroProps> = ({
                     {contents.map((c, idx) => {
                         const isActiveItem = idx === activeIndex;
                         const indicatorColor = isRamadanTheme ? 'bg-[#FFD700]' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]';
+                        return (
+                            <button key={`thumb-${c.id}`} onClick={(e) => { e.stopPropagation(); handleManualSlide(idx); }} className={`relative transition-all duration-500 ease-out group flex flex-col items-center gap-2 pb-2 pointer-events-auto ${isActiveItem ? `opacity-100 scale-110 filter-none` : 'opacity-50 grayscale hover:opacity-100 hover:grayscale-0 hover:scale-105'}`}>
+                                {c.logoUrl ? <img src={c.logoUrl} alt={c.title} className="h-20 w-auto object-contain max-w-[140px] drop-shadow-lg" loading="lazy" /> : <span className="text-sm font-bold text-white max-w-[100px] truncate block bg-black/50 px-3 py-1 rounded">{c.title}</span>}
+                                <div className={`h-[3px] rounded-full transition-all duration-300 mt-1 ${isActiveItem ? `w-12 opacity-100 ${indicatorColor} shadow-[0_0_8px_rgba(255,255,255,0.3)]` : 'w-0 opacity-0 bg-transparent'}`}></div>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+      );
+};
+
+export default Hero;
