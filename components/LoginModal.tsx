@@ -1,17 +1,18 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { View, LoginError } from '@/types';
 import { CheckIcon } from './CheckIcon';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
 
 interface LoginModalProps {
-  onSetView: (view: View) => void;
+  onSetView: (view: View, category?: string, params?: any) => void;
   onLogin: (email: string, password: string) => Promise<LoginError>;
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
   authReturnView?: View;
+  initialEmail?: string;
 }
 
 // Eye Icons
@@ -35,14 +36,18 @@ const SpinnerIcon = () => (
   </svg>
 );
 
-const LoginModal: React.FC<LoginModalProps> = ({ onSetView, onLogin, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme, authReturnView }) => {
-    const [email, setEmail] = useState('');
+const LoginModal: React.FC<LoginModalProps> = ({ onSetView, onLogin, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme, authReturnView, initialEmail }) => {
+    const [email, setEmail] = useState(initialEmail || '');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<LoginError>('none');
     
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+
+    useEffect(() => {
+        if (initialEmail) setEmail(initialEmail);
+    }, [initialEmail]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

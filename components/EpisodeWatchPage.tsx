@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Content, Episode, Server, Ad, View } from '@/types';
 import VideoPlayer from './VideoPlayer';
@@ -10,6 +9,7 @@ import { ChevronRightIcon } from './icons/ChevronRightIcon';
 import SEO from './SEO';
 import AdWaiterModal from './AdWaiterModal';
 import ReportModal from './ReportModal';
+import { LoadingDots } from '../App';
 
 interface EpisodeWatchPageProps {
     content: Content;
@@ -70,6 +70,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
     const accentColor = isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-500' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]';
     const bgAccent = isRamadanTheme ? 'bg-amber-500' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]';
+    const currentThemeStr = isRamadanTheme ? 'ramadan' : isEidTheme ? 'eid' : isCosmicTealTheme ? 'cosmic-teal' : isNetflixRedTheme ? 'netflix-red' : 'default';
 
     return (
         <div className="min-h-screen bg-[var(--bg-body)] text-white pb-20 animate-fade-in-up">
@@ -135,9 +136,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                         />
                     ) : (
                         <div className="absolute inset-0 bg-[#0f1014] skeleton-shimmer flex items-center justify-center">
-                            <div className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center opacity-30">
-                                <PlayIcon className="w-10 h-10 md:w-16 md:h-16 text-white opacity-20" />
-                            </div>
+                            <LoadingDots theme={currentThemeStr} />
                         </div>
                     )}
                 </div>

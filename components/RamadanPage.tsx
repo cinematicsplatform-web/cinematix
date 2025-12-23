@@ -5,6 +5,7 @@ import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
 import SEO from './SEO';
 import AdZone from './AdZone';
+import { LoadingDots } from '../App';
 
 interface RamadanPageProps {
   allContent: Content[];
@@ -234,7 +235,7 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
+        <LoadingDots theme="ramadan" />
       </div>
     );
   }
@@ -244,7 +245,7 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
       if (!showEmptyMessage) {
            return (
                 <div className="min-h-screen flex items-center justify-center bg-black">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
+                    <LoadingDots theme="ramadan" />
                 </div>
            );
       }

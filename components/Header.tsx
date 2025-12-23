@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import type { User, Profile, View, Content } from '@/types';
 import { UserRole } from '@/types';
 import { SearchIcon } from './icons/SearchIcon';
 import { UserIcon } from './icons/UserIcon';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
+import { BellIcon } from './icons/BellIcon';
 
 interface HeaderProps {
   onSetView: (view: View) => void;
@@ -20,10 +20,11 @@ interface HeaderProps {
   isNetflixRedTheme?: boolean;
   returnView?: View;
   isKidProfile?: boolean;
-  onOpenSearch?: () => void; // New prop for overlay
+  onOpenSearch?: () => void; 
+  unreadNotificationsCount?: number;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, onLogout, allContent, onSelectContent, currentView, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme, returnView, isKidProfile, onOpenSearch }) => {
+const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, onLogout, allContent, onSelectContent, currentView, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme, returnView, isKidProfile, onOpenSearch, unreadNotificationsCount = 0 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -55,6 +56,8 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
   const isAdmin = currentUser?.role === UserRole.Admin;
   const isDetailView = currentView === 'detail';
 
+  const displayCount = unreadNotificationsCount > 9 ? '+9' : String(unreadNotificationsCount);
+
   return (
     <header 
       className={`
@@ -64,19 +67,16 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
             : 'bg-gradient-to-b from-black/70 to-transparent'}
       `}
     >
-      {/* Full Width Header with px-4 md:px-8 Padding. Added gap-2 to prevent element collision on narrow screens */}
       <div className="w-full px-4 md:px-8 flex items-center justify-between h-16 md:h-20 gap-2">
         
-        {/* Left Side: Logo or Mobile Back Button */}
         <div className="flex items-center gap-8">
           {isDetailView ? (
-              // Mobile: Show Back Button only in Detail View
               <div className="flex md:hidden">
                  <button 
                     onClick={() => onSetView(returnView || (isKidProfile ? 'kids' : 'home'))} 
                     className="p-2 rounded-full bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-colors"
                  >
-                    <ChevronRightIcon className="w-6 h-6 transform rotate-180" /> {/* Icon rotated for RTL back */}
+                    <ChevronRightIcon className="w-6 h-6 transform rotate-180" />
                  </button>
               </div>
           ) : null}
@@ -109,14 +109,12 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
           </nav>
         </div>
 
-        {/* Right Side: Search & Profile (Hidden on mobile if in Detail View) */}
         <div className={`flex items-center gap-3 md:gap-4 ${isDetailView ? 'hidden md:flex' : 'flex'}`}>
           
-          {/* SEARCH ICON BUTTON (Replacing the Bar) */}
           <button 
             onClick={() => {
                 if (onOpenSearch) onOpenSearch();
-                else onSetView('search'); // Fallback
+                else onSetView('search');
             }}
             className={`
                 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 
@@ -137,11 +135,10 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
               <SearchIcon className="w-7 h-7" />
           </button>
           
-          {/* Profile Menu - Hidden on Mobile */}
           <div className="relative z-50 hidden md:block" onMouseLeave={() => setIsMenuOpen(false)}>
             <button 
               onClick={isLoggedIn ? () => setIsMenuOpen(!isMenuOpen) : () => onSetView('welcome')} 
-              className={`w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-700 flex items-center justify-center text-white overflow-hidden ring-2 transition-all duration-300 
+              className={`w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-700 flex items-center justify-center text-white overflow-hidden ring-2 transition-all duration-300 relative
                 ${isMenuOpen 
                     ? (isRamadanTheme 
                         ? 'ring-[#FFD700] shadow-[0_0_15px_rgba(255,215,0,0.6)]' 
@@ -165,6 +162,13 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
               `}
             >
                 {activeProfile ? <img src={activeProfile.avatar} alt={activeProfile.name} className="w-full h-full object-cover" /> : <UserIcon />}
+                
+                {/* Notification Badge */}
+                {unreadNotificationsCount > 0 && (
+                  <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-[#141b29] animate-bounce">
+                    {displayCount}
+                  </div>
+                )}
             </button>
             
             {isLoggedIn && (
@@ -186,14 +190,20 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                                         ? 'border-[#E50914]/30'
                                         : 'border-gray-700/50'}
                     `}>
-                        {/* Header Info */}
                         <div className="px-5 py-4 border-b border-white/5 bg-white/5">
                             <p className={`font-bold text-lg ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-white'}`}>{activeProfile?.name}</p>
                             <p className="text-xs text-gray-400 font-mono mt-0.5 truncate">{currentUser?.email}</p>
                         </div>
                         
-                        {/* Menu Items */}
                         <div className="p-2 flex flex-col gap-1">
+                             <a href="#" onClick={(e) => {e.preventDefault(); onSetView('notifications'); setIsMenuOpen(false);}} className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover-text-accent hover:bg-white/5 rounded-xl transition-all duration-200">
+                                <div className="flex items-center gap-3">
+                                  <span>الإشعارات</span>
+                                </div>
+                                {unreadNotificationsCount > 0 && (
+                                  <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{displayCount}</span>
+                                )}
+                             </a>
                              <a href="#" onClick={(e) => {e.preventDefault(); onSetView('myList'); setIsMenuOpen(false);}} className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover-text-accent hover:bg-white/5 rounded-xl transition-all duration-200">
                                 <span>قائمتي</span>
                              </a>
@@ -210,7 +220,6 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                              )}
                         </div>
 
-                        {/* Logout */}
                         <div className="p-2 border-t border-white/5">
                              <a href="#" onClick={(e)=>{e.preventDefault(); onLogout(); setIsMenuOpen(false);}} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-xl transition-all duration-200">
                                 <span>تسجيل الخروج</span>

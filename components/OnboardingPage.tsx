@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Content, Profile, View } from '@/types';
 import { StarIcon } from './icons/StarIcon';
+import { maleAvatars, femaleAvatars } from '@/data';
 
 interface OnboardingPageProps {
   onFinish: (profileData: Partial<Profile>, extraData: any) => void;
@@ -17,7 +18,7 @@ const StepIndicator = ({ step }: { step: number }) => (
     </div>
 );
 
-const OnboardingLayout = ({ title, subtitle, children, step, onNext, onPrev, onSkip, isFirstStep }: any) => (
+const OnboardingLayout = ({ title, subtitle, children, step, onNext, onPrev, onSkip, isFirstStep, hideActions }: any) => (
     <div className="min-h-screen bg-[#071113] flex flex-col items-center justify-start pt-20 md:pt-24 px-4 text-center animate-fade-in relative overflow-hidden">
         {/* LOGO IN TOP RIGHT */}
         <div className="absolute top-6 right-6 md:top-8 md:right-12 z-[100]">
@@ -35,39 +36,43 @@ const OnboardingLayout = ({ title, subtitle, children, step, onNext, onPrev, onS
             <h1 className="text-2xl md:text-4xl font-black mb-1 text-white">{title}</h1>
             {subtitle && <p className="text-gray-400 text-sm md:text-lg mb-4">{subtitle}</p>}
             
-            <StepIndicator step={step} />
+            {!hideActions && <StepIndicator step={step} />}
 
             <div className="w-full flex flex-col items-center">
                 {children}
 
-                {/* REDUCED SPACING IN THE COLUMN */}
-                <div className="w-full max-w-sm flex flex-col gap-2 mt-6">
-                    <button 
-                        onClick={onNext}
-                        className="w-full bg-gradient-to-r from-[#00FFB0] to-[#00A7F8] text-black font-black py-4 rounded-2xl text-lg shadow-lg hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2 group"
-                    >
-                        <span>{step === 4 ? 'ابدأ المشاهدة' : 'متابعة'}</span>
-                        {step < 4 && <span className="text-xl transition-transform group-hover:-translate-x-1">←</span>}
-                    </button>
+                {!hideActions && (
+                    <>
+                        {/* REDUCED SPACING IN THE COLUMN */}
+                        <div className="w-full max-w-sm flex flex-col gap-2 mt-6">
+                            <button 
+                                onClick={onNext}
+                                className="w-full bg-gradient-to-r from-[#00FFB0] to-[#00A7F8] text-black font-black py-4 rounded-2xl text-lg shadow-lg hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2 group"
+                            >
+                                <span>{step === 4 ? 'ابدأ المشاهدة' : 'متابعة'}</span>
+                                {step < 4 && <span className="text-xl transition-transform group-hover:-translate-x-1">←</span>}
+                            </button>
 
-                    {/* FIXED: RIGHT ARROW FOR PREVIOUS IN RTL */}
-                    {!isFirstStep && (
+                            {/* FIXED: RIGHT ARROW FOR PREVIOUS IN RTL */}
+                            {!isFirstStep && (
+                                <button 
+                                    onClick={onPrev}
+                                    className="flex items-center justify-center gap-2 text-gray-400 hover:text-white transition-colors py-1 group"
+                                >
+                                    <span className="text-[#00FFB0] text-xl transition-transform group-hover:translate-x-1">→</span>
+                                    <span className="text-xs font-bold">الخطوة السابقة</span>
+                                </button>
+                            )}
+                        </div>
+
                         <button 
-                            onClick={onPrev}
-                            className="flex items-center justify-center gap-2 text-gray-400 hover:text-white transition-colors py-1 group"
+                            onClick={onSkip} 
+                            className="text-[#00FFB0]/70 font-bold text-xs hover:text-[#00FFB0] hover:underline mt-4 transition-colors"
                         >
-                            <span className="text-[#00FFB0] text-xl transition-transform group-hover:translate-x-1">→</span>
-                            <span className="text-xs font-bold">الخطوة السابقة</span>
+                            تخطي وابدأ المشاهدة
                         </button>
-                    )}
-                </div>
-
-                <button 
-                    onClick={onSkip} 
-                    className="text-[#00FFB0]/70 font-bold text-xs hover:text-[#00FFB0] hover:underline mt-4 transition-colors"
-                >
-                    تخطي وابدأ المشاهدة
-                </button>
+                    </>
+                )}
             </div>
         </div>
     </div>
@@ -76,6 +81,8 @@ const OnboardingLayout = ({ title, subtitle, children, step, onNext, onPrev, onS
 const OnboardingPage: React.FC<OnboardingPageProps> = ({ onFinish, onSetView, activeProfile, allContent }) => {
   const [step, setStep] = useState(1);
   const [profileName, setProfileName] = useState(activeProfile?.name || '');
+  const [profileAvatar, setProfileAvatar] = useState(activeProfile?.avatar || '');
+  const [isSelectingAvatar, setIsSelectingAvatar] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedContent, setSelectedContent] = useState<string[]>([]);
   const [demographics, setDemographics] = useState({
@@ -94,13 +101,13 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ onFinish, onSetView, ac
   ];
 
   const topContent = useMemo(() => {
-    const unique = Array.from(new Map(allContent.map(item => [item.id, item])).values());
+    const unique = Array.from(new Map<string, Content>(allContent.map(item => [item.id, item])).values());
     return unique.sort((a, b) => b.rating - a.rating).slice(0, 12);
   }, [allContent]);
 
   const nextStep = () => {
     if (step < 4) setStep(step + 1);
-    else onFinish({ name: profileName }, demographics);
+    else onFinish({ name: profileName, avatar: profileAvatar }, demographics);
   };
 
   const prevStep = () => {
@@ -108,7 +115,7 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ onFinish, onSetView, ac
   };
 
   const handleSkip = () => {
-      onFinish({ name: profileName || 'مستخدم جديد' }, demographics);
+      onFinish({ name: profileName || 'مستخدم جديد', avatar: profileAvatar }, demographics);
       onSetView('home');
   };
 
@@ -124,6 +131,61 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ onFinish, onSetView, ac
     );
   };
 
+  const handleSelectAvatar = (url: string) => {
+      setProfileAvatar(url);
+      setIsSelectingAvatar(false);
+  };
+
+  // --- Avatar Selection Sub-View ---
+  if (isSelectingAvatar) {
+      return (
+          <OnboardingLayout 
+            title="اختر صورتك الرمزية" 
+            subtitle="اختر الصورة التي تعبر عنك" 
+            hideActions={true}
+          >
+              <div className="bg-[#1a2230]/60 backdrop-blur-xl border border-white/5 p-8 rounded-[2.5rem] w-full max-w-3xl shadow-2xl animate-fade-in-up">
+                  <div className="space-y-8">
+                      <div>
+                          <h3 className="text-[#00FFB0] font-bold text-sm mb-4 text-right pr-4">ذكور</h3>
+                          <div className="grid grid-cols-4 sm:grid-cols-6 gap-4">
+                              {maleAvatars.map((url, idx) => (
+                                  <button 
+                                    key={`male-${idx}`} 
+                                    onClick={() => handleSelectAvatar(url)}
+                                    className={`relative rounded-full overflow-hidden border-2 transition-all hover:scale-110 ${profileAvatar === url ? 'border-[#00FFB0] ring-4 ring-[#00FFB0]/20 shadow-lg shadow-[#00FFB0]/10' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                                  >
+                                      <img src={url} alt="" className="w-full h-full object-cover" />
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+                      <div>
+                          <h3 className="text-[#00FFB0] font-bold text-sm mb-4 text-right pr-4">إناث</h3>
+                          <div className="grid grid-cols-4 sm:grid-cols-6 gap-4">
+                              {femaleAvatars.map((url, idx) => (
+                                  <button 
+                                    key={`female-${idx}`} 
+                                    onClick={() => handleSelectAvatar(url)}
+                                    className={`relative rounded-full overflow-hidden border-2 transition-all hover:scale-110 ${profileAvatar === url ? 'border-[#00FFB0] ring-4 ring-[#00FFB0]/20 shadow-lg shadow-[#00FFB0]/10' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                                  >
+                                      <img src={url} alt="" className="w-full h-full object-cover" />
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+                  </div>
+                  <button 
+                    onClick={() => setIsSelectingAvatar(false)}
+                    className="mt-10 bg-gray-800 text-white font-bold py-3 px-10 rounded-xl hover:bg-gray-700 transition-colors"
+                  >
+                      رجوع
+                  </button>
+              </div>
+          </OnboardingLayout>
+      );
+  }
+
   // --- Step 1: Profile ---
   if (step === 1) return (
     <OnboardingLayout 
@@ -134,12 +196,19 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ onFinish, onSetView, ac
         onSkip={handleSkip}
         isFirstStep={true}
     >
-        <div className="bg-[#1a2230]/40 backdrop-blur-md border border-white/5 p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl">
-            <div className="relative mb-6 group cursor-pointer inline-block">
-                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full p-1 bg-gradient-to-tr from-[#00FFB0] to-[#00A7F8] group-hover:shadow-[0_0_20px_rgba(0,255,176,0.4)] transition-all">
-                    <img src={activeProfile?.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover border-4 border-[#131a26]" />
+        <div className="bg-[#1a2230]/40 backdrop-blur-md border border-white/5 p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl flex flex-col items-center">
+            <div className="flex flex-col items-center mb-6">
+                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full p-1 bg-gradient-to-tr from-[#00FFB0] to-[#00A7F8] shadow-lg mb-4">
+                    <img src={profileAvatar} alt="Avatar" className="w-full h-full rounded-full object-cover border-4 border-[#131a26]" />
                 </div>
-                <div className="mt-3 text-gray-300 font-bold text-xs transition-colors group-hover:text-[#00FFB0]">تغيير صورة الملف الشخصي</div>
+                <button 
+                    type="button"
+                    onClick={() => setIsSelectingAvatar(true)}
+                    className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-[#00FFB0] font-bold text-xs transition-all flex items-center gap-2 border border-[#00FFB0]/20 shadow-sm"
+                >
+                    <span className="translate-x-0.5">تغيير صورة الملف الشخصي</span>
+                    <span className="text-sm">✎</span>
+                </button>
             </div>
             <input 
                 value={profileName} 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 
 interface VideoPlayerProps {
@@ -77,7 +76,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
     return videoExtensions.some(ext => cleanUrl.endsWith(ext));
   }, [activeSource]);
 
-  // --- مكون شاشة التحميل (محسن بـ Tailwind + معالجة الصور) ---
+  // --- مكون شاشة التحميل (معدل لاستخدام النقاط الثلاث القافزة) ---
   const LoadingOverlay = () => (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black transition-opacity duration-500">
         <div className="absolute inset-0 z-0">
@@ -98,11 +97,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
         <div className="absolute inset-0 bg-black/40 z-0"></div>
         
         <div className="relative z-10 flex flex-col items-center gap-6">
-             {/* أنيميشن النقاط باستخدام Tailwind مباشرة لضمان الظهور */}
-             <div className="flex gap-2 scale-125">
-                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+             {/* أنيميشن النقاط الثلاث القافزة (Middle Up, Sides Down) */}
+             <div className="flex gap-2.5 scale-125">
+                <div className="w-3.5 h-3.5 bg-blue-500 rounded-full dot-bounce-down shadow-lg"></div>
+                <div className="w-3.5 h-3.5 bg-blue-500 rounded-full dot-bounce-up shadow-lg"></div>
+                <div className="w-3.5 h-3.5 bg-blue-500 rounded-full dot-bounce-down shadow-lg"></div>
              </div>
              <p className="text-white font-bold text-lg tracking-wide animate-pulse drop-shadow-lg mt-4">جاري تحميل السيرفر يرجي الانتظار</p>
         </div>
@@ -112,7 +111,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
   // --- حالة عدم وجود سيرفر ---
   if (!activeSource && !isLoading) {
     return (
-      <div className="aspect-video w-full bg-black rounded-xl overflow-hidden relative group flex items-center justify-center p-4 border border-gray-800">
+      <div className="aspect-video w-full bg-black rounded-xl overflow-hidden relative group flex items-center justify-center p-4 border border-gray-700">
         <div className="absolute inset-0 z-0">
             <img 
                 src={poster || 'https://placehold.co/1920x1080/101010/101010/png'} 

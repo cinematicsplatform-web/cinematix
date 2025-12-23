@@ -1,11 +1,12 @@
+
 import React, { useState } from 'react';
 import type { User, View } from '@/types';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
 
 interface CreateAccountPageProps {
-  onSetView: (view: View) => void;
+  onSetView: (view: View, category?: string, params?: any) => void;
   // Updated signature to handle gender for avatar selection
-  onRegister: (newUser: Omit<User, 'id' | 'role' | 'profiles'> & { gender: 'male' | 'female' }) => Promise<void>;
+  onRegister: (newUser: Omit<User, 'id' | 'role' | 'profiles'> & { gender: 'male' | 'female' }) => Promise<string | null>;
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
@@ -37,12 +38,15 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
     const [lastName, setLastName] = useState('');
     const [gender, setGender] = useState<'male' | 'female'>('male'); // New state for gender
     const [error, setError] = useState('');
+    const [errorType, setErrorType] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setErrorType(null);
 
         if (!validateEmail(email)) {
             setError('الرجاء إدخال بريد إلكتروني صالح.');
@@ -57,7 +61,19 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
             return;
         }
 
-        await onRegister({ email, password, firstName, lastName, gender });
+        setIsLoading(true);
+        const errCode = await onRegister({ email, password, firstName, lastName, gender });
+        setIsLoading(false);
+
+        if (errCode) {
+            // Standardize checks for various Firebase error string representations
+            if (errCode === 'auth/email-already-in-use' || String(errCode).includes('email-already-in-use')) {
+                setErrorType('email-in-use');
+                setError('هذا البريد الإلكتروني مسجل بالفعل.');
+            } else {
+                setError('حدث خطأ غير متوقع. حاول مرة أخرى لاحقاً.');
+            }
+        }
     };
 
     const linkColorClass = isRamadanTheme 
@@ -97,7 +113,20 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
             </h1>
             <p className="text-gray-400 text-center mb-8">انضم إلينا للاستمتاع بآلاف الساعات من الترفيه.</p>
             
-            {error && <p className="bg-red-500/20 text-red-400 text-center p-3 rounded-lg mb-6">{error}</p>}
+            {error && (
+                <div className="bg-red-900/20 border border-red-500/30 text-red-400 text-center p-4 rounded-xl mb-6 space-y-3 animate-fade-in-up">
+                    <p className="font-bold">{error}</p>
+                    {errorType === 'email-in-use' && (
+                        <button 
+                            type="button"
+                            onClick={() => onSetView('login', undefined, { email })} 
+                            className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-4 rounded-lg text-sm transition-all transform active:scale-95"
+                        >
+                            تسجيل الدخول بدلاً من ذلك
+                        </button>
+                    )}
+                </div>
+            )}
             
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="flex gap-4">
@@ -161,8 +190,12 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
                     </button>
                 </div>
                 
-                <button type="submit" className="w-full btn-primary font-bold py-3 rounded-lg transition-all duration-300 transform hover:scale-105 !mt-6">
-                    إنشاء حساب
+                <button 
+                    type="submit" 
+                    disabled={isLoading}
+                    className="w-full btn-primary font-bold py-3 rounded-lg transition-all duration-300 transform hover:scale-105 !mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {isLoading ? 'جاري التحميل...' : 'إنشاء حساب'}
                 </button>
             </form>
 

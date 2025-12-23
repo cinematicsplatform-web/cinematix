@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { db, generateSlug, getContentRequests, deleteContentRequest, getUserProfile, getPinnedContent, updatePinnedContentForPage, getStories, saveStory, deleteStory } from '../firebase';
-import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, Top10State, PageKey, ThemeType, Category, Genre, Season, Episode, Server, ContentRequest, Story } from '../types';
+import { db, generateSlug, getContentRequests, deleteContentRequest, getUserProfile, getPinnedContent, updatePinnedContentForPage, getStories, saveStory, deleteStory, serverTimestamp, getBroadcastHistory, deleteBroadcastNotification } from '../firebase';
+import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, Top10State, PageKey, ThemeType, Category, Genre, Season, Episode, Server, ContentRequest, Story, Notification, BroadcastNotification } from '../types';
 import { ContentType, UserRole, adPlacementLabels } from '../types';
 import ContentEditModal from './ContentEditModal';
 import AdEditModal from './AdEditModal';
@@ -10,6 +10,8 @@ import { CloseIcon } from './icons/CloseIcon';
 import * as XLSX from 'xlsx'; 
 import * as jsrsasign from 'jsrsasign'; 
 import ManageStories from './ManageStories';
+import { BellIcon } from './icons/BellIcon';
+import { PlayIcon } from './icons/PlayIcon';
 
 // Icons
 const ArrowUpTrayIcon = () => (
@@ -26,6 +28,10 @@ const PaperAirplaneIcon = () => (
 );
 const InboxIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H6.911a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661Z" /></svg>
+);
+
+const TrashIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
 );
 
 type AdminTab = 'dashboard' | 'content' | 'top_content' | 'top10' | 'users' | 'requests' | 'ads' | 'themes' | 'settings' | 'analytics' | 'notifications' | 'stories';
@@ -85,7 +91,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const [allContent, setAllContent] = useState<Content[]>([]);
     const [isLoadingContent, setIsLoadingContent] = useState(true);
 
-    const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; type: 'content' | 'user' | 'ad' | 'pinned' | 'story'; id: string; title?: string; meta?: any; }>({ isOpen: false, type: 'content', id: '' });
+    const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; type: 'content' | 'user' | 'ad' | 'pinned' | 'story' | 'broadcast'; id: string; title?: string; meta?: any; }>({ isOpen: false, type: 'content', id: '' });
 
     useEffect(() => {
         const getContent = async () => {
@@ -115,8 +121,21 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const confirmDeleteContent = (contentId: string, contentTitle: string) => { setDeleteModalState({ isOpen: true, type: 'content', id: contentId, title: contentTitle }); };
     const confirmDeleteUser = (userId: string, userName: string) => { setDeleteModalState({ isOpen: true, type: 'user', id: userId, title: userName }); };
     const confirmDeleteAd = (adId: string, adTitle: string) => { setDeleteModalState({ isOpen: true, type: 'ad', id: adId, title: adTitle }); };
+    const confirmDeleteBroadcast = (id: string, title: string) => { setDeleteModalState({ isOpen: true, type: 'broadcast', id, title }); };
     
-    const executeDelete = async () => { const { type, id } = deleteModalState; if (type === 'content') { try { await db.collection("content").doc(id).delete(); setAllContent(prev => prev.filter(item => item.id !== id)); props.onContentChanged(); props.addToast('تم حذف المحتوى بنجاح.', 'success'); } catch (err) { console.error("Error deleting content:", err); props.addToast("حدث خطأ أثناء الحذف.", "error"); } } else if (type === 'user') { props.onDeleteUser(id); } else if (type === 'ad') { props.onDeleteAd(id); } setDeleteModalState(prev => ({ ...prev, isOpen: false })); };
+    const executeDelete = async () => { 
+        const { type, id } = deleteModalState; 
+        if (type === 'content') { 
+            try { await db.collection("content").doc(id).delete(); setAllContent(prev => prev.filter(item => item.id !== id)); props.onContentChanged(); props.addToast('تم حذف المحتوى بنجاح.', 'success'); } catch (err) { console.error("Error deleting content:", err); props.addToast("حدث خطأ أثناء الحذف.", "error"); } 
+        } else if (type === 'user') { 
+            props.onDeleteUser(id); 
+        } else if (type === 'ad') { 
+            props.onDeleteAd(id); 
+        } else if (type === 'broadcast') {
+            try { await deleteBroadcastNotification(id); props.addToast('تم سحب الإشعار بنجاح.', 'success'); } catch (e) { props.addToast('فشل سحب الإشعار', 'error'); }
+        }
+        setDeleteModalState(prev => ({ ...prev, isOpen: false })); 
+    };
     
     const openAdModalForEdit = (ad: Ad) => { setEditingAd(ad); setIsAdModalOpen(true); };
     const openAdModalForNew = () => { setEditingAd(null); setIsAdModalOpen(true); };
@@ -132,7 +151,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             case 'top10': return <Top10ManagerTab allContent={allContent} pinnedState={props.top10Items} setPinnedItems={props.onSetTop10Items} />;
             case 'themes': return <ThemesTab siteSettings={props.siteSettings} onSetSiteSettings={props.onSetSiteSettings} />;
             case 'settings': return <SiteSettingsTab siteSettings={props.siteSettings} onSetSiteSettings={props.onSetSiteSettings} allContent={allContent} />;
-            case 'notifications': return <NotificationTab addToast={props.addToast} serviceAccountJson={props.siteSettings.serviceAccountJson} />;
+            case 'notifications': return <NotificationTab addToast={props.addToast} serviceAccountJson={props.siteSettings.serviceAccountJson} allUsers={props.allUsers} onRequestDelete={confirmDeleteBroadcast} />;
             case 'stories': return <ManageStories addToast={props.addToast} />;
             case 'analytics': return <AnalyticsTab allContent={allContent} allUsers={props.allUsers}/>;
             case 'dashboard': default: return <DashboardTab stats={{totalMovies, totalSeries, totalUsers}} allContent={allContent} />;
@@ -169,7 +188,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             </div>
              {isContentModalOpen && <ContentEditModal content={editingContent} onClose={() => setIsContentModalOpen(false)} onSave={handleSaveContent} />}
              {isAdModalOpen && <AdEditModal ad={editingAd} onClose={() => setIsAdModalOpen(false)} onSave={handleSaveAd} />}
-             <DeleteConfirmationModal isOpen={deleteModalState.isOpen} onClose={() => setDeleteModalState(prev => ({ ...prev, isOpen: false }))} onConfirm={executeDelete} title={deleteModalState.type === 'content' ? 'حذف المحتوى' : deleteModalState.type === 'user' ? 'حذف المستخدم' : deleteModalState.type === 'ad' ? 'حذف الإعلان' : deleteModalState.type === 'story' ? 'حذف الستوري' : 'حذف'} message={`هل أنت متأكد من حذف "${deleteModalState.title}"؟ لا يمكن التراجع عن هذا الإجراء.`} />
+             <DeleteConfirmationModal isOpen={deleteModalState.isOpen} onClose={() => setDeleteModalState(prev => ({ ...prev, isOpen: false }))} onConfirm={executeDelete} title={deleteModalState.type === 'content' ? 'حذف المحتوى' : deleteModalState.type === 'user' ? 'حذف المستخدم' : deleteModalState.type === 'ad' ? 'حذف الإعلان' : deleteModalState.type === 'story' ? 'حذف الستوري' : deleteModalState.type === 'broadcast' ? 'سحب الإشعار' : 'حذف'} message={`هل أنت متأكد من حذف "${deleteModalState.title}"؟ لا يمكن التراجع عن هذا الإجراء.`} />
         </div>
     );
 };
@@ -565,52 +584,216 @@ const SiteSettingsTab: React.FC<{
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 space-y-6 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-4">أوضاع الموقع</h3><div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50"><span>وضع الصيانة (يغلق الموقع للزوار)</span><ToggleSwitch checked={siteSettings.is_maintenance_mode_enabled} onChange={(c) => handleChange('is_maintenance_mode_enabled', c)} /></div><div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50"><span>تفعيل الإعلانات في الموقع</span><ToggleSwitch checked={siteSettings.adsEnabled} onChange={(c) => handleChange('adsEnabled', c)} /></div><div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50"><span>عرض كاروسيل رمضان في الصفحة الرئيسية</span><ToggleSwitch checked={siteSettings.isShowRamadanCarousel} onChange={(c) => handleChange('isShowRamadanCarousel', c)} /></div></div>
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold text-[#00A7F8]">شريط الإعلانات العلوي (ShoutBar)</h3><ToggleSwitch checked={siteSettings.shoutBar.isVisible} onChange={(c) => handleNestedChange('shoutBar', 'isVisible', c)} /></div><input value={siteSettings.shoutBar.text} onChange={(e) => handleNestedChange('shoutBar', 'text', e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-5 py-3 text-white focus:outline-none focus:border-[#00A7F8]" placeholder="نص الشريط المتحرك..."/></div>
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-6">روابط التواصل الاجتماعي</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-6">{Object.keys(siteSettings.socialLinks).map((key) => (<div key={key}><label className="block text-xs font-bold text-gray-400 mb-2 capitalize">{key}</label><input value={(siteSettings.socialLinks as any)[key]} onChange={(e) => handleNestedChange('socialLinks', key, e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#00A7F8] text-white dir-ltr"/></div>))}</div></div>
-            <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-6">إعدادات الإشعارات (Firebase Cloud Messaging)</h3><div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50"><label className="block text-xs font-bold text-gray-300 mb-3">Service Account JSON (مطلوب لـ FCM HTTP v1)</label><textarea value={siteSettings.serviceAccountJson || ''} onChange={(e) => handleChange('serviceAccountJson', e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white font-mono text-xs focus:border-[#00A7F8] focus:outline-none h-48 dir-ltr" placeholder='{ "type": "service_account", "project_id": "...", ... }'/><p className="text-[10px] text-gray-400 mt-3 leading-relaxed">انسخ محتوى ملف JSON الخاص بـ Service Account هنا. هذا مطلوب لإرسال الإشعارات عبر API v1 الجديد.</p></div></div>
+            <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-6">إعدادات الإشعارات (Firebase Cloud Messaging)</h3><div className="bg-gray-800/50 p-6 rounded-xl border border-gray-600/50"><label className="block text-xs font-bold text-gray-300 mb-3">Service Account JSON (مطلوب لـ FCM HTTP v1)</label><textarea value={siteSettings.serviceAccountJson || ''} onChange={(e) => handleChange('serviceAccountJson', e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white font-mono text-xs focus:border-[#00A7F8] focus:outline-none h-48 dir-ltr" placeholder='{ "type": "service_account", "project_id": "...", ... }'/><p className="text-[10px] text-gray-400 mt-3 leading-relaxed">انسخ محتوى ملف JSON الخاص بـ Service Account هنا. هذا مطلوب لإرسال الإشعارات عبر API v1 الجديد.</p></div></div>
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-6">سياسة الخصوصية</h3><textarea value={siteSettings.privacyPolicy} onChange={(e) => handleChange('privacyPolicy', e.target.value)} className="w-full h-48 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#00A7F8]"/></div>
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-4">سياسة حقوق الملكية</h3><textarea value={siteSettings.copyrightPolicy || ''} onChange={(e) => handleChange('copyrightPolicy', e.target.value)} className="w-full h-48 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#00A7F8]" placeholder="أدخل نص سياسة حقوق الملكية هنا..."/></div>
         </div>
     );
 };
 
-const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson }) => {
+const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers, onRequestDelete }) => {
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
     const [image, setImage] = useState('');
     const [url, setUrl] = useState('/');
+    const [type, setType] = useState<'info' | 'play' | 'alert' | 'new_content'>('new_content');
     const [sending, setSending] = useState(false);
+    const [history, setHistory] = useState<BroadcastNotification[]>([]);
+
+    useEffect(() => { fetchHistory(); }, []);
+
+    const fetchHistory = async () => {
+        const data = await getBroadcastHistory();
+        setHistory(data);
+    };
+
     const handleSendNotification = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!serviceAccountJson) { addToast('يجب إضافة ملف الخدمة (Service Account) أولاً.', 'error'); return; }
         setSending(true);
         try {
-            const accessToken = await getAccessToken(serviceAccountJson);
-            if (!accessToken) throw new Error("فشل توليد رمز الوصول");
-            const parsedServiceAccount = JSON.parse(serviceAccountJson);
-            const projectId = parsedServiceAccount.project_id;
-            const usersSnapshot = await db.collection("users").get();
-            const allTokens: string[] = [];
-            usersSnapshot.docs.forEach(doc => {
-                const data = doc.data();
-                if (data.fcmTokens && Array.isArray(data.fcmTokens)) allTokens.push(...data.fcmTokens);
+            const broadcastId = String(Date.now());
+            
+            // 1. Send via FCM if service account available
+            if (serviceAccountJson) {
+                const accessToken = await getAccessToken(serviceAccountJson);
+                if (accessToken) {
+                    const parsedServiceAccount = JSON.parse(serviceAccountJson);
+                    const projectId = parsedServiceAccount.project_id;
+                    const allTokens: string[] = [];
+                    allUsers.forEach((u: any) => {
+                        if (u.fcmTokens && Array.isArray(u.fcmTokens)) allTokens.push(...u.fcmTokens);
+                    });
+                    const uniqueTokens = Array.from(new Set(allTokens));
+                    const notificationData = { title, body, image: image || '/icon-192.png', data: { url } };
+                    await Promise.all(uniqueTokens.map(token => sendFCMv1Message(token, notificationData, accessToken, projectId)));
+                }
+            }
+
+            // 2. IMPORTANT: Create Firestore records for ALL users
+            const batch = db.batch();
+            allUsers.forEach((user: any) => {
+                const notifRef = db.collection('notifications').doc();
+                const newNotif: Omit<Notification, 'id'> = {
+                    userId: user.id,
+                    title,
+                    body,
+                    type,
+                    isRead: false,
+                    createdAt: new Date().toISOString(),
+                    targetUrl: url || undefined,
+                    imageUrl: image || undefined,
+                    broadcastId: broadcastId
+                };
+                batch.set(notifRef, newNotif);
             });
-            const uniqueTokens = Array.from(new Set(allTokens));
-            if (uniqueTokens.length === 0) { addToast('لا يوجد مستخدمون لديهم رموز إشعارات مفعلة.', 'info'); setSending(false); return; }
-            const notificationData = { title, body, image: image || '/icon-192.png', data: { url } };
-            await Promise.all(uniqueTokens.map(token => sendFCMv1Message(token, notificationData, accessToken, projectId)));
-            addToast(`تم إرسال الإشعار لـ ${uniqueTokens.length} جهاز بنجاح!`, 'success');
-            setTitle(''); setBody(''); setImage(''); setUrl('/');
-        } catch (error: any) { addToast('فشل إرسال الإشعارات: ' + error.message, 'error'); } finally { setSending(false); }
+
+            // 3. Save to Broadcast History
+            const historyRef = db.collection('broadcast_history').doc(broadcastId);
+            batch.set(historyRef, {
+                title, body, type, imageUrl: image || null, targetUrl: url || null,
+                createdAt: new Date().toISOString(),
+                recipientCount: allUsers.length
+            });
+
+            await batch.commit();
+
+            addToast(`تم إرسال الإشعار لـ ${allUsers.length} مستخدم بنجاح!`, 'success');
+            setTitle(''); setBody(''); setImage(''); setUrl('/'); setType('new_content');
+            fetchHistory();
+        } catch (error: any) { 
+            addToast('فشل إرسال الإشعارات: ' + error.message, 'error'); 
+        } finally { 
+            setSending(false); 
+        }
     };
+
+    const getIcon = (t: string) => {
+        switch(t) {
+            case 'new_content': return <div className="p-2 bg-green-500/10 text-green-500 rounded-lg"><PlayIcon className="w-5 h-5"/></div>;
+            case 'alert': return <div className="p-2 bg-red-500/10 text-red-500 rounded-lg">⚠️</div>;
+            default: return <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">ℹ️</div>;
+        }
+    };
+
+    const getAccentPreview = (t: string) => {
+        switch(t) {
+            case 'new_content': return 'bg-green-500/10 border-green-500/20';
+            case 'alert': return 'bg-red-500/10 border-red-500/20';
+            default: return 'bg-blue-500/10 border-blue-500/20';
+        }
+    };
+
     return (
-        <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl max-w-2xl mx-auto">
-            <h3 className="text-xl font-bold mb-6 text-[#00A7F8] flex items-center gap-2"><PaperAirplaneIcon /> إرسال إشعار عام (Push Notification)</h3>
-            <form onSubmit={handleSendNotification} className="space-y-6">
-                <div><label className="block text-xs font-bold text-gray-400 mb-2">عنوان الإشعار</label><input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white" required/></div>
-                <div><label className="block text-xs font-bold text-gray-400 mb-2">محتوى الإشعار</label><textarea value={body} onChange={e => setBody(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white h-24" required/></div>
-                <div><label className="block text-xs font-bold text-gray-400 mb-2">رابط الصورة (اختياري)</label><input value={image} onChange={e => setImage(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white dir-ltr"/></div>
-                <div><label className="block text-xs font-bold text-gray-400 mb-2">رابط التوجيه عند الضغط</label><input value={url} onChange={e => setUrl(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white dir-ltr"/></div>
-                <button type="submit" disabled={sending} className="w-full bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-bold py-4 rounded-xl shadow-lg disabled:opacity-50">{sending ? 'جاري الإرسال...' : 'إرسال الإشعار للكل'}</button>
-            </form>
+        <div className="space-y-10 animate-fade-in">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* FORM SECTION */}
+                <div className="lg:col-span-7 bg-[#1f2937] p-8 rounded-3xl border border-gray-700/50 shadow-xl">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2"><PaperAirplaneIcon /> إرسال إشعار جماعي</h3>
+                        <button type="button" onClick={() => {setTitle(''); setBody(''); setImage(''); setUrl('/');}} className="text-xs text-gray-500 hover:text-white">مسح الحقول</button>
+                    </div>
+                    <form onSubmit={handleSendNotification} className="space-y-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 mb-2">عنوان الإشعار</label>
+                                <input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-[#00A7F8] outline-none" required placeholder="مثال: تم إضافة فيلم أفاتار 2"/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 mb-2">نوع الإشعار</label>
+                                <select value={type} onChange={e => setType(e.target.value as any)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-[#00A7F8] outline-none">
+                                    <option value="new_content">🟢 محتوى جديد</option>
+                                    <option value="alert">🟡 تنبيه (System)</option>
+                                    <option value="info">🔵 خبر (Info)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div><label className="block text-xs font-bold text-gray-400 mb-2">نص الرسالة</label><textarea value={body} onChange={e => setBody(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white h-24 outline-none focus:border-[#00A7F8]" required placeholder="التفاصيل..."/></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label className="block text-xs font-bold text-gray-400 mb-2">رابط الصورة (بوستر)</label><input value={image} onChange={e => setImage(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white dir-ltr" placeholder="https://..."/></div>
+                            <div><label className="block text-xs font-bold text-gray-400 mb-2">رابط التوجيه (URL)</label><input value={url} onChange={e => setUrl(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white dir-ltr" placeholder="/watch/movie/123"/></div>
+                        </div>
+                        <button type="submit" disabled={sending || !title} className="w-full bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-black py-4 rounded-2xl shadow-lg hover:shadow-[#00A7F8]/40 transition-all transform hover:scale-[1.01] disabled:opacity-50">
+                            {sending ? 'جاري الإرسال...' : `🚀 إرسال إلى ${allUsers.length} مستخدم`}
+                        </button>
+                    </form>
+                </div>
+
+                {/* PREVIEW SECTION */}
+                <div className="lg:col-span-5">
+                    <div className="sticky top-28">
+                        <label className="block text-xs font-bold text-gray-500 mb-4 uppercase tracking-widest text-center">المعاينة الحية (Mobile Preview)</label>
+                        <div className="relative mx-auto w-[280px] h-[580px] bg-[#000] border-[8px] border-[#1f2937] rounded-[3rem] shadow-2xl overflow-hidden">
+                            <div className="absolute top-0 w-full h-6 bg-[#1f2937] flex justify-center items-end pb-1"><div className="w-16 h-3 bg-black rounded-full"></div></div>
+                            <div className="p-4 pt-10">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="w-8 h-8 rounded-full bg-gray-800"></div>
+                                    <div className="relative"><BellIcon className="w-6 h-6 text-gray-500"/><div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full flex items-center justify-center text-[8px] font-bold">1</div></div>
+                                </div>
+                                
+                                <div className={`border rounded-[1.5rem] shadow-lg animate-fade-in-up overflow-hidden ${getAccentPreview(type)}`}>
+                                    <div className="flex items-stretch">
+                                        {image && (
+                                            <div className="w-20 flex-shrink-0 self-stretch border-l border-white/10 bg-black">
+                                                <img src={image} className="w-full h-full object-cover" />
+                                            </div>
+                                        )}
+
+                                        <div className="flex-1 p-3 min-w-0">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-[7px] font-bold text-gray-400 uppercase tracking-tighter">تحديث</span>
+                                                <span className="text-[7px] text-gray-500 font-bold">الآن</span>
+                                            </div>
+                                            
+                                            <div className="flex gap-2 items-start">
+                                                 <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 bg-white/5">
+                                                    {getIcon(type)}
+                                                 </div>
+                                                 <div className="flex-1 min-w-0">
+                                                     <h4 className="text-[10px] font-bold text-white truncate">{title || 'عنوان الإشعار يظهر هنا'}</h4>
+                                                     <p className="text-[8px] text-gray-400 line-clamp-2 mt-0.5 leading-tight">{body || 'نص الرسالة التفصيلي سيظهر في هذا المكان...'}</p>
+                                                     
+                                                     {url !== '/' && (
+                                                         <div className="mt-2 flex items-center gap-1 text-[#00A7F8] font-bold text-[7px]">
+                                                             <span>اكتشف الآن</span>
+                                                             <span className="scale-75 transform rotate-180">→</span>
+                                                         </div>
+                                                     )}
+                                                 </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* HISTORY SECTION */}
+            <div className="bg-[#1f2937] rounded-3xl border border-gray-700/50 shadow-xl overflow-hidden">
+                <div className="px-8 py-6 border-b border-gray-700/50 flex justify-between items-center bg-black/10">
+                    <h3 className="font-bold text-lg text-white">آخر الإشعارات المرسلة</h3>
+                    <span className="text-xs text-gray-500">تلقائياً يتم حذف السجلات القديمة</span>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-right text-gray-300">
+                        <thead className="bg-gray-800/50 text-xs font-bold text-gray-400 uppercase">
+                            <tr><th className="px-8 py-4">النوع</th><th className="px-8 py-4">العنوان</th><th className="px-8 py-4">المستلمون</th><th className="px-8 py-4">التاريخ</th><th className="px-8 py-4">إجراء</th></tr>
+                        </thead>
+                        <tbody>
+                            {history.map(item => (
+                                <tr key={item.id} className="border-b border-gray-700/30 hover:bg-gray-700/20 transition-colors group">
+                                    <td className="px-8 py-4">{getIcon(item.type)}</td>
+                                    <td className="px-8 py-4 font-bold text-white">{item.title}</td>
+                                    <td className="px-8 py-4"><span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded text-xs">{item.recipientCount}</span></td>
+                                    <td className="px-8 py-4 text-xs font-mono text-gray-500">{new Date(item.createdAt).toLocaleDateString('en-GB')}</td>
+                                    <td className="px-8 py-4"><button onClick={() => onRequestDelete(item.id, item.title)} className="p-2 text-red-500/40 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"><TrashIcon/></button></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     );
 };
@@ -618,7 +801,6 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson }) => {
 const AnalyticsTab: React.FC<any> = ({ allContent, allUsers }) => {
     const totalMovies = allContent.filter((c: any) => c.type === 'movie').length;
     const totalSeries = allContent.filter((c: any) => c.type === 'series').length;
-    // Fix: Changed totalUsers to use allUsers.length and avoided self-reference.
     const totalUsersCount = allUsers.length;
     const genreStats = useMemo(() => {
         const stats: Record<string, number> = {};

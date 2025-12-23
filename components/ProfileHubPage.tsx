@@ -1,10 +1,10 @@
-
 import React from 'react';
 import type { User, Profile, View } from '@/types';
 import { UserRole } from '@/types';
 import { UserIcon } from './icons/UserIcon';
 import { CheckIcon } from './CheckIcon';
 import { HomeIcon } from './icons/HomeIcon';
+import { BellIcon } from './icons/BellIcon';
 
 // -- Simple Local Icons to reduce file dependencies for this specific view --
 
@@ -53,6 +53,13 @@ const ProfileHubPage: React.FC<ProfileHubPageProps> = ({ user, activeProfile, on
     const isCosmicTeal = isCosmicTealTheme || document.body.classList.contains('theme-cosmic-teal');
 
     const menuItems = [
+        {
+            id: 'notifications',
+            label: 'الإشعارات',
+            icon: BellIcon,
+            action: () => onSetView('notifications'),
+            color: isNetflixRed ? 'text-[#E50914]' : isCosmicTeal ? 'text-[#35F18B]' : 'text-[#00A7F8]'
+        },
         {
             id: 'mylist',
             label: 'قائمتي',

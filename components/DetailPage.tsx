@@ -8,6 +8,7 @@ import SEO from '@/components/SEO';
 import AdZone from '@/components/AdZone';
 import AdWaiterModal from '@/components/AdWaiterModal';
 import ReportModal from '@/components/ReportModal';
+import { LoadingDots } from '../App';
 
 // Icons
 import { StarIcon } from '@/components/icons/StarIcon';
@@ -231,6 +232,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
       onSelectContent(content, sNum, eNum);
   };
 
+  const currentThemeStr = isRamadanTheme ? 'ramadan' : isEidTheme ? 'eid' : isCosmicTealTheme ? 'cosmic-teal' : isNetflixRedTheme ? 'netflix-red' : 'default';
+
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0 relative overflow-x-hidden w-full">
       <SEO 
@@ -253,7 +256,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}
                 />
             ) : (
-                <div className="absolute inset-0 bg-[#161b22] skeleton-shimmer"></div>
+                <div className="absolute inset-0 bg-[#161b22] skeleton-shimmer flex items-center justify-center">
+                    <LoadingDots theme={currentThemeStr} />
+                </div>
             )}
             
             {heroEmbedUrl && !isMobile && isLoaded && (
@@ -429,7 +434,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                               /* --- EPISODE SKELETONS --- */
                               Array.from({ length: 10 }).map((_, i) => (
                                   <div key={i} className="rounded-xl bg-gray-800/40 border border-gray-700/50 overflow-hidden h-full flex flex-col skeleton-shimmer">
-                                      <div className="relative w-full aspect-video bg-gray-700/30"></div>
+                                      <div className="relative w-full aspect-video bg-gray-700/30 flex items-center justify-center">
+                                          <LoadingDots theme={currentThemeStr} />
+                                      </div>
                                       <div className="p-4 space-y-3">
                                           <div className="h-4 bg-gray-700/40 rounded w-1/2"></div>
                                           <div className="space-y-2">
@@ -469,14 +476,81 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
           {activeTab === 'details' && (
               <div className="px-4 md:px-8 py-8 animate-fade-in-up w-full">
-                  <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-12">
+                  <div className="max-w-7xl mx-auto w-full flex flex-col gap-12">
                       <div className="flex-1 space-y-10">
                           {isLoaded ? (
                               <>
-                                <div><h3 className="text-xl md:text-2xl font-bold text-white mb-4">القصة</h3><p className="text-gray-300 text-lg leading-loose">{displayDescription}</p></div>
-                                <div><h3 className="text-xl md:text-2xl font-bold text-white mb-4">التصنيف</h3><div className="flex flex-wrap gap-2">{content?.genres?.map((genre, index) => (<div key={index} className="px-4 py-2 rounded-lg text-sm font-bold border border-gray-700 bg-gray-800/50 text-gray-300">{genre}</div>))}</div></div>
+                                {/* 1. Story Section */}
+                                <div>
+                                    <h3 className="text-xl md:text-2xl font-black text-white mb-4 border-r-4 border-[var(--color-accent)] pr-4">القصة</h3>
+                                    <p className="text-gray-300 text-lg leading-loose text-justify">{displayDescription}</p>
+                                </div>
+
+                                {/* 2. Metadata Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 bg-gray-800/20 p-6 rounded-2xl border border-white/5">
+                                    <div className="space-y-1">
+                                        <span className="text-gray-500 text-xs font-bold block uppercase tracking-wider">سنة الإنتاج</span>
+                                        <span className="text-white font-bold text-lg">{content.releaseYear}</span>
+                                    </div>
+                                    
+                                    {content.type === 'movie' && content.duration && (
+                                        <div className="space-y-1">
+                                            <span className="text-gray-500 text-xs font-bold block uppercase tracking-wider">وقت العمل</span>
+                                            <span className="text-white font-bold text-lg">{content.duration}</span>
+                                        </div>
+                                    )}
+
+                                    {content.type === 'series' && (
+                                        <>
+                                            <div className="space-y-1">
+                                                <span className="text-gray-500 text-xs font-bold block uppercase tracking-wider">عدد المواسم</span>
+                                                <span className="text-white font-bold text-lg">{content.seasons?.length || 0} مواسم</span>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <span className="text-gray-500 text-xs font-bold block uppercase tracking-wider">إجمالي الحلقات</span>
+                                                <span className="text-white font-bold text-lg">{content.seasons?.reduce((acc, s) => acc + (s.episodes?.length || 0), 0) || 0} حلقة</span>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    <div className="space-y-1">
+                                        <span className="text-gray-500 text-xs font-bold block uppercase tracking-wider">التقييم</span>
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-yellow-400 font-black text-lg">{content.rating.toFixed(1)}</span>
+                                            <StarIcon className="w-4 h-4 text-yellow-500" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 3. Genres Section */}
+                                <div>
+                                    <h3 className="text-xl md:text-2xl font-black text-white mb-4 border-r-4 border-[var(--color-accent)] pr-4">التصنيف النوعي</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {content?.genres?.map((genre, index) => (
+                                            <div key={index} className="px-5 py-2.5 rounded-xl text-sm font-black border border-gray-700 bg-gray-800/40 text-gray-300 hover:bg-[var(--color-accent)] hover:text-black transition-all cursor-default">
+                                                {genre}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 4. Cast Section */}
+                                {content.cast && content.cast.length > 0 && (
+                                    <div>
+                                        <h3 className="text-xl md:text-2xl font-black text-white mb-4 border-r-4 border-[var(--color-accent)] pr-4">الأبطال</h3>
+                                        <div className="flex flex-wrap gap-3">
+                                            {content.cast.map((actor, i) => (
+                                                <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-gray-300 text-sm font-bold hover:border-[var(--color-accent)] transition-colors">
+                                                    <div className="w-2 h-2 rounded-full bg-[var(--color-accent)]"></div>
+                                                    {actor}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                               </>
                           ) : (
+                              /* --- DETAILS SKELETON --- */
                               <div className="space-y-12">
                                   <div className="space-y-4">
                                       <div className="h-6 bg-gray-800/40 rounded w-32 skeleton-shimmer"></div>
@@ -486,11 +560,20 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                           <div className="h-4 bg-gray-800/40 rounded w-2/3 skeleton-shimmer"></div>
                                       </div>
                                   </div>
+                                  
+                                  {/* Grid Skeleton */}
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                      {[1,2,3,4].map(i => (
+                                          <div key={i} className="h-16 bg-gray-800/40 rounded-xl skeleton-shimmer"></div>
+                                      ))}
+                                  </div>
+
                                   <div className="space-y-4">
                                       <div className="h-6 bg-gray-800/40 rounded w-32 skeleton-shimmer"></div>
-                                      <div className="flex gap-2">
-                                          <div className="h-10 bg-gray-800/40 rounded-lg w-24 skeleton-shimmer"></div>
-                                          <div className="h-10 bg-gray-800/40 rounded-lg w-24 skeleton-shimmer"></div>
+                                      <div className="flex flex-wrap gap-2">
+                                          <div className="h-10 bg-gray-800/40 rounded-xl w-24 skeleton-shimmer"></div>
+                                          <div className="h-10 bg-gray-800/40 rounded-xl w-24 skeleton-shimmer"></div>
+                                          <div className="h-10 bg-gray-800/40 rounded-xl w-24 skeleton-shimmer"></div>
                                       </div>
                                   </div>
                               </div>
