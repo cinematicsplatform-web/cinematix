@@ -177,6 +177,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       setVideoEnded(false);
       setIsMuted(true);
       if (!trailerVideoId || isMobile) return;
+      // يظهر الفيديو بعد ثانيتين من عرض الخلفية
       const timer = setTimeout(() => { setShowVideo(true); }, 2000); 
       return () => clearTimeout(timer);
   }, [content?.id, trailerVideoId, isMobile, selectedSeasonId]);
@@ -261,7 +262,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
         banner={displayBackdrop}
       />
 
-      {/* --- HERO SECTION WITH SKELETON --- */}
+      {/* --- HERO SECTION --- */}
       <div ref={heroRef} className="relative h-[80vh] w-full overflow-hidden group z-10">
         <div className="absolute inset-0 bg-black">
             {isLoaded ? (
@@ -269,6 +270,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     key={displayBackdrop} 
                     src={displayBackdrop} 
                     alt={content.title} 
+                    // الصورة تختفي عندما يبدأ الفيديو (showVideo === true)
                     className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}
                 />
             ) : (
@@ -310,7 +312,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     <div className="w-64 md:w-96 h-12 md:h-20 bg-gray-800/40 rounded-xl skeleton-shimmer mb-4 border border-white/5"></div>
                 )}
 
-                {/* --- ADDED: SEASON SELECTOR --- */}
+                {/* --- SEASON SELECTOR --- */}
                 {isLoaded && content.type === 'series' && content.seasons && content.seasons.length > 1 && (
                     <div className="relative mt-1 mb-2 z-50 w-full md:w-auto flex justify-center md:justify-start" ref={dropdownRef}>
                         <button
@@ -348,7 +350,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         )}
                     </div>
                 )}
-                {/* --- END ADDED SECTION --- */}
 
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-2 text-sm md:text-base font-medium text-gray-200 w-full">
                     {isLoaded ? (
@@ -400,21 +401,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 content={content}
                             />
 
-                            {heroEmbedUrl && !isMobile && showVideo && !videoEnded && (
-                                <button 
-                                    onClick={toggleMute} 
-                                    className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group scale-[1.15] origin-center"
-                                    title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
-                                >
-                                    <SpeakerIcon isMuted={isMuted} className="w-7 h-7 text-white group-hover:scale-110 transition-transform" />
-                                </button>
-                            )}
+                            {/* تم إخفاء زر الصوت بناءً على الطلب */}
                             
                             {trailerVideoId && (showVideo || videoEnded) && (
                                 <button 
                                     onClick={() => { setActiveTab('trailer'); tabsRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
                                     className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group scale-[1.15] origin-center"
-                                    title="عرض التريلر"
+                                    title="عرض الإعلان"
                                 >
                                     <ExpandIcon className="w-7 h-7 text-white group-hover:scale-110 transition-transform" />
                                 </button>
