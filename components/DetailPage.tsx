@@ -295,8 +295,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
                 <div className="absolute inset-0 bg-[#161b22] skeleton-shimmer"></div>
             )}
             
-            {heroEmbedUrl && !isMobile && isLoaded && (
-                <div className={`absolute inset-0 w-full h-full overflow-hidden transition-opacity duration-1000 ${showVideo ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+            {showVideo && !videoEnded && heroEmbedUrl && !isMobile && isLoaded && (
+                <div className="absolute inset-0 w-full h-full overflow-hidden animate-fade-in pointer-events-auto">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
                         <iframe 
                             ref={iframeRef} 
