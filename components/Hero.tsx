@@ -45,7 +45,6 @@ const Hero: React.FC<HeroProps> = ({
     
     const containerRef = useRef<HTMLDivElement>(null);
     const activeIframeRef = useRef<HTMLIFrameElement>(null);
-    const hasTransitionedRef = useRef<boolean>(false);
     const [isMobile, setIsMobile] = useState(false);
 
     const len = contents.length;
@@ -65,7 +64,35 @@ const Hero: React.FC<HeroProps> = ({
         setUnboundedIndex(prev => prev + 1);
     }, []);
 
-    // Listen for YouTube events to detect when video finishes
+    const restartVideo = useCallback(() => {
+        if (activeIframeRef.current) {
+            try {
+                activeIframeRef.current.contentWindow?.postMessage(JSON.stringify({
+                    event: 'command',
+                    func: 'seekTo',
+                    args: [0, true]
+                }), '*');
+                activeIframeRef.current.contentWindow?.postMessage(JSON.stringify({
+                    event: 'command',
+                    func: 'playVideo',
+                    args: ''
+                }), '*');
+            } catch (e) {}
+        }
+    }, []);
+
+    // 60-second loop timer
+    useEffect(() => {
+        if (!showVideo) return;
+
+        const loopTimer = setInterval(() => {
+            restartVideo();
+        }, 60000); // Loop every 60 seconds
+
+        return () => clearInterval(loopTimer);
+    }, [showVideo, restartVideo]);
+
+    // Listen for YouTube events to detect when video finishes (natural loop fallback)
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             try {
@@ -73,29 +100,25 @@ const Hero: React.FC<HeroProps> = ({
                     const data = JSON.parse(event.data);
                     
                     // YouTube Player State 0 means "ENDED"
-                    // Also check for 'onStateChange' data === 0
                     const isEnded = (data.event === 'infoDelivery' && data.info && data.info.playerState === 0) ||
                                     (data.event === 'onStateChange' && (data.info === 0 || data.data === 0));
 
                     if (isEnded) {
-                        if (!hasTransitionedRef.current && hasMultiple) {
-                            hasTransitionedRef.current = true;
-                            handleNext();
-                        }
+                        // Instead of advancing to next, we restart the current video to loop it
+                        restartVideo();
                     }
                 }
             } catch (e) { }
         };
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [handleNext, hasMultiple]);
+    }, [restartVideo]);
 
     useEffect(() => {
         setShowVideo(false);
         setIsMuted(true);
         setIsPaused(false);
         setIsDirectJump(false);
-        hasTransitionedRef.current = false; 
 
         if (!activeContent || !activeContent.trailerUrl || isMobile) return;
 
@@ -121,6 +144,7 @@ const Hero: React.FC<HeroProps> = ({
 
     useEffect(() => {
         // Standard auto-slide timer - only active when video is NOT playing
+        // If the user wants the video to loop indefinitely, we keep showVideo as a blocker
         if (!hasMultiple || isDragging || isPaused || showVideo) return;
 
         const timer = setTimeout(() => {
@@ -203,7 +227,8 @@ const Hero: React.FC<HeroProps> = ({
                     const videoId = getVideoId(content.trailerUrl);
                     if (videoId) {
                         const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${origin}`;
+                        // loop=1 and playlist=[ID] enables native YouTube looping
+                        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=1&playlist=${videoId}&playsinline=1&enablejsapi=1&origin=${origin}`;
                     }
                 }
                 const shouldShowVideo = isActive && showVideo && embedUrl && !isMobile;
@@ -230,7 +255,7 @@ const Hero: React.FC<HeroProps> = ({
                                 <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in pointer-events-auto"> 
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
                                         <iframe 
-                                            ref={activeIframeRef}
+                                            ref={isActive ? activeIframeRef : null}
                                             src={embedUrl} 
                                             className="w-full h-full pointer-events-none" 
                                             allow="autoplay; encrypted-media; picture-in-picture" 
