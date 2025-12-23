@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '@/types';
 import VideoPlayer from '@/components/VideoPlayer';
@@ -370,22 +369,58 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     </div>
                 )}
 
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-2 text-sm md:text-base font-medium text-gray-200 w-full">
+                {/* --- ADDED METADATA SECTION --- */}
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 md:gap-4 mb-2 text-sm md:text-base font-medium text-gray-200 w-full transition-all duration-700 ease-in-out">
                     {isLoaded ? (
                         <>
+                            {/* التقييم */}
                             <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
                                 <StarIcon className="w-5 h-5" />
                                 <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
                             </div>
-                            <span className="text-gray-500">|</span>
-                            <span className="text-white">{currentSeason?.releaseYear || content.releaseYear}</span>
-                            <span className="text-gray-500">|</span>
-                            <span className="px-2 py-0.5 border border-gray-500 rounded text-gray-300 text-xs">{content.ageRating}</span>
+
+                            <span className="text-gray-500 opacity-60">|</span>
+
+                            {/* السنة */}
+                            <span className="text-white font-semibold tracking-wide">{currentSeason?.releaseYear || content.releaseYear}</span>
+
+                            {/* مدة العرض (للأفلام) */}
+                            {content.type === 'movie' && content.duration && (
+                                <>
+                                    <span className="text-gray-500 opacity-60">|</span>
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 border border-gray-600/50 rounded text-gray-200 text-xs backdrop-blur-sm bg-white/5">
+                                        <ClockIcon className="w-4 h-4" />
+                                        <span dir="ltr">{content.duration}</span>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* التصنيف العمري */}
+                            <span className="text-gray-500 opacity-60">|</span>
+                            <span className="px-2 py-0.5 border border-gray-500 rounded text-gray-300 text-xs font-bold">{content.ageRating}</span>
+
+                            {/* التصنيف النوعي (Genres) - أصبح الأخير بناءً على طلبك */}
+                            {content.genres && content.genres.length > 0 && (
+                                <>
+                                    <span className="text-gray-500 opacity-60">|</span>
+                                    <div className="flex items-center gap-2">
+                                        {content.genres.slice(0, 3).map((genre, index) => (
+                                            <React.Fragment key={index}>
+                                                <span className={`font-medium ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]'}`}>
+                                                    {genre}
+                                                </span>
+                                                {index < Math.min(content.genres.length, 3) - 1 && <span className="text-gray-600 text-[10px]">•</span>}
+                                            </React.Fragment>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </>
                     ) : (
                         <div className="w-48 h-6 bg-gray-800/40 rounded skeleton-shimmer border border-white/5"></div>
                     )}
                 </div>
+                {/* --- END ADDED METADATA SECTION --- */}
 
                 <div className="overflow-hidden transition-all duration-700 ease-in-out w-full opacity-100 max-h-40 mb-3 md:mb-4">
                     {isLoaded ? (
