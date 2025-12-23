@@ -34,7 +34,7 @@ export const genres = [
 
 export type Genre = typeof genres[number];
 
-export type View = 'home' | 'movies' | 'series' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'watch' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance' | 'search';
+export type View = 'home' | 'movies' | 'series' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'watch' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance' | 'search' | 'welcome' | 'onboarding';
 
 export type LoginError = 'none' | 'userNotFound' | 'wrongPassword';
 
@@ -49,10 +49,10 @@ export interface Server {
 export interface Episode {
   id: number;
   title?: string;
-  thumbnail?: string; // Made optional
-  description?: string; // New: Episode Story/Description
-  duration?: string; // Changed to string to support "45:30" format
-  progress: number; // percentage
+  thumbnail?: string; 
+  description?: string; 
+  duration?: string; 
+  progress: number; 
   servers: Server[];
 }
 
@@ -61,22 +61,21 @@ export interface Season {
   seasonNumber: number;
   title?: string;
   episodes: Episode[];
-  poster?: string; // New: Season specific poster
-  backdrop?: string; // New: Season specific backdrop
-  horizontalPoster?: string; // New: Season specific horizontal poster
-  logoUrl?: string; // New: Season specific logo (transparent)
-  trailerUrl?: string; // New: Season specific trailer URL (Optional)
-  releaseYear?: number; // New: Optional release year for the season
-  description?: string; // New: Optional description/plot for the season
-  cast?: string[]; // New: Optional cast specific to the season
+  poster?: string; 
+  backdrop?: string; 
+  horizontalPoster?: string; 
+  logoUrl?: string; 
+  trailerUrl?: string; 
+  releaseYear?: number; 
+  description?: string; 
+  cast?: string[]; 
   
-  // Mobile Specifics
-  mobileImageUrl?: string; // Optional custom image for mobile (Portrait/Custom Crop)
-  useCustomMobileImage?: boolean; // Toggle to use the custom image
-  enableMobileCrop?: boolean; // New: Toggle for mobile customization
-  mobileCropPosition?: number; // Legacy X
-  mobileCropPositionX?: number; // 0-100 percentage X
-  mobileCropPositionY?: number; // 0-100 percentage Y
+  mobileImageUrl?: string; 
+  useCustomMobileImage?: boolean; 
+  enableMobileCrop?: boolean; 
+  mobileCropPosition?: number; 
+  mobileCropPositionX?: number; 
+  mobileCropPositionY?: number; 
 }
 
 export interface Content {
@@ -85,11 +84,11 @@ export interface Content {
   description: string;
   type: ContentType;
   poster: string;
-  top10Poster?: string; // New: Custom photo for Top 10 ranking
   backdrop: string;
-  horizontalPoster?: string; // New: Horizontal/Landscape Poster for specific carousels
-  mobileBackdropUrl?: string; // New: Specific vertical background for mobile
-  rating: number; // out of 5
+  top10Poster?: string; 
+  horizontalPoster?: string; 
+  mobileBackdropUrl?: string; 
+  rating: number; 
   ageRating: string;
   categories: Category[];
   genres: Genre[];
@@ -97,20 +96,20 @@ export interface Content {
   cast: string[];
   bannerNote?: string;
   seasons?: Season[];
-  servers?: Server[]; // For movies
-  releaseDate?: string; // For upcoming content, e.g., '2026-03-01'
-  visibility: 'general' | 'adults' | 'kids'; // Replaces isKidsSafe
+  servers?: Server[]; 
+  releaseDate?: string; 
+  visibility: 'general' | 'adults' | 'kids'; 
   createdAt: string;
   updatedAt?: string;
-  logoUrl?: string; // New: URL for the title logo image
-  isLogoEnabled?: boolean; // New: Toggle to show logo instead of text
-  trailerUrl?: string; // New: YouTube Trailer URL for Hero Background
-  duration?: string; // New: Movie duration (e.g., "1h 30m")
-  enableMobileCrop?: boolean; // New: Toggle for mobile image cropping
-  mobileCropPosition?: number; // Legacy X
-  mobileCropPositionX?: number; // New: Percentage (0-100) X
-  mobileCropPositionY?: number; // New: Percentage (0-100) Y
-  slug?: string; // New: SEO friendly URL slug
+  logoUrl?: string; 
+  isLogoEnabled?: boolean; 
+  trailerUrl?: string; 
+  duration?: string; 
+  enableMobileCrop?: boolean; 
+  mobileCropPosition?: number; 
+  mobileCropPositionX?: number; 
+  mobileCropPositionY?: number; 
+  slug?: string; 
 }
 
 export interface PinnedItem {
@@ -120,6 +119,22 @@ export interface PinnedItem {
 
 export type PageKey = 'home' | 'movies' | 'series' | 'kids' | 'ramadan' | 'soon';
 
+export interface StoryMediaItem {
+  url: string;
+  mediaType: 'video' | 'image';
+  ctaText?: string;   
+  targetUrl?: string; 
+}
+
+export interface Story {
+  id: string;
+  title: string;
+  thumbnailUrl: string;
+  mediaItems: StoryMediaItem[];
+  isActive: boolean;
+  createdAt: string;
+}
+
 export type PinnedContentState = Record<PageKey, PinnedItem[]>;
 export type Top10State = Record<PageKey, PinnedItem[]>;
 
@@ -127,15 +142,15 @@ export interface CarouselRow {
   id: string;
   title: string;
   contentIds: string[];
-  isNew?: boolean; // To identify the "أحدث الإضافات" carousel
-  showRanking?: boolean; // New: Flag to show ranking badges
+  isNew?: boolean; 
+  showRanking?: boolean; 
 }
 
 export interface WatchHistoryItem {
   contentId: string;
   seasonId?: number;
   episodeId?: number;
-  watchedAt: string; // ISO String
+  watchedAt: string; 
 }
 
 export const UserRole = {
@@ -151,7 +166,7 @@ export interface Profile {
   name: string;
   avatar: string;
   watchHistory: WatchHistoryItem[];
-  myList: string[]; // Array of content IDs
+  myList: string[]; 
   isKid: boolean;
 }
 
@@ -160,51 +175,21 @@ export interface User {
   firstName?: string;
   lastName?: string;
   email: string;
-  password?: string; // In a real app, this would be a hash
+  password?: string; 
   role: UserRole;
   profiles: Profile[];
-  fcmTokens?: string[]; // For notifications
+  fcmTokens?: string[]; 
 }
 
 export const adPlacements = [
-  'home-top',
-  'home-below-hero',
-  'home-middle',
-  'home-carousel-3-4',
-  'home-bottom', 
-  'listing-top', 
-  'listing-sidebar', 
-  'listing-bottom', 
-  'watch-top',
-  'watch-preroll',
-  'watch-below-player', 
-  'watch-sidebar',
-  'watch-above-recommendations', 
-  'watch-bottom',
-  'movies-page',
-  'series-page',
-  'ramadan-page',
-  'soon-page',
-  'kids-top',
-  'kids-bottom',
-  'ramadan-top',
-  'ramadan-bottom',
-  'soon-page-top',
-  'soon-page-bottom',
-  'global-popunder',
-  'global-social-bar', 
-  'global-sticky-footer',
-  'global_head',
-  'details_sidebar',
-  'player_overlay',
-  'player_bottom',
-  // NEW POSITIONS
-  'action_download',
-  'action_next_episode',
-  'page_movies_top',
-  'page_series_top',
-  'page_kids_top',
-  'page_ramadan_top'
+  'home-top', 'home-below-hero', 'home-middle', 'home-carousel-3-4', 'home-bottom', 
+  'listing-top', 'listing-sidebar', 'listing-bottom', 'watch-top', 'watch-preroll',
+  'watch-below-player', 'watch-sidebar', 'watch-above-recommendations', 'watch-bottom',
+  'movies-page', 'series-page', 'ramadan-page', 'soon-page', 'kids-top', 'kids-bottom',
+  'ramadan-top', 'ramadan-bottom', 'soon-page-top', 'soon-page-bottom', 'global-popunder',
+  'global-social-bar', 'global-sticky-footer', 'global_head', 'details_sidebar',
+  'player_overlay', 'player_bottom', 'action_download', 'action_next_episode',
+  'page_movies_top', 'page_series_top', 'page_kids_top', 'page_ramadan_top'
 ] as const;
 
 export type AdPlacement = typeof adPlacements[number];
@@ -241,7 +226,6 @@ export const adPlacementLabels: Record<AdPlacement, string> = {
     'details_sidebar': 'التفاصيل - شريط جانبي',
     'player_overlay': 'المشغل - طبقة شفافة (Overlay)',
     'player_bottom': 'المشغل - أسفل الفيديو',
-    // NEW LABELS
     'action_download': 'إجراء - عند التحميل (Wait Timer)',
     'action_next_episode': 'إجراء - الحلقة التالية (Wait Timer)',
     'page_movies_top': 'صفحة الأفلام - بانر علوي',
@@ -250,10 +234,7 @@ export const adPlacementLabels: Record<AdPlacement, string> = {
     'page_ramadan_top': 'صفحة رمضان - بانر علوي',
 };
 
-// NEW: Device Targeting Type
 export type DeviceTarget = 'all' | 'mobile' | 'desktop';
-
-// NEW: Smart Popunder Triggers
 export type TriggerTarget = 'all' | 'watch-now' | 'play-button' | 'download-button' | 'server-select' | 'navigation';
 
 export const triggerTargetLabels: Record<TriggerTarget, string> = {
@@ -265,7 +246,6 @@ export const triggerTargetLabels: Record<TriggerTarget, string> = {
     'navigation': 'القوائم (Navigation Links)'
 };
 
-// CSS Selectors Mapping for the Engine
 export const triggerSelectors: Record<TriggerTarget, string> = {
     'all': 'body',
     'watch-now': '.target-watch-btn',
@@ -276,31 +256,25 @@ export const triggerSelectors: Record<TriggerTarget, string> = {
 };
 
 export type AdType = 'banner' | 'code';
-export type AdPosition = AdPlacement; // Alias for backward compatibility
+export type AdPosition = AdPlacement;
 
 export interface Ad {
   id: string;
   title: string;
-  code?: string; // HTML/JS code - OPTIONAL for Banner ads
-  // Re-adding banner props for backward/forward compatibility with new system requests
+  code?: string;
   imageUrl?: string;
   destinationUrl?: string;
-  scriptCode?: string; // Alternate for 'code' in some contexts, unifying to 'code' is better but keeping consistent
-  type?: AdType; // Optional in old schema, mandatory in new, handled via defaults
-  
+  scriptCode?: string;
+  type?: AdType;
   placement: AdPlacement;
-  position?: AdPlacement; // Alias for placement
+  position?: AdPlacement;
   status: 'active' | 'disabled';
-  isActive?: boolean; // Alias for status
-  
+  isActive?: boolean;
   targetDevice: DeviceTarget;
   triggerTarget?: TriggerTarget; 
-  
-  timerDuration?: number; // New: Duration in seconds for action ads
-  
-  updatedAt: string; // ISO String
+  timerDuration?: number; 
+  updatedAt: string; 
 }
-
 
 export interface ShoutBar {
   text: string;
@@ -332,21 +306,19 @@ export interface SiteSettings {
     showTop10Home: boolean;
     showTop10Movies: boolean;
     showTop10Series: boolean;
-    serviceAccountJson?: string; // Replaced fcmServerKey with this
+    serviceAccountJson?: string; 
 }
 
-// New Interface for Content Requests
 export interface ContentRequest {
     id: string;
     title: string;
     type: 'movie' | 'series';
     notes?: string;
-    userId?: string | null; // Allow null
+    userId?: string | null; 
     status: 'pending' | 'completed';
-    createdAt: string; // ISO String
+    createdAt: string; 
 }
 
-// Types for Gemini Service (AI Dashboard)
 export const MediaType = {
   MOVIE: 'movie',
   SERIES: 'series',
@@ -372,7 +344,6 @@ export interface CategorySection {
   items: MediaItem[];
 }
 
-// --- New Types for Dynamic Home Sections ---
 export type SectionDisplayType = 'vertical_poster' | 'horizontal_card' | 'hybrid';
 export type SectionContentType = 'automatic' | 'manual';
 export type SectionSourceType = 'latest' | 'top_rated' | 'most_viewed' | 'by_genre';
@@ -386,11 +357,11 @@ export interface HomeSection {
   pageLocation: SectionPageLocation;
   displayType: SectionDisplayType;
   contentType: SectionContentType;
-  sourceType?: SectionSourceType; // For automatic
+  sourceType?: SectionSourceType; 
   itemLimit?: number;
-  selectedContentIds?: string[]; // For manual
-  filterGenre?: string[]; // For automatic by genre
-  filterType?: string; // 'movie' | 'series' (optional filter)
+  selectedContentIds?: string[]; 
+  filterGenre?: string[]; 
+  filterType?: string; 
   showRanking?: boolean;
   createdAt?: string;
   updatedAt?: string;

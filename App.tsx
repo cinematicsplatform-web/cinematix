@@ -4,10 +4,10 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 // Note: firestore is imported via db from ./firebase
 
-import { db, auth, getUserProfile, updateUserProfileInFirestore, createUserProfileInFirestore, deleteUserFromFirestore, getSiteSettings, getAds, getUsers, updateSiteSettings as updateSiteSettingsInDb, addAd, updateAd, deleteAd, getPinnedContent, updatePinnedContentForPage, getTop10Content, updateTop10ContentForPage, requestNotificationPermission, getAllContent } from './firebase'; 
-import type { Content, User, Profile, Ad, PinnedItem, SiteSettings, View, LoginError, PinnedContentState, Top10State, PageKey } from './types';
+import { db, auth, getUserProfile, updateUserProfileInFirestore, createUserProfileInFirestore, deleteUserFromFirestore, getSiteSettings, getAds, getUsers, updateSiteSettings as updateSiteSettingsInDb, addAd, updateAd, deleteAd, getPinnedContent, updatePinnedContentForPage, getTop10Content, updateTop10ContentForPage, requestNotificationPermission, getAllContent, getStories } from './firebase'; 
+import type { Content, User, Profile, Ad, PinnedItem, SiteSettings, View, LoginError, PinnedContentState, Top10State, PageKey, Story } from './types';
 import { UserRole, triggerSelectors } from './types';
-import { initialSiteSettings, defaultAvatar, pinnedContentData as initialPinned, top10ContentData as initialTop10 } from './data';
+import { initialSiteSettings, defaultAvatar, pinnedContentData as initialPinned, top10ContentData as initialTop10, femaleAvatars } from './data';
 
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -15,6 +15,7 @@ import DetailPage from './components/DetailPage';
 import LoginModal from './components/LoginModal';
 import AdminPanel from './components/AdminPanel';
 import CreateAccountPage from './components/CreateAccountPage';
+import OnboardingPage from './components/OnboardingPage';
 import MoviesPage from './components/MoviesPage';
 import SeriesPage from './components/SeriesPage';
 import ProfileSelector from './components/ProfileSelector';
@@ -37,6 +38,7 @@ import AdZone from './components/AdZone';
 import RequestContentModal from './components/RequestContentModal';
 import EpisodeWatchPage from './components/EpisodeWatchPage';
 import SearchPage from './components/SearchPage';
+import WelcomePage from './components/WelcomePage';
 
 const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} {...props}>
@@ -66,6 +68,7 @@ const VIEW_PATHS: Record<string, View> = {
     '/admin': 'admin',
     '/login': 'login',
     '/register': 'register',
+    '/onboarding': 'onboarding',
     '/mylist': 'myList',
     '/account': 'accountSettings',
     '/profile': 'profileHub',
@@ -73,7 +76,8 @@ const VIEW_PATHS: Record<string, View> = {
     '/copyright': 'copyright',
     '/about': 'about',
     '/maintenance': 'maintenance',
-    '/search': 'search'
+    '/search': 'search',
+    '/welcome': 'welcome'
 };
 
 const REVERSE_VIEW_PATHS: Record<string, string> = {
@@ -86,6 +90,7 @@ const REVERSE_VIEW_PATHS: Record<string, string> = {
     'admin': '/admin',
     'login': '/login',
     'register': '/register',
+    'onboarding': '/onboarding',
     'myList': '/mylist',
     'accountSettings': '/account',
     'profileHub': '/profile',
@@ -96,7 +101,8 @@ const REVERSE_VIEW_PATHS: Record<string, string> = {
     'profileSelector': '/profiles',
     'category': '/category',
     'maintenance': '/maintenance',
-    'search': '/search'
+    'search': '/search',
+    'welcome': '/welcome'
 };
 
 const safeHistoryPush = (path: string) => {
@@ -149,6 +155,7 @@ const App: React.FC = () => {
   const [allContent, setAllContent] = useState<Content[]>([]);
   const [pinnedItems, setPinnedItems] = useState<PinnedContentState>(initialPinned);
   const [top10Items, setTop10Items] = useState<Top10State>(initialTop10);
+  const [allStories, setAllStories] = useState<Story[]>([]);
   
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
       let settings = initialSiteSettings;
@@ -236,11 +243,8 @@ const App: React.FC = () => {
 
   const resolveContentFromUrl = useCallback((path: string, contentList: Content[]) => {
       const decodedPath = decodeURIComponent(path);
-      
-      // 1. Resolve Watch (Episodes) - Supports Arabic and English variants
       const watchMatch = decodedPath.match(/^\/مشاهدة\/([^\/]+)\/الموسم\/(\d+)\/الحلقة\/(\d+)/) || 
                          decodedPath.match(/^\/watch\/([^\/]+)\/(\d+)\/(\d+)/);
-                         
       if (watchMatch) {
           const slug = watchMatch[1];
           const season = parseInt(watchMatch[2]);
@@ -253,8 +257,6 @@ const App: React.FC = () => {
               return;
           }
       }
-
-      // 2. Resolve Movie Direct Watch Path
       const movieWatchMatch = decodedPath.match(/^\/watch\/movie\/([^\/]+)/);
       if (movieWatchMatch) {
           const slug = movieWatchMatch[1];
@@ -265,8 +267,6 @@ const App: React.FC = () => {
               return;
           }
       }
-
-      // 3. Resolve Detail/Series (Legacy & Standard)
       const match = decodedPath.match(/^\/(?:series|مسلسل|movie|فيلم)\/([^\/]+)/);
       if (match && match[1]) {
           const slug = match[1];
@@ -315,24 +315,26 @@ const App: React.FC = () => {
   const fetchData = useCallback(async () => {
       try {
           setIsContentLoading(true);
-          const [contentList, settings, adsList, pinnedData, top10Data] = await Promise.all([
+          const [contentList, settings, adsList, pinnedData, top10Data, storiesList] = await Promise.all([
               getAllContent(),
               getSiteSettings(),
               getAds(),
               getPinnedContent(),
-              getTop10Content()
+              getTop10Content(),
+              getStories(currentUser?.role !== UserRole.Admin)
           ]);
           setAllContent(contentList);
           setSiteSettings(prev => ({...settings, activeTheme: settings.activeTheme || 'default'}));
           setAds(adsList);
           setPinnedItems(pinnedData);
           setTop10Items(top10Data);
+          setAllStories(storiesList);
       } catch (error) {
           console.error("Error fetching data", error);
       } finally {
           setIsContentLoading(false);
       }
-  }, []);
+  }, [currentUser?.role]);
 
   useEffect(() => {
       const hideLoader = () => {
@@ -378,7 +380,18 @@ const App: React.FC = () => {
   }, []);
 
   const handleSetView = (newView: View, category?: string, params?: any) => {
-      if (view !== 'detail' && view !== 'watch') scrollPositions.current[view] = window.scrollY;
+      if (view !== 'detail' && view !== 'watch' && view !== 'login' && view !== 'register') {
+          scrollPositions.current[view] = window.scrollY;
+      }
+      
+      const flowViews: View[] = ['login', 'register', 'welcome'];
+      const currentIsFlow = flowViews.includes(view);
+      const nextIsFlow = flowViews.includes(newView);
+
+      if (nextIsFlow && !currentIsFlow && newView !== view) {
+          setReturnView(view);
+      }
+
       setView(newView);
       if (category) setSelectedCategory(category);
       if (newView === 'watch' && params) {
@@ -431,24 +444,58 @@ const App: React.FC = () => {
   };
 
   const handleLogin = async (email: string, pass: string): Promise<LoginError> => {
-      try { await auth.signInWithEmailAndPassword(email, pass); return 'none'; }
+      try { 
+        await auth.signInWithEmailAndPassword(email, pass); 
+        return 'none'; 
+      }
       catch (error: any) { return (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') ? error.code.replace('auth/', '') as any : 'userNotFound'; }
   };
 
-  const handleRegister = async (newUser: Omit<User, 'id' | 'role' | 'profiles'>) => {
+  const handleRegister = async (newUser: Omit<User, 'id' | 'role' | 'profiles'> & { gender: 'male' | 'female' }) => {
       try {
           const cred = await auth.createUserWithEmailAndPassword(newUser.email, newUser.password || '');
           if (cred.user) {
-               const defaultProfile: Profile = { id: Date.now(), name: newUser.firstName || 'المستخدم', avatar: defaultAvatar, isKid: false, watchHistory: [], myList: [] };
-               await createUserProfileInFirestore(cred.user.uid, { firstName: newUser.firstName, lastName: newUser.lastName, email: newUser.email, profiles: [defaultProfile] });
+               const selectedAvatar = newUser.gender === 'female' ? (femaleAvatars[1] || femaleAvatars[0]) : defaultAvatar;
+               
+               const defaultProfile: Profile = { 
+                 id: Date.now(), 
+                 name: newUser.firstName || 'المستخدم', 
+                 avatar: selectedAvatar, 
+                 isKid: false, 
+                 watchHistory: [], 
+                 myList: [] 
+               };
+
+               await createUserProfileInFirestore(cred.user.uid, { 
+                 firstName: newUser.firstName, 
+                 lastName: newUser.lastName, 
+                 email: newUser.email, 
+                 profiles: [defaultProfile] 
+               });
+
                addToast('تم إنشاء الحساب بنجاح!', 'success');
-               handleSetView('profileSelector');
+               // NEW FLOW: Redirect directly to onboarding after registration
+               // Skip ProfileSelector entirely for first-time account setup
+               setActiveProfile(defaultProfile);
+               handleSetView('onboarding');
           }
       } catch (error: any) { addToast(error.message, 'error'); }
   };
 
   const handleLogout = async () => { localStorage.removeItem('cinematix_active_profile'); await auth.signOut(); setCurrentUser(null); setActiveProfile(null); handleSetView('home'); addToast('تم تسجيل الخروج.', 'info'); };
   const handleProfileSelect = (profile: Profile) => { localStorage.setItem('cinematix_active_profile', String(profile.id)); setActiveProfile(profile); if (profile.isKid) handleSetView('kids'); else handleSetView('home'); };
+  
+  const handleOnboardingFinish = async (profileData: Partial<Profile>, extraData: any) => {
+      if (currentUser && activeProfile) {
+          const updatedProfile = { ...activeProfile, ...profileData };
+          const updatedProfiles = currentUser.profiles.map(p => p.id === activeProfile.id ? updatedProfile : p);
+          await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles });
+          setActiveProfile(updatedProfile);
+          addToast('تم إعداد حسابك بنجاح!', 'success');
+          handleSetView('home');
+      }
+  };
+
   const handleToggleMyList = async (contentId: string) => {
       if (!currentUser || !activeProfile) { handleSetView('login'); return; }
       const currentList = activeProfile.myList || [];
@@ -461,93 +508,36 @@ const App: React.FC = () => {
       await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles });
   };
 
-  // --- Missing Admin Handlers ---
   const handleUpdateSiteSettings = async (settings: SiteSettings) => {
-      try {
-          await updateSiteSettingsInDb(settings);
-          setSiteSettings(settings);
-          addToast('تم حفظ الإعدادات بنجاح', 'success');
-      } catch (e) {
-          addToast('فشل حفظ الإعدادات', 'error');
-      }
+      try { await updateSiteSettingsInDb(settings); setSiteSettings(settings); addToast('تم حفظ الإعدادات بنجاح', 'success'); } catch (e) { addToast('فشل حفظ الإعدادات', 'error'); }
   };
 
   const handleUpdatePinnedItems = async (pageKey: PageKey, items: PinnedItem[]) => {
-      try {
-          await updatePinnedContentForPage(pageKey, items);
-          setPinnedItems(prev => ({ ...prev, [pageKey]: items }));
-          addToast('تم تحديث المحتوى المثبت', 'success');
-      } catch (e) {
-          addToast('فشل التحديث', 'error');
-      }
+      try { await updatePinnedContentForPage(pageKey, items); setPinnedItems(prev => ({ ...prev, [pageKey]: items })); addToast('تم تحديث المحتوى المثبت', 'success'); } catch (e) { addToast('فشل التحديث', 'error'); }
   };
 
   const handleUpdateTop10Items = async (pageKey: PageKey, items: PinnedItem[]) => {
-      try {
-          await updateTop10ContentForPage(pageKey, items);
-          setTop10Items(prev => ({ ...prev, [pageKey]: items }));
-          addToast('تم تحديث قائمة التوب 10', 'success');
-      } catch (e) {
-          addToast('فشل التحديث', 'error');
-      }
+      try { await updateTop10ContentForPage(pageKey, items); setTop10Items(prev => ({ ...prev, [pageKey]: items })); addToast('تم تحديث قائمة التوب 10', 'success'); } catch (e) { addToast('فشل التحديث', 'error'); }
   };
 
   const handleUpdateAd = async (ad: Ad) => {
-      try {
-          await updateAd(ad.id, ad);
-          setAds(prev => prev.map(a => a.id === ad.id ? ad : a));
-          addToast('تم تحديث الإعلان', 'success');
-      } catch (e) {
-          addToast('فشل تحديث الإعلان', 'error');
-      }
+      try { await updateAd(ad.id, ad); setAds(prev => prev.map(a => a.id === ad.id ? ad : a)); addToast('تم تحديث الإعلان', 'success'); } catch (e) { addToast('فشل تحديث الإعلان', 'error'); }
   };
 
   const handleDeleteAd = async (adId: string) => {
-      try {
-          await deleteAd(adId);
-          setAds(prev => prev.filter(a => a.id !== adId));
-          addToast('تم حذف الإعلان', 'success');
-      } catch (e) {
-          addToast('فشل حذف الإعلان', 'error');
-      }
+      try { await deleteAd(adId); setAds(prev => prev.filter(a => a.id !== adId)); addToast('تم حذف الإعلان', 'success'); } catch (e) { addToast('فشل حذف الإعلان', 'error'); }
   };
 
   const handleAddAd = async (adData: Omit<Ad, 'id' | 'updatedAt'>) => {
-      try {
-          const id = await addAd(adData);
-          const newAd: Ad = { ...adData, id, updatedAt: new Date().toISOString() };
-          setAds(prev => [newAd, ...prev]);
-          addToast('تم إضافة الإعلان بنجاح', 'success');
-      } catch (e) {
-          addToast('فشل إضافة الإعلان', 'error');
-      }
+      try { const id = await addAd(adData); const newAd: Ad = { ...adData, id, updatedAt: new Date().toISOString() }; setAds(prev => [newAd, ...prev]); addToast('تم إضافة الإعلان بنجاح', 'success'); } catch (e) { addToast('فشل إضافة الإعلان', 'error'); }
   };
 
   const handleAddAdmin = async (newAdmin: Omit<User, 'id' | 'role' | 'profiles'>) => {
-      try {
-          const cred = await auth.createUserWithEmailAndPassword(newAdmin.email, newAdmin.password || '');
-          if (cred.user) {
-              const defaultProfile: Profile = { id: Date.now(), name: newAdmin.firstName || 'المسؤول', avatar: defaultAvatar, isKid: false, watchHistory: [], myList: [] };
-              await createUserProfileInFirestore(cred.user.uid, { firstName: newAdmin.firstName, email: newAdmin.email, profiles: [defaultProfile] });
-              await updateUserProfileInFirestore(cred.user.uid, { role: UserRole.Admin });
-              addToast('تم إضافة المسؤول بنجاح!', 'success');
-              const usersList = await getUsers();
-              setAllUsers(usersList);
-          }
-      } catch (error: any) {
-          addToast(error.message, 'error');
-          throw error;
-      }
+      try { const cred = await auth.createUserWithEmailAndPassword(newAdmin.email, newAdmin.password || ''); if (cred.user) { const defaultProfile: Profile = { id: Date.now(), name: newAdmin.firstName || 'المسؤول', avatar: defaultAvatar, isKid: false, watchHistory: [], myList: [] }; await createUserProfileInFirestore(cred.user.uid, { firstName: newAdmin.firstName, email: newAdmin.email, profiles: [defaultProfile] }); await updateUserProfileInFirestore(cred.user.uid, { role: UserRole.Admin }); addToast('تم إضافة المسؤول بنجاح!', 'success'); const usersList = await getUsers(); setAllUsers(usersList); } } catch (error: any) { addToast(error.message, 'error'); throw error; }
   };
 
   const handleDeleteUser = async (userId: string) => {
-      try {
-          await deleteUserFromFirestore(userId);
-          setAllUsers(prev => prev.filter(u => u.id !== userId));
-          addToast('تم حذف المستخدم بنجاح', 'success');
-      } catch (e) {
-          addToast('فشل حذف المستخدم', 'error');
-      }
+      try { await deleteUserFromFirestore(userId); setAllUsers(prev => prev.filter(u => u.id !== userId)); addToast('تم حذف المستخدم بنجاح', 'success'); } catch (e) { addToast('فشل حذف المستخدم', 'error'); }
   };
 
   const renderView = () => {
@@ -565,10 +555,15 @@ const App: React.FC = () => {
       );
 
       if (isMaintenance && !isAdmin) {
-          if (view === 'login') return <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
+          if (view === 'login') return <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
           return <MaintenancePage socialLinks={siteSettings.socialLinks} onSetView={handleSetView} />;
       }
-      if (!isAuthLoading && currentUser && !activeProfile && view !== 'profileSelector' && view !== 'accountSettings' && view !== 'admin') return <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} />;
+      
+      // EXISTING USERS LOGIC: If logged in but no profile selected, show selector
+      // EXCEPTION: If the user is currently in the 'onboarding' view (new user), don't force them back to selector
+      if (!isAuthLoading && currentUser && !activeProfile && view !== 'profileSelector' && view !== 'accountSettings' && view !== 'admin' && view !== 'onboarding') {
+          return <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} />;
+      }
 
       const getContentWithMeta = (items: PinnedItem[]) => items.map((p): Content | null => {
           const content = allContent.find(c => c.id === p.contentId);
@@ -591,15 +586,15 @@ const App: React.FC = () => {
       const getTop10ContentWithMeta = (page: PageKey) => getContentWithMeta(top10Items[page]);
 
       switch (view) {
-          case 'home': return <HomePage allContent={allContent} pinnedContent={getPinnedContentWithMeta('home')} top10Content={getTop10ContentWithMeta('home')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} activeProfile={activeProfile} />;
+          case 'home': return <HomePage allContent={allContent} pinnedContent={getPinnedContentWithMeta('home')} top10Content={getTop10ContentWithMeta('home')} stories={allStories} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} activeProfile={activeProfile} />;
           case 'movies': return <MoviesPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('movies')} top10Content={getTop10ContentWithMeta('movies')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} siteSettings={siteSettings} />;
           case 'series': return <SeriesPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('series')} top10Content={getTop10ContentWithMeta('series')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
           case 'kids': return <KidsPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('kids')} top10Content={getTop10ContentWithMeta('kids')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
           case 'ramadan': return <RamadanPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('ramadan')} top10Content={getTop10ContentWithMeta('ramadan')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} />;
           case 'soon': return <SoonPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('soon')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
+          case 'welcome': return <WelcomePage allContent={allContent} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} returnView={returnView} />;
+          case 'onboarding': return <OnboardingPage allContent={allContent} activeProfile={activeProfile} onFinish={handleOnboardingFinish} onSetView={handleSetView} />;
           case 'detail':
-               // UPDATED: Render structural DetailPage shell immediately. If selectedContent is null (refresh), 
-               // it will render a skeleton-like background until data resolves.
                return (
                    <DetailPage 
                         key={window.location.pathname}
@@ -621,7 +616,6 @@ const App: React.FC = () => {
                    />
                );
           case 'watch':
-               // UPDATED: Render structural EpisodeWatchPage shell immediately to prevent flicker.
                return (
                    <EpisodeWatchPage 
                        content={selectedContent || ({} as Content)}
@@ -637,14 +631,14 @@ const App: React.FC = () => {
                        isNetflixRedTheme={isNetflixRedTheme}
                    />
                );
-           case 'login': if (isAuthLoading) return <LoadingSpinner />; return <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
-           case 'register': if (isAuthLoading) return <LoadingSpinner />; return <CreateAccountPage onSetView={handleSetView} onRegister={handleRegister} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
-           case 'profileSelector': if (isAuthLoading) return <LoadingSpinner />; return currentUser ? <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
-           case 'myList': if (isAuthLoading) return <LoadingSpinner />; return activeProfile ? <MyListPage allContent={allContent} activeProfile={activeProfile} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
+           case 'login': if (isAuthLoading) return <LoadingSpinner />; return <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
+           case 'register': if (isAuthLoading) return <LoadingSpinner />; return <CreateAccountPage onSetView={handleSetView} onRegister={handleRegister} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
+           case 'profileSelector': if (isAuthLoading) return <LoadingSpinner />; return currentUser ? <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
+           case 'myList': if (isAuthLoading) return <LoadingSpinner />; return activeProfile ? <MyListPage allContent={allContent} activeProfile={activeProfile} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
            case 'category': return <CategoryPage categoryTitle={selectedCategory} allContent={allContent} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} ads={ads} adsEnabled={siteSettings.adsEnabled} onRequestOpen={() => setIsRequestModalOpen(true)} />;
-           case 'admin': if (isAuthLoading) return <LoadingSpinner />; return isAdmin ? <AdminPanel allUsers={allUsers} allAds={ads} pinnedItems={pinnedItems} top10Items={top10Items} siteSettings={siteSettings} onSetSiteSettings={handleUpdateSiteSettings} onSetPinnedItems={handleUpdatePinnedItems} onSetTop10Items={handleUpdateTop10Items} onSetView={handleSetView} onUpdateAd={handleUpdateAd} onDeleteAd={handleDeleteAd} onAddAd={handleAddAd} onAddAdmin={handleAddAdmin} onDeleteUser={handleDeleteUser} onContentChanged={fetchData} addToast={addToast} /> : <HomePage allContent={allContent} pinnedContent={[]} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} activeProfile={activeProfile} isLoading={isContentLoading} />;
-           case 'accountSettings': if (isAuthLoading) return <LoadingSpinner />; return currentUser ? <AccountSettingsPage user={currentUser} onUpdateProfile={async (p) => { const updatedProfiles = currentUser.profiles.map(prof => prof.id === p.id ? p : prof); if (!currentUser.profiles.find(prof => prof.id === p.id)) updatedProfiles.push(p); const updatedUser = { ...currentUser, profiles: updatedProfiles }; setCurrentUser(updatedUser); if (activeProfile?.id === p.id) setActiveProfile(p); await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); addToast('تم تحديث الملف الشخصي', 'success'); }} onDeleteProfile={async (pid) => { const updatedProfiles = currentUser.profiles.filter(p => p.id !== pid); setCurrentUser({ ...currentUser, profiles: updatedProfiles }); await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); if (activeProfile?.id === pid) setActiveProfile(null); addToast('تم حذف الملف الشخصي', 'success'); }} onUpdatePassword={async (oldP, newP) => { try { const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, oldP); await auth.currentUser?.reauthenticateWithCredential(cred); await auth.currentUser?.updatePassword(newP); addToast('تم تغيير كلمة المرور', 'success'); return true; } catch (e) { addToast('كلمة المرور القديمة غير صحيحة', 'error'); return false; } }} onDeleteAccount={async () => { await deleteUserFromFirestore(currentUser.id); await auth.currentUser?.delete(); handleSetView('home'); addToast('تم حذف الحساب', 'info'); }} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
-           case 'profileHub': if (isAuthLoading) return <LoadingSpinner />; return (currentUser && activeProfile) ? <ProfileHubPage user={currentUser} activeProfile={activeProfile} onSetView={handleSetView} onLogout={handleLogout} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
+           case 'admin': if (isAuthLoading) return <LoadingSpinner />; return isAdmin ? <AdminPanel allUsers={allUsers} allAds={ads} pinnedItems={pinnedItems} top10Items={top10Items} stories={allStories} siteSettings={siteSettings} onSetSiteSettings={handleUpdateSiteSettings} onSetPinnedItems={handleUpdatePinnedItems} onSetTop10Items={handleUpdateTop10Items} onSetView={handleSetView} onUpdateAd={handleUpdateAd} onDeleteAd={handleDeleteAd} onAddAd={handleAddAd} onAddAdmin={handleAddAdmin} onDeleteUser={handleDeleteUser} onContentChanged={fetchData} addToast={addToast} /> : <HomePage allContent={allContent} pinnedContent={[]} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} activeProfile={activeProfile} isLoading={isContentLoading} />;
+           case 'accountSettings': if (isAuthLoading) return <LoadingSpinner />; return currentUser ? <AccountSettingsPage user={currentUser} onUpdateProfile={async (p) => { const updatedProfiles = currentUser.profiles.map(prof => prof.id === p.id ? p : prof); if (!currentUser.profiles.find(prof => prof.id === p.id)) updatedProfiles.push(p); const updatedUser = { ...currentUser, profiles: updatedProfiles }; setCurrentUser(updatedUser); if (activeProfile?.id === p.id) setActiveProfile(p); await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); addToast('تم تحديث الملف الشخصي', 'success'); }} onDeleteProfile={async (pid) => { const updatedProfiles = currentUser.profiles.filter(p => p.id !== pid); setCurrentUser({ ...currentUser, profiles: updatedProfiles }); await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); if (activeProfile?.id === pid) setActiveProfile(null); addToast('تم حذف الملف الشخصي', 'success'); }} onUpdatePassword={async (oldP, newP) => { try { const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, oldP); await auth.currentUser?.reauthenticateWithCredential(cred); await auth.currentUser?.updatePassword(newP); addToast('تم تغيير كلمة المرور', 'success'); return true; } catch (e) { addToast('كلمة المرور القديمة غير صحيحة', 'error'); return false; } }} onDeleteAccount={async () => { await deleteUserFromFirestore(currentUser.id); await auth.currentUser?.delete(); handleSetView('home'); addToast('تم حذف الحساب', 'info'); }} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
+           case 'profileHub': if (isAuthLoading) return <LoadingSpinner />; return (currentUser && activeProfile) ? <ProfileHubPage user={currentUser} activeProfile={activeProfile} onSetView={handleSetView} onLogout={handleLogout} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
            case 'privacy': return <PrivacyPolicyPage content={siteSettings.privacyPolicy} onSetView={handleSetView} />;
            case 'copyright': return <CopyrightPage content={siteSettings.copyrightPolicy} onSetView={handleSetView} />;
            case 'about': return <AboutPage onSetView={handleSetView} />;
@@ -653,7 +647,7 @@ const App: React.FC = () => {
       }
   };
 
-  const fullScreenViews = ['login', 'register', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'search'];
+  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'search', 'welcome'];
   const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
   const showGlobalFooter = !fullScreenViews.includes(view) && !siteSettings.is_maintenance_mode_enabled;
   const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view);
@@ -672,7 +666,7 @@ const App: React.FC = () => {
             ))}
         </div>
         {siteSettings.adsEnabled && <AdZone position="global_head" />}
-        {view !== 'login' && view !== 'register' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && !siteSettings.is_maintenance_mode_enabled && (
+        {view !== 'login' && view !== 'register' && view !== 'onboarding' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && view !== 'welcome' && !siteSettings.is_maintenance_mode_enabled && (
             <Header onSetView={handleSetView} currentUser={currentUser} activeProfile={activeProfile} onLogout={handleLogout} allContent={allContent} onSelectContent={handleSelectContent} currentView={view} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} returnView={returnView} isKidProfile={activeProfile?.isKid} onOpenSearch={() => setIsSearchOpen(true)} />
         )}
         <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className={socialBarClass} />
@@ -681,7 +675,7 @@ const App: React.FC = () => {
         {isSearchOpen && <SearchPage allContent={allContent} onSelectContent={handleSelectContent} onSetView={handleSetView} onClose={() => setIsSearchOpen(false)} />}
         {showGlobalFooter && (
             <>
-                <Footer socialLinks={siteSettings.socialLinks} onSetView={handleSetView} isRamadanFooter={siteSettings.activeTheme === 'ramadan'} onRequestOpen={() => setIsRequestModalOpen(true)} className={footerClass} />
+                <Footer socialLinks={siteSettings.socialLinks} onSetView={handleSetView} isRamadanFooter={siteSettings.activeTheme === 'ramadan'} onRequestOpen={() => setIsRequestModalOpen(false)} className={footerClass} />
                 {showBottomNav && ( <> <BottomNavigation currentView={view} onSetView={handleSetView} activeProfile={activeProfile} isLoggedIn={!!currentUser} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} /> <PWAInstallPrompt /> </> )}
             </>
         )}

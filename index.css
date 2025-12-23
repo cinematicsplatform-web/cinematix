@@ -97,6 +97,64 @@ html, body {
     animation: fadeInUp 0.5s ease-out forwards;
 }
 
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes zoomIn {
+    from { transform: scale(1); }
+    to { transform: scale(1.1); }
+}
+.animate-zoom-in {
+    animation: zoomIn 10s linear forwards;
+}
+
+/* Infinite Scrolling Strip Animation */
+@keyframes scrolling-strip-anim {
+  from { background-position: 0 0; }
+  to { background-position: -2278px 0; }
+}
+
+.scrolling-banner {
+  width: 100%;
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  animation: scrolling-strip-anim 60s linear infinite;
+}
+
+.scrolling-banner:hover {
+  animation-play-state: paused;
+}
+
+/* Dynamic Infinite Element Scroll (Used for Kids dynamic posters) */
+/* This is a standard scroll that might have a small gap on reset */
+@keyframes infinite-scroll-x {
+  from { transform: translateX(0); }
+  to { transform: translateX(50%); } 
+}
+
+/* Seamless RTL Scroll: Items move from right to left smoothly */
+@keyframes marquee-rtl {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(50% + 8px)); } /* 50% because list is doubled, + half of gap */
+}
+
+.animate-infinite-scroll {
+  animation: infinite-scroll-x 40s linear infinite;
+}
+
+.animate-infinite-scroll-rtl {
+  animation: marquee-rtl 40s linear infinite;
+}
+
+.animate-infinite-scroll-rtl:hover, .animate-infinite-scroll:hover {
+  animation-play-state: paused;
+}
+
 /* Safe area for mobile nav */
 .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);

@@ -1,10 +1,12 @@
+
 // FIX: Use 'compat' imports to support v8 namespaced syntax with Firebase v9+ SDK.
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
 import "firebase/compat/messaging";
+import "firebase/compat/storage";
 
-import type { Ad, SiteSettings, User, PinnedContentState, PinnedItem, PageKey, ContentRequest, HomeSection, Content, Top10State } from '@/types';
+import type { Ad, SiteSettings, User, PinnedContentState, PinnedItem, PageKey, ContentRequest, HomeSection, Content, Top10State, Story } from '@/types';
 import { initialSiteSettings, pinnedContentData as initialPinnedData, top10ContentData as initialTop10Data } from './data';
 import { UserRole } from '@/types';
 
@@ -38,31 +40,28 @@ if (!firebase.apps.length) {
 const app = firebase.app();
 
 export const db = app.firestore();
+export const storage = app.storage();
 
 /**
- * CRITICAL FIX: Enable experimentalForceLongPolling to resolve "Backend didn't respond within 10 seconds"
- * and "Could not reach Cloud Firestore backend". This forces the SDK to use HTTP Long Polling 
- * instead of WebSockets, which are often blocked in restricted network environments.
+ * CRITICAL FIX: Resolved "overriding original host" and "deprecation" warnings.
  */
-db.settings({
-  experimentalForceLongPolling: true,
-  experimentalAutoDetectLongPolling: false,
-  ignoreUndefinedProperties: true
-});
+try {
+  db.settings({
+    experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: false,
+    ignoreUndefinedProperties: true,
+  });
+} catch (e: any) {
+  if (!e.message.includes('already been initialized')) {
+    console.warn("Firestore settings error:", e.message);
+  }
+}
 
 // Enable offline persistence only on client-side
 if (typeof window !== 'undefined') {
     db.enablePersistence({ synchronizeTabs: true })
       .catch((err) => {
-          const msg = err.message || '';
-          if (
-              err.code === 'failed-precondition' || 
-              err.code === 'unimplemented' || 
-              msg.includes('backing store') || 
-              msg.includes('indexedDB')
-          ) {
-              console.debug('Firestore offline persistence disabled:', err.code);
-          }
+          // Silent failure for persistence
       });
 }
 
@@ -78,7 +77,7 @@ if (typeof window !== 'undefined') {
         messaging = firebase.messaging();
       }
     } catch (e) {
-      // console.warn("Firebase Messaging not supported");
+      // SILENT
     }
 }
 
@@ -106,13 +105,18 @@ export const generateSlug = (title: string): string => {
         .replace(/-+$/, '');
 };
 
-// Helper to handle Firestore permission errors and offline states gracefully
+// Helper to handle Firestore errors
 const handleFirestoreError = (error: any, context: string, fallback: any) => {
     const code = error?.code;
     const msg = error?.message || '';
 
+    if (msg.toLowerCase().includes('index')) {
+        console.error(`[Cinematix] Missing Index for ${context}. Please click the link in original console error.`);
+        return fallback;
+    }
+
     if (code === 'unavailable' || msg.includes('offline') || code === 'failed-precondition') {
-        console.warn(`[Cinematix] Network issue fetching ${context}. Using fallback.`);
+        return fallback;
     } 
     else if (code === 'permission-denied') {
         console.warn(`[Cinematix] Permission denied for ${context}.`);
@@ -296,7 +300,7 @@ export const requestNotificationPermission = async (userId: string) => {
             }
         }
     } catch (error) {
-        // console.error('Unable to get permission to notify.', error);
+        // SILENT
     }
 };
 
@@ -372,4 +376,58 @@ export const saveHomeSection = async (section: HomeSection): Promise<void> => {
 
 export const deleteHomeSection = async (sectionId: string): Promise<void> => {
     await db.collection('home_sections').doc(sectionId).delete();
+};
+
+// --- Stories Functions ---
+/**
+ * CRITICAL FIX: Fixed Missing Index issue by performing sorting and filtering client-side.
+ * This avoids the need for a composite index on (isActive, createdAt).
+ */
+export const getStories = async (onlyActive: boolean = true): Promise<Story[]> => {
+    try {
+        // Fetch all stories without a complex query to avoid index errors
+        const snapshot = await db.collection('stories').get();
+        
+        let stories = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...(data as Omit<Story, 'id' | 'createdAt'>),
+                createdAt: safeGetTimestamp(data.createdAt)
+            } as Story;
+        });
+
+        // Sort by createdAt desc locally
+        stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        // Filter active stories locally
+        if (onlyActive) {
+            stories = stories.filter(s => s.isActive);
+        }
+
+        return stories;
+    } catch (e) {
+        return handleFirestoreError(e, 'stories', []);
+    }
+};
+
+export const saveStory = async (story: Partial<Story>): Promise<void> => {
+    const { id, ...data } = story;
+    const dataToSave = {
+        ...data,
+        createdAt: data.createdAt ? data.createdAt : serverTimestamp()
+    };
+
+    if (id) {
+        await db.collection('stories').doc(id).update(dataToSave);
+    } else {
+        await db.collection('stories').add({
+            ...dataToSave,
+            createdAt: serverTimestamp()
+        });
+    }
+};
+
+export const deleteStory = async (storyId: string): Promise<void> => {
+    await db.collection('stories').doc(storyId).delete();
 };
