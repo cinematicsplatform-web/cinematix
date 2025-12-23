@@ -68,42 +68,53 @@ const Hero: React.FC<HeroProps> = ({
         setUnboundedIndex(prev => prev + 1);
     }, []);
 
-    // المنطق الجديد: حساب الوقت وضبط مؤقت مسبق
+    // --- LOGIC: Smart Transition 5 Seconds Before End ---
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             try {
                 if (typeof event.data === 'string') {
                     const data = JSON.parse(event.data);
                     
-                    // 1. التقاط مدة الفيديو وضبط المؤقت مرة واحدة فقط
-                    if (data.info && typeof data.info.duration === 'number' && data.info.duration > 0) {
-                        const duration = data.info.duration;
-                        const currentTime = data.info.currentTime || 0;
+                    // Logic 1: Constant synchronization based on playback time
+                    if (data.info && typeof data.info.currentTime === 'number' && typeof data.info.duration === 'number') {
+                        const { currentTime, duration } = data.info;
+                        const remainingTime = duration - currentTime;
 
-                        // شرط: لم نقم بالنقل بعد + لم نضبط المؤقت بعد + الفيديو أطول من 10 ثواني
-                        if (!hasTransitionedRef.current && !transitionTimeoutRef.current && duration > 10) {
+                        // If already within the last 5 seconds, jump immediately
+                        if (duration > 10 && remainingTime <= 5) {
+                            if (!hasTransitionedRef.current) {
+                                hasTransitionedRef.current = true;
+                                if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+                                handleNext();
+                            }
+                        } 
+                        // Otherwise, schedule a timer for exactly when the 5s mark will hit
+                        else if (duration > 10 && !hasTransitionedRef.current) {
+                            // Clear any old estimated timer
+                            if (transitionTimeoutRef.current) {
+                                clearTimeout(transitionTimeoutRef.current);
+                            }
                             
-                            // نحسب الوقت المتبقي حتى نصل للحظة (النهاية - 5 ثواني)
-                            // المعادلة: (المدة الكلية - الوقت الحالي - 5 ثواني) * 1000
-                            const timeToTrigger = (duration - currentTime - 5) * 1000;
-
-                            if (timeToTrigger > 0) {
-                                // ضبط المؤقت
+                            // Set a new precise timer: (Remaining Time - 5 seconds) * 1000ms
+                            const timeUntilTrigger = (remainingTime - 5) * 1000;
+                            
+                            if (timeUntilTrigger > 0) {
                                 transitionTimeoutRef.current = setTimeout(() => {
                                     if (!hasTransitionedRef.current) {
                                         hasTransitionedRef.current = true;
                                         handleNext();
                                     }
-                                }, timeToTrigger);
+                                }, timeUntilTrigger);
                             }
                         }
                     }
 
-                    // 2. شبكة أمان: في حالة فشل المؤقت أو الفيديو قصير، نستخدم حدث الانتهاء الطبيعي
+                    // Logic 2: Fallback for 'ENDED' state (in case of lag/bugs)
                     if ((data.event === 'infoDelivery' && data.info && data.info.playerState === 0) ||
                         (data.event === 'onStateChange' && data.info === 0)) {
                         if (!hasTransitionedRef.current) {
                             hasTransitionedRef.current = true;
+                            if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
                             handleNext();
                         }
                     }
@@ -121,7 +132,7 @@ const Hero: React.FC<HeroProps> = ({
         setIsPaused(false);
         setIsDirectJump(false);
         
-        // تنظيف المؤشرات والمؤقتات السابقة
+        // Reset transition flags
         hasTransitionedRef.current = false;
         if (transitionTimeoutRef.current) {
             clearTimeout(transitionTimeoutRef.current);
@@ -136,10 +147,8 @@ const Hero: React.FC<HeroProps> = ({
 
         return () => {
             clearTimeout(trailerTimer);
-            // تنظيف إضافي عند تغيير السلايد
             if (transitionTimeoutRef.current) {
                 clearTimeout(transitionTimeoutRef.current);
-                transitionTimeoutRef.current = null;
             }
         };
     }, [activeContent?.id, isMobile]);
