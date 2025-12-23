@@ -1,10 +1,8 @@
-
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import type { Content, Ad, View } from '@/types';
 import Hero from './Hero';
 import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
-import SoonRestrictedModal from './SoonRestrictedModal'; 
 import SEO from './SEO';
 
 interface SoonPageProps {
@@ -40,9 +38,6 @@ const SoonPage: React.FC<SoonPageProps> = ({
   isNetflixRedTheme 
 }) => {
   
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalContent, setModalContent] = useState<Content | null>(null);
-  
   const { allSoonContent, soonAndRamadan, soonOnly } = useMemo(() => {
     const allSoon = allContent.filter(c => c.categories.includes('قريباً'));
     const soonAndRamadan = allSoon.filter(c => c.categories.includes('رمضان'));
@@ -63,18 +58,13 @@ const SoonPage: React.FC<SoonPageProps> = ({
   }, [pinnedContent, allSoonContent]);
 
 
-  const handleSelectContentRestricted = useCallback((content: Content) => {
-    setModalContent(content);
-    setIsModalOpen(true);
-  }, []);
-
   const carousels = useMemo(() => {
     const sortedSoonRamadan = [...soonAndRamadan].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     const sortedSoonOnly = [...soonOnly].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     
     const definedCarousels = [
-      { id: 's1', title: 'قريباً في رمضان', contents: sortedSoonRamadan, isRestricted: true },
-      { id: 's2', title: 'قريباً', contents: sortedSoonOnly, isRestricted: true }, 
+      { id: 's1', title: 'قريباً في رمضان', contents: sortedSoonRamadan, isRestricted: false },
+      { id: 's2', title: 'قريباً', contents: sortedSoonOnly, isRestricted: false }, 
     ].filter(carousel => carousel.contents.length > 0);
 
     return definedCarousels;
@@ -127,7 +117,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
       <div className="relative z-10">
         <Hero 
             contents={heroSoonContents} 
-            onWatchNow={handleSelectContentRestricted} 
+            onWatchNow={onSelectContent} 
             isLoggedIn={isLoggedIn} 
             myList={myList} 
             onToggleMyList={onToggleMyList} 
@@ -158,7 +148,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
                 key={carousel.id}
                 title={carousel.title}
                 contents={carousel.contents}
-                onSelectContent={handleSelectContentRestricted}
+                onSelectContent={onSelectContent}
                 isLoggedIn={isLoggedIn}
                 myList={myList}
                 onToggleMyList={onToggleMyList}
@@ -172,14 +162,6 @@ const SoonPage: React.FC<SoonPageProps> = ({
         
         <AdPlacement ads={ads} placement="soon-page-bottom" isEnabled={adsEnabled} />
       </main>
-      
-      {isModalOpen && modalContent && (
-          <SoonRestrictedModal 
-              isOpen={isModalOpen}
-              onClose={() => setIsModalOpen(false)}
-              content={modalContent}
-          />
-      )}
     </div>
   );
 };

@@ -1,8 +1,9 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Ad } from '@/types';
 import { CloseIcon } from '@/components/icons/CloseIcon';
+import { SpeakerIcon } from '@/components/icons/SpeakerIcon';
+import { ExpandIcon } from '@/components/icons/ExpandIcon';
 
 interface AdWaiterModalProps {
     isOpen: boolean;
@@ -14,6 +15,7 @@ interface AdWaiterModalProps {
 const AdWaiterModal: React.FC<AdWaiterModalProps> = ({ isOpen, ad, onComplete, onClose }) => {
     const [timeLeft, setTimeLeft] = useState<number>(ad.timerDuration || 0);
     const [canSkip, setCanSkip] = useState<boolean>(false);
+    const [isMuted, setIsMuted] = useState(true);
     const adContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -23,9 +25,9 @@ const AdWaiterModal: React.FC<AdWaiterModalProps> = ({ isOpen, ad, onComplete, o
             setCanSkip(duration === 0);
             document.body.style.overflow = 'hidden';
         } else {
-            document.body.style.overflow = 'auto';
+            document.body.style.overflow = '';
         }
-        return () => { document.body.style.overflow = 'auto'; };
+        return () => { document.body.style.overflow = ''; };
     }, [isOpen, ad]);
 
     useEffect(() => {
@@ -62,41 +64,62 @@ const AdWaiterModal: React.FC<AdWaiterModalProps> = ({ isOpen, ad, onComplete, o
         }
     }, [isOpen, ad]);
 
+    const handleExpandAd = () => {
+        if (ad.destinationUrl) {
+            window.open(ad.destinationUrl, '_blank', 'noopener,noreferrer');
+        }
+    };
+
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in-up p-4">
-            <div className="relative w-full max-w-4xl flex flex-col items-center justify-center h-full max-h-screen">
-                <div className="absolute top-4 right-4 md:right-0 z-50">
-                     {!canSkip ? (
-                        <div className="bg-black/60 border border-gray-500 rounded-full px-6 py-2 flex items-center gap-3">
-                            <div className="w-5 h-5 border-2 border-gray-400 border-t-white rounded-full animate-spin"></div>
-                            <span className="text-white font-bold text-sm">يرجى الانتظار... {timeLeft} ثانية</span>
-                        </div>
-                     ) : (
-                        <button 
-                            onClick={onComplete}
-                            className="bg-green-600 hover:bg-green-500 text-white border border-green-400 rounded-full px-6 py-3 flex items-center gap-2 font-bold shadow-[0_0_20px_rgba(34,197,94,0.4)] transition-all hover:scale-105"
-                        >
-                            <span>تخطي الإعلان والمتابعة</span>
-                            <CloseIcon className="w-5 h-5" />
-                        </button>
-                     )}
-                     <button onClick={onClose} className="absolute -top-2 -left-12 text-gray-500 hover:text-white p-2">
-                        <CloseIcon />
-                     </button>
-                </div>
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 overflow-hidden">
+            <div className="relative w-full max-w-4xl flex flex-col items-center justify-center h-full max-h-[90vh] animate-fade-in-up">
                 
-                <div className="w-full h-full flex items-center justify-center p-4 md:p-10 overflow-hidden">
-                    {ad.type === 'banner' && ad.imageUrl ? (
-                         <a href={ad.destinationUrl || '#'} target="_blank" rel="noopener noreferrer" className="max-w-full max-h-full">
-                             <img src={ad.imageUrl} alt={ad.title} className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-gray-800" />
-                         </a>
-                    ) : (
-                        <div ref={adContainerRef} className="w-full h-full flex items-center justify-center overflow-auto" />
-                    )}
+                {/* Header / Skip Area */}
+                <div className="absolute top-0 right-0 left-0 z-50 flex justify-between items-center p-2">
+                     <button onClick={onClose} className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
+                        <CloseIcon className="w-5 h-5 text-white" />
+                     </button>
+
+                     <div className="flex items-center gap-3">
+                        {!canSkip ? (
+                            <div className="bg-black/60 border border-white/20 rounded-full px-5 py-2 flex items-center gap-3 backdrop-blur-md">
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                <span className="text-white font-bold text-xs">انتظر {timeLeft} ثانية</span>
+                            </div>
+                        ) : (
+                            <button 
+                                onClick={onComplete}
+                                className="bg-green-600 hover:bg-green-500 text-white border border-green-400 rounded-full px-6 py-2.5 flex items-center gap-2 font-bold shadow-xl transition-all"
+                            >
+                                <span>تخطي</span>
+                                <CloseIcon className="w-4 h-4" />
+                            </button>
+                        )}
+                     </div>
                 </div>
-                <div className="absolute bottom-6 text-gray-500 text-xs">إعلان ممول - {ad.title}</div>
+
+                {/* AD CONTENT AREA */}
+                <div className="w-full flex-1 flex items-center justify-center p-2 md:p-6 overflow-hidden">
+                    <div className="relative max-w-full max-h-full flex items-center justify-center">
+                        {ad.type === 'banner' && ad.imageUrl ? (
+                            <a href={ad.destinationUrl || '#'} target="_blank" rel="noopener noreferrer" className="block relative">
+                                <img 
+                                    src={ad.imageUrl} 
+                                    alt={ad.title} 
+                                    className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-2xl border border-white/10" 
+                                />
+                            </a>
+                        ) : (
+                            <div ref={adContainerRef} className="w-full h-full flex items-center justify-center overflow-auto rounded-2xl bg-gray-900" />
+                        )}
+                    </div>
+                </div>
+
+                <div className="py-4 text-gray-500 text-[10px] font-bold tracking-widest uppercase opacity-60">
+                    Advertisement • {ad.title}
+                </div>
             </div>
         </div>,
         document.body

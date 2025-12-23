@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '@/types';
 import VideoPlayer from '@/components/VideoPlayer';
@@ -57,14 +56,32 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const isLoaded = !!content && !!content.id;
   const safeTitle = content?.title || 'جاري التحميل...';
   const seriesSlug = content?.slug || content?.id;
+  const isSoon = content?.categories?.includes('قريباً');
 
-  const [activeTab, setActiveTab] = useState<'episodes' | 'trailer' | 'details' | 'related'>('episodes');
+  // Tabs State - Default to 'details' if it's soon content
+  const [activeTab, setActiveTab] = useState<'episodes' | 'trailer' | 'details' | 'related'>(isSoon ? 'details' : 'episodes');
   const tabsRef = useRef<HTMLDivElement>(null);
+
+  // Sync active tab if content changes
+  useEffect(() => {
+    if (isSoon) {
+        setActiveTab('details');
+    } else {
+        setActiveTab('episodes');
+    }
+  }, [content?.id, isSoon]);
+
+  // Dropdown State
   const [isSeasonDropdownOpen, setIsSeasonDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Hero Video State
   const [showVideo, setShowVideo] = useState(false);
+  const [videoEnded, setVideoEnded] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  
+  // Refs
   const heroRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -73,6 +90,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return `شاهد أحداث الحلقة ${epNumber} من الموسم ${sNumber}. استمتع بمشاهدة تطورات الأحداث في هذه الحلقة.`;
   };
 
+  // Close dropdown on click outside
   useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
           if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -83,6 +101,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Season & Episode Selection Logic
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
 
@@ -107,13 +126,15 @@ const DetailPage: React.FC<DetailPageProps> = ({
             if (targetSeason.episodes && targetSeason.episodes.length > 0) setSelectedEpisode(targetSeason.episodes[0]);
         }
     }
-  }, [content?.id, isLoaded]);
+  }, [content?.id, isLoaded, initialSeasonNumber, locationPath]);
 
+  // Derived Data
   const currentSeason = useMemo(() => content?.seasons?.find(s => s.id === selectedSeasonId), [content?.seasons, selectedSeasonId]);
   const episodes = useMemo(() => currentSeason?.episodes || [], [currentSeason]);
   const displayBackdrop = currentSeason?.backdrop || content?.backdrop || '';
   const displayLogo = currentSeason?.logoUrl || content?.logoUrl || '';
   const displayDescription = currentSeason?.description || content?.description || '';
+  
   const activeServers = (content?.type === 'movie' ? content.servers : []) || [];
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
 
@@ -121,6 +142,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       if (activeServers.length > 0) setSelectedServer(activeServers.find(s => s.isActive) || activeServers[0]);
   }, [activeServers]); 
   
+  // Mobile Check
   const [isMobile, setIsMobile] = useState(false);
   useLayoutEffect(() => {
       const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -129,6 +151,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Helper: Get YouTube ID
   const getVideoId = (url: string | undefined) => {
       if (!url) return null;
       try {
@@ -141,12 +164,51 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   const trailerVideoId = getVideoId((content?.type === 'series' && currentSeason?.trailerUrl) ? currentSeason.trailerUrl : content?.trailerUrl);
 
+  const heroEmbedUrl = useMemo(() => {
+      if (!trailerVideoId) return '';
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      return `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${origin}`;
+  }, [trailerVideoId]);
+
+  const modalEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=0&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1` : '';
+
   useEffect(() => {
-      setShowVideo(false); setIsMuted(true);
+      setShowVideo(false);
+      setVideoEnded(false);
+      setIsMuted(true);
       if (!trailerVideoId || isMobile) return;
       const timer = setTimeout(() => { setShowVideo(true); }, 2000); 
       return () => clearTimeout(timer);
   }, [content?.id, trailerVideoId, isMobile, selectedSeasonId]);
+
+  useEffect(() => {
+      const handleMessage = (event: MessageEvent) => {
+          try {
+              if (typeof event.data === 'string') {
+                  const data = JSON.parse(event.data);
+                  if (data.event === 'infoDelivery' && data.info && data.info.playerState === 0) {
+                      setShowVideo(false);
+                      setVideoEnded(true);
+                  }
+                  if (data.event === 'onStateChange' && data.info === 0) {
+                      setShowVideo(false);
+                      setVideoEnded(true);
+                  }
+              }
+          } catch (e) { }
+      };
+      window.addEventListener('message', handleMessage);
+      return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const toggleMute = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const newMuted = !isMuted;
+      setIsMuted(newMuted);
+      if (iframeRef.current) {
+          iframeRef.current.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: newMuted ? 'mute' : 'unMute', args: '' }), '*');
+      }
+  };
 
   useEffect(() => {
       if (showVideo && iframeRef.current) {
@@ -180,29 +242,131 @@ const DetailPage: React.FC<DetailPageProps> = ({
         banner={displayBackdrop}
       />
 
+      {/* --- HERO SECTION WITH SKELETON --- */}
       <div ref={heroRef} className="relative h-[80vh] w-full overflow-hidden group z-10">
         <div className="absolute inset-0 bg-black">
-            {isLoaded ? <img key={displayBackdrop} src={displayBackdrop} alt={content.title} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}/> : <div className="absolute inset-0 bg-[#0f1014] skeleton-shimmer"></div>}
-            {trailerVideoId && !isMobile && (
-                <div className={`absolute inset-0 w-full h-full overflow-hidden transition-opacity duration-1000 ${showVideo ? 'opacity-100' : 'opacity-0'}`}>
+            {isLoaded ? (
+                <img 
+                    key={displayBackdrop} 
+                    src={displayBackdrop} 
+                    alt={content.title} 
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}
+                />
+            ) : (
+                <div className="absolute inset-0 bg-[#161b22] skeleton-shimmer"></div>
+            )}
+            
+            {heroEmbedUrl && !isMobile && isLoaded && (
+                <div className={`absolute inset-0 w-full h-full overflow-hidden transition-opacity duration-1000 ${showVideo ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
-                        <iframe ref={iframeRef} src={`https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1`} className="w-full h-full" frameBorder="0"></iframe>
+                        <iframe 
+                            ref={iframeRef} 
+                            src={heroEmbedUrl} 
+                            className="w-full h-full pointer-events-none" 
+                            allow="autoplay; encrypted-media; picture-in-picture" 
+                            title="Trailer"
+                            frameBorder="0"
+                        ></iframe>
                     </div>
                 </div>
             )}
+            
             <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/80 via-20% to-transparent z-10"></div>
         </div>
+
         <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 pb-4 md:pb-6 flex flex-col justify-end items-start z-20">
             <div className="max-w-4xl w-full flex flex-col items-center md:items-start text-center md:text-right">
-                {isLoaded ? (content.isLogoEnabled && displayLogo ? <img src={displayLogo} alt={content.title} className="w-auto h-auto max-w-[245px] md:max-w-[435px] max-h-[190px] md:max-h-[300px] mb-3 object-contain drop-shadow-2xl"/> : <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-3 leading-tight text-white drop-shadow-lg">{content.title}</h1>) : <div className="w-64 md:w-96 h-12 md:h-20 bg-gray-800 rounded-xl skeleton-shimmer mb-4"></div>}
+                
+                {isLoaded ? (
+                    content.isLogoEnabled && displayLogo ? (
+                        <img 
+                            src={displayLogo} 
+                            alt={content.title} 
+                            className={`w-auto h-auto max-w-[245px] md:max-w-[435px] max-h-[190px] md:max-h-[300px] mb-3 object-contain drop-shadow-2xl transition-transform duration-700 ${showVideo ? 'scale-90 origin-bottom-right' : 'scale-100'}`}
+                        />
+                    ) : (
+                        <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-3 leading-tight text-white drop-shadow-lg">{content.title}</h1>
+                    )
+                ) : (
+                    <div className="w-64 md:w-96 h-12 md:h-20 bg-gray-800/40 rounded-xl skeleton-shimmer mb-4 border border-white/5"></div>
+                )}
+
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-2 text-sm md:text-base font-medium text-gray-200 w-full">
-                    {isLoaded ? <><div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10"><StarIcon className="w-5 h-5" /><span className="font-bold text-white">{content.rating.toFixed(1)}</span></div><span className="text-gray-500">|</span><span className="text-white">{currentSeason?.releaseYear || content.releaseYear}</span><span className="text-gray-500">|</span><span className="px-2 py-0.5 border border-gray-500 rounded text-gray-300 text-xs">{content.ageRating}</span></> : <div className="w-48 h-6 bg-gray-800 rounded skeleton-shimmer"></div>}
+                    {isLoaded ? (
+                        <>
+                            <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+                                <StarIcon className="w-5 h-5" />
+                                <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
+                            </div>
+                            <span className="text-gray-500">|</span>
+                            <span className="text-white">{currentSeason?.releaseYear || content.releaseYear}</span>
+                            <span className="text-gray-500">|</span>
+                            <span className="px-2 py-0.5 border border-gray-500 rounded text-gray-300 text-xs">{content.ageRating}</span>
+                        </>
+                    ) : (
+                        <div className="w-48 h-6 bg-gray-800/40 rounded skeleton-shimmer border border-white/5"></div>
+                    )}
                 </div>
+
                 <div className="overflow-hidden transition-all duration-700 ease-in-out w-full opacity-100 max-h-40 mb-3 md:mb-4">
-                    {isLoaded ? <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-3 leading-relaxed max-w-2xl mx-auto md:mx-0 font-medium">{displayDescription}</p> : <div className="space-y-2 w-full max-w-xl"><div className="h-4 bg-gray-800 rounded skeleton-shimmer w-full"></div><div className="h-4 bg-gray-800 rounded skeleton-shimmer w-3/4"></div></div>}
+                    {isLoaded ? (
+                        <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-3 leading-relaxed max-w-2xl mx-auto md:mx-0 font-medium">{displayDescription}</p>
+                    ) : (
+                        <div className="space-y-2 w-full max-w-xl">
+                            <div className="h-4 bg-gray-800/40 rounded skeleton-shimmer w-full border border-white/5"></div>
+                            <div className="h-4 bg-gray-800/40 rounded skeleton-shimmer w-3/4 border border-white/5"></div>
+                        </div>
+                    )}
                 </div>
+
                 <div className="flex items-center justify-center md:justify-start w-full md:w-auto relative z-40 mt-1">
-                    {isLoaded ? <ActionButtons onWatch={() => setActiveTab('episodes')} onToggleMyList={() => onToggleMyList(content.id)} isInMyList={!!myList?.includes(content.id)} showMyList={isLoggedIn} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} content={content}/> : <div className="flex gap-4"><div className="w-40 h-14 bg-gray-800 rounded-full skeleton-shimmer"></div><div className="w-40 h-14 bg-gray-800 rounded-full skeleton-shimmer"></div></div>}
+                    {isLoaded ? (
+                        <div className="flex items-center gap-4 w-full md:w-auto justify-center md:justify-start">
+                            <ActionButtons 
+                                onWatch={() => { 
+                                    if (isSoon) {
+                                        setActiveTab('details');
+                                    } else {
+                                        setActiveTab('episodes'); 
+                                    }
+                                    tabsRef.current?.scrollIntoView({ behavior: 'smooth' }); 
+                                }}
+                                onToggleMyList={() => onToggleMyList(content.id)}
+                                isInMyList={!!myList?.includes(content.id)}
+                                showMyList={isLoggedIn}
+                                isRamadanTheme={isRamadanTheme}
+                                isEidTheme={isEidTheme}
+                                isCosmicTealTheme={isCosmicTealTheme}
+                                isNetflixRedTheme={isNetflixRedTheme}
+                                content={content}
+                            />
+
+                            {heroEmbedUrl && !isMobile && showVideo && !videoEnded && (
+                                <button 
+                                    onClick={toggleMute} 
+                                    className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group scale-[1.15] origin-center"
+                                    title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
+                                >
+                                    <SpeakerIcon isMuted={isMuted} className="w-7 h-7 text-white group-hover:scale-110 transition-transform" />
+                                </button>
+                            )}
+                            
+                            {trailerVideoId && (showVideo || videoEnded) && (
+                                <button 
+                                    onClick={() => { setActiveTab('trailer'); tabsRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+                                    className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group scale-[1.15] origin-center"
+                                    title="عرض التريلر"
+                                >
+                                    <ExpandIcon className="w-7 h-7 text-white group-hover:scale-110 transition-transform" />
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="flex gap-4">
+                            <div className="w-32 md:w-40 h-10 md:h-14 bg-gray-800/40 rounded-full skeleton-shimmer border border-white/5"></div>
+                            <div className="w-32 md:w-40 h-10 md:h-14 bg-gray-800/40 rounded-full skeleton-shimmer border border-white/5"></div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -211,7 +375,21 @@ const DetailPage: React.FC<DetailPageProps> = ({
       <div ref={tabsRef} className="sticky top-16 md:top-20 z-40 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 shadow-md w-full">
           <div className="w-full px-4 md:px-8 flex flex-row items-center justify-between h-14 md:h-16">
               <div className="flex items-center gap-6 md:gap-8 h-full overflow-x-auto no-scrollbar">
-                  <button onClick={() => setActiveTab('episodes')} className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'episodes' ? activeTabClass : tabHoverClass}`}>{content?.type === 'movie' ? 'المشاهدة' : `الحلقات (${episodes.length})`}</button>
+                  {!isSoon && (
+                      <>
+                        <button onClick={() => setActiveTab('episodes')} className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'episodes' ? activeTabClass : tabHoverClass}`}>{content?.type === 'movie' ? 'المشاهدة' : (isLoaded ? `الحلقات (${episodes.length})` : 'الحلقات')}</button>
+                        
+                        {trailerVideoId && (
+                            <button 
+                                onClick={() => setActiveTab('trailer')}
+                                className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'trailer' ? activeTabClass : tabHoverClass}`}
+                            >
+                                الإعلان
+                            </button>
+                        )}
+                      </>
+                  )}
+
                   <button onClick={() => setActiveTab('details')} className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'details' ? activeTabClass : tabHoverClass}`}>التفاصيل</button>
                   <button onClick={() => setActiveTab('related')} className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'related' ? activeTabClass : tabHoverClass}`}>أعمال مشابهة</button>
               </div>
@@ -219,11 +397,11 @@ const DetailPage: React.FC<DetailPageProps> = ({
       </div>
 
       <div className="relative w-full bg-[var(--bg-body)] min-h-[500px]">
-          {activeTab === 'episodes' && (
+          {activeTab === 'episodes' && !isSoon && (
               <div className="animate-fade-in-up w-full px-4 md:px-8 pt-8">
-                  {content.type === 'series' ? (
+                  {content.type === 'series' || !isLoaded ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-10 pb-10">
-                          {episodes.map((ep, index) => {
+                          {isLoaded ? episodes.map((ep, index) => {
                               const eNum = index + 1;
                               const sNum = currentSeason?.seasonNumber || 1;
                               const watchUrl = `/watch/${seriesSlug}/${sNum}/${eNum}`;
@@ -247,7 +425,21 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                       <div className="p-3 md:p-4 flex-1"><p className="text-xs md:text-sm text-gray-400 line-clamp-3 leading-relaxed">{getEpisodeDescription(ep.description, eNum, sNum)}</p></div>
                                   </a>
                               );
-                          })}
+                          }) : (
+                              /* --- EPISODE SKELETONS --- */
+                              Array.from({ length: 10 }).map((_, i) => (
+                                  <div key={i} className="rounded-xl bg-gray-800/40 border border-gray-700/50 overflow-hidden h-full flex flex-col skeleton-shimmer">
+                                      <div className="relative w-full aspect-video bg-gray-700/30"></div>
+                                      <div className="p-4 space-y-3">
+                                          <div className="h-4 bg-gray-700/40 rounded w-1/2"></div>
+                                          <div className="space-y-2">
+                                              <div className="h-2 bg-gray-700/40 rounded w-full"></div>
+                                              <div className="h-2 bg-gray-700/40 rounded w-5/6"></div>
+                                          </div>
+                                      </div>
+                                  </div>
+                              ))
+                          )}
                       </div>
                   ) : (
                       <div className="max-w-6xl mx-auto w-full py-8">
@@ -258,19 +450,58 @@ const DetailPage: React.FC<DetailPageProps> = ({
                   )}
               </div>
           )}
+
+          {activeTab === 'trailer' && trailerVideoId && !isSoon && (
+              <div className="px-4 md:px-8 py-8 animate-fade-in-up w-full">
+                  <div className="max-w-5xl mx-auto w-full">
+                      <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-2xl border border-gray-800 bg-black">
+                          <iframe 
+                              src={modalEmbedUrl} 
+                              className="w-full h-full" 
+                              allow="autoplay; encrypted-media; picture-in-picture; fullscreen" 
+                              allowFullScreen
+                              title="Official Trailer"
+                          ></iframe>
+                      </div>
+                  </div>
+              </div>
+          )}
+
           {activeTab === 'details' && (
               <div className="px-4 md:px-8 py-8 animate-fade-in-up w-full">
                   <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-12">
                       <div className="flex-1 space-y-10">
-                          <div><h3 className="text-xl md:text-2xl font-bold text-white mb-4">القصة</h3><p className="text-gray-300 text-lg leading-loose">{displayDescription}</p></div>
-                          <div><h3 className="text-xl md:text-2xl font-bold text-white mb-4">التصنيف</h3><div className="flex flex-wrap gap-2">{content?.genres?.map((genre, index) => (<div key={index} className="px-4 py-2 rounded-lg text-sm font-bold border border-gray-700 bg-gray-800/50 text-gray-300">{genre}</div>))}</div></div>
+                          {isLoaded ? (
+                              <>
+                                <div><h3 className="text-xl md:text-2xl font-bold text-white mb-4">القصة</h3><p className="text-gray-300 text-lg leading-loose">{displayDescription}</p></div>
+                                <div><h3 className="text-xl md:text-2xl font-bold text-white mb-4">التصنيف</h3><div className="flex flex-wrap gap-2">{content?.genres?.map((genre, index) => (<div key={index} className="px-4 py-2 rounded-lg text-sm font-bold border border-gray-700 bg-gray-800/50 text-gray-300">{genre}</div>))}</div></div>
+                              </>
+                          ) : (
+                              <div className="space-y-12">
+                                  <div className="space-y-4">
+                                      <div className="h-6 bg-gray-800/40 rounded w-32 skeleton-shimmer"></div>
+                                      <div className="space-y-2">
+                                          <div className="h-4 bg-gray-800/40 rounded w-full skeleton-shimmer"></div>
+                                          <div className="h-4 bg-gray-800/40 rounded w-full skeleton-shimmer"></div>
+                                          <div className="h-4 bg-gray-800/40 rounded w-2/3 skeleton-shimmer"></div>
+                                      </div>
+                                  </div>
+                                  <div className="space-y-4">
+                                      <div className="h-6 bg-gray-800/40 rounded w-32 skeleton-shimmer"></div>
+                                      <div className="flex gap-2">
+                                          <div className="h-10 bg-gray-800/40 rounded-lg w-24 skeleton-shimmer"></div>
+                                          <div className="h-10 bg-gray-800/40 rounded-lg w-24 skeleton-shimmer"></div>
+                                      </div>
+                                  </div>
+                              </div>
+                          )}
                       </div>
                   </div>
               </div>
           )}
           {activeTab === 'related' && (
               <div className="py-8 animate-fade-in-up w-full">
-                  <ContentCarousel title="قد يعجبك أيضاً" contents={similarContent} onSelectContent={onSelectContent} isLoggedIn={isLoggedIn} myList={myList} onToggleMyList={onToggleMyList} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isHorizontal={true} />
+                  <ContentCarousel title="قد يعجبك أيضاً" contents={similarContent} onSelectContent={onSelectContent} isLoggedIn={isLoggedIn} myList={myList} onToggleMyList={onToggleMyList} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isHorizontal={true} isLoading={!isLoaded} />
               </div>
           )}
       </div>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { View, LoginError } from '@/types';
 import { CheckIcon } from './CheckIcon';
@@ -10,6 +11,7 @@ interface LoginModalProps {
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
+  authReturnView?: View;
 }
 
 // Eye Icons
@@ -33,7 +35,7 @@ const SpinnerIcon = () => (
   </svg>
 );
 
-const LoginModal: React.FC<LoginModalProps> = ({ onSetView, onLogin, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
+const LoginModal: React.FC<LoginModalProps> = ({ onSetView, onLogin, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme, authReturnView }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -94,7 +96,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onSetView, onLogin, isRamadanTh
       <div className="absolute inset-0 bg-black/50 z-0"></div>
       
       <button 
-          onClick={() => onSetView('home')} 
+          onClick={() => onSetView(authReturnView || 'home')} 
           className="absolute top-6 right-6 md:top-8 md:right-8 p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white transition-all z-50 border border-white/10 shadow-lg group"
           title="رجوع"
       >

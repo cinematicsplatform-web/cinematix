@@ -4,11 +4,13 @@ import { ChevronRightIcon } from './icons/ChevronRightIcon';
 
 interface CreateAccountPageProps {
   onSetView: (view: View) => void;
-  onRegister: (newUser: Omit<User, 'id' | 'role' | 'profiles'>) => Promise<void>;
+  // Updated signature to handle gender for avatar selection
+  onRegister: (newUser: Omit<User, 'id' | 'role' | 'profiles'> & { gender: 'male' | 'female' }) => Promise<void>;
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
+  authReturnView?: View;
 }
 
 // Eye Icons
@@ -25,7 +27,7 @@ const EyeSlashIcon = () => (
   </svg>
 );
 
-const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegister, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
+const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegister, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme, authReturnView }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,6 +35,7 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [gender, setGender] = useState<'male' | 'female'>('male'); // New state for gender
     const [error, setError] = useState('');
 
     const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -54,7 +57,7 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
             return;
         }
 
-        await onRegister({ email, password, firstName, lastName });
+        await onRegister({ email, password, firstName, lastName, gender });
     };
 
     const linkColorClass = isRamadanTheme 
@@ -67,6 +70,9 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
                     ? 'text-[#E50914] hover:text-[#b20710]'
                     : 'text-[#00A7F8] hover:text-[#00FFB0]';
 
+    const accentBorder = isRamadanTheme ? 'border-amber-500' : isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]';
+    const accentBg = isRamadanTheme ? 'bg-amber-500/10' : isEidTheme ? 'bg-purple-500/10' : isCosmicTealTheme ? 'bg-[#35F18B]/10' : isNetflixRedTheme ? 'bg-[#E50914]/10' : 'bg-[#00A7F8]/10';
+
   return (
     <div 
       className="min-h-screen flex items-center justify-center p-4 pt-24 relative bg-cover bg-center bg-no-repeat"
@@ -77,7 +83,7 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
       <div className="absolute inset-0 bg-black/50 z-0"></div>
         
       <button 
-          onClick={() => onSetView('login')}
+          onClick={() => onSetView(authReturnView || 'home')}
           className="absolute top-6 right-6 md:top-8 md:right-8 p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white transition-all z-50 border border-white/10 shadow-lg group"
           title="رجوع"
       >
@@ -95,10 +101,29 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
             
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="flex gap-4">
-                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="الاسم الأول (اختياري)" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" />
-                    <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="الاسم الأخير (اختياري)" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" />
+                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="الاسم الأول (اختياري)" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent" />
+                    <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="الاسم الأخير (اختياري)" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent" />
                 </div>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="البريد الإلكتروني" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus-ring-accent" required />
+
+                {/* Gender Selection Row */}
+                <div className="flex gap-4 mb-2">
+                    <button 
+                        type="button"
+                        onClick={() => setGender('male')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-all duration-300 ${gender === 'male' ? `${accentBorder} ${accentBg} ring-1 ring-inset ${accentBorder}` : 'border-gray-600 bg-gray-800/30 text-gray-400'}`}
+                    >
+                        <span className="font-bold text-sm">ذكر</span>
+                    </button>
+                    <button 
+                        type="button"
+                        onClick={() => setGender('female')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-all duration-300 ${gender === 'female' ? `${accentBorder} ${accentBg} ring-1 ring-inset ${accentBorder}` : 'border-gray-600 bg-gray-800/30 text-gray-400'}`}
+                    >
+                        <span className="font-bold text-sm">أنثى</span>
+                    </button>
+                </div>
+
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="البريد الإلكتروني" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent" required />
                 
                 <div className="relative">
                     <input 
@@ -106,7 +131,7 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
                         value={password} 
                         onChange={e => setPassword(e.target.value)} 
                         placeholder="كلمة المرور" 
-                        className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 pl-12 focus:outline-none focus:ring-2 focus-ring-accent" 
+                        className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 pl-12 focus:outline-none focus:ring-2 focus:ring-accent" 
                         required 
                     />
                     <button 
@@ -124,7 +149,7 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
                         value={confirmPassword} 
                         onChange={e => setConfirmPassword(e.target.value)} 
                         placeholder="تأكيد كلمة المرور" 
-                        className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 pl-12 focus:outline-none focus:ring-2 focus-ring-accent" 
+                        className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 pl-12 focus:outline-none focus:ring-2 focus:ring-accent" 
                         required 
                     />
                     <button 

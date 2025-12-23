@@ -3,7 +3,6 @@ import type { Content, SiteSettings, Ad, View } from '@/types';
 import Hero from './Hero';
 import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
-import RamadanRestrictedModal from './RamadanRestrictedModal'; 
 import SEO from './SEO';
 import AdZone from './AdZone';
 
@@ -107,9 +106,6 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
     isLoading 
 }) => {
   
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalContent, setModalContent] = useState<Content | null>(null);
-
   // 1. Filter all Ramadan content first
   const allRamadanContent = useMemo(() => 
     allContent.filter(c => c.categories.includes('رمضان'))
@@ -215,16 +211,6 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
     return definedCarousels;
   }, [allRamadanContent, pinnedContent, top10Content]);
 
-  const handleSelectContentRestricted = useCallback((content: Content) => {
-    // If countdown is active, show modal. Else, navigate.
-    if (isCountdownActive) {
-        setModalContent(content);
-        setIsModalOpen(true);
-    } else {
-        onSelectContent(content);
-    }
-  }, [isCountdownActive, onSelectContent]);
-
   const handleSeeAll = (categoryKey: string) => {
       onNavigate('category', categoryKey);
   };
@@ -285,7 +271,7 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
         <div className="relative z-10">
             <Hero 
                 contents={heroContents} 
-                onWatchNow={handleSelectContentRestricted} 
+                onWatchNow={onSelectContent} 
                 isLoggedIn={isLoggedIn} 
                 myList={myList} 
                 onToggleMyList={onToggleMyList} 
@@ -318,12 +304,12 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
                     <ContentCarousel
                         title={carousel.title}
                         contents={carousel.contents}
-                        onSelectContent={handleSelectContentRestricted}
+                        onSelectContent={onSelectContent}
                         isLoggedIn={isLoggedIn}
                         myList={myList}
                         onToggleMyList={onToggleMyList}
                         isNew={carousel.isNew}
-                        isRestricted={isCountdownActive} // Show lock icon if restricted
+                        isRestricted={false} 
                         showRanking={carousel.showRanking}
                         onSeeAll={() => carousel.categoryKey && handleSeeAll(carousel.categoryKey)}
                         isRamadanTheme={true}
@@ -333,15 +319,6 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
             
             <AdPlacement ads={ads} placement="ramadan-bottom" isEnabled={adsEnabled} />
         </main>
-
-        {/* Modal for Restricted Content */}
-        {isModalOpen && modalContent && (
-            <RamadanRestrictedModal 
-                isOpen={isModalOpen} 
-                onClose={() => setIsModalOpen(false)} 
-                content={modalContent} 
-            />
-        )}
     </div>
   );
 };

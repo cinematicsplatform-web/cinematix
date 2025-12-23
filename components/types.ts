@@ -86,6 +86,7 @@ export interface Content {
   type: ContentType;
   poster: string;
   backdrop: string;
+  top10Poster?: string; // Added top10Poster to fix type errors in ContentCard and ContentEditModal
   horizontalPoster?: string; // New: Horizontal/Landscape Poster for specific carousels
   mobileBackdropUrl?: string; // New: Specific vertical background for mobile
   rating: number; // out of 5

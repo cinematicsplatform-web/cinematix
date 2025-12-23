@@ -45,6 +45,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetV
   }
 
   // Dynamic Item (Last Item)
+  // UPDATED: 'Guest' now points to 'welcome' instead of 'login'
   const accountItem = isLoggedIn
     ? { 
         id: 'account', 
@@ -56,7 +57,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetV
     : { 
         id: 'login', 
         label: 'زائر', 
-        view: 'login' as View, 
+        view: 'welcome' as View, 
         icon: UserIcon,
         isProfile: false 
       };

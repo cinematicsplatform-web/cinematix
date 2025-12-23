@@ -140,7 +140,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
           {/* Profile Menu - Hidden on Mobile */}
           <div className="relative z-50 hidden md:block" onMouseLeave={() => setIsMenuOpen(false)}>
             <button 
-              onClick={isLoggedIn ? () => setIsMenuOpen(!isMenuOpen) : () => onSetView('login')} 
+              onClick={isLoggedIn ? () => setIsMenuOpen(!isMenuOpen) : () => onSetView('welcome')} 
               className={`w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-700 flex items-center justify-center text-white overflow-hidden ring-2 transition-all duration-300 
                 ${isMenuOpen 
                     ? (isRamadanTheme 

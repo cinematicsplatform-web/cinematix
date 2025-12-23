@@ -17,6 +17,26 @@ interface ActionButtonsProps {
   content?: Content; // Added to generate URL
 }
 
+const CalendarIcon = () => (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className="w-5 h-5 md:w-8 md:h-8 ml-2 inline-block text-black" 
+    >
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="16" y1="2" x2="16" y2="6"></line>
+      <line x1="8" y1="2" x2="8" y2="6"></line>
+      <line x1="3" y1="10" x2="21" y2="10"></line>
+    </svg>
+);
+
 const ActionButtons: React.FC<ActionButtonsProps> = ({ 
   onWatch, 
   onToggleMyList, 
@@ -50,6 +70,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           onToggleMyList();
       }
   };
+
+  const isSoon = content?.categories?.includes('قريباً');
 
   // Explicit styling for the primary button
   let primaryBtnClass = "btn-primary";
@@ -107,8 +129,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           ${primaryBtnClass}
         `}
       >
-        <PlayIcon className="w-5 h-5 md:w-8 md:h-8 fill-current" />
-        <span>شاهد الآن</span>
+        {isSoon ? <CalendarIcon /> : <PlayIcon className="w-5 h-5 md:w-8 md:h-8 fill-current" />}
+        <span className={isSoon ? 'text-black' : ''}>{isSoon ? 'قريباً' : 'شاهد الآن'}</span>
       </a>
       
       {/* My List Button - Optimized for Mobile */}
