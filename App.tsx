@@ -1,12 +1,11 @@
-
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 // FIX: Switched to Firebase v8 compatible namespaced imports.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 // Note: firestore is imported via db from ./firebase
 
-import { db, auth, getUserProfile, updateUserProfileInFirestore, createUserProfileInFirestore, deleteUserFromFirestore, getSiteSettings, getAds, getUsers, updateSiteSettings as updateSiteSettingsInDb, addAd, updateAd, deleteAd, getPinnedContent, updatePinnedContentForPage, getTop10Content, updateTop10ContentForPage, requestNotificationPermission, getAllContent, getStories } from './firebase'; 
-import type { Content, User, Profile, Ad, PinnedItem, SiteSettings, View, LoginError, PinnedContentState, Top10State, PageKey, Story } from './types';
+import { db, auth, getUserProfile, updateUserProfileInFirestore, createUserProfileInFirestore, deleteUserFromFirestore, getSiteSettings, getAds, getUsers, updateSiteSettings as updateSiteSettingsInDb, addAd, updateAd, deleteAd, getPinnedContent, updatePinnedContentForPage, getTop10Content, updateTop10ContentForPage, requestNotificationPermission, getAllContent, getStories, getUserNotifications } from './firebase'; 
+import type { Content, User, Profile, Ad, PinnedItem, SiteSettings, View, LoginError, PinnedContentState, Top10State, PageKey, Story, Notification } from './types';
 import { UserRole, triggerSelectors } from './types';
 import { initialSiteSettings, defaultAvatar, pinnedContentData as initialPinned, top10ContentData as initialTop10, femaleAvatars } from './data';
 
@@ -27,6 +26,7 @@ import SoonPage from './components/SoonPage';
 import PrivacyPolicyPage from './components/PrivacyPolicyPage';
 import CopyrightPage from './components/CopyrightPage';
 import AboutPage from './components/AboutPage';
+import AboutPageCopy from './components/AboutPage'; // Just for safe structure if needed
 import MyListPage from './components/MyListPage';
 import HomePage from './components/HomePage';
 import BottomNavigation from './components/BottomNavigation';
@@ -40,6 +40,7 @@ import RequestContentModal from './components/RequestContentModal';
 import EpisodeWatchPage from './components/EpisodeWatchPage';
 import SearchPage from './components/SearchPage';
 import WelcomePage from './components/WelcomePage';
+import NotificationsPage from './components/NotificationsPage';
 
 const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} {...props}>
@@ -52,6 +53,25 @@ const ExclamationCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) =
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
 );
+
+/**
+ * REUSABLE BOUNCING DOTS LOADING COMPONENT
+ */
+export const LoadingDots: React.FC<{ theme?: string }> = ({ theme }) => {
+  const dotColor = theme === 'ramadan' ? 'bg-amber-500' : 
+                   theme === 'eid' ? 'bg-purple-500' :
+                   theme === 'cosmic-teal' ? 'bg-[#35F18B]' :
+                   theme === 'netflix-red' ? 'bg-[#E50914]' :
+                   'bg-[#00A7F8]';
+                   
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <div className={`w-3.5 h-3.5 rounded-full ${dotColor} dot-bounce-down shadow-[0_0_10px_rgba(0,0,0,0.3)]`}></div>
+      <div className={`w-3.5 h-3.5 rounded-full ${dotColor} dot-bounce-up shadow-[0_0_10px_rgba(0,0,0,0.3)]`}></div>
+      <div className={`w-3.5 h-3.5 rounded-full ${dotColor} dot-bounce-down shadow-[0_0_10px_rgba(0,0,0,0.3)]`}></div>
+    </div>
+  );
+};
 
 interface Toast {
   id: number;
@@ -78,7 +98,8 @@ const VIEW_PATHS: Record<string, View> = {
     '/about': 'about',
     '/maintenance': 'maintenance',
     '/search': 'search',
-    '/welcome': 'welcome'
+    '/welcome': 'welcome',
+    '/notifications': 'notifications'
 };
 
 const REVERSE_VIEW_PATHS: Record<string, string> = {
@@ -103,7 +124,8 @@ const REVERSE_VIEW_PATHS: Record<string, string> = {
     'category': '/category',
     'maintenance': '/maintenance',
     'search': '/search',
-    'welcome': '/welcome'
+    'welcome': '/welcome',
+    'notifications': '/notifications'
 };
 
 const safeHistoryPush = (path: string) => {
@@ -153,10 +175,14 @@ const App: React.FC = () => {
   const [watchParams, setWatchParams] = useState<{ season: number, episode: number } | null>(null);
   const [detailParams, setDetailParams] = useState<{ seasonNumber: number } | null>(null);
   
+  // Prefill email for login screen (e.g. after redirect from register)
+  const [authPrefillEmail, setAuthPrefillEmail] = useState('');
+
   const [allContent, setAllContent] = useState<Content[]>([]);
   const [pinnedItems, setPinnedItems] = useState<PinnedContentState>(initialPinned);
   const [top10Items, setTop10Items] = useState<Top10State>(initialTop10);
   const [allStories, setAllStories] = useState<Story[]>([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
       let settings = initialSiteSettings;
@@ -389,8 +415,17 @@ const App: React.FC = () => {
                            const usersList = await getUsers();
                            setAllUsers(usersList);
                       }
+
+                      // Fetch Notifications
+                      const notifications = await getUserNotifications(user.id);
+                      setUnreadNotificationsCount(notifications.filter(n => !n.isRead).length);
                   }
-              } else { setCurrentUser(null); setActiveProfile(null); localStorage.removeItem('cinematix_active_profile'); }
+              } else { 
+                setCurrentUser(null); 
+                setActiveProfile(null); 
+                localStorage.removeItem('cinematix_active_profile'); 
+                setUnreadNotificationsCount(0);
+              }
           } finally { setIsAuthLoading(false); }
       });
       return () => unsubscribe();
@@ -407,6 +442,13 @@ const App: React.FC = () => {
 
       if (nextIsFlow && !currentIsFlow && newView !== view) {
           setReturnView(view);
+      }
+
+      // Handle auth pre-filling if params contains email
+      if (newView === 'login' && params?.email) {
+          setAuthPrefillEmail(params.email);
+      } else if (newView === 'login' && !params?.email) {
+          setAuthPrefillEmail('');
       }
 
       setView(newView);
@@ -468,7 +510,7 @@ const App: React.FC = () => {
       catch (error: any) { return (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') ? error.code.replace('auth/', '') as any : 'userNotFound'; }
   };
 
-  const handleRegister = async (newUser: Omit<User, 'id' | 'role' | 'profiles'> & { gender: 'male' | 'female' }) => {
+  const handleRegister = async (newUser: Omit<User, 'id' | 'role' | 'profiles'> & { gender: 'male' | 'female' }): Promise<string | null> => {
       try {
           const cred = await auth.createUserWithEmailAndPassword(newUser.email, newUser.password || '');
           if (cred.user) {
@@ -494,14 +536,16 @@ const App: React.FC = () => {
                addToast('تم إنشاء الحساب بنجاح!', 'success');
                setActiveProfile(defaultProfile);
                handleSetView('onboarding');
+               return null;
           }
+          return 'unknown-error';
       } catch (error: any) {
-          if (error.code === 'auth/email-already-in-use') {
-            alert("هذا البريد الإلكتروني مسجل بالفعل، حاول تسجيل الدخول بدلاً من ذلك.");
-          } else {
-            console.error(error);
-            alert("حدث خطأ غير متوقع: " + error.message);
+          // If the error is specific to "email already in use", we don't log it to console as a "crash" 
+          // because it is handled by the UI logic.
+          if (error.code !== 'auth/email-already-in-use') {
+              console.error(error);
           }
+          return error.code;
       }
   };
 
@@ -578,14 +622,14 @@ const App: React.FC = () => {
       const isCosmicTealTheme = siteSettings.activeTheme === 'cosmic-teal';
       const isNetflixRedTheme = siteSettings.activeTheme === 'netflix-red';
 
-      const LoadingSpinner = () => (
+      const LoadingScreen = () => (
           <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-              <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
+              <LoadingDots theme={siteSettings.activeTheme} />
           </div>
       );
 
       if (isMaintenance && !isAdmin) {
-          if (view === 'login') return <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
+          if (view === 'login') return <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
           return <MaintenancePage socialLinks={siteSettings.socialLinks} onSetView={handleSetView} />;
       }
       
@@ -623,6 +667,7 @@ const App: React.FC = () => {
           case 'soon': return <SoonPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('soon')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
           case 'welcome': return <WelcomePage allContent={allContent} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} returnView={returnView} />;
           case 'onboarding': return <OnboardingPage allContent={allContent} activeProfile={activeProfile} onFinish={handleOnboardingFinish} onSetView={handleSetView} />;
+          case 'notifications': return currentUser ? <NotificationsPage userId={currentUser.id} onSetView={handleSetView} onUpdateUnreadCount={setUnreadNotificationsCount} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
           case 'detail':
                return (
                    <DetailPage 
@@ -660,14 +705,14 @@ const App: React.FC = () => {
                        isNetflixRedTheme={isNetflixRedTheme}
                    />
                );
-           case 'login': if (isAuthLoading) return <LoadingSpinner />; return <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
-           case 'register': if (isAuthLoading) return <LoadingSpinner />; return <CreateAccountPage onSetView={handleSetView} onRegister={handleRegister} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
-           case 'profileSelector': if (isAuthLoading) return <LoadingSpinner />; return currentUser ? <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
-           case 'myList': if (isAuthLoading) return <LoadingSpinner />; return activeProfile ? <MyListPage allContent={allContent} activeProfile={activeProfile} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
+           case 'login': if (isAuthLoading) return <LoadingScreen />; return <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
+           case 'register': if (isAuthLoading) return <LoadingScreen />; return <CreateAccountPage onSetView={handleSetView} onRegister={handleRegister} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
+           case 'profileSelector': if (isAuthLoading) return <LoadingScreen />; return currentUser ? <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
+           case 'myList': if (isAuthLoading) return <LoadingScreen />; return activeProfile ? <MyListPage allContent={allContent} activeProfile={activeProfile} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
            case 'category': return <CategoryPage categoryTitle={selectedCategory} allContent={allContent} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} ads={ads} adsEnabled={siteSettings.adsEnabled} onRequestOpen={() => setIsRequestModalOpen(true)} />;
-           case 'admin': if (isAuthLoading) return <LoadingSpinner />; return isAdmin ? <AdminPanel allUsers={allUsers} allAds={ads} pinnedItems={pinnedItems} top10Items={top10Items} stories={allStories} siteSettings={siteSettings} onSetSiteSettings={handleUpdateSiteSettings} onSetPinnedItems={handleUpdatePinnedItems} onSetTop10Items={handleUpdateTop10Items} onSetView={handleSetView} onUpdateAd={handleUpdateAd} onDeleteAd={handleDeleteAd} onAddAd={handleAddAd} onAddAdmin={handleAddAdmin} onDeleteUser={handleDeleteUser} onContentChanged={fetchData} addToast={addToast} /> : <HomePage allContent={allContent} pinnedContent={[]} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} activeProfile={activeProfile} isLoading={isContentLoading} />;
-           case 'accountSettings': if (isAuthLoading) return <LoadingSpinner />; return currentUser ? <AccountSettingsPage user={currentUser} onUpdateProfile={async (p) => { const updatedProfiles = currentUser.profiles.map(prof => prof.id === p.id ? p : prof); if (!currentUser.profiles.find(prof => prof.id === p.id)) updatedProfiles.push(p); const updatedUser = { ...currentUser, profiles: updatedProfiles }; setCurrentUser(updatedUser); if (activeProfile?.id === p.id) setActiveProfile(p); await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); addToast('تم تحديث الملف الشخصي', 'success'); }} onDeleteProfile={async (pid) => { const updatedProfiles = currentUser.profiles.filter(p => p.id !== pid); setCurrentUser({ ...currentUser, profiles: updatedProfiles }); await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); if (activeProfile?.id === pid) setActiveProfile(null); addToast('تم حذف الملف الشخصي', 'success'); }} onUpdatePassword={async (oldP, newP) => { try { const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, oldP); await auth.currentUser?.reauthenticateWithCredential(cred); await auth.currentUser?.updatePassword(newP); addToast('تم تغيير كلمة المرور', 'success'); return true; } catch (e) { addToast('كلمة المرور القديمة غير صحيحة', 'error'); return false; } }} onDeleteAccount={async () => { await deleteUserFromFirestore(currentUser.id); await auth.currentUser?.delete(); handleSetView('home'); addToast('تم حذف الحساب', 'info'); }} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
-           case 'profileHub': if (isAuthLoading) return <LoadingSpinner />; return (currentUser && activeProfile) ? <ProfileHubPage user={currentUser} activeProfile={activeProfile} onSetView={handleSetView} onLogout={handleLogout} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
+           case 'admin': if (isAuthLoading) return <LoadingScreen />; return isAdmin ? <AdminPanel allUsers={allUsers} allAds={ads} pinnedItems={pinnedItems} top10Items={top10Items} stories={allStories} siteSettings={siteSettings} onSetSiteSettings={handleUpdateSiteSettings} onSetPinnedItems={handleUpdatePinnedItems} onSetTop10Items={handleUpdateTop10Items} onSetView={handleSetView} onUpdateAd={handleUpdateAd} onDeleteAd={handleDeleteAd} onAddAd={handleAddAd} onAddAdmin={handleAddAdmin} onDeleteUser={handleDeleteUser} onContentChanged={fetchData} addToast={addToast} /> : <HomePage allContent={allContent} pinnedContent={[]} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} activeProfile={activeProfile} isLoading={isContentLoading} />;
+           case 'accountSettings': if (isAuthLoading) return <LoadingScreen />; return currentUser ? <AccountSettingsPage user={currentUser} onUpdateProfile={async (p) => { const updatedProfiles = currentUser.profiles.map(prof => prof.id === p.id ? p : prof); if (!currentUser.profiles.find(prof => prof.id === p.id)) updatedProfiles.push(p); const updatedUser = { ...currentUser, profiles: updatedProfiles }; setCurrentUser(updatedUser); if (activeProfile?.id === p.id) setActiveProfile(p); await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); addToast('تم تحديث الملف الشخصي', 'success'); }} onDeleteProfile={async (pid) => { const updatedProfiles = currentUser.profiles.filter(p => p.id !== pid); setCurrentUser({ ...currentUser, profiles: updatedProfiles }); await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); if (activeProfile?.id === pid) setActiveProfile(null); addToast('تم حذف الملف الشخصي', 'success'); }} onUpdatePassword={async (oldP, newP) => { try { const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, oldP); await auth.currentUser?.reauthenticateWithCredential(cred); await auth.currentUser?.updatePassword(newP); addToast('تم تغيير كلمة المرور', 'success'); return true; } catch (e) { addToast('كلمة المرور القديمة غير صحيحة', 'error'); return false; } }} onDeleteAccount={async () => { await deleteUserFromFirestore(currentUser.id); await auth.currentUser?.delete(); handleSetView('home'); addToast('تم حذف الحساب', 'info'); }} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
+           case 'profileHub': if (isAuthLoading) return <LoadingScreen />; return (currentUser && activeProfile) ? <ProfileHubPage user={currentUser} activeProfile={activeProfile} onSetView={handleSetView} onLogout={handleLogout} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
            case 'privacy': return <PrivacyPolicyPage content={siteSettings.privacyPolicy} onSetView={handleSetView} />;
            case 'copyright': return <CopyrightPage content={siteSettings.copyrightPolicy} onSetView={handleSetView} />;
            case 'about': return <AboutPage onSetView={handleSetView} />;
@@ -676,7 +721,7 @@ const App: React.FC = () => {
       }
   };
 
-  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'search', 'welcome'];
+  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'search', 'welcome', 'notifications'];
   const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
   const showGlobalFooter = !fullScreenViews.includes(view) && !siteSettings.is_maintenance_mode_enabled;
   const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view);
@@ -695,8 +740,8 @@ const App: React.FC = () => {
             ))}
         </div>
         {siteSettings.adsEnabled && <AdZone position="global_head" />}
-        {view !== 'login' && view !== 'register' && view !== 'onboarding' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && view !== 'welcome' && !siteSettings.is_maintenance_mode_enabled && (
-            <Header onSetView={handleSetView} currentUser={currentUser} activeProfile={activeProfile} onLogout={handleLogout} allContent={allContent} onSelectContent={handleSelectContent} currentView={view} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} returnView={returnView} isKidProfile={activeProfile?.isKid} onOpenSearch={() => setIsSearchOpen(true)} />
+        {view !== 'login' && view !== 'register' && view !== 'onboarding' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && view !== 'welcome' && view !== 'notifications' && !siteSettings.is_maintenance_mode_enabled && (
+            <Header onSetView={handleSetView} currentUser={currentUser} activeProfile={activeProfile} onLogout={handleLogout} allContent={allContent} onSelectContent={handleSelectContent} currentView={view} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} returnView={returnView} isKidProfile={activeProfile?.isKid} onOpenSearch={() => setIsSearchOpen(true)} unreadNotificationsCount={unreadNotificationsCount} />
         )}
         <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className={socialBarClass} />
         <AdPlacement ads={ads} placement="global-sticky-footer" isEnabled={siteSettings.adsEnabled} className={bottomAdClass} />

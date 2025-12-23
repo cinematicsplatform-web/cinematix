@@ -1,4 +1,3 @@
-
 // FIX: Use 'compat' imports to support v8 namespaced syntax with Firebase v9+ SDK.
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
@@ -6,7 +5,7 @@ import "firebase/compat/firestore";
 import "firebase/compat/messaging";
 import "firebase/compat/storage";
 
-import type { Ad, SiteSettings, User, PinnedContentState, PinnedItem, PageKey, ContentRequest, HomeSection, Content, Top10State, Story } from '@/types';
+import type { Ad, SiteSettings, User, PinnedContentState, PinnedItem, PageKey, ContentRequest, HomeSection, Content, Top10State, Story, Notification, BroadcastNotification } from '@/types';
 import { initialSiteSettings, pinnedContentData as initialPinnedData, top10ContentData as initialTop10Data } from './data';
 import { UserRole } from '@/types';
 
@@ -430,4 +429,84 @@ export const saveStory = async (story: Partial<Story>): Promise<void> => {
 
 export const deleteStory = async (storyId: string): Promise<void> => {
     await db.collection('stories').doc(storyId).delete();
+};
+
+// --- Notification Functions ---
+export const getUserNotifications = async (userId: string): Promise<Notification[]> => {
+    try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        // Using basic query to avoid index requirements, then filter locally
+        const snapshot = await db.collection('notifications')
+            .where('userId', '==', userId)
+            .get();
+        
+        let notifications = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeGetTimestamp(doc.data().createdAt)
+        } as Notification));
+
+        // Enforce 7-day rule and sort newest first
+        notifications = notifications.filter(n => new Date(n.createdAt) > sevenDaysAgo);
+        notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        return notifications;
+    } catch (error) {
+        return handleFirestoreError(error, 'notifications', []);
+    }
+};
+
+export const markNotificationAsRead = async (notificationId: string): Promise<void> => {
+    try {
+        await db.collection('notifications').doc(notificationId).update({ isRead: true });
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
+    }
+};
+
+export const markAllNotificationsAsRead = async (userId: string): Promise<void> => {
+    try {
+        const unreadSnapshot = await db.collection('notifications')
+            .where('userId', '==', userId)
+            .where('isRead', '==', false)
+            .get();
+        
+        const batch = db.batch();
+        unreadSnapshot.docs.forEach(doc => {
+            batch.update(doc.ref, { isRead: true });
+        });
+        await batch.commit();
+    } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+    }
+};
+
+export const getBroadcastHistory = async (): Promise<BroadcastNotification[]> => {
+    try {
+        const snapshot = await db.collection('broadcast_history').orderBy('createdAt', 'desc').limit(20).get();
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeGetTimestamp(doc.data().createdAt)
+        })) as BroadcastNotification[];
+    } catch (e) {
+        return [];
+    }
+};
+
+export const deleteBroadcastNotification = async (broadcastId: string): Promise<void> => {
+    try {
+        // 1. Delete from history
+        await db.collection('broadcast_history').doc(broadcastId).delete();
+        
+        // 2. Delete all related user notifications (In real apps this should be a cloud function to handle high volume)
+        const userNotifs = await db.collection('notifications').where('broadcastId', '==', broadcastId).get();
+        const batch = db.batch();
+        userNotifs.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+    } catch (e) {
+        console.error('Error deleting broadcast notification:', e);
+    }
 };

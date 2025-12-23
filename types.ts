@@ -1,4 +1,3 @@
-
 export const ContentType = {
   Movie: 'movie',
   Series: 'series',
@@ -34,7 +33,7 @@ export const genres = [
 
 export type Genre = typeof genres[number];
 
-export type View = 'home' | 'movies' | 'series' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'watch' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance' | 'search' | 'welcome' | 'onboarding';
+export type View = 'home' | 'movies' | 'series' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'watch' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance' | 'search' | 'welcome' | 'onboarding' | 'notifications';
 
 export type LoginError = 'none' | 'userNotFound' | 'wrongPassword';
 
@@ -110,6 +109,30 @@ export interface Content {
   mobileCropPositionX?: number; 
   mobileCropPositionY?: number; 
   slug?: string; 
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  type: 'info' | 'play' | 'alert' | 'new_content';
+  isRead: boolean;
+  createdAt: string;
+  targetUrl?: string;
+  imageUrl?: string;
+  broadcastId?: string;
+}
+
+export interface BroadcastNotification {
+  id: string;
+  title: string;
+  body: string;
+  type: 'info' | 'play' | 'alert' | 'new_content';
+  imageUrl?: string;
+  targetUrl?: string;
+  createdAt: string;
+  recipientCount: number;
 }
 
 export interface PinnedItem {
