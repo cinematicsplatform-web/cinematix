@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Content } from '@/types';
 import ActionButtons from './ActionButtons';
@@ -37,6 +38,9 @@ const Hero: React.FC<HeroProps> = ({
     const [showVideo, setShowVideo] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     const [isPaused, setIsPaused] = useState(false);
+    const [isInView, setIsInView] = useState(true); // تتبع حالة الرؤية
+    // Fix: Moved videoEnded state definition higher to be available for effects
+    const [videoEnded, setVideoEnded] = useState(false);
     
     const [isDragging, setIsDragging] = useState(false);
     const [startPos, setStartPos] = useState(0);
@@ -46,9 +50,7 @@ const Hero: React.FC<HeroProps> = ({
     const activeIframeRef = useRef<HTMLIFrameElement>(null);
     const forceStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     
-    // مؤشر لمنع تكرار الانتقال
     const hasTransitionedRef = useRef<boolean>(false);
-
     const [isMobile, setIsMobile] = useState(false);
 
     const len = contents.length;
@@ -63,20 +65,33 @@ const Hero: React.FC<HeroProps> = ({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
+    // --- مراقبة التمرير (Intersection Observer) ---
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                setIsInView(entry.isIntersecting);
+            },
+            { threshold: 0.1 } // توقف عند اختفاء 90% من القسم
+        );
+
+        if (containerRef.current) {
+            observer.observe(containerRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, []);
+
     const handleNext = useCallback(() => {
         setIsDirectJump(false);
         setUnboundedIndex(prev => prev + 1);
-        hasTransitionedRef.current = false; // Reset for next slide
+        hasTransitionedRef.current = false;
     }, []);
 
-    // المنطق الجديد: الانتقال عند انتهاء الفيديو تماماً
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             try {
                 if (typeof event.data === 'string') {
                     const data = JSON.parse(event.data);
-                    
-                    // الاستماع لحالة "الانتهاء" (ENDED) من يوتيوب وهي رقم 0
                     if ((data.event === 'infoDelivery' && data.info && data.info.playerState === 0) ||
                         (data.event === 'onStateChange' && data.info === 0)) {
                         
@@ -93,8 +108,8 @@ const Hero: React.FC<HeroProps> = ({
     }, [handleNext]);
 
     useEffect(() => {
-        // إعادة تعيين الحالة عند تغيير الشريحة
         setShowVideo(false);
+        setVideoEnded(false);
         setIsMuted(true);
         setIsPaused(false);
         setIsDirectJump(false);
@@ -102,7 +117,6 @@ const Hero: React.FC<HeroProps> = ({
 
         if (!activeContent || !activeContent.trailerUrl || isMobile) return;
 
-        // تشغيل الفيديو بعد ثانية ونصف
         const trailerTimer = setTimeout(() => {
             setShowVideo(true);
         }, 1500);
@@ -112,15 +126,49 @@ const Hero: React.FC<HeroProps> = ({
         };
     }, [activeContent?.id, isMobile]);
 
-    // منطق الإيقاف الإجباري والانتقال بعد 60 ثانية (مشابه لصفحة المشاهدة)
+    // التحكم في تشغيل وإيقاف الفيديو عند التمرير
     useEffect(() => {
-        if (showVideo) {
+        if (!showVideo || !activeIframeRef.current) return;
+
+        const win = activeIframeRef.current.contentWindow;
+        if (!win) return;
+
+        try {
+            if (isInView) {
+                // استئناف التشغيل ومزامنة الصوت
+                win.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
+                win.postMessage(JSON.stringify({ event: 'command', func: isMuted ? 'mute' : 'unMute', args: '' }), '*');
+            } else {
+                // إيقاف مؤقت عند الخروج من الكادر
+                win.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
+            }
+        } catch (e) {}
+    }, [isInView, showVideo, isMuted]);
+
+    // Fix: Defined the toggleMute function
+    const toggleMute = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        const newMuted = !isMuted;
+        setIsMuted(newMuted);
+        if (activeIframeRef.current) {
+            try {
+                activeIframeRef.current.contentWindow?.postMessage(JSON.stringify({
+                    event: 'command',
+                    func: newMuted ? 'mute' : 'unMute',
+                    args: ''
+                }), '*');
+            } catch (err) {}
+        }
+    }, [isMuted]);
+
+    useEffect(() => {
+        if (showVideo && isInView) { // يتوقف التايمر الإجباري إذا لم يكن في الكادر
             forceStopTimerRef.current = setTimeout(() => {
                 if (!hasTransitionedRef.current) {
                     hasTransitionedRef.current = true;
                     handleNext();
                 }
-            }, 60000); // 60 ثانية
+            }, 60000);
         } else {
             if (forceStopTimerRef.current) {
                 clearTimeout(forceStopTimerRef.current);
@@ -130,7 +178,7 @@ const Hero: React.FC<HeroProps> = ({
         return () => {
             if (forceStopTimerRef.current) clearTimeout(forceStopTimerRef.current);
         };
-    }, [showVideo, handleNext]);
+    }, [showVideo, isInView, handleNext]);
 
     useEffect(() => {
         if (showVideo && activeIframeRef.current) {
@@ -145,7 +193,6 @@ const Hero: React.FC<HeroProps> = ({
         }
     }, [isMuted, showVideo]);
 
-    // التحكم في السلايدر التلقائي (يتوقف إذا كان الفيديو يعمل)
     useEffect(() => {
         if (!hasMultiple || isDragging || isPaused || showVideo) return;
 
@@ -356,7 +403,7 @@ const Hero: React.FC<HeroProps> = ({
                                 <div className="flex items-center gap-4 w-full justify-center md:justify-start relative z-40 mt-1 md:mt-2">
                                     <ActionButtons onWatch={() => onWatchNow(content)} onToggleMyList={() => onToggleMyList(content.id)} isInMyList={!!myList?.includes(content.id)} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} showMyList={isLoggedIn} content={content} />
                                     {shouldShowVideo && (
-                                        <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsMuted(!isMuted); }} className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group scale-[1.15] origin-center" title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}>
+                                        <button onClick={toggleMute} className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group scale-[1.15] origin-center" title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}>
                                             <SpeakerIcon isMuted={isMuted} className="w-7 h-7 text-white group-hover:scale-110 transition-transform" />
                                         </button>
                                     )}
