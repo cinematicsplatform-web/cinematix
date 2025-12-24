@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { Content, Ad, Episode, Server, Season, View } from '@/types';
 import VideoPlayer from '@/components/VideoPlayer';
@@ -58,11 +59,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const seriesSlug = content?.slug || content?.id;
   const isSoon = content?.categories?.includes('قريباً');
 
-  // Tabs State - Default to 'details' if it's soon content
   const [activeTab, setActiveTab] = useState<'episodes' | 'trailer' | 'details' | 'related'>(isSoon ? 'details' : 'episodes');
   const tabsRef = useRef<HTMLDivElement>(null);
 
-  // Sync active tab if content changes
   useEffect(() => {
     if (isSoon) {
         setActiveTab('details');
@@ -71,27 +70,40 @@ const DetailPage: React.FC<DetailPageProps> = ({
     }
   }, [content?.id, isSoon]);
 
-  // Dropdown State
   const [isSeasonDropdownOpen, setIsSeasonDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Hero Video State
   const [showVideo, setShowVideo] = useState(false);
   const [videoEnded, setVideoEnded] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isInView, setIsInView] = useState(true);
    
-  // Refs
   const heroRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const forceStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // --- مراقبة التمرير ---
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+        ([entry]) => {
+            setIsInView(entry.isIntersecting);
+        },
+        { threshold: 0.1 }
+    );
+
+    if (heroRef.current) {
+        observer.observe(heroRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   const getEpisodeDescription = (description: string | undefined, epNumber: number, sNumber: number) => {
       if (description && description.trim().length > 0) return description;
       return `شاهد أحداث الحلقة ${epNumber} من الموسم ${sNumber}. استمتع بمشاهدة تطورات الأحداث في هذه الحلقة.`;
   };
 
-  // Close dropdown on click outside
   useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
           if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -102,7 +114,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Season & Episode Selection Logic
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
 
@@ -129,7 +140,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
     }
   }, [content?.id, isLoaded, initialSeasonNumber, locationPath]);
 
-  // Derived Data
   const currentSeason = useMemo(() => content?.seasons?.find(s => s.id === selectedSeasonId), [content?.seasons, selectedSeasonId]);
   const episodes = useMemo(() => currentSeason?.episodes || [], [currentSeason]);
   const displayBackdrop = currentSeason?.backdrop || content?.backdrop || '';
@@ -143,7 +153,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       if (activeServers.length > 0) setSelectedServer(activeServers.find(s => s.isActive) || activeServers[0]);
   }, [activeServers]); 
    
-  // Mobile Check
   const [isMobile, setIsMobile] = useState(false);
   useLayoutEffect(() => {
       const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -152,7 +161,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Helper: Get YouTube ID
   const getVideoId = (url: string | undefined) => {
       if (!url) return null;
       try {
@@ -178,18 +186,32 @@ const DetailPage: React.FC<DetailPageProps> = ({
       setVideoEnded(false);
       setIsMuted(true);
       if (!trailerVideoId || isMobile) return;
-      // يظهر الفيديو بعد ثانيتين من عرض الخلفية
       const timer = setTimeout(() => { setShowVideo(true); }, 2000); 
       return () => clearTimeout(timer);
   }, [content?.id, trailerVideoId, isMobile, selectedSeasonId]);
 
-  // منطق الإيقاف الإجباري بعد 60 ثانية
+  // التحكم في حالة التشغيل بناءً على الرؤية
   useEffect(() => {
-    if (showVideo) {
+    if (!showVideo || !iframeRef.current) return;
+    const win = iframeRef.current.contentWindow;
+    if (!win) return;
+
+    try {
+        if (isInView) {
+            win.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
+            win.postMessage(JSON.stringify({ event: 'command', func: isMuted ? 'mute' : 'unMute', args: '' }), '*');
+        } else {
+            win.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
+        }
+    } catch (e) {}
+  }, [isInView, showVideo, isMuted]);
+
+  useEffect(() => {
+    if (showVideo && isInView) {
         forceStopTimerRef.current = setTimeout(() => {
             setShowVideo(false);
             setVideoEnded(true);
-        }, 60000); // 60 ثانية
+        }, 60000);
     } else {
         if (forceStopTimerRef.current) {
             clearTimeout(forceStopTimerRef.current);
@@ -199,18 +221,15 @@ const DetailPage: React.FC<DetailPageProps> = ({
     return () => {
         if (forceStopTimerRef.current) clearTimeout(forceStopTimerRef.current);
     };
-  }, [showVideo]);
+  }, [showVideo, isInView]);
 
   useEffect(() => {
       const handleMessage = (event: MessageEvent) => {
           try {
               if (typeof event.data === 'string') {
                   const data = JSON.parse(event.data);
-                  if (data.event === 'infoDelivery' && data.info && data.info.playerState === 0) {
-                      setShowVideo(false);
-                      setVideoEnded(true);
-                  }
-                  if (data.event === 'onStateChange' && data.info === 0) {
+                  if ((data.event === 'infoDelivery' && data.info && data.info.playerState === 0) || 
+                      (data.event === 'onStateChange' && data.info === 0)) {
                       setShowVideo(false);
                       setVideoEnded(true);
                   }
@@ -229,13 +248,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
           iframeRef.current.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: newMuted ? 'mute' : 'unMute', args: '' }), '*');
       }
   };
-
-  useEffect(() => {
-      if (showVideo && iframeRef.current) {
-          const cmd = isMuted ? 'mute' : 'unMute';
-          try { iframeRef.current.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: cmd, args: '' }), '*'); } catch (e) {}
-      }
-  }, [isMuted, showVideo]);
 
   const similarContent = useMemo(() => {
     if (!content?.id) return [];
@@ -281,7 +293,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
         banner={displayBackdrop}
       />
 
-      {/* --- HERO SECTION --- */}
       <div ref={heroRef} className="relative h-[80vh] w-full overflow-hidden group z-10">
         <div className="absolute inset-0 bg-black">
             {isLoaded ? (
@@ -330,7 +341,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     <div className="w-64 md:w-96 h-12 md:h-20 bg-gray-800/40 rounded-xl skeleton-shimmer mb-4 border border-white/5"></div>
                 )}
 
-                {/* --- SEASON SELECTOR --- */}
                 {isLoaded && content.type === 'series' && content.seasons && content.seasons.length > 1 && (
                     <div className="relative mt-1 mb-2 z-50 w-full md:w-auto flex justify-center md:justify-start" ref={dropdownRef}>
                         <button
@@ -369,11 +379,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     </div>
                 )}
 
-                {/* --- ADDED METADATA SECTION --- */}
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 md:gap-4 mb-2 text-sm md:text-base font-medium text-gray-200 w-full transition-all duration-700 ease-in-out">
                     {isLoaded ? (
                         <>
-                            {/* التقييم */}
                             <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
                                 <StarIcon className="w-5 h-5" />
                                 <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
@@ -381,10 +389,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
                             <span className="text-gray-500 opacity-60">|</span>
 
-                            {/* السنة */}
                             <span className="text-white font-semibold tracking-wide">{currentSeason?.releaseYear || content.releaseYear}</span>
 
-                            {/* مدة العرض (للأفلام) */}
                             {content.type === 'movie' && content.duration && (
                                 <>
                                     <span className="text-gray-500 opacity-60">|</span>
@@ -395,11 +401,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 </>
                             )}
 
-                            {/* التصنيف العمري */}
                             <span className="text-gray-500 opacity-60">|</span>
                             <span className="px-2 py-0.5 border border-gray-500 rounded text-gray-300 text-xs font-bold">{content.ageRating}</span>
 
-                            {/* التصنيف النوعي (Genres) - أصبح الأخير بناءً على طلبك */}
                             {content.genres && content.genres.length > 0 && (
                                 <>
                                     <span className="text-gray-500 opacity-60">|</span>
@@ -420,7 +424,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         <div className="w-48 h-6 bg-gray-800/40 rounded skeleton-shimmer border border-white/5"></div>
                     )}
                 </div>
-                {/* --- END ADDED METADATA SECTION --- */}
 
                 <div className="overflow-hidden transition-all duration-700 ease-in-out w-full opacity-100 max-h-40 mb-3 md:mb-4">
                     {isLoaded ? (
@@ -455,7 +458,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 content={content}
                             />
 
-                            {/* زر الصوت: يظهر فقط أثناء تشغيل الإعلان */}
                             {showVideo && (
                                 <button 
                                     onClick={toggleMute} 
@@ -466,7 +468,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 </button>
                             )}
                             
-                            {/* زر التكبير: يظهر أثناء تشغيل الإعلان أو بعد انتهائه إذا كان متاحاً */}
                             {trailerVideoId && (showVideo || videoEnded) && (
                                 <button 
                                     onClick={() => { setActiveTab('trailer'); tabsRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
@@ -542,7 +543,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                   </a>
                               );
                           }) : (
-                              /* --- EPISODE SKELETONS --- */
                               Array.from({ length: 10 }).map((_, i) => (
                                   <div key={i} className="rounded-xl bg-gray-800/40 border border-gray-700/50 overflow-hidden h-full flex flex-col skeleton-shimmer">
                                       <div className="relative w-full aspect-video bg-gray-700/30"></div>
@@ -587,7 +587,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
               <div className="px-4 md:px-8 py-8 animate-fade-in-up w-full">
                   <div className="max-w-7xl mx-auto w-full flex flex-col gap-12">
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12">
-                          {/* Main Text Content */}
                           <div className="md:col-span-8 space-y-10">
                               {isLoaded ? (
                                   <>
@@ -634,7 +633,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                               )}
                           </div>
 
-                          {/* Quick Info Sidebar */}
                           <div className="md:col-span-4 space-y-6">
                               <div className="bg-[var(--bg-card)] border border-white/5 rounded-3xl p-6 md:p-8 shadow-xl">
                                   <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
