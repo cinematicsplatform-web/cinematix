@@ -1,12 +1,9 @@
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-// FIX: Switched to Firebase v8 compatible namespaced imports.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
-// Note: firestore is imported via db from ./firebase
-
 import { db, auth, getUserProfile, updateUserProfileInFirestore, createUserProfileInFirestore, deleteUserFromFirestore, getSiteSettings, getAds, getUsers, updateSiteSettings as updateSiteSettingsInDb, addAd, updateAd, deleteAd, getPinnedContent, updatePinnedContentForPage, getTop10Content, updateTop10ContentForPage, requestNotificationPermission, getAllContent, getStories, getUserNotifications } from './firebase'; 
 import type { Content, User, Profile, Ad, PinnedItem, SiteSettings, View, LoginError, PinnedContentState, Top10State, PageKey, Story, Notification } from './types';
-import { UserRole, triggerSelectors } from './types';
+import { UserRole, triggerSelectors, ContentType } from './types';
 import { initialSiteSettings, defaultAvatar, pinnedContentData as initialPinned, top10ContentData as initialTop10, femaleAvatars } from './data';
 
 import Header from './components/Header';
@@ -40,6 +37,11 @@ import EpisodeWatchPage from './components/EpisodeWatchPage';
 import SearchPage from './components/SearchPage';
 import WelcomePage from './components/WelcomePage';
 import NotificationsPage from './components/NotificationsPage';
+import AppDownloadPage from './pages/AppDownloadPage'; // ✅ إضافة صفحة التحميل
+
+// --- ✅ Helper Functions for Arabic Path-Based Routing ---
+const generateSeasonSlug = (num: number) => `الموسم${num}`;
+const generateEpisodeSlug = (num: number) => `الحلقة${num}`;
 
 const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} {...props}>
@@ -79,7 +81,8 @@ const VIEW_PATHS: Record<string, View> = {
     '/maintenance': 'maintenance',
     '/search': 'search',
     '/welcome': 'welcome',
-    '/notifications': 'notifications'
+    '/notifications': 'notifications',
+    '/app-download': 'appDownload' // ✅ المسار موجود
 };
 
 const REVERSE_VIEW_PATHS: Record<string, string> = {
@@ -105,7 +108,8 @@ const REVERSE_VIEW_PATHS: Record<string, string> = {
     'maintenance': '/maintenance',
     'search': '/search',
     'welcome': '/welcome',
-    'notifications': '/notifications'
+    'notifications': '/notifications',
+    'appDownload': '/app-download'
 };
 
 const safeHistoryPush = (path: string) => {
@@ -134,14 +138,22 @@ const App: React.FC = () => {
       
       if (VIEW_PATHS[normalizedPath]) return VIEW_PATHS[normalizedPath];
       if (normalizedPath.startsWith('/category/')) return 'category';
+      
+      // --- ✅ New Arabic Path Logic ---
+      if (normalizedPath.match(/^\/watch\/([^\/]+)\/(الموسم\d+)\/(الحلقة\d+)/)) return 'watch';
+      if (normalizedPath.match(/^\/series\/([^\/]+)\/(الموسم\d+)/)) return 'detail';
+      // -----------------------------
+
       if (normalizedPath.match(/^\/مشاهدة\//) || normalizedPath.startsWith('/watch/')) return 'watch';
       if (normalizedPath.match(/^\/(?:series|مسلسل|movie|فيلم)\/([^\/]+)/)) return 'detail';
       return 'home';
   };
 
   const [view, setView] = useState<View>(getInitialView);
+  // --- ✅ Refs for Scroll Fix ---
   const scrollPositions = useRef<Record<string, number>>({});
   const prevViewRef = useRef<View>(getInitialView());
+  
   const [returnView, setReturnView] = useState<View>('home');
   const [selectedCategory, setSelectedCategory] = useState<string>(() => {
       const path = decodeURIComponent(window.location.pathname);
@@ -154,8 +166,6 @@ const App: React.FC = () => {
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [watchParams, setWatchParams] = useState<{ season: number, episode: number } | null>(null);
   const [detailParams, setDetailParams] = useState<{ seasonNumber: number } | null>(null);
-  
-  // Prefill email for login screen (e.g. after redirect from register)
   const [authPrefillEmail, setAuthPrefillEmail] = useState('');
 
   const [allContent, setAllContent] = useState<Content[]>([]);
@@ -234,22 +244,63 @@ const App: React.FC = () => {
       return () => window.removeEventListener('click', handleSmartPopunder);
   }, [ads, siteSettings.adsEnabled]);
 
+  // --- ✅ FIX: SCROLL RESTORATION LOGIC ---
   useEffect(() => {
       if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
   }, []);
 
   useLayoutEffect(() => {
       const prevView = prevViewRef.current;
-      if (view === 'detail' || view === 'watch') window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+      // If we go to DETAIL or WATCH page, force scroll to TOP
+      if (view === 'detail' || view === 'watch') {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+      } 
+      // If we come back FROM detail or watch to home/movies, restore position
       else if (prevView === 'detail' || prevView === 'watch') {
           const savedPosition = scrollPositions.current[view];
           window.scrollTo({ top: savedPosition || 0, left: 0, behavior: 'instant' as any });
-      } else window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+      } 
+      // Default behavior
+      else {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+      }
       prevViewRef.current = view;
   }, [view, selectedContent]); 
+  // -------------------------------------
 
   const resolveContentFromUrl = useCallback((path: string, contentList: Content[]) => {
       const decodedPath = decodeURIComponent(path);
+      
+      // 1. New Arabic Watch Pattern: /watch/slug/الموسم1/الحلقة5
+      const arabicWatchMatch = decodedPath.match(/^\/watch\/([^\/]+)\/(الموسم(\d+))\/(الحلقة(\d+))/);
+      if (arabicWatchMatch) {
+          const slug = arabicWatchMatch[1];
+          const season = parseInt(arabicWatchMatch[3]);
+          const episode = parseInt(arabicWatchMatch[5]);
+          const foundContent = contentList.find(c => (c.slug === slug) || (c.id === slug));
+          if (foundContent) {
+              setSelectedContent(foundContent);
+              setWatchParams({ season, episode });
+              setView('watch');
+              return;
+          }
+      }
+
+      // 2. New Arabic Series Pattern: /series/slug/الموسم1
+      const arabicSeriesMatch = decodedPath.match(/^\/series\/([^\/]+)\/(الموسم(\d+))/);
+      if (arabicSeriesMatch) {
+          const slug = arabicSeriesMatch[1];
+          const seasonNumber = parseInt(arabicSeriesMatch[3]);
+          const foundContent = contentList.find(c => (c.slug === slug) || (c.id === slug));
+          if (foundContent) {
+              setSelectedContent(foundContent);
+              setDetailParams({ seasonNumber });
+              setView('detail');
+              return;
+          }
+      }
+
+      // 3. Legacy Patterns
       const watchMatch = decodedPath.match(/^\/مشاهدة\/([^\/]+)\/الموسم\/(\d+)\/الحلقة\/(\d+)/) || 
                          decodedPath.match(/^\/watch\/([^\/]+)\/(\d+)\/(\d+)/);
       if (watchMatch) {
@@ -379,7 +430,6 @@ const App: React.FC = () => {
                       };
                       setCurrentUser(user);
 
-                      // NEW LOGIC: If setup not completed, redirect to onboarding automatically
                       if (user.setupCompleted === false && user.profiles.length > 0) {
                           setActiveProfile(user.profiles[0]);
                           handleSetView('onboarding');
@@ -395,8 +445,6 @@ const App: React.FC = () => {
                            const usersList = await getUsers();
                            setAllUsers(usersList);
                       }
-
-                      // Fetch Notifications
                       const notifications = await getUserNotifications(user.id);
                       setUnreadNotificationsCount(notifications.filter(n => !n.isRead).length);
                   }
@@ -412,6 +460,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleSetView = (newView: View, category?: string, params?: any) => {
+      // FIX: Save scroll position before switching view
       if (view !== 'detail' && view !== 'watch' && view !== 'login' && view !== 'register') {
           scrollPositions.current[view] = window.scrollY;
       }
@@ -424,7 +473,6 @@ const App: React.FC = () => {
           setReturnView(view);
       }
 
-      // Handle auth pre-filling if params contains email
       if (newView === 'login' && params?.email) {
           setAuthPrefillEmail(params.email);
       } else if (newView === 'login' && !params?.email) {
@@ -436,7 +484,13 @@ const App: React.FC = () => {
       if (newView === 'watch' && params) {
           setWatchParams(params);
           setDetailParams(null);
-          if (selectedContent) safeHistoryPush(`/watch/${selectedContent.slug || selectedContent.id}/${params.season}/${params.episode}`);
+          if (selectedContent) {
+              // ✅ Updated Logic: Push ARABIC Path for Watch
+              const slug = selectedContent.slug || selectedContent.id;
+              const seasonSlug = generateSeasonSlug(params.season);
+              const episodeSlug = generateEpisodeSlug(params.episode);
+              safeHistoryPush(`/watch/${slug}/${seasonSlug}/${episodeSlug}`);
+          }
       } else {
           if (newView !== 'watch') setWatchParams(null);
           let path = REVERSE_VIEW_PATHS[newView];
@@ -446,8 +500,9 @@ const App: React.FC = () => {
               if (selectedContent.type === 'movie') {
                   path = `/watch/movie/${slug}`;
               } else {
+                  // ✅ Updated Logic: Push ARABIC Path for Series Detail
                   const sNum = params?.season || detailParams?.seasonNumber || 1;
-                  path = `/series/${slug}`;
+                  path = `/series/${slug}/${generateSeasonSlug(sNum)}`;
                   if (!detailParams || detailParams.seasonNumber !== sNum) setDetailParams({ seasonNumber: sNum });
               }
           } else if (newView !== 'detail') setDetailParams(null);
@@ -457,23 +512,32 @@ const App: React.FC = () => {
 
   const handleSelectContent = (content: Content, seasonNumber?: number, episodeNumber?: number) => {
       if (isSearchOpen) setIsSearchOpen(false);
+      
+      // FIX: Save scroll position
       scrollPositions.current[view] = window.scrollY;
       if (view !== 'detail') setReturnView(view);
+      
       setSelectedContent(content);
       const slug = content.slug || content.id;
+      
       if (content.type === 'series') {
           let targetSeason = seasonNumber;
           if (!targetSeason && content.seasons && content.seasons.length > 0) targetSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0].seasonNumber;
           if (!targetSeason) targetSeason = 1; 
+          
           if (episodeNumber) {
+              // Watch Page
               setWatchParams({ season: targetSeason, episode: episodeNumber });
               setDetailParams(null);
               setView('watch');
-              safeHistoryPush(`/watch/${slug}/${targetSeason}/${episodeNumber}`);
+              // ✅ Arabic Path
+              safeHistoryPush(`/watch/${slug}/${generateSeasonSlug(targetSeason)}/${generateEpisodeSlug(episodeNumber)}`);
           } else {
+              // Detail Page
               setDetailParams({ seasonNumber: targetSeason });
               setView('detail');
-              safeHistoryPush(`/series/${slug}`);
+              // ✅ Arabic Path
+              safeHistoryPush(`/series/${slug}/${generateSeasonSlug(targetSeason)}`);
           }
       } else { 
           setDetailParams(null); 
@@ -482,11 +546,9 @@ const App: React.FC = () => {
       }
   };
 
+  // ... (Other Handlers: Login, Register, Profile, etc. kept as is) ...
   const handleLogin = async (email: string, pass: string): Promise<LoginError> => {
-      try { 
-        await auth.signInWithEmailAndPassword(email, pass); 
-        return 'none'; 
-      }
+      try { await auth.signInWithEmailAndPassword(email, pass); return 'none'; }
       catch (error: any) { return (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') ? error.code.replace('auth/', '') as any : 'userNotFound'; }
   };
 
@@ -495,24 +557,8 @@ const App: React.FC = () => {
           const cred = await auth.createUserWithEmailAndPassword(newUser.email, newUser.password || '');
           if (cred.user) {
                const selectedAvatar = newUser.gender === 'female' ? (femaleAvatars[1] || femaleAvatars[0]) : defaultAvatar;
-               
-               const defaultProfile: Profile = { 
-                 id: Date.now(), 
-                 name: newUser.firstName || 'المستخدم', 
-                 avatar: selectedAvatar, 
-                 isKid: false, 
-                 watchHistory: [], 
-                 myList: [] 
-               };
-
-               await createUserProfileInFirestore(cred.user.uid, { 
-                 firstName: newUser.firstName, 
-                 lastName: newUser.lastName, 
-                 email: newUser.email, 
-                 profiles: [defaultProfile],
-                 setupCompleted: false // NEW FLAG
-               });
-
+               const defaultProfile: Profile = { id: Date.now(), name: newUser.firstName || 'المستخدم', avatar: selectedAvatar, isKid: false, watchHistory: [], myList: [] };
+               await createUserProfileInFirestore(cred.user.uid, { firstName: newUser.firstName, lastName: newUser.lastName, email: newUser.email, profiles: [defaultProfile], setupCompleted: false });
                addToast('تم إنشاء الحساب بنجاح!', 'success');
                setActiveProfile(defaultProfile);
                handleSetView('onboarding');
@@ -520,11 +566,7 @@ const App: React.FC = () => {
           }
           return 'unknown-error';
       } catch (error: any) {
-          // If the error is specific to "email already in use", we don't log it to console as a "crash" 
-          // because it is handled by the UI logic.
-          if (error.code !== 'auth/email-already-in-use') {
-              console.error(error);
-          }
+          if (error.code !== 'auth/email-already-in-use') console.error(error);
           return error.code;
       }
   };
@@ -536,13 +578,7 @@ const App: React.FC = () => {
       if (currentUser && activeProfile) {
           const updatedProfile = { ...activeProfile, ...profileData };
           const updatedProfiles = currentUser.profiles.map(p => p.id === activeProfile.id ? updatedProfile : p);
-          
-          // Update setup flag to true so next login goes to ProfileSelector
-          await updateUserProfileInFirestore(currentUser.id, { 
-            profiles: updatedProfiles,
-            setupCompleted: true 
-          });
-          
+          await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles, setupCompleted: true });
           setActiveProfile(updatedProfile);
           setCurrentUser(prev => prev ? { ...prev, setupCompleted: true, profiles: updatedProfiles } : null);
           addToast('تم إعداد حسابك بنجاح!', 'success');
@@ -562,37 +598,14 @@ const App: React.FC = () => {
       await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles });
   };
 
-  const handleUpdateSiteSettings = async (settings: SiteSettings) => {
-      try { await updateSiteSettingsInDb(settings); setSiteSettings(settings); addToast('تم حفظ الإعدادات بنجاح', 'success'); } catch (e) { addToast('فشل حفظ الإعدادات', 'error'); }
-  };
-
-  const handleUpdatePinnedItems = async (pageKey: PageKey, items: PinnedItem[]) => {
-      try { await updatePinnedContentForPage(pageKey, items); setPinnedItems(prev => ({ ...prev, [pageKey]: items })); addToast('تم تحديث المحتوى المثبت', 'success'); } catch (e) { addToast('فشل التحديث', 'error'); }
-  };
-
-  const handleUpdateTop10Items = async (pageKey: PageKey, items: PinnedItem[]) => {
-      try { await updateTop10ContentForPage(pageKey, items); setTop10Items(prev => ({ ...prev, [pageKey]: items })); addToast('تم تحديث قائمة التوب 10', 'success'); } catch (e) { addToast('فشل التحديث', 'error'); }
-  };
-
-  const handleUpdateAd = async (ad: Ad) => {
-      try { await updateAd(ad.id, ad); setAds(prev => prev.map(a => a.id === ad.id ? ad : a)); addToast('تم تحديث الإعلان', 'success'); } catch (e) { addToast('فشل تحديث الإعلان', 'error'); }
-  };
-
-  const handleDeleteAd = async (adId: string) => {
-      try { await deleteAd(adId); setAds(prev => prev.filter(a => a.id !== adId)); addToast('تم حذف الإعلان', 'success'); } catch (e) { addToast('فشل حذف الإعلان', 'error'); }
-  };
-
-  const handleAddAd = async (adData: Omit<Ad, 'id' | 'updatedAt'>) => {
-      try { const id = await addAd(adData); const newAd: Ad = { ...adData, id, updatedAt: new Date().toISOString() }; setAds(prev => [newAd, ...prev]); addToast('تم إضافة الإعلان بنجاح', 'success'); } catch (e) { addToast('فشل إضافة الإعلان', 'error'); }
-  };
-
-  const handleAddAdmin = async (newAdmin: Omit<User, 'id' | 'role' | 'profiles'>) => {
-      try { const cred = await auth.createUserWithEmailAndPassword(newAdmin.email, newAdmin.password || ''); if (cred.user) { const defaultProfile: Profile = { id: Date.now(), name: newAdmin.firstName || 'المسؤول', avatar: defaultAvatar, isKid: false, watchHistory: [], myList: [] }; await createUserProfileInFirestore(cred.user.uid, { firstName: newAdmin.firstName, email: newAdmin.email, profiles: [defaultProfile] }); await updateUserProfileInFirestore(cred.user.uid, { role: UserRole.Admin }); addToast('تم إضافة المسؤول بنجاح!', 'success'); const usersList = await getUsers(); setAllUsers(usersList); } } catch (error: any) { addToast(error.message, 'error'); throw error; }
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-      try { await deleteUserFromFirestore(userId); setAllUsers(prev => prev.filter(u => u.id !== userId)); addToast('تم حذف المستخدم بنجاح', 'success'); } catch (e) { addToast('فشل حذف المستخدم', 'error'); }
-  };
+  const handleUpdateSiteSettings = async (settings: SiteSettings) => { try { await updateSiteSettingsInDb(settings); setSiteSettings(settings); addToast('تم حفظ الإعدادات بنجاح', 'success'); } catch (e) { addToast('فشل حفظ الإعدادات', 'error'); } };
+  const handleUpdatePinnedItems = async (pageKey: PageKey, items: PinnedItem[]) => { try { await updatePinnedContentForPage(pageKey, items); setPinnedItems(prev => ({ ...prev, [pageKey]: items })); addToast('تم تحديث المحتوى المثبت', 'success'); } catch (e) { addToast('فشل التحديث', 'error'); } };
+  const handleUpdateTop10Items = async (pageKey: PageKey, items: PinnedItem[]) => { try { await updateTop10ContentForPage(pageKey, items); setTop10Items(prev => ({ ...prev, [pageKey]: items })); addToast('تم تحديث قائمة التوب 10', 'success'); } catch (e) { addToast('فشل التحديث', 'error'); } };
+  const handleUpdateAd = async (ad: Ad) => { try { await updateAd(ad.id, ad); setAds(prev => prev.map(a => a.id === ad.id ? ad : a)); addToast('تم تحديث الإعلان', 'success'); } catch (e) { addToast('فشل تحديث الإعلان', 'error'); } };
+  const handleDeleteAd = async (adId: string) => { try { await deleteAd(adId); setAds(prev => prev.filter(a => a.id !== adId)); addToast('تم حذف الإعلان', 'success'); } catch (e) { addToast('فشل حذف الإعلان', 'error'); } };
+  const handleAddAd = async (adData: Omit<Ad, 'id' | 'updatedAt'>) => { try { const id = await addAd(adData); const newAd: Ad = { ...adData, id, updatedAt: new Date().toISOString() }; setAds(prev => [newAd, ...prev]); addToast('تم إضافة الإعلان بنجاح', 'success'); } catch (e) { addToast('فشل إضافة الإعلان', 'error'); } };
+  const handleAddAdmin = async (newAdmin: Omit<User, 'id' | 'role' | 'profiles'>) => { try { const cred = await auth.createUserWithEmailAndPassword(newAdmin.email, newAdmin.password || ''); if (cred.user) { const defaultProfile: Profile = { id: Date.now(), name: newAdmin.firstName || 'المسؤول', avatar: defaultAvatar, isKid: false, watchHistory: [], myList: [] }; await createUserProfileInFirestore(cred.user.uid, { firstName: newAdmin.firstName, email: newAdmin.email, profiles: [defaultProfile] }); await updateUserProfileInFirestore(cred.user.uid, { role: UserRole.Admin }); addToast('تم إضافة المسؤول بنجاح!', 'success'); const usersList = await getUsers(); setAllUsers(usersList); } } catch (error: any) { addToast(error.message, 'error'); throw error; } };
+  const handleDeleteUser = async (userId: string) => { try { await deleteUserFromFirestore(userId); setAllUsers(prev => prev.filter(u => u.id !== userId)); addToast('تم حذف المستخدم بنجاح', 'success'); } catch (e) { addToast('فشل حذف المستخدم', 'error'); } };
 
   const renderView = () => {
       const isAdmin = currentUser?.role === UserRole.Admin;
@@ -613,7 +626,6 @@ const App: React.FC = () => {
           return <MaintenancePage socialLinks={siteSettings.socialLinks} onSetView={handleSetView} />;
       }
       
-      // LOGIC: If setup is completed BUT no profile selected, show selector
       if (!isAuthLoading && currentUser && currentUser.setupCompleted && !activeProfile && view !== 'profileSelector' && view !== 'accountSettings' && view !== 'admin' && view !== 'onboarding') {
           return <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} />;
       }
@@ -648,6 +660,7 @@ const App: React.FC = () => {
           case 'welcome': return <WelcomePage allContent={allContent} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} returnView={returnView} />;
           case 'onboarding': return <OnboardingPage allContent={allContent} activeProfile={activeProfile} onFinish={handleOnboardingFinish} onSetView={handleSetView} />;
           case 'notifications': return currentUser ? <NotificationsPage userId={currentUser.id} onSetView={handleSetView} onUpdateUnreadCount={setUnreadNotificationsCount} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
+          case 'appDownload': return <AppDownloadPage isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />; // ✅ إضافة صفحة التحميل هنا
           case 'detail':
                return (
                    <DetailPage 
@@ -701,7 +714,7 @@ const App: React.FC = () => {
       }
   };
 
-  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'search', 'welcome', 'notifications'];
+  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'search', 'welcome', 'notifications', 'appDownload'];
   const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
   const showGlobalFooter = !fullScreenViews.includes(view) && !siteSettings.is_maintenance_mode_enabled;
   const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view);
@@ -720,7 +733,7 @@ const App: React.FC = () => {
             ))}
         </div>
         {siteSettings.adsEnabled && <AdZone position="global_head" />}
-        {view !== 'login' && view !== 'register' && view !== 'onboarding' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && view !== 'welcome' && view !== 'notifications' && !siteSettings.is_maintenance_mode_enabled && (
+        {view !== 'login' && view !== 'register' && view !== 'onboarding' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && view !== 'welcome' && view !== 'notifications' && view !== 'appDownload' && !siteSettings.is_maintenance_mode_enabled && (
             <Header onSetView={handleSetView} currentUser={currentUser} activeProfile={activeProfile} onLogout={handleLogout} allContent={allContent} onSelectContent={handleSelectContent} currentView={view} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} returnView={returnView} isKidProfile={activeProfile?.isKid} onOpenSearch={() => setIsSearchOpen(true)} unreadNotificationsCount={unreadNotificationsCount} />
         )}
         <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className={socialBarClass} />
