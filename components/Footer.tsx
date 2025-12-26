@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { FacebookIcon } from './FacebookIcon';
 import { InstagramIcon } from './InstagramIcon';
@@ -20,19 +19,16 @@ const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter
       { name: 'اتصل بنا', action: () => { window.location.href = socialLinks.contactUs } },
       { name: 'سياسة الخصوصية', action: () => onSetView('privacy') },
       { name: 'حقوق الملكية', action: () => onSetView('copyright') },
-      // Added Request Content Link
+      { name: 'تطبيق الموبايل', action: () => onSetView('appDownload') },
       ...(onRequestOpen ? [{ name: 'طلبات المحتوى', action: onRequestOpen }] : []),
   ];
   
-  // Updated: Use var(--bg-body) to match the page background in all themes.
-  // Updated: Use border-white/10 for subtle separation.
   const baseClasses = isRamadanFooter
     ? "relative w-full bg-[var(--bg-body)] shadow-[0_0_25px_rgba(0,0,0,0.8)] z-[100] pt-10 pb-10 border-t border-white/10" 
     : "bg-[var(--bg-body)] py-12 border-t border-white/10"; 
   
   const footerClasses = `${baseClasses} ${className}`;
 
-  // Updated: Text is now white.
   const textClasses = "text-white"; 
 
   return (

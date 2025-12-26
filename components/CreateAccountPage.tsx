@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import type { User, View } from '@/types';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
+import SEO from './SEO';
 
 interface CreateAccountPageProps {
   onSetView: (view: View, category?: string, params?: any) => void;
@@ -96,6 +96,7 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
         backgroundImage: `url('https://shahid.mbc.net/mediaObject/436ea116-cdae-4007-ace6-3c755df16856?width=1920&type=avif&q=80')`
       }}
     >
+      <SEO title="إنشاء حساب - سينماتيكس" noIndex={true} />
       <div className="absolute inset-0 bg-black/50 z-0"></div>
         
       <button 

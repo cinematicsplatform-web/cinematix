@@ -28,7 +28,7 @@ const CalendarIcon = () => (
       strokeWidth="2" 
       strokeLinecap="round" 
       strokeLinejoin="round" 
-      className="w-5 h-5 md:w-8 md:h-8 ml-2 inline-block text-black" 
+      className="w-6 h-6 md:w-9 md:h-9 ml-2 inline-block text-black" 
     >
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
       <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -116,9 +116,9 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           flex-1 md:flex-none
           flex items-center justify-center gap-2 md:gap-3
           font-bold 
-          py-3 px-4 md:py-5 md:px-12
+          py-3.5 px-5 md:py-6 md:px-14
           rounded-full
-          text-base md:text-xl
+          text-lg md:text-2xl
           transform transition-all duration-200
           active:scale-95
           no-underline
@@ -129,7 +129,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           ${primaryBtnClass}
         `}
       >
-        {isSoon ? <CalendarIcon /> : <PlayIcon className="w-5 h-5 md:w-8 md:h-8 fill-current" />}
+        {isSoon ? <CalendarIcon /> : <PlayIcon className="w-6 h-6 md:w-9 md:h-9 fill-current" />}
         <span className={isSoon ? 'text-black' : ''}>{isSoon ? 'قريباً' : 'شاهد الآن'}</span>
       </a>
       
@@ -141,9 +141,9 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
             flex-1 md:flex-none
             flex items-center justify-center gap-2 md:gap-3
             font-bold
-            py-3 px-4 md:py-5 md:px-12
+            py-3.5 px-5 md:py-6 md:px-14
             rounded-full
-            text-base md:text-xl
+            text-lg md:text-2xl
             transition-all duration-200 transform active:scale-95 whitespace-nowrap
             shrink
             max-w-full
@@ -153,7 +153,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
             }
           `}
         >
-          {isInMyList ? <CheckIcon className="w-5 h-5 md:w-8 md:h-8" /> : <PlusIcon className="w-5 h-5 md:w-8 md:h-8" />}
+          {isInMyList ? <CheckIcon className="w-6 h-6 md:w-9 md:h-9" /> : <PlusIcon className="w-6 h-6 md:w-9 md:h-9" />}
           <span>{showFeedback ? 'تمت الإضافة' : 'قائمتي'}</span>
         </button>
       )}

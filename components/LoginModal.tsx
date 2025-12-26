@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import type { View, LoginError } from '@/types';
 import { CheckIcon } from './CheckIcon';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
+import SEO from './SEO';
 
 interface LoginModalProps {
   onSetView: (view: View, category?: string, params?: any) => void;
@@ -98,6 +98,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onSetView, onLogin, isRamadanTh
         backgroundImage: `url('https://shahid.mbc.net/mediaObject/436ea116-cdae-4007-ace6-3c755df16856?width=1920&type=avif&q=80')`
       }}
     >
+      <SEO title="تسجيل الدخول - سينماتيكس" noIndex={true} />
       <div className="absolute inset-0 bg-black/50 z-0"></div>
       
       <button 

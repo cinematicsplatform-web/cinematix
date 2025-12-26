@@ -22,7 +22,6 @@ const db = admin.firestore();
 
 /**
  * Utility to generate a safe URL slug from a title
- * Matches the client-side logic for consistency
  */
 const generateSlug = (title) => {
   if (!title) return '';
@@ -42,22 +41,20 @@ module.exports = async (req, res) => {
     const BASE_URL = 'https://cinematix.watch';
     const lastModDate = new Date().toISOString().split('T')[0];
 
-    // 1. Define Static Routes
+    // 1. Define Static Whitelist Routes
     const staticRoutes = [
       { url: '/', priority: '1.0', changefreq: 'daily' },
       { url: '/movies', priority: '0.9', changefreq: 'daily' },
       { url: '/series', priority: '0.9', changefreq: 'daily' },
       { url: '/kids', priority: '0.8', changefreq: 'weekly' },
       { url: '/ramadan', priority: '0.8', changefreq: 'weekly' },
-      { url: '/soon', priority: '0.7', changefreq: 'weekly' },
-      { url: '/mylist', priority: '0.5', changefreq: 'monthly' },
+      { url: '/app-download', priority: '0.8', changefreq: 'weekly' },
       { url: '/about', priority: '0.4', changefreq: 'monthly' },
       { url: '/privacy', priority: '0.3', changefreq: 'monthly' },
       { url: '/copyright', priority: '0.3', changefreq: 'monthly' }
     ];
 
-    // 2. Fetch Dynamic Content from Firestore
-    // Note: The app uses a single 'content' collection with a 'type' field
+    // 2. Fetch Dynamic Content
     const snapshot = await db.collection('content').get();
     
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -74,7 +71,7 @@ module.exports = async (req, res) => {
   </url>`;
     });
 
-    // Add Dynamic Routes to XML
+    // Add Dynamic Routes (Movies & Series Landing Pages ONLY)
     snapshot.forEach(doc => {
       const data = doc.data();
       const id = doc.id;
@@ -90,7 +87,7 @@ module.exports = async (req, res) => {
       }
 
       if (type === 'movie') {
-        // Movie Detail / Watch URL
+        // ✅ Movie Detail Landing Page
         xml += `
   <url>
     <loc>${BASE_URL}/watch/movie/${slug}</loc>
@@ -99,41 +96,38 @@ module.exports = async (req, res) => {
     <priority>0.8</priority>
   </url>`;
       } else if (type === 'series') {
-        // Series Detail Page
-        xml += `
+        // ✅ Series Main Season Landing Page with Arabic
+        const seasons = data.seasons || [];
+        seasons.forEach(season => {
+             xml += `
   <url>
-    <loc>${BASE_URL}/series/${slug}</loc>
+    <loc>${BASE_URL}/series/${slug}/الموسم${season.seasonNumber}</loc>
     <lastmod>${updatedAt}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>`;
-
-        // Index individual episodes for better SEO coverage
-        if (data.seasons && Array.isArray(data.seasons)) {
-          data.seasons.forEach((season) => {
-            const sNum = season.seasonNumber;
-            if (season.episodes && Array.isArray(season.episodes)) {
-              season.episodes.forEach((ep, index) => {
-                const eNum = index + 1;
-                xml += `
+             
+             // Optional: Individual Episode indexing with Arabic
+             if (season.episodes) {
+                 season.episodes.forEach((ep, idx) => {
+                     xml += `
   <url>
-    <loc>${BASE_URL}/watch/${slug}/${sNum}/${eNum}</loc>
+    <loc>${BASE_URL}/watch/${slug}/الموسم${season.seasonNumber}/الحلقة${idx + 1}</loc>
     <lastmod>${updatedAt}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>`;
-              });
-            }
-          });
-        }
+                 });
+             }
+        });
       }
     });
 
     xml += `\n</urlset>`;
 
-    // 3. Set Headers and Send Response
+    // 3. Set XML Headers and Send Response
     res.setHeader('Content-Type', 'text/xml');
-    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate'); // 1 hour edge cache
+    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate'); 
     return res.status(200).send(xml);
 
   } catch (error) {

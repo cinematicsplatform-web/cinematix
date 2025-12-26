@@ -1,6 +1,5 @@
-
 import React, { useMemo, useState } from 'react';
-import type { Content, Category, View, Ad } from '../types';
+import type { Content, Category, View, Ad, Genre } from '../types';
 import { ContentType } from '../types';
 import ContentCard from './ContentCard';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
@@ -48,8 +47,18 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
     let content = [...allContent];
     let isRanked = false;
 
+    // --- People Filtering ---
+    if (categoryTitle.startsWith('person:')) {
+      const personName = categoryTitle.replace('person:', '');
+      title = `أعمال ${personName}`;
+      content = content.filter(c => 
+        c.cast?.includes(personName) || 
+        c.director === personName || 
+        c.writer === personName
+      );
+    }
     // --- Existing Filtering Logic ---
-    if (categoryTitle === 'top-rated-content') {
+    else if (categoryTitle === 'top-rated-content') {
         title = 'الأعلى تقييماً';
         content = content.sort((a, b) => b.rating - a.rating);
     }
@@ -106,8 +115,12 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
     else {
+        // Updated: Logic to check both Categories and Genres
         content = content
-            .filter(c => c.categories.includes(categoryTitle as Category))
+            .filter(c => 
+                c.categories.includes(categoryTitle as Category) || 
+                (c.genres && (c.genres as string[]).includes(categoryTitle))
+            )
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 

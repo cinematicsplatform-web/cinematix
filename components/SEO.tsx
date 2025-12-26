@@ -17,20 +17,23 @@ interface SeasonMeta {
 interface SEOProps {
   title?: string;
   description?: string;
+  keywords?: string; // New: Support for dynamic meta keywords
   seasons?: SeasonMeta[];
-  currentEpisode?: EpisodeMeta; // Legacy/Object support
-  seasonNumber?: number; // New: Explicit season number
-  episodeNumber?: number; // New: Explicit episode number
+  currentEpisode?: EpisodeMeta; 
+  seasonNumber?: number; 
+  episodeNumber?: number; 
   type?: 'movie' | 'series' | 'website';
   poster?: string;
   banner?: string;
   image?: string;
-  url?: string;
+  url?: string; 
+  noIndex?: boolean; // New: Flag to prevent indexing
 }
 
 const SEO: React.FC<SEOProps> = ({ 
   title, 
   description = "منصتكم الأولى للترفيه العربي والتركي والأجنبي. شاهدوا أحدث الأفلام والمسلسلات بجودة عالية في أي وقت ومن أي مكان.",
+  keywords,
   seasons = [],
   currentEpisode,
   seasonNumber,
@@ -39,19 +42,23 @@ const SEO: React.FC<SEOProps> = ({
   poster,
   banner,
   image,
-  url = ''
+  url = '',
+  noIndex = false
 }) => {
   const siteName = "سينماتيكس";
   const domain = 'https://cinematix.watch';
-  const canonicalUrl = url.startsWith('http') ? url : `${domain}${url}`;
   
-  // 1. Dynamic Title Construction Logic
+  const path = url || (typeof window !== 'undefined' ? window.location.pathname : '');
+  const canonicalUrl = path.startsWith('http') ? path : `${domain}${path}`;
+  
   const generateFullTitle = () => {
-    if (!title) return "سينماتيكس | Cinematix";
+    if (!title) return "سينماتيكس | Cinematix - مشاهدة أفلام ومسلسلات اون لاين";
 
     let displayTitle = title;
     
-    // Add Type Prefix if not already present (e.g., "فيلم " or "مسلسل ")
+    // Check if the title already includes our standard branding suffix or is a specialized smart title
+    if (displayTitle.includes('|')) return displayTitle;
+
     const moviePrefix = "فيلم ";
     const seriesPrefix = "مسلسل ";
     
@@ -61,7 +68,6 @@ const SEO: React.FC<SEOProps> = ({
         displayTitle = seriesPrefix + displayTitle;
     }
 
-    // Determine Season/Episode context from explicit props or legacy currentEpisode object
     const sNum = seasonNumber || currentEpisode?.season_number;
     const eNum = episodeNumber || currentEpisode?.episode_number;
 
@@ -78,7 +84,6 @@ const SEO: React.FC<SEOProps> = ({
 
   const fullTitle = generateFullTitle();
 
-  // 2. Smart Description Helper Logic
   const generateDescription = () => {
     const eNum = episodeNumber || currentEpisode?.episode_number;
     const sNum = seasonNumber || currentEpisode?.season_number;
@@ -96,7 +101,6 @@ const SEO: React.FC<SEOProps> = ({
     ? seoImage 
     : `${domain}${seoImage}`;
 
-  // 3. Structured Data (JSON-LD) Generation
   const generateSchema = () => {
     if (type === 'movie') {
       return {
@@ -149,7 +153,11 @@ const SEO: React.FC<SEOProps> = ({
       <html lang="ar" dir="rtl" />
       <title>{fullTitle}</title>
       <meta name="description" content={finalDescription} />
+      {keywords && <meta name="keywords" content={keywords} />}
       <link rel="canonical" href={canonicalUrl} />
+      
+      {/* NO INDEX for private pages */}
+      {noIndex && <meta name="robots" content="noindex, nofollow" />}
       
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={type === 'series' ? 'video.tv_show' : type === 'movie' ? 'video.movie' : 'website'} />
@@ -167,9 +175,11 @@ const SEO: React.FC<SEOProps> = ({
       <meta name="twitter:image" content={absoluteImageUrl} />
 
       {/* JSON-LD Structured Data */}
-      <script type="application/ld+json">
-        {JSON.stringify(schemaData)}
-      </script>
+      {!noIndex && (
+        <script type="application/ld+json">
+          {JSON.stringify(schemaData)}
+        </script>
+      )}
     </Helmet>
   );
 };

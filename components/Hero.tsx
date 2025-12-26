@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Content } from '@/types';
 import ActionButtons from './ActionButtons';
@@ -403,8 +402,8 @@ const Hero: React.FC<HeroProps> = ({
                                 <div className="flex items-center gap-4 w-full justify-center md:justify-start relative z-40 mt-1 md:mt-2">
                                     <ActionButtons onWatch={() => onWatchNow(content)} onToggleMyList={() => onToggleMyList(content.id)} isInMyList={!!myList?.includes(content.id)} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} showMyList={isLoggedIn} content={content} />
                                     {shouldShowVideo && (
-                                        <button onClick={toggleMute} className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group scale-[1.15] origin-center" title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}>
-                                            <SpeakerIcon isMuted={isMuted} className="w-7 h-7 text-white group-hover:scale-110 transition-transform" />
+                                        <button onClick={toggleMute} className="p-3.5 md:p-6 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group origin-center" title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}>
+                                            <SpeakerIcon isMuted={isMuted} className="w-6 h-6 md:w-9 md:h-9 text-white group-hover:scale-110 transition-transform" />
                                         </button>
                                     )}
                                 </div>

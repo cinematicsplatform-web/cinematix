@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import type { Content, Profile, View } from '@/types';
 import { StarIcon } from './icons/StarIcon';
 import { maleAvatars, femaleAvatars } from '@/data';
+import SEO from './SEO';
 
 interface OnboardingPageProps {
   onFinish: (profileData: Partial<Profile>, extraData: any) => void;
@@ -20,6 +21,7 @@ const StepIndicator = ({ step }: { step: number }) => (
 
 const OnboardingLayout = ({ title, subtitle, children, step, onNext, onPrev, onSkip, isFirstStep, hideActions }: any) => (
     <div className="min-h-screen bg-[#071113] flex flex-col items-center justify-start pt-20 md:pt-24 px-4 text-center animate-fade-in relative overflow-hidden">
+        <SEO title="إعداد الحساب - سينماتيكس" noIndex={true} />
         {/* LOGO IN TOP RIGHT */}
         <div className="absolute top-6 right-6 md:top-8 md:right-12 z-[100]">
             <h1 className="text-xl md:text-2xl font-extrabold cursor-default">

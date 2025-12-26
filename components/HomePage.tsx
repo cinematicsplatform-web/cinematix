@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+
+import React, { useMemo, useState, useEffect } from 'react';
 import type { Content, Category, Ad, SiteSettings, View, Profile, Story } from '@/types';
 import { ContentType } from '@/types'; 
 import Hero from './Hero';
@@ -37,6 +38,16 @@ const HomePage: React.FC<HomePageProps> = (props) => {
   const isCosmicTeal = props.isCosmicTealTheme ?? props.siteSettings.activeTheme === 'cosmic-teal';
   const isNetflixRed = props.isNetflixRedTheme ?? props.siteSettings.activeTheme === 'netflix-red';
 
+  // State to track mobile status for conditional layout transformation
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024); // Use 1024 as breakpoint for "Desktop"
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // 1. Filter Safe Content
   const safeContent = useMemo(() => {
       if (!isKidMode) return props.allContent;
@@ -48,7 +59,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
       );
   }, [props.allContent, isKidMode]);
 
-  // 2. Filter Active Stories (CRITICAL FIX: Removed inactive stories from DOM)
+  // 2. Filter Active Stories
   const activeStories = useMemo(() => {
     if (!props.stories) return [];
     return props.stories.filter(s => s.isActive === true);
@@ -116,7 +127,9 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     const foreignMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && c.categories.includes('افلام اجنبية')));
     const indianMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && c.categories.includes('افلام هندية')));
     const animationMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && c.categories.includes('افلام أنميشن')));
-    const tvPrograms = getLatest(props.allContent.filter(c => c.categories.includes('برامج تلفزيونية')));
+    const tvPrograms = getLatest(props.allContent.filter(c => c.type === ContentType.Program || c.categories.includes('برامج تلفزيونية')));
+    const plays = getLatest(props.allContent.filter(c => c.type === ContentType.Play || c.categories.includes('مسرحيات')));
+    const concerts = getLatest(props.allContent.filter(c => c.type === ContentType.Concert || c.categories.includes('حفلات')));
     const ramadanContent = getLatest(props.allContent.filter(c => c.categories.includes('رمضان')));
     const comedyContent = getLatest(props.allContent.filter(c => c.genres.includes('كوميديا')));
 
@@ -135,7 +148,6 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     );
 
     const restCarousels = [
-      { id: 'h_comedy_hybrid', title: 'كوميديا على طول الخط', contents: comedyContent, displayType: 'hybrid' },
       { id: 'h3', title: 'مسلسلات عربية', contents: arabicSeries, categoryKey: 'مسلسلات عربية' },
       { id: 'h4', title: 'مسلسلات تركية', contents: turkishSeries, categoryKey: 'مسلسلات تركية' },
       { id: 'h5', title: 'مسلسلات أجنبية', contents: foreignSeries, categoryKey: 'مسلسلات اجنبية' },
@@ -144,7 +156,11 @@ const HomePage: React.FC<HomePageProps> = (props) => {
       { id: 'h8', title: 'أفلام أجنبية', contents: foreignMovies, categoryKey: 'افلام اجنبية' },
       { id: 'h9', title: 'افلام هندية', contents: indianMovies, categoryKey: 'افلام هندية' },
       { id: 'h10', title: animationTitle, contents: animationMovies, specialRoute: 'kids' },
-      { id: 'h11', title: 'البرامج التلفزيونية', contents: tvPrograms, categoryKey: 'برامج تلفزيونية' },
+      { id: 'h11', title: 'البرامج التلفزيونية', contents: tvPrograms, specialRoute: 'programs' },
+      { id: 'h12', title: 'حفلات', contents: concerts, categoryKey: 'حفلات' },
+      { id: 'h13', title: 'مسرحيات', contents: plays, categoryKey: 'مسرحيات' },
+      // Update: Added categoryKey: 'كوميديا' to support sub-page navigation
+      { id: 'h_comedy_hybrid', title: 'كوميديا على طول الخط', contents: comedyContent, displayType: isMobile ? 'vertical_poster' : 'hybrid', categoryKey: 'كوميديا' },
     ];
 
     const top10Source = (props.top10Content && props.top10Content.length > 0) ? props.top10Content : props.pinnedContent;
@@ -157,7 +173,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     finalList.push(newArrivals);
     finalList.push(...restCarousels);
     return finalList.filter(carousel => carousel.contents.length > 0);
-  }, [props.allContent, props.pinnedContent, props.top10Content, props.siteSettings.isShowRamadanCarousel, props.siteSettings.showTop10Home, isRamadan, isKidMode, safeContent, safePinnedContent]);
+  }, [props.allContent, props.pinnedContent, props.top10Content, props.siteSettings.isShowRamadanCarousel, props.siteSettings.showTop10Home, isRamadan, isKidMode, safeContent, safePinnedContent, isMobile]);
 
   const handleSeeAll = (carousel: any) => {
       if (carousel.specialRoute) props.onNavigate(carousel.specialRoute as View);
@@ -211,7 +227,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                 const showAd = index === 2;
                 return (
                     <React.Fragment key={(carousel as any).id}>
-                        <ContentCarousel title={(carousel as any).title} contents={(carousel as any).contents} onSelectContent={props.onSelectContent} isLoggedIn={props.isLoggedIn} myList={props.myList} onToggleMyList={props.onToggleMyList} isNew={(carousel as any).isNew} onSeeAll={() => handleSeeAll(carousel)} isRamadanTheme={isRamadan} isEidTheme={isEid} isCosmicTealTheme={isCosmicTeal} isNetflixRedTheme={isNetflixRed} showRanking={(carousel as any).showRanking} isLoading={props.isLoading} displayType={(carousel as any).displayType} />
+                        <ContentCarousel title={(carousel as any).title} contents={(carousel as any).contents} onSelectContent={props.onSelectContent} isLoggedIn={false} onToggleMyList={props.onToggleMyList} isNew={(carousel as any).isNew} onSeeAll={() => handleSeeAll(carousel)} isRamadanTheme={isRamadan} isEidTheme={isEid} isCosmicTealTheme={isCosmicTeal} isNetflixRedTheme={isNetflixRed} showRanking={(carousel as any).showRanking} isLoading={props.isLoading} displayType={(carousel as any).displayType} />
                         {showAd && <AdPlacement ads={props.ads} placement="home-carousel-3-4" isEnabled={props.siteSettings.adsEnabled}/>}
                     </React.Fragment>
                 );

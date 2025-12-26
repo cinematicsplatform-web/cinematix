@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Content, View } from '@/types';
+import { ContentType } from '@/types';
 import { SearchIcon } from './icons/SearchIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { PlayIcon } from './icons/PlayIcon';
@@ -11,23 +12,36 @@ interface SearchPageProps {
     onClose?: () => void;
 }
 
-// Helper: Custom Landscape Card for Search Results
 const SearchResultCard: React.FC<{ content: any; onClick: () => void }> = ({ content, onClick }) => {
     
     const imageSrc = content.backdrop || content.poster;
     const seasonCount = content.seasons?.length || 0;
     const isSeasonItem = content.isSeasonItem;
+    
+    const isEpisodic = content.type === ContentType.Series || content.type === ContentType.Program;
+
     const displaySeasonLabel = isSeasonItem 
         ? `الموسم ${content.seasonNumber}`
         : (seasonCount > 2 ? `${seasonCount} مواسم` : (seasonCount > 0 ? "موسمين" : ""));
 
-    const showSeasonBadge = isSeasonItem || (content.type === 'series' && seasonCount > 1);
+    const showSeasonBadge = isSeasonItem || (isEpisodic && seasonCount > 1);
     const genreText = content.genres?.slice(0, 2).join(' • ');
 
-    // SEO URL Logic
-    const detailUrl = content.type === 'movie' 
-      ? `/watch/movie/${content.slug || content.id}` 
-      : `/series/${content.slug || content.id}`;
+    const slug = content.slug || content.id;
+    const detailUrl = !isEpisodic
+      ? `/watch/movie/${slug}` 
+      : `/${content.type}/${slug}/الموسم${content.seasonNumber || 1}`;
+
+    const getTypeText = (type: string) => {
+        switch(type) {
+            case ContentType.Movie: return 'فيلم';
+            case ContentType.Series: return 'مسلسل';
+            case ContentType.Program: return 'برنامج';
+            case ContentType.Concert: return 'حفل';
+            case ContentType.Play: return 'مسرحية';
+            default: return 'عمل';
+        }
+    }
 
     return (
         <a 
@@ -76,7 +90,7 @@ const SearchResultCard: React.FC<{ content: any; onClick: () => void }> = ({ con
                 
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-2 text-[10px] md:text-xs font-medium text-gray-300">
                     <span className="bg-white/20 backdrop-blur-md border border-white/10 px-2 py-0.5 rounded text-white font-bold shadow-sm">
-                        {content.type === 'movie' ? 'فيلم' : 'مسلسل'}
+                        {getTypeText(content.type)}
                     </span>
                     {showSeasonBadge && (
                         <>
@@ -105,7 +119,6 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
         if (inputRef.current) inputRef.current.focus();
     }, []);
 
-    // Standard Search Logic
     const { results, relatedTags } = useMemo(() => {
         if (!query.trim()) return { results: [], relatedTags: [] };
 
@@ -120,7 +133,8 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
         const explodedResults: any[] = [];
         
         matchedParents.forEach(item => {
-            if (item.type === 'series' && item.seasons && item.seasons.length > 0) {
+            const isEpisodic = item.type === ContentType.Series || item.type === ContentType.Program;
+            if (isEpisodic && item.seasons && item.seasons.length > 0) {
                 const sortedSeasons = [...item.seasons].sort((a, b) => a.seasonNumber - b.seasonNumber);
                 sortedSeasons.forEach(season => {
                     explodedResults.push({

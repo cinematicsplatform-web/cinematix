@@ -1,6 +1,6 @@
-
 import React from 'react';
 import type { Content } from '@/types';
+import { ContentType } from '@/types';
 import { PlayIcon } from './icons/PlayIcon';
 import { PlusIcon } from './icons/PlusIcon';
 import { CheckIcon } from './CheckIcon';
@@ -44,11 +44,14 @@ const ContentCard: React.FC<ContentCardProps> = ({
     onToggleMyList(content.id);
   };
 
-  const latestSeason = content.type === 'series' && content.seasons && content.seasons.length > 0
+  // البرنامج والمسلسل هما فقط من يعاملان بنظام الحلقات
+  const isEpisodic = content.type === ContentType.Series || content.type === ContentType.Program;
+
+  const latestSeason = isEpisodic && content.seasons && content.seasons.length > 0
     ? [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
     : null;
   
-  const logoSrc = (content.type === 'series' && latestSeason?.logoUrl) ? latestSeason.logoUrl : content.logoUrl;
+  const logoSrc = (isEpisodic && latestSeason?.logoUrl) ? latestSeason.logoUrl : content.logoUrl;
 
   let displayPoster = content.poster;
   let isBackdropFallback = false;
@@ -56,7 +59,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
   if (rank && content.top10Poster) {
       displayPoster = content.top10Poster;
   } else if (isHorizontal) {
-      if (content.type === 'series' && latestSeason) {
+      if (isEpisodic && latestSeason) {
           if (latestSeason.horizontalPoster) {
               displayPoster = latestSeason.horizontalPoster;
           } else if (latestSeason.backdrop) {
@@ -81,26 +84,26 @@ const ContentCard: React.FC<ContentCardProps> = ({
           }
       }
   } else {
-      displayPoster = (content.type === 'series' && latestSeason?.poster) 
+      displayPoster = (isEpisodic && latestSeason?.poster) 
         ? latestSeason.poster 
         : content.poster;
   }
 
   const showOverlayMetadata = (isHorizontal && isBackdropFallback) || (rank && content.top10Poster);
-  const displayYear = (content.type === 'series' && latestSeason?.releaseYear) 
+  const displayYear = (isEpisodic && latestSeason?.releaseYear) 
     ? latestSeason.releaseYear 
     : content.releaseYear;
 
   const showStandardBadges = !rank;
   const topLeftBadge = content.bannerNote;
-  const showSeasonBadge = content.type === 'series' && content.seasons && content.seasons.length > 1 && latestSeason;
+  const showSeasonBadge = isEpisodic && content.seasons && content.seasons.length > 1 && latestSeason;
   const seasonBadgeText = showSeasonBadge ? `الموسم ${latestSeason.seasonNumber}` : null;
   
   let bottomRightBadge: string | null = null;
   if (showLatestBadge) {
-      if (content.type === 'series' && latestSeason && latestSeason.episodes.length > 0) {
+      if (isEpisodic && latestSeason && latestSeason.episodes.length > 0) {
           bottomRightBadge = `الحلقة ${latestSeason.episodes.length}`;
-      } else if (content.type === 'series' && latestSeason) {
+      } else if (isEpisodic && latestSeason) {
           bottomRightBadge = `الموسم ${latestSeason.seasonNumber}`;
       } else {
           bottomRightBadge = 'جديد';
@@ -133,11 +136,26 @@ const ContentCard: React.FC<ContentCardProps> = ({
 
   const aspectRatioClass = isHorizontal ? 'aspect-video' : 'aspect-[2/3]';
 
-  // تحديد الرابط الصحيح لمحركات البحث
+  // تحديد الرابط بناءً على ما إذا كان المحتوى بنظام حلقات أم لا
   const slug = content.slug || content.id;
-  const detailUrl = content.type === 'movie' 
-    ? `/watch/movie/${slug}` 
-    : `/series/${slug}`;
+  let detailUrl = '#';
+  if (!isEpisodic) {
+      detailUrl = `/watch/movie/${slug}`;
+  } else {
+      const sNum = latestSeason?.seasonNumber || 1;
+      detailUrl = `/${content.type}/${slug}/الموسم${sNum}`;
+  }
+
+  const getTypeText = (type: string) => {
+      switch(type) {
+          case ContentType.Movie: return 'فيلم';
+          case ContentType.Series: return 'مسلسل';
+          case ContentType.Program: return 'برنامج';
+          case ContentType.Concert: return 'حفل';
+          case ContentType.Play: return 'مسرحية';
+          default: return 'عمل';
+      }
+  }
 
   return (
     <a 
@@ -171,7 +189,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
                     
                     {!content.top10Poster && (
                         <div className={`flex flex-wrap items-center gap-x-2 gap-y-2 text-[10px] md:text-xs font-medium text-gray-300 w-full ${isHorizontal ? 'justify-start' : 'justify-center'}`}>
-                            <span className="bg-white/20 backdrop-blur-md border border-white/10 px-2 py-0.5 rounded text-white font-bold shadow-sm">{content.type === 'movie' ? 'فيلم' : 'مسلسل'}</span>
+                            <span className="bg-white/20 backdrop-blur-md border border-white/10 px-2 py-0.5 rounded text-white font-bold shadow-sm">{getTypeText(content.type)}</span>
                             {seasonBadgeText && <><span className={isRamadanTheme ? 'text-amber-500 font-bold' : 'text-[#00A7F8] font-bold'}>{seasonBadgeText}</span><span className="opacity-50 text-[8px]">•</span></>}
                             <span className="text-white font-bold">{displayYear}</span>
                         </div>
