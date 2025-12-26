@@ -1,6 +1,9 @@
 export const ContentType = {
   Movie: 'movie',
   Series: 'series',
+  Program: 'program',
+  Concert: 'concert',
+  Play: 'play',
 } as const;
 
 export type ContentType = typeof ContentType[keyof typeof ContentType];
@@ -21,6 +24,8 @@ export const categories = [
   'برامج رمضان',
   'افلام العيد',
   'مسلسلات رمضان',
+  'حفلات',
+  'مسرحيات',
 ] as const;
 
 export type Category = typeof categories[number];
@@ -33,7 +38,7 @@ export const genres = [
 
 export type Genre = typeof genres[number];
 
-export type View = 'home' | 'movies' | 'series' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'watch' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance' | 'search' | 'welcome' | 'onboarding' | 'notifications';
+export type View = 'home' | 'movies' | 'series' | 'programs' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'watch' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance' | 'search' | 'welcome' | 'onboarding' | 'notifications' | 'appDownload' | 'people' | 'personProfile';
 
 export type LoginError = 'none' | 'userNotFound' | 'wrongPassword';
 
@@ -93,6 +98,8 @@ export interface Content {
   genres: Genre[];
   releaseYear: number;
   cast: string[];
+  director?: string;
+  writer?: string;
   bannerNote?: string;
   seasons?: Season[];
   servers?: Server[]; 
@@ -109,6 +116,19 @@ export interface Content {
   mobileCropPositionX?: number; 
   mobileCropPositionY?: number; 
   slug?: string; 
+}
+
+export interface Person {
+  id: string;
+  name: string;
+  normalizedName: string;
+  tmdbId?: string;
+  image?: string;
+  biography?: string;
+  role: 'actor' | 'director' | 'writer' | 'crew';
+  birthday?: string;
+  placeOfBirth?: string;
+  updatedAt: string;
 }
 
 export interface Notification {
@@ -315,6 +335,23 @@ export interface SocialLinks {
 
 export type ThemeType = 'default' | 'ramadan' | 'ios' | 'night-city' | 'nature' | 'eid' | 'cosmic-teal' | 'netflix-red';
 
+export interface AppReview {
+  id: string;
+  user: string;
+  date: string;
+  rating: number;
+  text: string;
+}
+
+export interface AppConfig {
+  apkUrl: string;
+  appSize: string;
+  version: string;
+  heroImage?: string;
+  screenshots: string[];
+  reviews: AppReview[];
+}
+
 export interface SiteSettings {
     shoutBar: ShoutBar;
     socialLinks: SocialLinks;
@@ -331,6 +368,8 @@ export interface SiteSettings {
     showTop10Movies: boolean;
     showTop10Series: boolean;
     serviceAccountJson?: string; 
+    apkUrl?: string;
+    appConfig?: AppConfig;
 }
 
 export interface ContentRequest {

@@ -1,3 +1,29 @@
 User-agent: *
+# السماح بالوصول للصفحات المهمة
 Allow: /
-Sitemap: https://cinematix.watch/sitemap.xml
+Allow: /movies
+Allow: /series
+Allow: /kids
+Allow: /ramadan
+Allow: /app-download
+Allow: /about
+Allow: /privacy
+Allow: /copyright
+
+# حظر الصفحات الخاصة والإدارية
+Disallow: /admin
+Disallow: /mylist
+Disallow: /profile
+Disallow: /account
+Disallow: /search
+Disallow: /login
+Disallow: /register
+Disallow: /onboarding
+Disallow: /notifications
+Disallow: /watch/
+
+# السماح بصفحات تفاصيل الأفلام (استثناء من حظر /watch/)
+Allow: /watch/movie/
+
+# الإشارة لمكان الخريطة الديناميكية الصحيح
+Sitemap: https://www.cinematix.watch/api/sitemap

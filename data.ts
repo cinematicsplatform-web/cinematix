@@ -1,6 +1,3 @@
-
-
-
 import { Content, ContentType, Server, User, UserRole, Profile, Ad, PinnedContentState, SiteSettings, CarouselRow, Top10State } from './types';
 
 // Empty initial states for application bootstrapping
@@ -180,14 +177,15 @@ export const initialSiteSettings: SiteSettings = {
     countdownDate: '2026-03-01T00:00:00',
     adsEnabled: true,
     privacyPolicy: privacyPolicyText.trim(),
-    copyrightPolicy: copyrightPolicyText.trim(), // Initialize New Field
+    copyrightPolicy: copyrightPolicyText.trim(), 
     isCountdownVisible: true,
     isRamadanModeEnabled: false,
-    activeTheme: 'default', // Default theme
+    activeTheme: 'default', 
     isShowRamadanCarousel: false,
     is_maintenance_mode_enabled: false,
     showTop10Home: true,
     showTop10Movies: true,
     showTop10Series: true,
-    serviceAccountJson: '', // Initialized empty
+    serviceAccountJson: '', 
+    apkUrl: 'https://example.com/cinematix.apk', // Default APK URL
 };

@@ -1,3 +1,4 @@
+
 // FIX: Use 'compat' imports to support v8 namespaced syntax with Firebase v9+ SDK.
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
@@ -5,7 +6,7 @@ import "firebase/compat/firestore";
 import "firebase/compat/messaging";
 import "firebase/compat/storage";
 
-import type { Ad, SiteSettings, User, PinnedContentState, PinnedItem, PageKey, ContentRequest, HomeSection, Content, Top10State, Story, Notification, BroadcastNotification } from '@/types';
+import type { Ad, SiteSettings, User, PinnedContentState, PinnedItem, PageKey, ContentRequest, HomeSection, Content, Top10State, Story, Notification, BroadcastNotification, Person } from '@/types';
 import { initialSiteSettings, pinnedContentData as initialPinnedData, top10ContentData as initialTop10Data } from './data';
 import { UserRole } from '@/types';
 
@@ -42,12 +43,14 @@ export const db = app.firestore();
 export const storage = app.storage();
 
 /**
- * CRITICAL FIX: Resolved "overriding original host" and "deprecation" warnings.
+ * CRITICAL FIX: Resolved connection issues and warnings.
+ * 1. Removed manual Host overriding to fix the "You are overriding the original host" warning.
+ * 2. Optimized Long Polling for better connectivity in restricted environments.
  */
 try {
   db.settings({
-    experimentalForceLongPolling: true,
-    experimentalAutoDetectLongPolling: false,
+    // Using detection instead of force to prevent host override warning while maintaining stability
+    experimentalAutoDetectLongPolling: true, 
     ignoreUndefinedProperties: true,
   });
 } catch (e: any) {
@@ -56,11 +59,18 @@ try {
   }
 }
 
-// Enable offline persistence only on client-side
+// Enable offline persistence with a check to prevent deprecation warning where possible
 if (typeof window !== 'undefined') {
+    // Standard persistence for compat mode
     db.enablePersistence({ synchronizeTabs: true })
       .catch((err) => {
-          // Silent failure for persistence
+          if (err.code === 'failed-precondition') {
+              // Multiple tabs open, persistence can only be enabled in one tab at a a time.
+              console.warn("[Cinematix] Persistence failed: Multiple tabs open.");
+          } else if (err.code === 'unimplemented') {
+              // The current browser does not support all of the features required to enable persistence
+              console.warn("[Cinematix] Persistence failed: Browser not supported.");
+          }
       });
 }
 
@@ -375,6 +385,43 @@ export const saveHomeSection = async (section: HomeSection): Promise<void> => {
 
 export const deleteHomeSection = async (sectionId: string): Promise<void> => {
     await db.collection('home_sections').doc(sectionId).delete();
+};
+
+// --- People Management Functions ---
+export const getPeople = async (): Promise<Person[]> => {
+  try {
+    const snapshot = await db.collection('people').get();
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      updatedAt: safeGetTimestamp(doc.data().updatedAt)
+    } as Person));
+  } catch (error) {
+    return handleFirestoreError(error, 'people', []);
+  }
+};
+
+export const savePerson = async (person: Partial<Person>): Promise<string> => {
+  const { id, ...data } = person;
+  const dataToSave = {
+    ...data,
+    updatedAt: serverTimestamp()
+  };
+
+  if (id) {
+    await db.collection('people').doc(id).update(dataToSave);
+    return id;
+  } else {
+    const docRef = await db.collection('people').add({
+      ...dataToSave,
+      createdAt: serverTimestamp()
+    });
+    return docRef.id;
+  }
+};
+
+export const deletePerson = async (personId: string): Promise<void> => {
+  await db.collection('people').doc(personId).delete();
 };
 
 // --- Stories Functions ---

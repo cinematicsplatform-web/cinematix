@@ -5,11 +5,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 /**
- * Cinematix Sitemap Generator (Slug-Based Strategy)
+ * Cinematix Sitemap Generator (Arabic Slug Strategy)
  * Target URLs:
- * - Series: /series/${slug}
+ * - Series: /series/${slug}/الموسم${s}
  * - Movies: /watch/movie/${slug}
- * - Episodes: /watch/${series_slug}/${season_num}/${episode_num}
+ * - Episodes: /watch/${slug}/الموسم${s}/الحلقة${e}
  */
 
 const firebaseConfig = {
@@ -40,7 +40,7 @@ const generateSlug = (title) => {
 };
 
 async function generateSitemap() {
-    console.log('🚀 Generating Dynamic Slug-Based Sitemap...');
+    console.log('🚀 Generating Dynamic Arabic-Slug-Based Sitemap...');
     
     try {
         const contentRef = collection(db, 'content');
@@ -70,13 +70,12 @@ async function generateSitemap() {
             const data = doc.data();
             const id = doc.id;
             const title = data.title || '';
-            // Use manual slug field, fallback to ID or title-generated slug
             const slug = data.slug || generateSlug(title) || id;
             const type = data.type || 'movie';
             const updatedAt = data.updatedAt ? new Date(data.updatedAt).toISOString().split('T')[0] : lastModDate;
             
             if (type === 'movie') {
-                // Rule: Movies land on the watch-ready detail page
+                // Movie Path
                 xml += `  <url>
     <loc>${BASE_URL}/watch/movie/${slug}</loc>
     <lastmod>${updatedAt}</lastmod>
@@ -84,24 +83,24 @@ async function generateSitemap() {
     <priority>0.8</priority>
   </url>\n`;
             } else {
-                // Rule A: Series Main Landing (Details Page)
-                xml += `  <url>
-    <loc>${BASE_URL}/series/${slug}</loc>
+                // Series Logic with Seasons and Arabic Tags
+                if (data.seasons) {
+                    data.seasons.forEach(season => {
+                        const sNum = season.seasonNumber;
+                        // Series Landing Per Season
+                        xml += `  <url>
+    <loc>${BASE_URL}/series/${slug}/الموسم${sNum}</loc>
     <lastmod>${updatedAt}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>\n`;
 
-                // Rule B Shortcut: Index individual episodes for Google
-                if (data.seasons) {
-                    data.seasons.forEach(season => {
-                        const sNum = season.seasonNumber;
                         if (season.episodes) {
                             season.episodes.forEach((ep, index) => {
                                 const eNum = index + 1;
-                                // Path: /watch/${series_slug}/${season_num}/${episode_num}
+                                // Watch Path: /watch/${slug}/الموسم${s}/الحلقة${e}
                                 xml += `  <url>
-    <loc>${BASE_URL}/watch/${slug}/${sNum}/${eNum}</loc>
+    <loc>${BASE_URL}/watch/${slug}/الموسم${sNum}/الحلقة${eNum}</loc>
     <lastmod>${updatedAt}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -123,7 +122,7 @@ async function generateSitemap() {
         }
 
         fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), xml);
-        console.log(`✅ Success! Generated sitemap.xml to /public folder using SEO Slugs.`);
+        console.log(`✅ Success! Generated sitemap.xml with Arabic Slugs.`);
 
     } catch (error) {
         console.error('❌ Generator Failed:', error);
