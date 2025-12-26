@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -406,6 +405,13 @@ const App: React.FC = () => {
   useEffect(() => {
       const hideLoader = () => {
         const preloader = document.getElementById('preloader');
+
+        // Check specifically for app-download page to hide instantly
+        if (window.location.pathname === '/app-download' && preloader) {
+            preloader.style.display = 'none';
+            return;
+        }
+
         if (preloader && !preloader.classList.contains('preloader-hidden')) {
             preloader.classList.add('preloader-hidden');
             setTimeout(() => { if (preloader) preloader.style.display = 'none'; }, 500);
