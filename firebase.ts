@@ -1,4 +1,3 @@
-
 // FIX: Use 'compat' imports to support v8 namespaced syntax with Firebase v9+ SDK.
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
@@ -44,13 +43,11 @@ export const storage = app.storage();
 
 /**
  * CRITICAL FIX: Resolved connection issues and warnings.
- * 1. Removed manual Host overriding to fix the "You are overriding the original host" warning.
- * 2. Optimized Long Polling for better connectivity in restricted environments.
+ * 1. Switched to experimentalForceLongPolling to prevent backend timeout issues.
  */
 try {
   db.settings({
-    // Using detection instead of force to prevent host override warning while maintaining stability
-    experimentalAutoDetectLongPolling: true, 
+    experimentalForceLongPolling: true, 
     ignoreUndefinedProperties: true,
   });
 } catch (e: any) {
