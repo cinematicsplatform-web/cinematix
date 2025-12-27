@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import type { Content, Ad, Episode, Server, AdPlacement, Season, View, Person } from '@/types';
@@ -442,8 +443,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
         url={canonicalPath}
       />
 
-      <div ref={heroRef} className="relative h-[80vh] w-full overflow-hidden group z-10">
-        <div className="absolute inset-0 bg-black">
+      <div ref={heroRef} className="relative h-[80vh] w-full group z-[45]">
+        <div className="absolute inset-0 bg-black overflow-hidden">
             {isLoaded ? (
                 <img 
                     key={displayBackdrop} 

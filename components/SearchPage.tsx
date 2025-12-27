@@ -178,14 +178,9 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
         if (inputRef.current) inputRef.current.focus();
     };
 
-    const handleClose = () => {
-        if (onClose) onClose();
-        else onSetView('home');
-    };
-
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-[#0f1014]">
-            <div className="relative flex flex-col w-full h-full pointer-events-auto">
+        <div className="min-h-screen flex flex-col bg-[#0f1014] animate-fade-in pb-20">
+            <div className="relative flex flex-col w-full h-full">
                 
                 {/* Header */}
                 <div className="bg-[#151922] border-b border-gray-800 shadow-xl z-20">
@@ -207,8 +202,6 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
                                 </button>
                             )}
                         </div>
-
-                        <button onClick={handleClose} className="text-gray-400 hover:text-white font-bold text-sm md:text-base px-2 whitespace-nowrap transition-colors">إلغاء</button>
                     </div>
 
                     {/* Related Tags */}

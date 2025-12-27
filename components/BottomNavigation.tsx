@@ -1,13 +1,10 @@
-
 import React from 'react';
 import type { View, Profile } from '../types';
 import { HomeIcon } from './icons/HomeIcon';
 import { TvIcon } from './icons/TvIcon';
 import { FilmIcon } from './icons/FilmIcon';
-import { SmileIcon } from './icons/SmileIcon';
-import { MoonIcon } from './icons/MoonIcon';
+import { SearchIcon } from './icons/SearchIcon';
 import { UserIcon } from './icons/UserIcon';
-import { CheckIcon } from './CheckIcon';
 
 interface BottomNavigationProps {
   currentView: View;
@@ -22,49 +19,53 @@ interface BottomNavigationProps {
 
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetView, activeProfile, isLoggedIn, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
   
-  // Logic to switch nav items if Kid Profile
+  // التحقق من ملف الطفل لتوجيه الرئيسية
   const isKid = activeProfile?.isKid;
 
-  let baseItems;
+  // القائمة المحدثة: الرئيسية، أفلام، مسلسلات، تصفح، (حسابي/زائر)
+  const navItems = [
+    { 
+      id: 'home', 
+      label: 'الرئيسية', 
+      view: (isKid ? 'kids' : 'home') as View, 
+      icon: HomeIcon 
+    },
+    { 
+      id: 'movies', 
+      label: 'أفلام', 
+      view: 'movies' as View, 
+      icon: FilmIcon 
+    },
+    { 
+      id: 'series', 
+      label: 'مسلسلات', 
+      view: 'series' as View, 
+      icon: TvIcon 
+    },
+    { 
+      id: 'search', 
+      label: 'تصفح', 
+      view: 'search' as View, 
+      icon: SearchIcon 
+    },
+    isLoggedIn
+      ? { 
+          id: 'account', 
+          label: 'حسابي', 
+          view: 'profileHub' as View, 
+          icon: UserIcon,
+          isProfile: true 
+        }
+      : { 
+          id: 'account', 
+          label: 'زائر', 
+          view: 'welcome' as View, 
+          icon: UserIcon,
+          isProfile: false 
+        }
+  ];
 
-  if (isKid) {
-      // Kids Items: Home (Kids), My List, Account
-      baseItems = [
-          { id: 'kids', label: 'الرئيسية', view: 'kids' as View, icon: SmileIcon },
-          { id: 'mylist', label: 'قائمتي', view: 'myList' as View, icon: CheckIcon },
-      ];
-  } else {
-      // Adult Items
-      baseItems = [
-        { id: 'home', label: 'الرئيسية', view: 'home' as View, icon: HomeIcon },
-        { id: 'series', label: 'المسلسلات', view: 'series' as View, icon: TvIcon },
-        { id: 'movies', label: 'الأفلام', view: 'movies' as View, icon: FilmIcon },
-        { id: 'kids', label: 'الأطفال', view: 'kids' as View, icon: SmileIcon },
-        { id: 'ramadan', label: 'رمضان', view: 'ramadan' as View, icon: MoonIcon },
-      ];
-  }
-
-  // Dynamic Item (Last Item)
-  // UPDATED: 'Guest' now points to 'welcome' instead of 'login'
-  const accountItem = isLoggedIn
-    ? { 
-        id: 'account', 
-        label: 'حسابي', 
-        view: 'profileHub' as View, 
-        icon: UserIcon,
-        isProfile: true 
-      }
-    : { 
-        id: 'login', 
-        label: 'زائر', 
-        view: 'welcome' as View, 
-        icon: UserIcon,
-        isProfile: false 
-      };
-
-  const navItems = [...baseItems, accountItem];
-
-  // Define Active Color based on Theme
+  // تحديد ألوان الثيمات عند التفعيل
   const activeColorClass = isRamadanTheme 
     ? 'text-[#FFD700]' 
     : isEidTheme 
@@ -85,18 +86,15 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetV
                 ? 'ring-[#E50914]'
                 : 'ring-[#00A7F8]';
 
-  // Additional Classes for iOS Glassmorphism
-  // .glass-panel is globally defined for iOS theme in index.html
-  const fallbackBg = "bg-[#0D121B]/90 backdrop-blur-[10px]";
+  const fallbackBg = "bg-[#0D121B]/95 backdrop-blur-[15px]";
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 z-[1000] md:hidden pb-safe transition-all duration-500 ${fallbackBg} glass-panel`}>
-      <div className="flex justify-between items-center px-4 h-[72px] w-full max-w-lg mx-auto">
+    <div className={`fixed bottom-0 left-0 right-0 z-[1000] md:hidden pb-safe transition-all duration-500 ${fallbackBg} border-t border-white/5 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]`}>
+      <div className="flex justify-between items-center px-2 h-[76px] w-full max-w-lg mx-auto">
         {navItems.map((item) => {
-          const isActive = currentView === item.view;
+          const isActive = currentView === item.view || (item.id === 'home' && (currentView === 'home' || currentView === 'kids'));
           const Icon = item.icon;
           
-          // Check if we should render the profile avatar
           const showAvatar = item.id === 'account' && activeProfile?.avatar;
 
           return (
@@ -106,34 +104,31 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetV
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                   onSetView(item.view);
               }}
-              className="flex flex-col items-center justify-center flex-1 h-full gap-1.5 active:scale-95 transition-transform group"
+              className="flex flex-col items-center justify-center flex-1 h-full gap-1.5 active:scale-90 transition-all group relative"
             >
               <div className={`transition-all duration-300 relative ${isActive ? `-translate-y-1 ${activeColorClass}` : 'text-white'}`}>
                 {showAvatar ? (
-                   <div className={`w-7 h-7 rounded-full overflow-hidden ring-2 transition-all duration-300 ${isActive ? activeRingColor : 'ring-white/20 grayscale'}`}>
+                   <div className={`w-[30px] h-[30px] md:w-[34px] md:h-[34px] rounded-full overflow-hidden ring-2 transition-all duration-300 ${isActive ? activeRingColor : 'ring-white opacity-100'}`}>
                        <img src={activeProfile.avatar} alt="Profile" className="w-full h-full object-cover" />
                    </div>
                 ) : (
                     <Icon 
-                        className={`w-7 h-7 transition-all duration-300 ${isActive ? 'drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'opacity-90'}`} 
+                        className={`w-[28px] h-[28px] md:w-[32px] md:h-[32px] transition-all duration-300 ${isActive ? 'drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] opacity-100' : 'opacity-100 text-white'}`} 
                     />
                 )}
               </div>
               
               <span 
-                className={`text-[10px] font-bold truncate max-w-[60px] transition-all duration-300 ${
+                className={`text-[12px] md:text-[13px] font-bold truncate max-w-[65px] transition-all duration-300 ${
                     isActive 
-                    ? `${activeColorClass} opacity-100 translate-y-0`
-                    : 'text-white opacity-70'
+                    ? `${activeColorClass} opacity-100`
+                    : 'text-white opacity-100'
                 }`}
               >
                 {item.label}
               </span>
               
-              {/* Optional Active Dot Indicator */}
-              {isActive && (
-                  <div className={`absolute bottom-1 w-1 h-1 rounded-full ${isRamadanTheme ? 'bg-[#FFD700]' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]'} animate-pulse`}></div>
-              )}
+              {/* تمت إزالة النقطة (المؤشر) من هنا بناءً على طلب المستخدم */}
             </button>
           );
         })}

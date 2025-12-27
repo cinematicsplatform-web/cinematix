@@ -11,7 +11,7 @@ import UqloadSearchModal from './UqloadSearchModal';
 import { ChevronDownIcon } from './icons/ChevronDownIcon';
 import { normalizeText } from '@/utils/textUtils';
 
-// --- ICONS (Full SVGs preserved for clarity) ---
+// --- ICONS ---
 const ShieldCheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296a3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
@@ -34,7 +34,7 @@ const CheckSmallIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 const CloudArrowDownIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
     </svg>
 );
 const ExcelIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -49,21 +49,21 @@ const SearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653z" />
     </svg>
 );
 const RefreshIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
     </svg>
 );
 const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
   </svg>
 );
 
-// --- STYLES (DARK MODERN THEME) ---
+// --- STYLES ---
 const MODAL_BG = "bg-[#151922]"; 
 const INPUT_BG = "bg-[#0f1014]"; 
 const BORDER_COLOR = "border-gray-700";
@@ -74,13 +74,10 @@ const labelClass = "block text-sm font-bold text-gray-400 mb-2";
 const sectionBoxClass = "bg-[#1a2230] p-6 rounded-2xl border border-gray-700/50 shadow-lg";
 
 // --- HELPERS ---
-// دالة مساعدة مرنة لقراءة البيانات من الصف بغض النظر عن المسافات أو حالة الأحرف
 const getRowValue = (row: any, ...candidates: string[]) => {
     const rowKeys = Object.keys(row);
     for (const candidate of candidates) {
-        // 1. بحث مباشر
         if (row[candidate] !== undefined && row[candidate] !== null) return row[candidate];
-        // 2. بحث مع حذف المسافات وتوحيد حالة الأحرف
         const foundKey = rowKeys.find(k => k.trim().toLowerCase() === candidate.trim().toLowerCase());
         if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) return row[foundKey];
     }
@@ -99,13 +96,11 @@ interface MobileSimulatorProps {
 const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY, onUpdateX, onUpdateY }) => {
     return (
         <div className="flex flex-col md:flex-row gap-8 items-start p-6 bg-black/40 rounded-xl border border-gray-700 mt-2">
-            {/* 1. Phone Frame Simulator */}
             <div className="relative mx-auto md:mx-0 flex-shrink-0">
                 <div 
                     className="relative overflow-hidden border-4 border-gray-800 rounded-[2.5rem] shadow-2xl bg-black"
-                    style={{ width: '260px', height: '462px' }} // ~9:16 Aspect Ratio
+                    style={{ width: '260px', height: '462px' }} 
                 >
-                    {/* Image */}
                     <div 
                         className="w-full h-full bg-no-repeat bg-cover transition-all duration-100 ease-out"
                         style={{ 
@@ -113,24 +108,18 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                             backgroundPosition: `${posX}% ${posY}%` 
                         }}
                     />
-                    
-                    {/* Notch */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gray-800 rounded-b-xl z-20"></div>
-                    
-                    {/* Status Bar Fake Items */}
                     <div className="absolute top-1 right-4 w-4 h-4 bg-gray-700 rounded-full opacity-50 z-20"></div>
                 </div>
                 <div className="text-center text-xs text-gray-500 mt-2 font-mono">Mobile Preview (9:16)</div>
             </div>
 
-            {/* 2. Controls */}
             <div className="flex flex-col gap-6 flex-1 w-full pt-4">
                 <div>
                     <h3 className="text-lg font-bold text-white mb-1">ضبط كادر الموبايل</h3>
                     <p className="text-xs text-gray-400">حرك المؤشرات لضبط الجزء الظاهر من الصورة داخل إطار الهاتف.</p>
                 </div>
                 
-                {/* Horizontal X */}
                 <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
                     <label className="flex justify-between text-sm mb-3 font-bold text-gray-300">
                         <span className="flex items-center gap-2">↔️ تحريك أفقي (X-Axis)</span>
@@ -148,7 +137,6 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                     </div>
                 </div>
 
-                {/* Vertical Y */}
                 <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
                     <label className="flex justify-between text-sm mb-3 font-bold text-gray-300">
                         <span className="flex items-center gap-2">↕️ تحريك عمودي (Y-Axis)</span>
@@ -164,6 +152,134 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                         <span>Top</span>
                         <span>Bottom</span>
                     </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- MODIFIED COMPONENT: Image Gallery Modal (With Close Button) ---
+interface ImageGalleryModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    tmdbId: string;
+    type: ContentType; // Movie or Series
+    targetField: 'poster' | 'backdrop' | 'logo';
+    onSelect: (url: string) => void;
+}
+
+const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ isOpen, onClose, tmdbId, type, targetField, onSelect }) => {
+    const [images, setImages] = useState<{ posters: any[], backdrops: any[], logos: any[] }>({ posters: [], backdrops: [], logos: [] });
+    const [loading, setLoading] = useState(false);
+    const [filterLang, setFilterLang] = useState<string>('all'); // 'all', 'ar', 'en', 'null' (no text)
+
+    const activeTab = useMemo(() => {
+        if (targetField === 'poster') return 'posters';
+        if (targetField === 'logo') return 'logos';
+        return 'backdrops';
+    }, [targetField]);
+
+    const API_KEY = 'b8d66e320b334f4d56728d98a7e39697';
+
+    useEffect(() => {
+        if (isOpen && tmdbId) {
+            fetchImages();
+        }
+    }, [isOpen, tmdbId]);
+
+    const fetchImages = async () => {
+        setLoading(true);
+        try {
+            const endpointType = (type === ContentType.Movie || type === ContentType.Play || type === ContentType.Concert) ? 'movie' : 'tv';
+            const res = await fetch(`https://api.themoviedb.org/3/${endpointType}/${tmdbId}/images?api_key=${API_KEY}&include_image_language=ar,en,null`);
+            const data = await res.json();
+            setImages({
+                posters: data.posters || [],
+                backdrops: data.backdrops || [],
+                logos: data.logos || []
+            });
+        } catch (error) {
+            console.error("Error fetching images:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const displayedImages = useMemo(() => {
+        const list = images[activeTab] || [];
+        if (filterLang === 'all') return list;
+        if (filterLang === 'null') return list.filter((img: any) => img.iso_639_1 === null);
+        return list.filter((img: any) => img.iso_639_1 === filterLang);
+    }, [images, activeTab, filterLang]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/90 z-[250] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="bg-[#151922] w-full max-w-5xl h-[85vh] rounded-2xl border border-gray-700 flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-black/20">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <span>🖼️</span> معرض الصور 
+                        <span className="text-xs bg-blue-600 px-2 py-1 rounded text-white mx-2">
+                            {activeTab === 'posters' ? 'بوسترات' : activeTab === 'logos' ? 'شعارات' : 'خلفيات'}
+                        </span>
+                    </h3>
+                    <div className="flex gap-3 items-center">
+                        <select 
+                            value={filterLang} 
+                            onChange={(e) => setFilterLang(e.target.value)}
+                            className="bg-gray-800 border border-gray-600 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none"
+                        >
+                            <option value="all">كل اللغات</option>
+                            <option value="ar">العربية (AR)</option>
+                            <option value="en">الإنجليزية (EN)</option>
+                            <option value="null">بدون نص (Clean)</option>
+                        </select>
+                        <button onClick={onClose} className="p-2 bg-gray-700 hover:bg-red-600 rounded-full transition-colors text-white">
+                            <CloseIcon className="w-5 h-5" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Grid */}
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-[#0f1014]">
+                    {loading ? (
+                        <div className="flex justify-center items-center h-full text-gray-400">جاري تحميل الصور...</div>
+                    ) : displayedImages.length === 0 ? (
+                        <div className="flex justify-center items-center h-full text-gray-500">لا توجد صور مطابقة للفلتر المحدد.</div>
+                    ) : (
+                        <div className={`grid gap-4 ${activeTab === 'posters' ? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'}`}>
+                            {displayedImages.map((img: any, idx: number) => (
+                                <div key={idx} onClick={() => { onSelect(`https://image.tmdb.org/t/p/original${img.file_path}`); onClose(); }} className="group relative cursor-pointer border border-gray-800 rounded-lg overflow-hidden hover:border-[var(--color-accent)] transition-all">
+                                    <img 
+                                        src={`https://image.tmdb.org/t/p/w500${img.file_path}`} 
+                                        loading="lazy" 
+                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" 
+                                        alt=""
+                                    />
+                                    <div className="absolute top-1 right-1 bg-black/60 px-1.5 py-0.5 rounded text-[10px] text-white font-mono backdrop-blur-sm">
+                                        {img.iso_639_1?.toUpperCase() || 'NO-TEXT'}
+                                    </div>
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                        <span className="bg-[var(--color-accent)] text-black font-bold text-xs px-3 py-1 rounded-full">اختيار</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer with Explicit Close Button */}
+                <div className="p-4 border-t border-gray-700 bg-[#1a2230] flex justify-end">
+                    <button 
+                        type="button" 
+                        onClick={onClose} 
+                        className="bg-red-500/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/50 hover:border-transparent px-6 py-2 rounded-xl font-bold transition-all duration-200 flex items-center gap-2"
+                    >
+                        <CloseIcon className="w-4 h-4" />
+                        إغلاق المعرض
+                    </button>
                 </div>
             </div>
         </div>
@@ -205,7 +321,6 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                 <div className="bg-black/20 p-6 border-b border-gray-700 flex justify-between items-center">
                     <h3 className="text-xl font-bold text-[var(--color-accent)]">إدارة السيرفرات: {episode.title}</h3>
                     <div className="flex items-center gap-2">
-                        {/* Search Uqload Button */}
                         <button onClick={onOpenSearch} className="bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 text-xs font-bold py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition-colors">
                             <SearchIcon />
                             <span>بحث Uqload</span>
@@ -216,7 +331,7 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                 
                 <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
                     {servers.slice(0, 4).map((server, index) => (
-                         <div key={index} className={`p-4 ${INPUT_BG} border border-gray-700 rounded-xl space-y-3`}>
+                          <div key={index} className={`p-4 ${INPUT_BG} border border-gray-700 rounded-xl space-y-3`}>
                             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                               <div className="flex items-center gap-3 w-full sm:w-auto">
                                   <span className="text-gray-500 text-xs font-mono w-6 text-center">{index + 1}</span>
@@ -240,7 +355,7 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                             />
                         </div>
                     ))}
-                     <div className={`p-4 ${INPUT_BG} border border-gray-700 rounded-xl space-y-2`}>
+                      <div className={`p-4 ${INPUT_BG} border border-gray-700 rounded-xl space-y-2`}>
                         <label className="text-xs font-bold text-gray-400">رابط التحميل المباشر</label>
                         <input 
                             value={servers[0]?.downloadUrl || ''} 
@@ -248,7 +363,7 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                             placeholder="رابط التحميل" 
                             className={`w-full bg-gray-800 border border-gray-600 text-white text-sm px-3 py-2 rounded-lg focus:outline-none ${FOCUS_RING} dir-ltr placeholder:text-right`}
                         />
-                     </div>
+                      </div>
                 </div>
                 <div className="p-6 border-t border-gray-700 bg-black/20 flex justify-end gap-3">
                     <button type="button" onClick={onClose} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-full transition-colors">إلغاء</button>
@@ -265,19 +380,20 @@ interface ContentEditModalProps {
     content: Content | null;
     onClose: () => void;
     onSave: (content: Content) => void;
+    addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, onSave }) => {
+const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, onSave, addToast }) => {
     const isNewContent = content === null;
 
     const getDefaultFormData = (): Content => ({
-        id: '', title: '', description: '', type: ContentType.Movie, poster: '', top10Poster: '', backdrop: '', horizontalPoster: '', mobileBackdropUrl: '',
+        id: '', tmdbId: '', title: '', description: '', type: ContentType.Movie, poster: '', top10Poster: '', backdrop: '', horizontalPoster: '', mobileBackdropUrl: '',
         rating: 0, ageRating: '', categories: [], genres: [], releaseYear: new Date().getFullYear(), cast: [],
         visibility: 'general', seasons: [], servers: [], bannerNote: '', createdAt: '',
         logoUrl: '', isLogoEnabled: false, trailerUrl: '', duration: '', enableMobileCrop: false, 
         mobileCropPositionX: 50, mobileCropPositionY: 50, // Default Centers
         slug: '',
-        director: '', writer: '', // Added for Person logic
+        director: '', writer: '',
         ...content,
     });
 
@@ -291,6 +407,13 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [castQuery, setCastQuery] = useState('');
     const [castResults, setCastResults] = useState<any[]>([]);
     const [isSearchingCast, setIsSearchingCast] = useState(false);
+
+    // Image Gallery State - REFACTORED to be generic
+    const [galleryState, setGalleryState] = useState<{
+        isOpen: boolean;
+        imageType: 'poster' | 'backdrop' | 'logo';
+        onSelect: (url: string) => void;
+    }>({ isOpen: false, imageType: 'poster', onSelect: () => {} });
 
     // File input refs for Excel Import
     const globalFileInputRef = useRef<HTMLInputElement>(null);
@@ -316,7 +439,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [tmdbIdInput, setTmdbIdInput] = useState(content?.id && !isNaN(Number(content.id)) ? content.id : '');
     const [fetchLoading, setFetchLoading] = useState(false);
     const [updateLoading, setUpdateLoading] = useState(false); // For series update
-    const [enableAutoLinks, setEnableAutoLinks] = useState(false); // CHANGED TO FALSE
+    const [enableAutoLinks, setEnableAutoLinks] = useState(false);
     const API_KEY = 'b8d66e320b334f4d56728d98a7e39697';
 
     // --- TMDB SEARCH STATE ---
@@ -335,6 +458,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             initData.mobileCropPositionX = initData.mobileCropPosition;
         }
         
+        // Ensure tmdbId is populated from content if available, else from id if it looks like a TMDB ID
+        if (!initData.tmdbId && initData.id && !isNaN(Number(initData.id))) {
+            initData.tmdbId = initData.id;
+        }
+
         setFormData(initData);
         setSlugManuallyEdited(!!content?.slug);
         setTmdbIdInput(content?.id && !isNaN(Number(content.id)) ? content.id : '');
@@ -345,6 +473,52 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             setFormData(prev => ({ ...prev, slug: generateSlug(prev.title) }));
         }
     }, [formData.title, slugManuallyEdited]);
+
+    // --- GENERIC GALLERY OPEN FUNCTION ---
+    const openGallery = (type: 'poster' | 'backdrop' | 'logo', callback: (url: string) => void) => {
+        const idToUse = formData.tmdbId || formData.id;
+        if (!idToUse) {
+            addToast("يرجى جلب بيانات المحتوى أولاً (ID مطلوب) لفتح المعرض.", "info");
+            return;
+        }
+        setGalleryState({ isOpen: true, imageType: type, onSelect: callback });
+    };
+
+    // --- REUSABLE IMAGE INPUT COMPONENT RENDERER ---
+    const renderImageInput = (
+        label: string, 
+        value: string | undefined, 
+        onChange: (val: string) => void,
+        galleryType: 'poster' | 'backdrop' | 'logo',
+        placeholder: string = "https://...",
+        previewClass: string = "w-12 h-16"
+    ) => (
+        <div>
+            <label className={labelClass}>{label}</label>
+            <div className="flex gap-2 items-center">
+                <input 
+                    type="text" 
+                    value={value || ''} 
+                    onChange={(e) => onChange(e.target.value)} 
+                    className={`${inputClass} flex-1 dir-ltr`} 
+                    placeholder={placeholder} 
+                />
+                <button 
+                    type="button" 
+                    onClick={() => openGallery(galleryType, onChange)} 
+                    className="bg-gray-700 hover:bg-gray-600 text-white p-3 rounded-xl transition-colors text-xl shadow-lg" 
+                    title="اختر من المعرض"
+                >
+                    🖼️
+                </button>
+                {value && (
+                    <div className={`${previewClass} ${INPUT_BG} rounded overflow-hidden shadow border border-gray-600 flex-shrink-0`}>
+                        <img src={value} className="w-full h-full object-cover" alt="preview" />
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 
     // --- NEW: CAST SEARCH LOGIC ---
     const searchCast = async (query: string) => {
@@ -389,7 +563,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                  id: 80000 + episodeNum,
                  name: 'Cinematix VIP (سريع)',
                  url: vipUrl,
-                 downloadUrl: vipUrl, // Put same link in download as requested
+                 downloadUrl: vipUrl,
                  isActive: true
              });
          }
@@ -426,7 +600,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             }
         } catch (e) {
             console.error("TMDB Search Error:", e);
-            alert("حدث خطأ أثناء البحث في TMDB.");
+            addToast("حدث خطأ أثناء البحث في TMDB.", "error");
         } finally {
             setIsSearchingTMDB(false);
         }
@@ -640,25 +814,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 });
             }
 
-            // --- UPDATE CHECK LOGIC ---
-            if (isUpdateMode) {
-                const currentTotalEpisodes = formData.seasons?.reduce((acc, s) => acc + (s.episodes?.length || 0), 0) || 0;
-                const newTotalEpisodes = newSeasons.reduce((acc, s) => acc + (s.episodes?.length || 0), 0) || 0;
-                
-                if (newTotalEpisodes > currentTotalEpisodes) {
-                      alert('تم العثور على حلقات جديدة! جاري تحديث البيانات...');
-                      setFormData(prev => ({ ...prev, seasons: newSeasons }));
-                } else {
-                      alert('لم يتم العثور على تحديثات جديدة.');
-                }
-                setUpdateLoading(false);
-                return;
-            }
-
             // Normal Set Data
             setFormData(prev => ({
                 ...prev,
                 id: String(targetId),
+                tmdbId: String(targetId), // Save TMDB ID Explicitly
                 title,
                 description,
                 poster,
@@ -682,21 +842,153 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
         } catch (e: any) {
             console.error(e);
-            alert(e.message || 'فشل جلب البيانات.');
+            addToast(e.message || 'فشل جلب البيانات.', "error");
         } finally {
             setFetchLoading(false);
             setUpdateLoading(false);
         }
     };
 
-    // --- NEW: Handle Check Updates Button ---
-    const handleCheckUpdates = () => {
-        if (!formData.id) {
-            alert('يجب أن يكون للمحتوى ID للتحقق من التحديثات.');
+    // --- NEW: COMPREHENSIVE UPDATE LOGIC (Smart Merge) ---
+    const handleComprehensiveUpdate = async () => {
+        // Prioritize explicit tmdbId, fallback to id
+        const idToUse = formData.tmdbId || formData.id;
+
+        if (!idToUse) {
+            addToast('يجب أن يكون للمحتوى كود TMDB للتحقق من التحديثات.', "info");
             return;
         }
         setUpdateLoading(true);
-        fetchFromTMDB(formData.id, formData.type, true); // Pass true for update mode
+
+        try {
+            console.log('Fetching updates for TMDB ID:', idToUse);
+            // 1. Fetch Main Details to get current TMDB structure
+            const res = await fetch(`https://api.themoviedb.org/3/tv/${idToUse}?api_key=${API_KEY}&language=ar-SA`);
+            
+            if(!res.ok) {
+                if (res.status === 404) throw new Error("لم يتم العثور على المسلسل في TMDB. تأكد من صحة كود TMDB.");
+                throw new Error("فشل الاتصال بـ TMDB");
+            }
+            
+            const details = await res.json();
+
+            let hasUpdates = false;
+            // Create a copy to mutate
+            let currentSeasons = [...(formData.seasons || [])];
+            const backdrop = formData.backdrop || '';
+
+            // Filter valid seasons from TMDB
+            const validTmdbSeasons = details.seasons.filter((s:any) => s.season_number > 0);
+
+            for (const tmdbSeason of validTmdbSeasons) {
+                // Check if we already have this season
+                let existingSeasonIndex = currentSeasons.findIndex(s => s.seasonNumber === tmdbSeason.season_number);
+
+                if (existingSeasonIndex === -1) {
+                    // --- CASE 1: NEW SEASON FOUND ---
+                    const sRes = await fetch(`https://api.themoviedb.org/3/tv/${idToUse}/season/${tmdbSeason.season_number}?api_key=${API_KEY}&language=ar-SA`);
+                    const sData = await sRes.json();
+                    
+                    const mappedEpisodes: Episode[] = sData.episodes?.map((ep: any) => {
+                         let epDuration = '';
+                         if (ep.runtime) {
+                              if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
+                              else epDuration = `${ep.runtime}:00`;
+                         }
+                         
+                         const fixedTitle = `الحلقة ${ep.episode_number}`;
+                         const isGenericTitle = !ep.name || ep.name.match(/^Episode \d+$/i) || ep.name.match(/^الحلقة \d+$/i);
+                         let finalDescription = ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${sData.season_number}.`;
+                         if (!isGenericTitle && ep.name) finalDescription = `${ep.name} : ${ep.overview || ''}`;
+
+                         return {
+                             id: Date.now() + ep.episode_number + Math.random(),
+                             title: fixedTitle,
+                             description: finalDescription,
+                             thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : backdrop, 
+                             duration: epDuration,
+                             progress: 0,
+                             servers: generateEpisodeServers(String(idToUse), sData.season_number, ep.episode_number)
+                         };
+                    }) || [];
+
+                    currentSeasons.push({
+                        id: Date.now() + Math.random(),
+                        seasonNumber: sData.season_number,
+                        title: sData.name || `الموسم ${sData.season_number}`,
+                        releaseYear: sData.air_date ? new Date(sData.air_date).getFullYear() : new Date().getFullYear(),
+                        description: sData.overview,
+                        poster: sData.poster_path ? `https://image.tmdb.org/t/p/w500${sData.poster_path}` : formData.poster,
+                        backdrop: backdrop,
+                        logoUrl: '',
+                        episodes: mappedEpisodes
+                    });
+                    hasUpdates = true;
+
+                } else {
+                    // --- CASE 2: EXISTING SEASON - CHECK FOR MISSING EPISODES ---
+                    const existingSeason = currentSeasons[existingSeasonIndex];
+                    
+                    // TMDB `episode_count` vs our length
+                    if (tmdbSeason.episode_count > (existingSeason.episodes?.length || 0)) {
+                        // There are new episodes! Fetch full season details to get them.
+                        const sRes = await fetch(`https://api.themoviedb.org/3/tv/${idToUse}/season/${tmdbSeason.season_number}?api_key=${API_KEY}&language=ar-SA`);
+                        const sData = await sRes.json();
+                        
+                        // Slice only the new episodes from the TMDB list
+                        const currentCount = existingSeason.episodes?.length || 0;
+                        const newEpisodesData = sData.episodes.slice(currentCount);
+                        
+                        if (newEpisodesData.length > 0) {
+                            const newMappedEpisodes: Episode[] = newEpisodesData.map((ep: any) => {
+                                let epDuration = '';
+                                if (ep.runtime) {
+                                     if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
+                                     else epDuration = `${ep.runtime}:00`;
+                                }
+
+                                const fixedTitle = `الحلقة ${ep.episode_number}`;
+                                const isGenericTitle = !ep.name || ep.name.match(/^Episode \d+$/i) || ep.name.match(/^الحلقة \d+$/i);
+                                let finalDescription = ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${sData.season_number}.`;
+                                if (!isGenericTitle && ep.name) finalDescription = `${ep.name} : ${ep.overview || ''}`;
+
+                                return {
+                                    id: Date.now() + ep.episode_number + Math.random(),
+                                    title: fixedTitle,
+                                    description: finalDescription,
+                                    thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : (existingSeason.backdrop || backdrop), 
+                                    duration: epDuration,
+                                    progress: 0,
+                                    servers: generateEpisodeServers(String(idToUse), sData.season_number, ep.episode_number)
+                                };
+                            });
+                            
+                            // Append new episodes to existing season without overwriting old ones
+                            currentSeasons[existingSeasonIndex] = {
+                                ...existingSeason,
+                                episodes: [...(existingSeason.episodes || []), ...newMappedEpisodes]
+                            };
+                            hasUpdates = true;
+                        }
+                    }
+                }
+            }
+
+            if (hasUpdates) {
+                // Ensure seasons are sorted
+                currentSeasons.sort((a,b) => a.seasonNumber - b.seasonNumber);
+                setFormData(prev => ({ ...prev, seasons: currentSeasons }));
+                addToast("تم تحديث البيانات وإضافة الحلقات/المواسم الجديدة بنجاح!", "success");
+            } else {
+                addToast("لم يتم العثور على تحديثات جديدة (المحتوى مكتمل).", "info");
+            }
+
+        } catch (e: any) {
+            console.error(e);
+            addToast("حدث خطأ أثناء البحث عن تحديثات: " + e.message, "error");
+        } finally {
+            setUpdateLoading(false);
+        }
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -760,13 +1052,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.title) { alert('الرجاء تعبئة حقول العنوان.'); return; }
-        if (formData.categories.length === 0) { alert('الرجاء اختيار تصنيف واحد على الأقل.'); return; }
+        if (!formData.title) { addToast('الرجاء تعبئة حقول العنوان.', "info"); return; }
+        if (formData.categories.length === 0) { addToast('الرجاء اختيار تصنيف واحد على الأقل.', "info"); return; }
         const finalSlug = formData.slug?.trim() || generateSlug(formData.title);
         const contentToSave: Content = { 
             ...formData, 
             slug: finalSlug,
             id: formData.id || String(Date.now()),
+            tmdbId: formData.tmdbId || formData.id, // FIX: Ensured property exists in Content interface
             createdAt: formData.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -800,19 +1093,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const requestDeleteSeason = (seasonId: number, seasonTitle: string) => { setDeleteSeasonState({ isOpen: true, seasonId, title: seasonTitle }); };
     const executeDeleteSeason = () => { if (deleteSeasonState.seasonId) setFormData(prev => ({ ...prev, seasons: (prev.seasons || []).filter(s => s.id !== deleteSeasonState.seasonId) })); setDeleteSeasonState(prev => ({ ...prev, isOpen: false })); };
     
-    // --- ROBUST HELPER FOR EXCEL KEYS ---
-    const getRowValue = (row: any, ...candidates: string[]) => {
-        const rowKeys = Object.keys(row);
-        for (const candidate of candidates) {
-            // 1. Direct check
-            if (row[candidate] !== undefined) return row[candidate];
-            // 2. Trimmed check (ignoring spaces)
-            const foundKey = rowKeys.find(k => k.trim() === candidate.trim());
-            if (foundKey) return row[foundKey];
-        }
-        return null;
-    };
-
     // --- FIXED EXCEL IMPORT (MERGE LOGIC) ---
     const handleSeasonExcelImport = async (e: React.ChangeEvent<HTMLInputElement>, seasonId: number, seasonNumber: number) => { 
         const file = e.target.files?.[0];
@@ -839,7 +1119,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     : rows;
 
                 if (relevantRows.length === 0) {
-                    alert(`لم يتم العثور على حلقات للموسم رقم ${seasonNumber} في الملف.`);
+                    addToast(`لم يتم العثور على حلقات للموسم رقم ${seasonNumber} في الملف.`, "info");
                     return;
                 }
 
@@ -847,32 +1127,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     ...prev,
                     seasons: (prev.seasons || []).map(s => {
                         if (s.id !== seasonId) return s;
-                        
-                        // Create a map of existing episodes by "episode number" (using title usually containing number)
-                        // Or better, we can assume existing episodes are ordered or try to parse number from title
-                        // Here, we'll try to match by index if title parsing fails, but best effort is key.
-                        
                         const updatedEpisodes = [...(s.episodes || [])];
 
                         relevantRows.forEach((row, idx) => {
-                            // Extract Episode Number from Excel
                             const eNumRaw = getRowValue(row, 'الحلقة', 'Episode', 'Episode_Number');
                             const eNum = parseInt(String(eNumRaw)) || (idx + 1);
                             
-                            // Find existing episode with same number (assuming title contains "الحلقة X" or strictly by index if new)
-                            // A safer approach for merging is to check if we already have this episode number in the list.
-                            // Since we don't have strict 'episodeNumber' field on Episode type in this snippet (it's in title), 
-                            // we will try to find an episode whose title ends with this number OR simply use the index (eNum - 1).
+                            let targetEpisodeIndex = updatedEpisodes.findIndex(ep => (ep.title && ep.title.includes(`${eNum}`)) || ep.title === `Episode ${eNum}`);
                             
-                            let targetEpisodeIndex = updatedEpisodes.findIndex(ep => ep.title.includes(`${eNum}`) || ep.title === `Episode ${eNum}`);
-                            
-                            // If not found by title, and the list is long enough, maybe it's just the one at that index?
-                            // Let's rely on eNum-1 as a fallback if the array is dense.
-                            if (targetEpisodeIndex === -1 && updatedEpisodes.length >= eNum) {
-                                // Double check if the one at index eNum-1 looks like it matches
-                                // If not, we will append a new one.
-                            }
-
                             // PREPARE SERVERS
                             const epServers: Server[] = [];
                             
@@ -904,14 +1166,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 }
                             }
 
-                            // Fallback old format
-                            if (epServers.length === 0 && enableAutoLinks === false) {
-                                const oldUrl = getRowValue(row, 'Watch_Server_1');
-                                if (oldUrl) epServers.push({ id: 2, name: 'سيرفر 1', url: oldUrl, downloadUrl: getRowValue(row, 'Download_Link') || '', isActive: true });
-                            }
-
                             const newEpisodeData: Episode = {
-                                id: Date.now() + eNum + Math.random(), // Will be overwritten if updating
+                                id: Date.now() + eNum + Math.random(), 
                                 title: getRowValue(row, 'العنوان', 'Title') || `الحلقة ${eNum}`,
                                 duration: getRowValue(row, 'المدة', 'Duration') || '45:00',
                                 thumbnail: getRowValue(row, 'صورة', 'Thumbnail') || s.backdrop || prev.backdrop,
@@ -922,35 +1178,30 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
                             // MERGE LOGIC:
                             if (targetEpisodeIndex !== -1) {
-                                // UPDATE EXISTING
                                 updatedEpisodes[targetEpisodeIndex] = {
                                     ...updatedEpisodes[targetEpisodeIndex],
                                     ...newEpisodeData,
-                                    id: updatedEpisodes[targetEpisodeIndex].id, // Keep original ID
-                                    servers: epServers.length > 0 ? epServers : updatedEpisodes[targetEpisodeIndex].servers // Only overwrite servers if we found new ones
+                                    id: updatedEpisodes[targetEpisodeIndex].id, 
+                                    servers: epServers.length > 0 ? epServers : updatedEpisodes[targetEpisodeIndex].servers 
                                 };
                             } else {
-                                // ADD NEW (Insert at correct position if possible, or push)
-                                // If eNum is 5 and we have 2 episodes, we just push. 
-                                // Ideally we'd sort, but simply pushing is safer for now.
                                 updatedEpisodes.push(newEpisodeData);
                             }
                         });
 
-                        // Optional: Sort by episode number (extracted from title) to keep things clean
                         updatedEpisodes.sort((a, b) => {
-                            const numA = parseInt(a.title.replace(/\D/g, '')) || 0;
-                            const numB = parseInt(b.title.replace(/\D/g, '')) || 0;
+                            const numA = parseInt(a.title?.replace(/\D/g, '') || '0') || 0;
+                            const numB = parseInt(b.title?.replace(/\D/g, '') || '0') || 0;
                             return numA - numB;
                         });
 
                         return { ...s, episodes: updatedEpisodes };
                     })
                 }));
-                alert(`تم دمج ${relevantRows.length} حلقة للموسم ${seasonNumber} بنجاح!`);
+                addToast(`تم دمج ${relevantRows.length} حلقة للموسم ${seasonNumber} بنجاح!`, "success");
             } catch (err) {
                 console.error(err);
-                alert('حدث خطأ أثناء استيراد الملف.');
+                addToast('حدث خطأ أثناء استيراد الملف.', "error");
             }
         };
         reader.readAsBinaryString(file);
@@ -1044,7 +1295,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     const epServers: Server[] = [];
                     // Generate Auto link
                     if (enableAutoLinks) {
-                        const vipUrl = `https://vidsrc.vip/embed/tv/${formData.id}/${sNum}/${eNum}`;
+                        const idToUse = formData.tmdbId || formData.id;
+                        const vipUrl = `https://vidsrc.vip/embed/tv/${idToUse}/${sNum}/${eNum}`;
                         epServers.push({ id: 99999, name: 'Cinematix VIP', url: vipUrl, downloadUrl: vipUrl, isActive: true });
                     }
                     
@@ -1094,10 +1346,10 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     ...prev,
                     seasons: newSeasons
                 }));
-                alert('تم استيراد كافة المواسم بنجاح!');
+                addToast('تم استيراد كافة المواسم بنجاح!', "success");
             } catch (err) {
                 console.error(err);
-                alert('حدث خطأ أثناء الاستيراد الشامل.');
+                addToast('حدث خطأ أثناء الاستيراد الشامل.', "error");
             }
         };
         reader.readAsBinaryString(file);
@@ -1140,18 +1392,20 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                 </>
                                             )}
                                             
-                                            {/* NEW: UPDATE BUTTON (Only for existing episodic content) */}
+                                            {/* Comprehensive Update Button (Top Location) */}
                                             {!isNewContent && isEpisodic && (
                                                 <button 
                                                     type="button" 
-                                                    onClick={handleCheckUpdates} 
+                                                    onClick={handleComprehensiveUpdate} 
                                                     disabled={updateLoading}
-                                                    className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50 flex items-center gap-2 whitespace-nowrap shadow-lg"
+                                                    className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50 flex items-center gap-2 whitespace-nowrap shadow-lg hover:shadow-green-500/30 transform hover:scale-105"
+                                                    title="تحديث البيانات تلقائيًا بناءً على كود TMDB"
                                                 >
                                                     <RefreshIcon className={`w-5 h-5 text-white ${updateLoading ? 'animate-spin' : ''}`} />
-                                                    {updateLoading ? 'جاري التحقق...' : 'تحديث البيانات'}
+                                                    {updateLoading ? 'جاري الفحص...' : 'تحديث شامل'}
                                                 </button>
                                             )}
+
                                         </div>
                                         <div className="flex items-center gap-3 bg-blue-900/20 px-4 py-2 rounded-xl border border-blue-500/20">
                                             <ToggleSwitch checked={enableAutoLinks} onChange={setEnableAutoLinks} className="scale-90" />
@@ -1192,6 +1446,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             </div>
                             <div className="lg:col-span-6 order-2 lg:order-1 space-y-6">
                                 <div><label className={labelClass}>عنوان العمل</label><input type="text" name="title" value={formData.title} onChange={handleChange} className={inputClass} placeholder="أدخل العنوان هنا..." required /></div>
+                                <div><label className={labelClass}>كود TMDB</label><input type="text" name="tmdbId" value={formData.tmdbId || ''} onChange={handleChange} className={`${inputClass} font-mono text-yellow-400`} placeholder="سيتم تعبئته تلقائيًا عند الجلب..." /></div>
                                 <div><label className={labelClass}>الرابط (Slug)</label><div className={`flex items-center ${INPUT_BG} border ${BORDER_COLOR} rounded-xl px-3 ${FOCUS_RING} transition-colors`}><span className="text-gray-500 text-xs whitespace-nowrap dir-ltr select-none">cinematix.app/{isEpisodic ? 'series/' : 'movie/'}</span><input type="text" name="slug" value={formData.slug || ''} onChange={handleChange} placeholder="auto-generated" className="w-full bg-transparent border-none px-2 py-3 focus:ring-0 outline-none text-sm dir-ltr text-left text-[var(--color-primary-to)] font-mono" /></div></div>
                             </div>
                         </div>
@@ -1210,7 +1465,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     <div><label className={labelClass}>الكاتب (Writer)</label><input type="text" name="writer" value={formData.writer || ''} onChange={handleChange} className={inputClass} placeholder="اسم الكاتب..." /></div>
                                 </div>
                                 
-                                {/* CAST SEARCH SECTION */}
                                 <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700">
                                     <label className={labelClass}>طاقم التمثيل (بحث وإضافة)</label>
                                     <div className="relative mb-3">
@@ -1226,7 +1480,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             {isSearchingCast && <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>}
                                         </div>
                                         
-                                        {/* Dropdown Results */}
                                         {castResults.length > 0 && (
                                             <div className="absolute top-full left-0 right-0 bg-[#1a2230] border border-gray-600 rounded-xl mt-1 max-h-60 overflow-y-auto z-50 shadow-2xl">
                                                 {castResults.map(person => (
@@ -1243,7 +1496,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         )}
                                     </div>
                                     
-                                    {/* Selected Cast Tags */}
                                     <div className="flex flex-wrap gap-2">
                                         {formData.cast.map((c, idx) => (
                                             <div key={idx} className="bg-gray-700 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-2 border border-gray-600">
@@ -1267,44 +1519,17 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
                         <div className={sectionBoxClass}><h3 className="text-lg font-bold text-[var(--color-primary-to)] mb-4 flex items-center gap-2"><span>🏷️</span> التصنيفات والأنواع</h3><div className="mb-6"><label className="text-xs text-gray-400 font-bold mb-3 block uppercase tracking-wider">القوائم الرئيسية</label><div className="flex flex-wrap gap-3">{filteredCategories.map((cat: Category) => (<button key={cat} type="button" onClick={() => handleCategoryChange(cat)} className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300 border ${formData.categories.includes(cat) ? 'bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black border-transparent shadow-[0_0_15px_var(--shadow-color)] scale-105' : `${INPUT_BG} border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white`}`}>{cat}{formData.categories.includes(cat) && <div className="bg-black/20 rounded-full p-0.5"><CheckSmallIcon /></div>}</button>))}</div></div><div><label className="text-xs text-gray-400 font-bold mb-3 block uppercase tracking-wider">النوع الفني</label><div className="flex flex-wrap gap-2">{genres.map((g: Genre) => (<button key={g} type="button" onClick={() => handleGenreChange(g)} className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-300 border ${formData.genres.includes(g) ? 'bg-white text-black border-white shadow-[0_0_10px_rgba(255,255,255,0.4)] scale-105' : `${INPUT_BG} border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white`}`}>{g}{formData.genres.includes(g) && <CheckSmallIcon />}</button>))}</div></div><div className="mt-6 pt-6 border-t border-gray-700"><label className={labelClass}>نص شارة مميز</label><input type="text" name="bannerNote" value={formData.bannerNote || ''} onChange={handleChange} className={inputClass} placeholder="مثال: الأكثر مشاهدة، جديد رمضان" /></div></div>
 
-                        {/* Cinematic Assets */}
                         <div className={sectionBoxClass}>
                             <h3 className="text-lg font-bold text-[var(--color-primary-to)] mb-6 border-b border-gray-700 pb-4 flex items-center gap-2">
                                 <span>🎥</span> أصول العرض السينمائي
                             </h3>
                             <div className="space-y-6">
-                                <div>
-                                    <label className={labelClass}>البوستر العمودي (Poster URL)</label>
-                                    <div className="flex gap-4 items-center">
-                                        <input type="text" name="poster" value={formData.poster} onChange={handleChange} className={`${inputClass} flex-1`} placeholder="https://image.tmdb.org/t/p/w500/..." required />
-                                        {formData.poster && <div className={`w-16 h-24 ${INPUT_BG} rounded-lg overflow-hidden shadow-md border border-gray-600 flex-shrink-0 animate-fade-in-up`}><img src={formData.poster} alt="Poster Preview" className="w-full h-full object-cover" /></div>}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className={labelClass}>صورة التوب 10 (Top 10 Poster URL)</label>
-                                    <div className="flex gap-4 items-center">
-                                        <input type="text" name="top10Poster" value={formData.top10Poster || ''} onChange={handleChange} className={`${inputClass} flex-1`} placeholder="https://..." />
-                                        {formData.top10Poster && <div className={`w-16 h-24 ${INPUT_BG} rounded-lg overflow-hidden shadow-md border border-gray-600 flex-shrink-0 animate-fade-in-up`}><img src={formData.top10Poster} alt="Top 10 Preview" className="w-full h-full object-cover" /></div>}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className={labelClass}>البوستر العريض (Horizontal Poster)</label>
-                                    <div className="flex gap-4 items-center">
-                                        <input type="text" name="horizontalPoster" value={formData.horizontalPoster || ''} onChange={handleChange} className={`${inputClass} flex-1`} placeholder="https://image.tmdb.org/t/p/w500/..." />
-                                        {formData.horizontalPoster && <div className={`w-32 h-20 ${INPUT_BG} rounded-lg overflow-hidden shadow-md border border-gray-600 flex-shrink-0 animate-fade-in-up`}><img src={formData.horizontalPoster} alt="Horizontal Poster Preview" className="w-full h-full object-cover" /></div>}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className={labelClass}>صورة الخلفية العريضة (Backdrop URL)</label>
-                                    <div className="flex gap-4 items-center">
-                                        <input type="text" name="backdrop" value={formData.backdrop} onChange={handleChange} className={`${inputClass} flex-1`} placeholder="https://image.tmdb.org/t/p/original/..." required />
-                                        {formData.backdrop && <div className={`w-32 h-20 ${INPUT_BG} rounded-lg overflow-hidden shadow-md border border-gray-600 flex-shrink-0 animate-fade-in-up`}><img src={formData.backdrop} alt="Backdrop Preview" className="w-full h-full object-cover" /></div>}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className={labelClass}>صورة الموبايل (Mobile Background)</label>
-                                    <input type="text" name="mobileBackdropUrl" value={formData.mobileBackdropUrl || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
-                                </div>
+                                {renderImageInput("البوستر العمودي (Poster URL)", formData.poster, (val) => setFormData(prev => ({...prev, poster: val})), 'poster')}
+                                {renderImageInput("صورة التوب 10 (Top 10 Poster URL)", formData.top10Poster, (val) => setFormData(prev => ({...prev, top10Poster: val})), 'poster', "https://...", "w-16 h-24")}
+                                {renderImageInput("البوستر العريض (Horizontal Poster)", formData.horizontalPoster, (val) => setFormData(prev => ({...prev, horizontalPoster: val})), 'backdrop', "https://...", "w-32 h-20")}
+                                {renderImageInput("صورة الخلفية العريضة (Backdrop URL)", formData.backdrop, (val) => setFormData(prev => ({...prev, backdrop: val})), 'backdrop', "https://...", "w-24 h-14")}
+                                {renderImageInput("صورة الموبايل (Mobile Background)", formData.mobileBackdropUrl, (val) => setFormData(prev => ({...prev, mobileBackdropUrl: val})), 'poster', "https://...", "w-12 h-16")}
+
                                 <div>
                                     <div className="flex items-center justify-between mb-2">
                                         <label className={labelClass}>شعار العمل (Transparent Logo URL)</label>
@@ -1313,13 +1538,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             <ToggleSwitch checked={formData.isLogoEnabled || false} onChange={(c) => setFormData(prev => ({...prev, isLogoEnabled: c}))} className="scale-75"/>
                                         </div>
                                     </div>
-                                    <input type="text" name="logoUrl" value={formData.logoUrl || ''} onChange={handleChange} className={inputClass} placeholder="https://.../logo.png" />
+                                    {renderImageInput("", formData.logoUrl, (val) => setFormData(prev => ({...prev, logoUrl: val})), 'logo', "https://.../logo.png", "hidden")}
                                     {formData.logoUrl && (
                                         <div className={`mt-3 h-20 ${INPUT_BG} p-2 rounded border border-gray-600 flex items-center justify-center bg-[url('https://www.transparenttextures.com/patterns/checkerboard.png')]`}>
                                             <img src={formData.logoUrl} alt="Logo Preview" className="h-full object-contain" />
                                         </div>
                                     )}
                                 </div>
+
                                 <div>
                                     <label className={labelClass}>رابط الإعلان (Trailer URL)</label>
                                     <div className="flex gap-4 items-center">
@@ -1339,7 +1565,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             </div>
                         </div>
 
-                        {/* 4. Content Logic (Episodic / Standalone) */}
                         {isEpisodic && (
                             <div className={sectionBoxClass}>
                                 <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
@@ -1348,6 +1573,18 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     </h3>
                                     <div className="relative flex items-center gap-2">
                                         <input type="file" accept=".xlsx, .xls" onChange={handleBulkSeriesImport} className="hidden" ref={globalFileInputRef} />
+                                        
+                                        <button 
+                                            type="button" 
+                                            onClick={handleComprehensiveUpdate} 
+                                            disabled={updateLoading}
+                                            className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-lg flex items-center gap-2"
+                                            title="فحص وجود مواسم أو حلقات جديدة في TMDB وإضافتها"
+                                        >
+                                            <RefreshIcon className={`w-4 h-4 ${updateLoading ? 'animate-spin' : ''}`} />
+                                            {updateLoading ? 'جاري الفحص...' : 'تحديث شامل'}
+                                        </button>
+
                                         <button type="button" onClick={() => globalFileInputRef.current?.click()} className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-lg flex items-center gap-2" title="استيراد شامل (Excel)"><ExcelIcon /> استيراد شامل</button>
                                         <button type="button" onClick={handleAddSeason} className="bg-[var(--color-accent)] text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-white transition-colors shadow-lg">+ إضافة موسم</button>
                                     </div>
@@ -1375,7 +1612,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             </div>
                                             {expandedSeasons.has(season.id) && (
                                                 <div className="p-5 border-t border-gray-700 bg-gray-900/30 animate-fade-in-up">
-                                                    {/* SEASON ASSETS */}
                                                     <div className="mb-8 p-4 bg-gray-800/50 rounded-xl border border-gray-700/50">
                                                         <h4 className="text-sm font-bold text-[var(--color-primary-to)] mb-4 border-b border-gray-700 pb-2">أصول وتفاصيل الموسم</h4>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1384,14 +1620,70 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                     <label className="block text-xs font-bold text-gray-400 mb-1">قصة الموسم (Story)</label>
                                                                     <textarea value={season.description || ''} onChange={(e) => handleUpdateSeason(season.id, 'description', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[var(--color-accent)] resize-y min-h-[80px]" placeholder="أدخل قصة هذا الموسم..."/>
                                                                 </div>
+                                                                
+                                                                {/* NEW: SEASON TRAILER INPUT */}
+                                                                <div>
+                                                                    <label className="block text-xs font-bold text-gray-400 mb-1">رابط إعلان الموسم (Trailer URL)</label>
+                                                                    <div className="flex gap-2 items-center">
+                                                                        <input 
+                                                                            type="text" 
+                                                                            value={season.trailerUrl || ''} 
+                                                                            onChange={(e) => handleUpdateSeason(season.id, 'trailerUrl', e.target.value)} 
+                                                                            className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr" 
+                                                                            placeholder="https://www.youtube.com/watch?v=..."
+                                                                        />
+                                                                        {season.trailerUrl && (
+                                                                            <a 
+                                                                                href={season.trailerUrl} 
+                                                                                target="_blank" 
+                                                                                rel="noopener noreferrer" 
+                                                                                className="bg-red-600/20 text-red-500 border border-red-600/50 p-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-colors"
+                                                                                title="تشغيل الإعلان"
+                                                                            >
+                                                                                <PlayIcon className="w-4 h-4" />
+                                                                            </a>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
                                                             </div>
                                                             <div className="space-y-4">
                                                                 <div className="grid grid-cols-2 gap-3">
-                                                                    <div><label className="block text-[10px] font-bold text-gray-400 mb-1">بوستر الموسم</label><input type="text" value={season.poster || ''} onChange={(e) => handleUpdateSeason(season.id, 'poster', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr" placeholder="Poster URL..."/></div>
-                                                                    <div><label className="block text-[10px] font-bold text-gray-400 mb-1">بوستر عريض (Horizontal)</label><input type="text" value={season.horizontalPoster || ''} onChange={(e) => handleUpdateSeason(season.id, 'horizontalPoster', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr" placeholder="Horizontal Poster URL..."/></div>
-                                                                    <div><label className="block text-[10px] font-bold text-gray-400 mb-1">لوجو الموسم</label><input type="text" value={season.logoUrl || ''} onChange={(e) => handleUpdateSeason(season.id, 'logoUrl', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr" placeholder="Logo URL..."/></div>
-                                                                    <div><label className="block text-[10px] font-bold text-gray-400 mb-1">خلفية (Backdrop)</label><input type="text" value={season.backdrop || ''} onChange={(e) => handleUpdateSeason(season.id, 'backdrop', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr" placeholder="Backdrop URL..."/></div>
-                                                                    <div className="col-span-2"><label className="block text-[10px] font-bold text-gray-400 mb-1">صورة الموبايل</label><input type="text" value={season.mobileImageUrl || ''} onChange={(e) => handleUpdateSeason(season.id, 'mobileImageUrl', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr" placeholder="Mobile Asset URL..."/></div>
+                                                                    {/* MODIFIED: Added Gallery Buttons for Season Images */}
+                                                                    <div><label className="block text-[10px] font-bold text-gray-400 mb-1">بوستر الموسم</label>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <input type="text" value={season.poster || ''} onChange={(e) => handleUpdateSeason(season.id, 'poster', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr" placeholder="Poster URL..."/>
+                                                                            <button type="button" onClick={() => openGallery('poster', (url) => handleUpdateSeason(season.id, 'poster', url))} className="bg-gray-700 text-white p-1 rounded text-sm">🖼️</button>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div><label className="block text-[10px] font-bold text-gray-400 mb-1">بوستر عريض</label>
+                                                                        <div className="flex items-center gap-1">
+                                                                             <input type="text" value={season.horizontalPoster || ''} onChange={(e) => handleUpdateSeason(season.id, 'horizontalPoster', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr" placeholder="Horizontal URL..."/>
+                                                                             <button type="button" onClick={() => openGallery('backdrop', (url) => handleUpdateSeason(season.id, 'horizontalPoster', url))} className="bg-gray-700 text-white p-1 rounded text-sm">🖼️</button>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div><label className="block text-[10px] font-bold text-gray-400 mb-1">لوجو الموسم</label>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <input type="text" value={season.logoUrl || ''} onChange={(e) => handleUpdateSeason(season.id, 'logoUrl', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr" placeholder="Logo URL..."/>
+                                                                            <button type="button" onClick={() => openGallery('logo', (url) => handleUpdateSeason(season.id, 'logoUrl', url))} className="bg-gray-700 text-white p-1 rounded text-sm">🖼️</button>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div><label className="block text-[10px] font-bold text-gray-400 mb-1">خلفية (Backdrop)</label>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <input type="text" value={season.backdrop || ''} onChange={(e) => handleUpdateSeason(season.id, 'backdrop', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr" placeholder="Backdrop URL..."/>
+                                                                            <button type="button" onClick={() => openGallery('backdrop', (url) => handleUpdateSeason(season.id, 'backdrop', url))} className="bg-gray-700 text-white p-1 rounded text-sm">🖼️</button>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div className="col-span-2"><label className="block text-[10px] font-bold text-gray-400 mb-1">صورة الموبايل</label>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <input type="text" value={season.mobileImageUrl || ''} onChange={(e) => handleUpdateSeason(season.id, 'mobileImageUrl', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr" placeholder="Mobile Asset URL..."/>
+                                                                            <button type="button" onClick={() => openGallery('poster', (url) => handleUpdateSeason(season.id, 'mobileImageUrl', url))} className="bg-gray-700 text-white p-1 rounded text-sm">🖼️</button>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1406,7 +1698,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                         </div>
                                                     </div>
                                                     
-                                                    {/* EPISODES LIST */}
                                                     <div className="flex justify-between items-center mb-4 px-2">
                                                         <h4 className="text-sm font-bold text-white">الحلقات ({season.episodes.length})</h4>
                                                     </div>
@@ -1416,14 +1707,20 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                 <div className="flex flex-col gap-4">
                                                                     <div className="flex items-center gap-3">
                                                                         <span className="text-gray-500 font-mono text-xs font-bold bg-black/30 px-2 py-1 rounded">#{idx + 1}</span>
-                                                                        <input type="text" value={ep.title} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'title', e.target.value)} className="bg-transparent border-b border-gray-600 focus:border-[var(--color-accent)] px-2 py-1 text-sm font-bold text-white focus:outline-none flex-1" placeholder="عنوان الحلقة" />
+                                                                        <input type="text" value={ep.title || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'title', e.target.value)} className="bg-transparent border-b border-gray-600 focus:border-[var(--color-accent)] px-2 py-1 text-sm font-bold text-white focus:outline-none flex-1" placeholder="عنوان الحلقة" />
                                                                         <div className="flex items-center gap-2"><span className="text-[10px] text-gray-400">المدة:</span><input type="text" value={ep.duration || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'duration', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white w-20 text-center focus:outline-none focus:border-[var(--color-accent)]" placeholder="00:00" /></div>
                                                                         <button type="button" onClick={() => setEditingServersForEpisode(ep)} className={`text-xs px-3 py-1.5 rounded transition-colors font-bold ${ep.servers?.some(s => s.url) ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400'}`}>سيرفرات {ep.servers?.filter(s=>s.url).length || 0}</button>
                                                                         <button type="button" onClick={() => requestDeleteEpisode(season.id, ep.id, ep.title || `حلقة ${idx+1}`)} className="text-red-400 hover:bg-red-500/10 p-1.5 rounded transition-colors"><CloseIcon className="w-4 h-4" /></button>
                                                                     </div>
                                                                     <div className="flex gap-4">
                                                                         <div className="w-24 h-14 bg-black rounded overflow-hidden flex-shrink-0 border border-gray-700">{ep.thumbnail ? <img src={ep.thumbnail} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-600 text-[10px]">No Image</div>}</div>
-                                                                        <div className="flex-1"><input type="text" value={ep.thumbnail || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'thumbnail', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr placeholder:text-right" placeholder="رابط صورة الحلقة (Thumbnail URL)" /><textarea value={ep.description || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'description', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] mt-2 resize-none h-10" placeholder="وصف الحلقة..."/></div>
+                                                                        <div className="flex-1">
+                                                                            <div className="flex items-center gap-1 mb-2">
+                                                                                <input type="text" value={ep.thumbnail || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'thumbnail', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] dir-ltr placeholder:text-right" placeholder="رابط صورة الحلقة (Thumbnail URL)" />
+                                                                                <button type="button" onClick={() => openGallery('backdrop', (url) => handleUpdateEpisode(season.id, ep.id, 'thumbnail', url))} className="bg-gray-700 text-white p-1 rounded text-sm">🖼️</button>
+                                                                            </div>
+                                                                            <textarea value={ep.description || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'description', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--color-accent)] resize-none h-10" placeholder="وصف الحلقة..."/>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1451,29 +1748,73 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 <div className="flex justify-end items-center px-6 md:px-8 py-4 border-t border-gray-700 bg-[#1a2230] shadow-[0_-10px_30px_rgba(0,0,0,0.4)] z-50 sticky bottom-0">
                     <div className="flex gap-4">
                         <button type="button" onClick={onClose} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2.5 px-8 rounded-xl transition-all duration-200 active:scale-95">إلغاء</button>
-                        <button type="button" onClick={handleSubmit} className="bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black font-extrabold py-2.5 px-10 rounded-xl hover:shadow-[0_0_20px_var(--shadow-color)] transition-all duration-200 transform active:scale-95">{isNewContent ? 'إضافة المحتوى' : 'حفظ التغييرات'}</button>
+                        <button type="submit" onClick={handleSubmit} className="bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black font-bold py-2.5 px-10 rounded-xl hover:shadow-[0_0_20px_rgba(0,167,248,0.4)] transition-all transform hover:scale-105 active:scale-95">حفظ</button>
                     </div>
                 </div>
+
+                {galleryState.isOpen && (
+                    <ImageGalleryModal 
+                        isOpen={galleryState.isOpen} 
+                        onClose={() => setGalleryState(prev => ({ ...prev, isOpen: false }))} 
+                        tmdbId={formData.tmdbId || formData.id} 
+                        type={formData.type} 
+                        targetField={galleryState.imageType} 
+                        onSelect={(url) => {
+                             galleryState.onSelect(url);
+                        }} 
+                    />
+                )}
+
+                {editingServersForEpisode && (
+                    <ServerManagementModal 
+                        episode={editingServersForEpisode} 
+                        onClose={() => setEditingServersForEpisode(null)} 
+                        onSave={handleUpdateEpisodeServers}
+                        onOpenSearch={() => setIsUqloadModalOpen(true)}
+                    />
+                )}
+
+                {isManagingMovieServers && (
+                    <ServerManagementModal 
+                        episode={{id: 0, title: 'الفيلم', progress: 0, servers: formData.servers || []}} 
+                        onClose={() => setIsManagingMovieServers(false)} 
+                        onSave={handleUpdateMovieServers}
+                        onOpenSearch={() => setIsUqloadModalOpen(true)}
+                    />
+                )}
+
+                <DeleteConfirmationModal 
+                    isOpen={deleteSeasonState.isOpen} 
+                    onClose={() => setDeleteSeasonState({ isOpen: false, seasonId: null, title: '' })} 
+                    onConfirm={executeDeleteSeason} 
+                    title="حذف الموسم" 
+                    message={`هل أنت متأكد من حذف ${deleteSeasonState.title}؟`} 
+                />
+
+                <DeleteConfirmationModal 
+                    isOpen={deleteEpisodeState.isOpen} 
+                    onClose={() => setDeleteEpisodeState({ isOpen: false, seasonId: null, episodeId: null, title: '' })} 
+                    onConfirm={executeDeleteEpisode} 
+                    title="حذف الحلقة" 
+                    message={`هل أنت متأكد من حذف ${deleteEpisodeState.title}؟`} 
+                />
+
+                {isUqloadModalOpen && (
+                    <UqloadSearchModal 
+                        isOpen={isUqloadModalOpen} 
+                        onClose={() => setIsUqloadModalOpen(false)} 
+                        onSelect={(res) => {
+                            if (editingServersForEpisode) {
+                                const newServer: Server = { id: Date.now(), name: 'Uqload', url: res.embedUrl, downloadUrl: res.downloadUrl, isActive: true };
+                                handleUpdateEpisodeServers([...(editingServersForEpisode.servers || []), newServer]);
+                            } else if (isManagingMovieServers) {
+                                const newServer: Server = { id: Date.now(), name: 'Uqload', url: res.embedUrl, downloadUrl: res.downloadUrl, isActive: true };
+                                handleUpdateMovieServers([...(formData.servers || []), newServer]);
+                            }
+                        }} 
+                    />
+                )}
             </div>
-
-            {editingServersForEpisode && <ServerManagementModal episode={editingServersForEpisode} onClose={() => setEditingServersForEpisode(null)} onSave={handleUpdateEpisodeServers} onOpenSearch={() => setIsUqloadModalOpen(true)} />}
-            {isManagingMovieServers && isStandalone && <ServerManagementModal episode={{ id: 0, title: formData.title, progress: 0, servers: formData.servers || [] } as any} onClose={() => setIsManagingMovieServers(false)} onSave={handleUpdateMovieServers} onOpenSearch={() => setIsUqloadModalOpen(true)} />}
-            <DeleteConfirmationModal isOpen={deleteSeasonState.isOpen} onClose={() => setDeleteSeasonState(prev => ({...prev, isOpen: false}))} onConfirm={executeDeleteSeason} title="حذف الموسم" message={`هل أنت متأكد من حذف ${deleteSeasonState.title}؟ سيتم حذف جميع الحلقات داخله.`} />
-            <DeleteConfirmationModal isOpen={deleteEpisodeState.isOpen} onClose={() => setDeleteEpisodeState(prev => ({...prev, isOpen: false}))} onConfirm={executeDeleteEpisode} title="حذف الحلقة" message={`هل أنت متأكد من حذف ${deleteEpisodeState.title}؟`} />
-
-            <UqloadSearchModal 
-                isOpen={isUqloadModalOpen} 
-                onClose={() => setIsUqloadModalOpen(false)} 
-                onSelect={(res) => {
-                    if (editingServersForEpisode) {
-                        const newServers = [...(editingServersForEpisode.servers || []), { id: Date.now(), name: 'Uqload', url: res.embedUrl, downloadUrl: res.downloadUrl, isActive: true }];
-                        handleUpdateEpisodeServers(newServers);
-                    } else if (isManagingMovieServers) {
-                        const newServers = [...(formData.servers || []), { id: Date.now(), name: 'Uqload', url: res.embedUrl, downloadUrl: res.downloadUrl, isActive: true }];
-                        handleUpdateMovieServers(newServers);
-                    }
-                }} 
-            />
         </div>
     );
 };

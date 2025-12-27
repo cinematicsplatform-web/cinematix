@@ -205,7 +205,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 
                 {renderTabContent()}
             </div>
-             {isContentModalOpen && <ContentEditModal content={editingContent} onClose={() => setIsContentModalOpen(false)} onSave={handleSaveContent} />}
+             {isContentModalOpen && <ContentEditModal content={editingContent} onClose={() => setIsContentModalOpen(false)} onSave={handleSaveContent} addToast={props.addToast} />}
              {isAdModalOpen && <AdEditModal ad={editingAd} onClose={() => setIsAdModalOpen(false)} onSave={handleSaveAd} />}
              <DeleteConfirmationModal isOpen={deleteModalState.isOpen} onClose={() => setDeleteModalState(prev => ({ ...prev, isOpen: false }))} onConfirm={executeDelete} title={deleteModalState.type === 'content' ? 'حذف المحتوى' : deleteModalState.type === 'user' ? 'حذف المستخدم' : deleteModalState.type === 'ad' ? 'حذف الإعلان' : deleteModalState.type === 'story' ? 'حذف الستوري' : deleteModalState.type === 'broadcast' ? 'سحب الإشعار' : 'حذف'} message={`هل أنت متأكد من حذف "${deleteModalState.title}"؟ لا يمكن التراجع عن هذا الإجراء.`} />
         </div>

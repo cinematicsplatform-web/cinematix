@@ -1,4 +1,3 @@
-
 export const ContentType = {
   Movie: 'movie',
   Series: 'series',
@@ -81,6 +80,7 @@ export interface Season {
 
 export interface Content {
   id: string;
+  tmdbId?: string; // FIX: Added missing tmdbId property
   title: string;
   description: string;
   type: ContentType;
@@ -95,6 +95,8 @@ export interface Content {
   genres: Genre[];
   releaseYear: number;
   cast: string[];
+  director?: string; // FIX: Sync with root types
+  writer?: string;   // FIX: Sync with root types
   bannerNote?: string;
   seasons?: Season[];
   servers?: Server[]; // For movies
