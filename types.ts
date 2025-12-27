@@ -84,6 +84,7 @@ export interface Season {
 
 export interface Content {
   id: string;
+  tmdbId?: string; // FIX: Added missing tmdbId property
   title: string;
   description: string;
   type: ContentType;

@@ -202,6 +202,7 @@ const App: React.FC = () => {
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
+    // FIX: Corrected line 205 to call the state setter setToasts instead of the state variable toasts.
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   }, []);
 
@@ -360,10 +361,10 @@ const App: React.FC = () => {
       
       let active = siteSettings.activeTheme;
       
-      // If content is Ramadan, force Ramadan theme on detail and watch pages
-      if ((view === 'detail' || view === 'watch') && selectedContent?.categories?.includes('رمضان')) {
-          active = 'ramadan';
-      }
+      // Removed force Ramadan theme override on detail and watch pages
+      // if ((view === 'detail' || view === 'watch') && selectedContent?.categories?.includes('رمضان')) {
+      //    active = 'ramadan';
+      // }
 
       if (active === 'ramadan') document.body.classList.add('theme-ramadan');
       else if (active === 'ios') document.body.classList.add('theme-ios');
@@ -476,7 +477,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleSetView = (newView: View, category?: string, params?: any) => {
-      if (view !== 'detail' && view !== 'watch' && view !== 'login' && view !== 'register' && view !== 'personProfile') {
+      if (view !== 'detail' && view !== 'watch' && view !== 'login' && view !== 'register' && view !== 'personProfile' && view !== 'search') {
           scrollPositions.current[view] = window.scrollY;
       }
       
@@ -681,8 +682,8 @@ const App: React.FC = () => {
       const isMaintenance = siteSettings.is_maintenance_mode_enabled;
       
       const isRamadanGlobal = siteSettings.activeTheme === 'ramadan';
-      const isContentRamadan = selectedContent?.categories?.includes('رمضان');
-      const isRamadanTheme = isRamadanGlobal || ((view === 'detail' || view === 'watch') && isContentRamadan);
+      // const isContentRamadan = selectedContent?.categories?.includes('رمضان');
+      const isRamadanTheme = isRamadanGlobal;
 
       const isEidTheme = siteSettings.activeTheme === 'eid';
       const isCosmicTealTheme = siteSettings.activeTheme === 'cosmic-teal';
@@ -789,12 +790,12 @@ const App: React.FC = () => {
            case 'privacy': return <PrivacyPolicyPage content={siteSettings.privacyPolicy} onSetView={handleSetView} />;
            case 'copyright': return <CopyrightPage content={siteSettings.copyrightPolicy} onSetView={handleSetView} />;
            case 'about': return <AboutPage onSetView={handleSetView} />;
-           case 'search': return <SearchPage allContent={allContent} onSelectContent={handleSelectContent} onSetView={handleSetView} onClose={() => setIsSearchOpen(false)} />;
+           case 'search': return <SearchPage allContent={allContent} onSelectContent={handleSelectContent} onSetView={handleSetView} />;
           default: return <HomePage allContent={allContent} pinnedContent={[]} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} activeProfile={activeProfile} isLoading={isContentLoading} />;
       }
   };
 
-  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'search', 'welcome', 'notifications', 'appDownload', 'people', 'personProfile'];
+  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'welcome', 'notifications', 'appDownload', 'people', 'personProfile'];
   const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
   const showGlobalFooter = !fullScreenViews.includes(view) && !siteSettings.is_maintenance_mode_enabled;
   const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view);
@@ -814,16 +815,13 @@ const App: React.FC = () => {
         </div>
         {siteSettings.adsEnabled && <AdZone position="global_head" />}
         {view !== 'login' && view !== 'register' && view !== 'onboarding' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && view !== 'welcome' && view !== 'notifications' && view !== 'appDownload' && view !== 'people' && view !== 'personProfile' && !siteSettings.is_maintenance_mode_enabled && (
-            // FIX: Removed logically impossible 'watch' comparison from Header isRamadanTheme prop.
-            <Header onSetView={handleSetView} currentUser={currentUser} activeProfile={activeProfile} onLogout={handleLogout} allContent={allContent} onSelectContent={handleSelectContent} currentView={view} isRamadanTheme={siteSettings.activeTheme === 'ramadan' || (view === 'detail' && selectedContent?.categories?.includes('رمضان'))} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} returnView={returnView} isKidProfile={activeProfile?.isKid} onOpenSearch={() => setIsSearchOpen(true)} unreadNotificationsCount={unreadNotificationsCount} />
+            <Header onSetView={handleSetView} currentUser={currentUser} activeProfile={activeProfile} onLogout={handleLogout} allContent={allContent} onSelectContent={handleSelectContent} currentView={view} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} returnView={returnView} isKidProfile={activeProfile?.isKid} onOpenSearch={() => handleSetView('search')} unreadNotificationsCount={unreadNotificationsCount} />
         )}
         <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className={socialBarClass} />
         <AdPlacement ads={ads} placement="global-sticky-footer" isEnabled={siteSettings.adsEnabled} className={bottomAdClass} />
         {renderView()}
-        {isSearchOpen && <SearchPage allContent={allContent} onSelectContent={handleSelectContent} onSetView={handleSetView} onClose={() => setIsSearchOpen(false)} />}
         {showGlobalFooter && (
             <>
-                {/* FIX: Simplified theme logic for Footer and BottomNav since they are never shown on 'detail' or 'watch' views. */}
                 <Footer socialLinks={siteSettings.socialLinks} onSetView={handleSetView} isRamadanFooter={siteSettings.activeTheme === 'ramadan'} onRequestOpen={() => setIsRequestModalOpen(false)} className={footerClass} />
                 {showBottomNav && ( <> <BottomNavigation currentView={view} onSetView={handleSetView} activeProfile={activeProfile} isLoggedIn={!!currentUser} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} /> <PWAInstallPrompt /> </> )}
             </>
