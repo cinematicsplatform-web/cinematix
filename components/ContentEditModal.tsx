@@ -59,7 +59,7 @@ const RefreshIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 0-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
   </svg>
 );
 
@@ -83,6 +83,14 @@ const getRowValue = (row: any, ...candidates: string[]) => {
     }
     return null;
 };
+
+// --- CONSTANTS ---
+// قائمة التصنيفات المخفية (لأغراض البحث)
+const SEARCH_CATEGORIES = [
+    'مصري', 'عربي', 'تركي', 'أجنبي', 'برامج',
+    'رومانسي', 'عائلي', 'كوميديا', 'دراما', 'أكشن',
+    'جريمة', 'خيال علمي', 'رعب', 'تركي مدبلج', 'مسرح', 'قريباً'
+];
 
 // --- COMPONENT: Mobile Simulator ---
 interface MobileSimulatorProps {
@@ -892,8 +900,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     const mappedEpisodes: Episode[] = sData.episodes?.map((ep: any) => {
                          let epDuration = '';
                          if (ep.runtime) {
-                              if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
-                              else epDuration = `${ep.runtime}:00`;
+                             if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
+                             else epDuration = `${ep.runtime}:00`;
                          }
                          
                          const fixedTitle = `الحلقة ${ep.episode_number}`;
@@ -1171,7 +1179,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 title: getRowValue(row, 'العنوان', 'Title') || `الحلقة ${eNum}`,
                                 duration: getRowValue(row, 'المدة', 'Duration') || '45:00',
                                 thumbnail: getRowValue(row, 'صورة', 'Thumbnail') || s.backdrop || prev.backdrop,
-                                description: getRowValue(row, 'الوصف', 'Description') || `شاهد أحداث الحلقة ${eNum} من الموسم ${seasonNumber}.`,
+                                // FIX: Changed undefined sNum to function parameter seasonNumber
+                                description: getRowValue(row, 'الوصف', 'Description') || `حلقة من الموسم ${seasonNumber}`,
                                 progress: 0,
                                 servers: epServers
                             };
@@ -1517,7 +1526,51 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             </div>
                         </div>
 
-                        <div className={sectionBoxClass}><h3 className="text-lg font-bold text-[var(--color-primary-to)] mb-4 flex items-center gap-2"><span>🏷️</span> التصنيفات والأنواع</h3><div className="mb-6"><label className="text-xs text-gray-400 font-bold mb-3 block uppercase tracking-wider">القوائم الرئيسية</label><div className="flex flex-wrap gap-3">{filteredCategories.map((cat: Category) => (<button key={cat} type="button" onClick={() => handleCategoryChange(cat)} className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300 border ${formData.categories.includes(cat) ? 'bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black border-transparent shadow-[0_0_15px_var(--shadow-color)] scale-105' : `${INPUT_BG} border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white`}`}>{cat}{formData.categories.includes(cat) && <div className="bg-black/20 rounded-full p-0.5"><CheckSmallIcon /></div>}</button>))}</div></div><div><label className="text-xs text-gray-400 font-bold mb-3 block uppercase tracking-wider">النوع الفني</label><div className="flex flex-wrap gap-2">{genres.map((g: Genre) => (<button key={g} type="button" onClick={() => handleGenreChange(g)} className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-300 border ${formData.genres.includes(g) ? 'bg-white text-black border-white shadow-[0_0_10px_rgba(255,255,255,0.4)] scale-105' : `${INPUT_BG} border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white`}`}>{g}{formData.genres.includes(g) && <CheckSmallIcon />}</button>))}</div></div><div className="mt-6 pt-6 border-t border-gray-700"><label className={labelClass}>نص شارة مميز</label><input type="text" name="bannerNote" value={formData.bannerNote || ''} onChange={handleChange} className={inputClass} placeholder="مثال: الأكثر مشاهدة، جديد رمضان" /></div></div>
+                        <div className={sectionBoxClass}>
+                            <h3 className="text-lg font-bold text-[var(--color-primary-to)] mb-4 flex items-center gap-2"><span>🏷️</span> التصنيفات والأنواع</h3>
+                            
+                            <div className="mb-6">
+                                <label className="text-xs text-gray-400 font-bold mb-3 block uppercase tracking-wider">القوائم الرئيسية</label>
+                                <div className="flex flex-wrap gap-3">
+                                    {filteredCategories.map((cat: Category) => (
+                                        <button key={cat} type="button" onClick={() => handleCategoryChange(cat)} className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300 border ${formData.categories.includes(cat) ? 'bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black border-transparent shadow-[0_0_15px_var(--shadow-color)] scale-105' : `${INPUT_BG} border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white`}`}>
+                                            {cat}
+                                            {formData.categories.includes(cat) && <div className="bg-black/20 rounded-full p-0.5"><CheckSmallIcon /></div>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* --- NEW SECTION: HIDDEN SEARCH CATEGORIES --- */}
+                            <div className="mb-6">
+                                <label className="text-xs text-gray-400 font-bold mb-3 block uppercase tracking-wider">تصنيفات البحث (مخفية)</label>
+                                <div className="flex flex-wrap gap-3">
+                                    {SEARCH_CATEGORIES.map((cat) => (
+                                        <button key={cat} type="button" onClick={() => handleCategoryChange(cat as Category)} className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300 border ${formData.categories.includes(cat as Category) ? 'bg-purple-900/50 text-purple-200 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.3)] scale-105' : `${INPUT_BG} border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white`}`}>
+                                            {cat}
+                                            {formData.categories.includes(cat as Category) && <div className="bg-purple-500/20 rounded-full p-0.5"><CheckSmallIcon /></div>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-gray-400 font-bold mb-3 block uppercase tracking-wider">النوع الفني</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {genres.map((g: Genre) => (
+                                        <button key={g} type="button" onClick={() => handleGenreChange(g)} className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-300 border ${formData.genres.includes(g) ? 'bg-white text-black border-white shadow-[0_0_10px_rgba(255,255,255,0.4)] scale-105' : `${INPUT_BG} border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white`}`}>
+                                            {g}
+                                            {formData.genres.includes(g) && <CheckSmallIcon />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            <div className="mt-6 pt-6 border-t border-gray-700">
+                                <label className={labelClass}>نص شارة مميز</label>
+                                <input type="text" name="bannerNote" value={formData.bannerNote || ''} onChange={handleChange} className={inputClass} placeholder="مثال: الأكثر مشاهدة، جديد رمضان" />
+                            </div>
+                        </div>
 
                         <div className={sectionBoxClass}>
                             <h3 className="text-lg font-bold text-[var(--color-primary-to)] mb-6 border-b border-gray-700 pb-4 flex items-center gap-2">

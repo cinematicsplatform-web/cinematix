@@ -57,7 +57,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
         c.writer === personName
       );
     }
-    // --- Existing Filtering Logic ---
+    // --- Special Static Keys ---
     else if (categoryTitle === 'top-rated-content') {
         title = 'الأعلى تقييماً';
         content = content.sort((a, b) => b.rating - a.rating);
@@ -115,18 +115,23 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
     else {
-        // Updated: Logic to check both Categories and Genres
+        // --- Smart Broad Filtering (Matches Search Behavior) ---
+        const lowerTerm = categoryTitle.toLowerCase();
         content = content
             .filter(c => 
                 c.categories.includes(categoryTitle as Category) || 
-                (c.genres && (c.genres as string[]).includes(categoryTitle))
+                (c.genres && (c.genres as string[]).includes(categoryTitle)) ||
+                c.title.toLowerCase().includes(lowerTerm) ||
+                (c.cast && c.cast.some(actor => actor.toLowerCase().includes(lowerTerm))) ||
+                (c.director && c.director.toLowerCase().includes(lowerTerm))
             )
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
-    // --- Search Filtering ---
+    // --- Internal Page Search Filtering ---
     if (searchQuery.trim()) {
-        content = content.filter(c => c.title.toLowerCase().includes(searchQuery.trim().toLowerCase()));
+        const lowerQuery = searchQuery.trim().toLowerCase();
+        content = content.filter(c => c.title.toLowerCase().includes(lowerQuery));
     }
 
     return { displayTitle: title, filteredContent: content, showRank: isRanked };
@@ -169,7 +174,6 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
       {/* Sticky Header Section */}
       <div className="sticky top-0 z-50 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 pb-4 pt-6 px-4 md:px-8 shadow-lg w-full">
           
-          {/* UPDATED: Fluid Container (Full Width) */}
           <div className="w-full flex flex-col gap-6">
               
               {/* 1. Search Bar (Top) */}
@@ -203,7 +207,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                     </h1>
 
                     <button 
-                        onClick={() => onSetView('home')}
+                        onClick={() => onSetView('search')}
                         className={`group flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-300 hover:border-transparent hover:text-black hover:scale-105 active:scale-95 shadow-md
                             ${isRamadanTheme 
                                 ? 'hover:bg-[#FFD700]' 
@@ -219,13 +223,13 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                         <span className="transform rotate-180 transition-transform duration-300 group-hover:-translate-x-1">
                             <ChevronRightIcon className="w-4 h-4 md:w-5 md:h-5" />
                         </span>
-                        <span className="font-bold text-xs md:text-sm">الرجوع</span>
+                        <span className="font-bold text-xs md:text-sm">الرجوع للبحث</span>
                     </button>
               </div>
           </div>
       </div>
 
-      {/* Main Layout - UPDATED: Fluid Container (Full Width 100%) */}
+      {/* Main Layout */}
       <div className="w-full max-w-none px-4 md:px-8 pt-6 pb-24 flex flex-col lg:flex-row gap-6">
         
         <div className="flex-1 w-full">
@@ -288,7 +292,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
             <AdPlacement ads={ads} placement="listing-bottom" isEnabled={adsEnabled} />
         </div>
 
-        {/* Sidebar (Desktop Only) - Render ONLY if Ads Enabled AND Sidebar Ads Exist */}
+        {/* Sidebar (Desktop Only) */}
         {hasSidebarAd && (
             <div className="hidden lg:block w-[300px] flex-shrink-0 sticky top-48 h-fit">
                 <AdPlacement ads={ads} placement="listing-sidebar" isEnabled={adsEnabled} />
