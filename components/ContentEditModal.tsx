@@ -230,7 +230,7 @@ const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ isOpen, onClose, 
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <span>🖼️</span> معرض الصور 
                         <span className="text-xs bg-blue-600 px-2 py-1 rounded text-white mx-2">
-                            {activeTab === 'posters' ? 'بوسترات' : scholarships === 'logos' ? 'شعارات' : 'خلفيات'}
+                            {activeTab === 'posters' ? 'بوسترات' : activeTab === 'logos' ? 'شعارات' : 'خلفيات'}
                         </span>
                     </h3>
                     <div className="flex gap-3 items-center">
