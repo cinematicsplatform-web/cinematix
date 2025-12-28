@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { createPortal } from 'react-dom';
@@ -194,7 +193,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   }, []);
 
   const accentColor = isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-500' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]';
-  const bgAccent = isRamadanTheme ? 'bg-amber-500' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]';
+  const bgAccent = isRamadanTheme ? 'bg-amber-500' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'bg-[#00A7F8]';
   const borderAccent = isRamadanTheme ? 'border-amber-500/30' : isEidTheme ? 'border-purple-500/30' : isCosmicTealTheme ? 'border-[#35F18B]/30' : isNetflixRedTheme ? 'border-[#E50914]/30' : 'border-[#00A7F8]/30';
 
   const seoData = useMemo(() => {
@@ -437,14 +436,14 @@ const DetailPage: React.FC<DetailPageProps> = ({
         url={canonicalPath}
       />
 
-      <div ref={heroRef} className="relative h-[80vh] w-full group z-[45]">
+      <div ref={heroRef} className="relative h-[80vh] md:h-[90vh] w-full group z-[45]">
         <div className="absolute inset-0 bg-black overflow-hidden">
             {isLoaded ? (
                 <img 
                     key={displayBackdrop} 
                     src={displayBackdrop} 
                     alt={content.title} 
-                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}
+                    className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}
                 />
             ) : (
                 <div className="absolute inset-0 bg-[#161b22] skeleton-shimmer"></div>
