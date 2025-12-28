@@ -1,22 +1,23 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import type { Content, Ad, Episode, Server, AdPlacement, Season, View, Person } from '@/types';
-import { ContentType } from '@/types';
-import VideoPlayer from '@/components/VideoPlayer';
-import ContentCarousel from '@/components/ContentCarousel';
-import ActionButtons from '@/components/ActionButtons';
-import SEO from '@/components/SEO';
-import ReportModal from '@/components/ReportModal';
+import { createPortal } from 'react-dom';
+import type { Content, Ad, Episode, Server, AdPlacement, Season, View, Person } from '../types';
+import { ContentType } from '../types';
+import VideoPlayer from './VideoPlayer';
+import ContentCarousel from './ContentCarousel';
+import ActionButtons from './ActionButtons';
+import SEO from './SEO';
+import ReportModal from './ReportModal';
 
 // Icons
-import { StarIcon } from '@/components/icons/StarIcon';
-import { ClockIcon } from '@/components/icons/ClockIcon';
-import { SpeakerIcon } from '@/components/icons/SpeakerIcon';
-import { ExpandIcon } from '@/components/icons/ExpandIcon';
-import { CheckIcon } from '@/components/CheckIcon';
-import { ChevronDownIcon } from '@/components/icons/ChevronDownIcon';
-import { DownloadIcon } from '@/components/icons/DownloadIcon';
+import { StarIcon } from './icons/StarIcon';
+import { ClockIcon } from './icons/ClockIcon';
+import { SpeakerIcon } from './icons/SpeakerIcon';
+import { ExpandIcon } from './icons/ExpandIcon';
+import { CheckIcon } from './CheckIcon';
+import { ChevronDownIcon } from './icons/ChevronDownIcon';
+import { DownloadIcon } from './icons/DownloadIcon';
 
 interface DetailPageProps {
   content: Content;
@@ -74,7 +75,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const seriesSlug = content?.slug || content?.id;
   const isSoon = content?.categories?.includes('قريباً');
 
-  // البرنامج والمسلسل هما فقط من يعاملان بنظام الحلقات
   const isEpisodic = content?.type === ContentType.Series || content?.type === ContentType.Program;
 
   const [activeTab, setActiveTab] = useState<'episodes' | 'trailer' | 'details' | 'related'>(isSoon ? 'details' : 'episodes');
@@ -95,6 +95,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [videoEnded, setVideoEnded] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isDownloadErrorOpen, setIsDownloadErrorOpen] = useState(false);
   const [isInView, setIsInView] = useState(true);
    
   const heroRef = useRef<HTMLDivElement>(null);
@@ -339,16 +340,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
       }
   };
 
-  const handleReload = () => {
-      setPlayerKey(prev => prev + 1);
-  };
-
   const handleDownload = () => {
-      if (selectedServer?.downloadUrl) {
-          window.open(selectedServer.downloadUrl, '_blank');
-      } else {
-          alert('رابط التحميل غير متوفر لهذا الفيلم حالياً.');
-      }
+      // NEW: Instead of directly downloading, open the new download page
+      onSetView('download', undefined, { content: content });
   };
 
   const similarContent = useMemo(() => {
@@ -429,7 +423,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0 relative overflow-x-hidden w-full">
-      <Helmet>
+      < Helmet>
         <script type="application/ld+json">{structuredData}</script>
       </Helmet>
       <SEO 
@@ -709,7 +703,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                       </div>
                   ) : (
                       <div className="max-w-6xl mx-auto w-full py-8 text-center">
-                           {/* Server Selection for Movies - ENLARGED BUTTONS */}
                            <div className="w-full mb-8">
                                 <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-3">
                                     <span className="text-sm text-gray-400 font-black ml-2 whitespace-nowrap">سيرفرات المشاهدة:</span>
@@ -727,7 +720,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 <VideoPlayer key={playerKey} tmdbId={content.id} type={content.type} manualSrc={selectedServer?.url} poster={content.backdrop} />
                            </div>
 
-                           {/* --- ACTIONS AREA: DOWNLOAD (CENTERED) & REPORT (LEFT) --- */}
                            <div className="mt-6 relative flex flex-col items-center gap-2 animate-fade-in-up">
                                 <div className="flex justify-center w-full">
                                     <button 
@@ -793,7 +785,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
               <div className="px-4 md:px-8 py-8 animate-fade-in-up w-full">
                   <div className="w-full flex flex-col gap-12">
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
-                          {/* اليمين: القصة والتصنيفات */}
                           <div className="md:col-span-8 space-y-10 order-1">
                               {isLoaded ? (
                                   <>
@@ -833,7 +824,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                               )}
                           </div>
 
-                          {/* اليسار: جدول المعلومات */}
                           <div className="md:col-span-4 order-2 md:mt-2">
                               {isLoaded ? (
                                   <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden shadow-xl w-full">
@@ -883,7 +873,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                           </div>
                       </div>
 
-                      {/* طاقم العمل */}
                       <div className="border-t border-white/5 pt-12">
                           {content.cast && content.cast.length > 0 && <PeopleGrid title="طاقم التمثيل" names={content.cast} />}
 
@@ -911,6 +900,30 @@ const DetailPage: React.FC<DetailPageProps> = ({
       </div>
 
       <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} contentId={content?.id} contentTitle={content?.title} />
+
+      {isDownloadErrorOpen && createPortal(
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setIsDownloadErrorOpen(false)}>
+              <div className="bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                  <div className="p-6 text-center">
+                      <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20 shadow-inner">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                          </svg>
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2">عذراً، الرابط غير متوفر</h3>
+                      <p className="text-gray-400 text-sm mb-6 leading-relaxed">رابط التحميل غير متوفر لهذا السيرفر حالياً، يرجى تجربة سيرفر آخر.</p>
+                      <button 
+                          onClick={() => setIsDownloadErrorOpen(false)}
+                          className={`w-full py-3 rounded-xl font-bold text-white transition-all transform active:scale-95 shadow-lg
+                              ${isNetflixRedTheme ? 'bg-[#E50914] hover:bg-[#b20710]' : isCosmicTealTheme ? 'bg-[#35F18B] hover:bg-[#2596be] !text-black' : 'bg-[#00A7F8] hover:bg-[#008ecf]'}`}
+                      >
+                          حسنًا، فهمت
+                      </button>
+                  </div>
+              </div>
+          </div>,
+          document.body
+      )}
     </div>
   );
 };

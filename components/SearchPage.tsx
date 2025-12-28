@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { Content, View } from '@/types';
-import { ContentType } from '@/types';
+import type { Content, View } from '../types';
+import { ContentType } from '../types';
 import { SearchIcon } from './icons/SearchIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { PlayIcon } from './icons/PlayIcon';
@@ -18,7 +19,9 @@ const DISCOVER_CATEGORIES = [
     { name: 'عربي', image: 'https://shahid.mbc.net/mediaObject/Curation_2024/Explore/Items/Arabic_AR/original/Arabic_AR.png' },
     { name: 'تركي', image: 'https://shahid.mbc.net/mediaObject/Curation_2024/Explore/Items/TURKISH_AR/original/TURKISH_AR.png' },
     { name: 'أجنبي', image: 'https://shahid.mbc.net/mediaObject/Curation_2024/Explore/Items/Western_AR/original/Western_AR.png' },
-    { name: 'برامج', image: 'https://shahid.mbc.net/mediaObject/6c144cf5-b749-4949-80d4-e0a526e934e2?width=150&version=1&type=avif&q=80' },
+    { name: 'برامج', image: 'https://shahid.mbc.net/mediaObject/6c144cf5-b749-4949-80d4-e0a526e934e2?width=150&version=1&type=avif&q=80', view: 'programs' },
+    { name: 'رمضان', image: 'https://i.suar.me/Pzmwp/l', view: 'ramadan' },
+    { name: 'أطفال', image: 'https://i.suar.me/5L97M/l', view: 'kids' },
     { name: 'رومانسي', image: 'https://shahid.mbc.net/mediaObject/8863e770-c5b3-4f39-9feb-458f28fe016e?width=150&version=1&type=avif&q=80' },
     { name: 'عائلي', image: 'https://shahid.mbc.net/mediaObject/45b5f1b0-0ea8-490c-9f1e-109a595980d7?width=150&version=1&type=avif&q=80' },
     { name: 'كوميديا', image: 'https://shahid.mbc.net/mediaObject/Curation_2024/Explore/Items/Comedy_AR/original/Comedy_AR.png' },
@@ -83,7 +86,7 @@ const SearchResultCard: React.FC<{ content: any; onClick: () => void }> = ({ con
             <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 flex flex-col items-start justify-end bg-gradient-to-t from-[#151922] via-[#151922]/80 to-transparent pt-12">
                 <div className="mb-2">
                     {content.isLogoEnabled && content.logoUrl ? (
-                        <img src={content.logoUrl} alt={content.title} className="h-8 md:h-12 object-contain drop-shadow-md" />
+                        <img src={content.logoUrl} alt={content.logoUrl} className="h-8 md:h-12 object-contain drop-shadow-md" />
                     ) : (
                         <h3 className="text-white font-bold text-base md:text-lg leading-tight drop-shadow-md line-clamp-1">{displayTitleText}</h3>
                     )}
@@ -170,8 +173,9 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
                 <div className="bg-[#151922] border-b border-gray-800 shadow-xl z-20">
                     <div className="max-w-[1920px] mx-auto px-4 md:px-8 h-20 flex flex-row items-center gap-6" dir="rtl">
                         
-                        <div className="flex-1 relative flex flex-row items-center bg-[#0f1014] border border-gray-700 rounded-full px-4 h-12 focus-within:border-[#00A7F8] focus-within:ring-1 focus-within:ring-[#00A7F8] transition-all">
-                            <SearchIcon className="w-5 h-5 text-gray-400" />
+                        {/* THEMED SEARCH CONTAINER */}
+                        <div className="flex-1 relative flex flex-row items-center bg-[#0f1014] border border-gray-700 rounded-full px-4 h-12 focus-within:border-[var(--color-accent)] focus-within:ring-1 focus-within:ring-[var(--color-accent)] focus-within:shadow-[0_0_15px_var(--shadow-color)] transition-all">
+                            <SearchIcon className="w-5 h-5 theme-accent-text" />
                             
                             <input 
                                 ref={inputRef}
@@ -191,7 +195,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
 
                         <button 
                             onClick={() => onSetView('home')} 
-                            className="hidden md:block text-gray-400 hover:text-white font-bold transition-colors text-lg whitespace-nowrap"
+                            className="hidden md:block text-gray-400 hover:theme-accent-text font-bold transition-colors text-lg whitespace-nowrap"
                         >
                             إلغاء
                         </button>
@@ -201,7 +205,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
                         <div className="w-full border-t border-gray-800 bg-[#12151c]">
                             <div className="max-w-[1920px] mx-auto px-4 md:px-8 py-2 flex items-center justify-start overflow-x-auto rtl-scroll gap-2">
                                 {relatedTags.map((tag, index) => (
-                                    <button key={index} onClick={() => handleTagClick(tag)} className="px-3 py-1 rounded-full bg-[#1f2937] hover:bg-[#00A7F8] text-gray-400 hover:text-white text-xs whitespace-nowrap border border-gray-700 hover:border-[#00A7F8] transition-colors">{tag}</button>
+                                    <button key={index} onClick={() => handleTagClick(tag)} className="px-3 py-1 rounded-full bg-[#1f2937] hover:theme-accent-bg hover:text-black text-gray-400 text-xs whitespace-nowrap border border-gray-700 hover:theme-accent-border transition-colors">{tag}</button>
                                 ))}
                             </div>
                         </div>
@@ -213,14 +217,14 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
                     {query.trim() === '' ? (
                         <div className="max-w-[1920px] mx-auto px-4 md:px-8 pt-8 pb-12">
                             <h2 className="text-white text-xl md:text-2xl font-bold mb-6 flex items-center gap-2">
-                                <span className="bg-[#00A7F8] w-1 h-6 rounded-full inline-block"></span>
+                                <span className="theme-accent-bg w-1 h-6 rounded-full inline-block"></span>
                                 اكتشف المزيد
                             </h2>
                             <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-9 gap-1.5 md:gap-2">
                                 {DISCOVER_CATEGORIES.map((category, index) => (
                                     <button 
                                         key={index} 
-                                        onClick={() => onSetView('category', category.name)}
+                                        onClick={() => (category as any).view ? onSetView((category as any).view as View) : onSetView('category', category.name)}
                                         className="relative group overflow-hidden rounded-xl aspect-square transition-all duration-300"
                                     >
                                         <img src={category.image} alt={category.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />

@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import type { Content, Category, View, Ad, Genre } from '../types';
 import { ContentType } from '../types';
@@ -76,7 +77,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
         title = 'أحدث الأفلام';
         content = content
             .filter(c => c.type === ContentType.Movie)
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            .sort((a, b) => b.createdAt ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : 0);
     }
     else if (categoryTitle === 'top-rated-series') {
         title = 'المسلسلات الأعلى تقييماً';
@@ -88,7 +89,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
         title = 'أحدث المسلسلات';
         content = content
             .filter(c => c.type === ContentType.Series)
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            .sort((a, b) => b.createdAt ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : 0);
     }
     else if (categoryTitle === 'top-rated-kids') {
         title = 'أفضل محتوى للأطفال';
@@ -100,7 +101,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
         title = 'جديد الأطفال';
         content = content
             .filter(c => c.categories.includes('افلام أنميشن') || c.visibility === 'kids')
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            .sort((a, b) => b.createdAt ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : 0);
     }
     else if (categoryTitle === 'top-rated-ramadan') {
         title = 'الأفضل في رمضان';
@@ -112,7 +113,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
         title = 'أحدث ما في رمضان';
         content = content
             .filter(c => c.categories.includes('رمضان'))
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            .sort((a, b) => b.createdAt ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : 0);
     }
     else {
         // --- Smart Broad Filtering (Matches Search Behavior) ---
@@ -125,7 +126,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                 (c.cast && c.cast.some(actor => actor.toLowerCase().includes(lowerTerm))) ||
                 (c.director && c.director.toLowerCase().includes(lowerTerm))
             )
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            .sort((a, b) => b.createdAt ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : 0);
     }
 
     // --- Internal Page Search Filtering ---
@@ -147,27 +148,6 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
       );
   }, [ads, adsEnabled]);
 
-  // Theme Colors for Accent
-  const accentColor = isRamadanTheme 
-        ? 'text-[#FFD700]' 
-        : isEidTheme 
-            ? 'text-purple-500' 
-            : isCosmicTealTheme
-                ? 'text-[#35F18B]'
-                : isNetflixRedTheme
-                    ? 'text-[#E50914]'
-                    : 'text-[#00A7F8]';
-
-  const ringColor = isRamadanTheme 
-        ? 'focus-within:ring-[#FFD700]' 
-        : isEidTheme 
-            ? 'focus-within:ring-purple-500' 
-            : isCosmicTealTheme
-                ? 'focus-within:ring-[#35F18B]'
-                : isNetflixRedTheme
-                    ? 'focus-within:ring-[#E50914]'
-                    : 'focus-within:ring-[#00A7F8]';
-
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white animate-fade-in-up">
       
@@ -176,9 +156,9 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
           
           <div className="w-full flex flex-col gap-6">
               
-              {/* 1. Search Bar (Top) */}
+              {/* THEMED SEARCH BAR */}
               <div className="w-full max-w-3xl mx-auto">
-                  <div className={`relative group flex items-center bg-black/40 border border-white/10 rounded-full px-4 py-3 transition-all duration-300 focus-within:bg-black/60 focus-within:shadow-[0_0_20px_rgba(0,0,0,0.3)] focus-within:border-transparent focus-within:ring-2 ${ringColor}`}>
+                  <div className={`relative group flex items-center bg-black/40 border border-white/10 rounded-full px-4 py-3 transition-all duration-300 focus-within:bg-black/60 focus-within:shadow-[0_0_20px_var(--shadow-color)] focus-within:border-[var(--color-accent)] focus-within:ring-2 focus-within:ring-[var(--color-accent)]`}>
                         <input 
                             type="text"
                             value={searchQuery}
@@ -186,7 +166,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                             placeholder={`ابحث في ${displayTitle}...`}
                             className="w-full bg-transparent outline-none text-white text-sm md:text-base placeholder-gray-500"
                         />
-                        <SearchIcon className={`w-5 h-5 ${accentColor}`} />
+                        <SearchIcon className="w-5 h-5 theme-accent-text" />
                   </div>
               </div>
 
@@ -208,7 +188,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
 
                     <button 
                         onClick={() => onSetView('search')}
-                        className={`group flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-300 hover:border-transparent hover:text-black hover:scale-105 active:scale-95 shadow-md
+                        className={`group flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-300 hover:theme-accent-border hover:text-black hover:scale-105 active:scale-95 shadow-md
                             ${isRamadanTheme 
                                 ? 'hover:bg-[#FFD700]' 
                                 : isEidTheme 

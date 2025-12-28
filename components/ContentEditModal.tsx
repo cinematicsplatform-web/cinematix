@@ -116,7 +116,7 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                             backgroundPosition: `${posX}% ${posY}%` 
                         }}
                     />
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gray-800 rounded-b-xl z-20"></div>
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-gray-800 rounded-b-xl z-20"></div>
                     <div className="absolute top-1 right-4 w-4 h-4 bg-gray-700 rounded-full opacity-50 z-20"></div>
                 </div>
                 <div className="text-center text-xs text-gray-500 mt-2 font-mono">Mobile Preview (9:16)</div>
@@ -230,7 +230,7 @@ const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ isOpen, onClose, 
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <span>🖼️</span> معرض الصور 
                         <span className="text-xs bg-blue-600 px-2 py-1 rounded text-white mx-2">
-                            {activeTab === 'posters' ? 'بوسترات' : activeTab === 'logos' ? 'شعارات' : 'خلفيات'}
+                            {activeTab === 'posters' ? 'بوسترات' : scholarships === 'logos' ? 'شعارات' : 'خلفيات'}
                         </span>
                     </h3>
                     <div className="flex gap-3 items-center">
@@ -302,11 +302,12 @@ interface ServerManagementModalProps {
     onOpenSearch: () => void;
 }
 
+// FIX: Only one declaration of ServerManagementModal allowed in the same scope.
 const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, onClose, onSave, onOpenSearch }) => {
     const [servers, setServers] = useState<Server[]>(() => {
         const existing = [...(episode.servers || [])];
-        while (existing.length < 4) {
-            existing.push({ id: Date.now() + existing.length, name: `سيرفر ${existing.length + 1}`, url: '', downloadUrl: '', isActive: false });
+        if (existing.length === 0) {
+            existing.push({ id: Date.now(), name: 'سيرفر 1', url: '', downloadUrl: '', isActive: true });
         }
         return existing;
     });
@@ -317,8 +318,27 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
         setServers(updatedServers);
     };
 
+    const handleAddServer = () => {
+        setServers([...servers, { 
+            id: Date.now() + servers.length, 
+            name: `سيرفر ${servers.length + 1}`, 
+            url: '', 
+            downloadUrl: '', 
+            isActive: true 
+        }]);
+    };
+
+    const handleRemoveServer = (index: number) => {
+        if (servers.length <= 1) {
+            handleServerChange(0, 'url', '');
+            handleServerChange(0, 'downloadUrl', '');
+            return;
+        }
+        setServers(servers.filter((_, i) => i !== index));
+    };
+
     const handleSaveServers = () => {
-        const serversToSave = servers.filter(s => s.url && s.url.trim() !== '');
+        const serversToSave = servers.filter(s => (s.url && s.url.trim() !== '') || (s.downloadUrl && s.downloadUrl.trim() !== ''));
         onSave(serversToSave);
         onClose();
     };
@@ -338,8 +358,16 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                 </div>
                 
                 <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                    {servers.slice(0, 4).map((server, index) => (
-                          <div key={index} className={`p-4 ${INPUT_BG} border border-gray-700 rounded-xl space-y-3`}>
+                    {servers.map((server, index) => (
+                          <div key={index} className={`p-4 ${INPUT_BG} border border-gray-700 rounded-xl space-y-3 relative group/s`}>
+                            <button 
+                                onClick={() => handleRemoveServer(index)}
+                                className="absolute -top-2 -left-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover/s:opacity-100 transition-opacity z-20"
+                                title="حذف السيرفر"
+                            >
+                                <CloseIcon className="w-3 h-3" />
+                            </button>
+
                             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                               <div className="flex items-center gap-3 w-full sm:w-auto">
                                   <span className="text-gray-500 text-xs font-mono w-6 text-center">{index + 1}</span>
@@ -355,23 +383,38 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                                 <span className={server.isActive ? "text-[var(--color-accent)] font-bold" : "text-gray-400"}>نشط</span>
                               </label>
                             </div>
-                            <input 
-                                value={server.url} 
-                                onChange={(e) => handleServerChange(index, 'url', e.target.value)} 
-                                placeholder="رابط المشاهدة (mp4, m3u8, embed...)" 
-                                className={`w-full bg-gray-800 border border-gray-600 text-white text-sm px-3 py-2 rounded-lg focus:outline-none ${FOCUS_RING} dir-ltr placeholder:text-right`}
-                            />
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-500 mr-1 block mb-1">رابط المشاهدة (Watch URL)</label>
+                                    <input 
+                                        value={server.url} 
+                                        onChange={(e) => handleServerChange(index, 'url', e.target.value)} 
+                                        placeholder="رابط المشاهدة (mp4, m3u8, embed...)" 
+                                        className={`w-full bg-gray-800 border border-gray-600 text-white text-sm px-3 py-2 rounded-lg focus:outline-none ${FOCUS_RING} dir-ltr text-left placeholder:text-right`}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-500 mr-1 block mb-1">رابط التحميل (Download URL)</label>
+                                    <input 
+                                        value={server.downloadUrl} 
+                                        onChange={(e) => handleServerChange(index, 'downloadUrl', e.target.value)} 
+                                        placeholder="رابط التحميل المباشر" 
+                                        className={`w-full bg-gray-800 border border-gray-600 text-white text-sm px-3 py-2 rounded-lg focus:outline-none ${FOCUS_RING} dir-ltr text-left placeholder:text-right`}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     ))}
-                      <div className={`p-4 ${INPUT_BG} border border-gray-700 rounded-xl space-y-2`}>
-                        <label className="text-xs font-bold text-gray-400">رابط التحميل المباشر</label>
-                        <input 
-                            value={servers[0]?.downloadUrl || ''} 
-                            onChange={(e) => handleServerChange(0, 'downloadUrl', e.target.value)} 
-                            placeholder="رابط التحميل" 
-                            className={`w-full bg-gray-800 border border-gray-600 text-white text-sm px-3 py-2 rounded-lg focus:outline-none ${FOCUS_RING} dir-ltr placeholder:text-right`}
-                        />
-                      </div>
+                    
+                    <button 
+                        type="button"
+                        onClick={handleAddServer}
+                        className="w-full py-4 border-2 border-dashed border-gray-700 rounded-xl text-gray-500 hover:text-[var(--color-accent)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 transition-all font-bold flex items-center justify-center gap-2"
+                    >
+                        <PlusIcon className="w-5 h-5" />
+                        <span>إضافة سيرفر جديد</span>
+                    </button>
                 </div>
                 <div className="p-6 border-t border-gray-700 bg-black/20 flex justify-end gap-3">
                     <button type="button" onClick={onClose} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-full transition-colors">إلغاء</button>
@@ -1790,8 +1833,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         {isStandalone && (
                             <div className={sectionBoxClass}>
                                 <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-bold text-[var(--color-accent)]">سيرفرات المشاهدة</h3>
-                                    <button type="button" onClick={() => setIsManagingMovieServers(true)} className="bg-[#00A7F8] hover:bg-[#0096d6] text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">إدارة السيرفرات ({formData.servers?.filter(s => s.url).length || 0})</button>
+                                    <h3 className="text-lg font-bold text-[var(--color-accent)]">سيرفرات المشاهدة والتحميل</h3>
+                                    <button type="button" onClick={() => setIsManagingMovieServers(true)} className="bg-[#00A7F8] hover:bg-[#0096d6] text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">إدارة السيرفرات ({formData.servers?.filter(s => s.url || s.downloadUrl).length || 0})</button>
                                 </div>
                             </div>
                         )}

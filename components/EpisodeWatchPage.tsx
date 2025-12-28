@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { Content, Episode, Server, Ad, View, Person } from '@/types';
-import { ContentType } from '@/types';
+import { createPortal } from 'react-dom';
+import type { Content, Episode, Server, Ad, View, Person } from '../types';
+import { ContentType } from '../types';
 import VideoPlayer from './VideoPlayer';
 import AdPlacement from './AdPlacement';
 import { PlayIcon } from './icons/PlayIcon';
@@ -10,7 +12,7 @@ import { ChevronRightIcon } from './icons/ChevronRightIcon';
 import SEO from './SEO';
 import AdWaiterModal from './AdWaiterModal';
 import ReportModal from './ReportModal';
-import { getPeople } from '@/firebase';
+import { getPeople } from '../firebase';
 import { StarIcon } from './icons/StarIcon';
 
 interface EpisodeWatchPageProps {
@@ -52,7 +54,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     isNetflixRedTheme
 }) => {
     const isLoaded = !!content && !!content.id;
-    // البرامج والمسلسلات فقط هي من تملك نظام حلقات
     const isEpisodic = content?.type === ContentType.Series || content?.type === ContentType.Program;
     const [people, setPeople] = useState<Person[]>([]);
 
@@ -80,7 +81,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     }, [selectedEpisode]);
 
     const [selectedServer, setSelectedServer] = useState<Server | null>(null);
-    const [playerKey, setPlayerKey] = useState(0); // To force re-render on reload
+    const [playerKey, setPlayerKey] = useState(0); 
 
     useEffect(() => {
         if (activeServers.length > 0) {
@@ -90,6 +91,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     }, [activeServers]);
 
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [isDownloadErrorOpen, setIsDownloadErrorOpen] = useState(false);
 
     const accentColor = isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-500' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]';
     const bgAccent = isRamadanTheme ? 'bg-amber-500' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]';
@@ -151,11 +153,12 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     };
 
     const handleDownload = () => {
-        if (selectedServer?.downloadUrl) {
-            window.open(selectedServer.downloadUrl, '_blank');
-        } else {
-            alert('رابط التحميل غير متوفر لهذا السيرفر حالياً.');
-        }
+        // NEW: Instead of directly downloading, open the new download page
+        onSetView('download', undefined, { 
+            content: content,
+            season: seasonNumber,
+            episode: episodeNumber
+        });
     };
 
     return (
@@ -194,7 +197,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
             <div className="max-w-5xl mx-auto px-4 md:px-0 pt-6 text-center">
                 
-                {/* Server Selection Header - ENLARGED BUTTONS */}
                 <div className="w-full mb-6">
                     <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-3">
                         <span className="text-sm text-gray-400 font-black ml-2 whitespace-nowrap">سيرفر المشاهدة:</span>
@@ -210,7 +212,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                     </div>
                 </div>
 
-                {/* Player Container */}
                 <div className={`relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black border ${isLoaded ? 'border-white/5' : 'border-gray-800'} z-10 mx-auto`}>
                     {isLoaded ? (
                         <VideoPlayer 
@@ -231,7 +232,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                     )}
                 </div>
 
-                {/* --- ACTIONS AREA: DOWNLOAD (CENTERED) & REPORT (LEFT) --- */}
                 <div className="mt-5 relative flex flex-col items-center gap-2 animate-fade-in-up">
                     <div className="flex justify-center w-full">
                         <button 
@@ -356,6 +356,30 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 isCosmicTealTheme={isCosmicTealTheme}
                 isNetflixRedTheme={isNetflixRedTheme}
             />
+
+            {isDownloadErrorOpen && createPortal(
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setIsDownloadErrorOpen(false)}>
+                    <div className="bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20 shadow-inner">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">عذراً، الرابط غير متوفر</h3>
+                            <p className="text-gray-400 text-sm mb-6 leading-relaxed">رابط التحميل غير متوفر لهذا السيرفر حالياً، يرجى تجربة سيرفر آخر.</p>
+                            <button 
+                                onClick={() => setIsDownloadErrorOpen(false)}
+                                className={`w-full py-3 rounded-xl font-bold text-white transition-all transform active:scale-95 shadow-lg
+                                    ${isNetflixRedTheme ? 'bg-[#E50914] hover:bg-[#b20710]' : isCosmicTealTheme ? 'bg-[#35F18B] hover:bg-[#2596be] !text-black' : 'bg-[#00A7F8] hover:bg-[#008ecf]'}`}
+                            >
+                                حسنًا، فهمت
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };
