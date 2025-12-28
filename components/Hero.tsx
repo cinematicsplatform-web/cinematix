@@ -258,7 +258,7 @@ const Hero: React.FC<HeroProps> = ({
     return (
         <div 
             ref={containerRef}
-            className={`relative h-[80vh] md:h-[85vh] w-full overflow-hidden group ${containerBgColor} select-none touch-pan-y`}
+            className={`relative h-[80vh] md:h-[90vh] w-full overflow-hidden group ${containerBgColor} select-none touch-pan-y`}
             onMouseDown={(e) => handleStart(e.clientX)}
             onMouseMove={(e) => handleMove(e.clientX)}
             onMouseUp={handleEnd}
@@ -324,7 +324,7 @@ const Hero: React.FC<HeroProps> = ({
                                 <img 
                                     src={content.backdrop} 
                                     alt={content.title} 
-                                    className={`absolute inset-0 w-full h-full object-cover z-10 pointer-events-none ${cropClass}`}
+                                    className={`absolute inset-0 w-full h-full object-cover object-top z-10 pointer-events-none ${cropClass}`}
                                     style={imgStyle}
                                     draggable={false}
                                     loading={isActive ? "eager" : "lazy"}
