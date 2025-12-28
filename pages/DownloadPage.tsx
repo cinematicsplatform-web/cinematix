@@ -65,7 +65,7 @@ const DownloadPage: React.FC<DownloadPageProps> = ({
         {/* Cinematic Backdrop */}
         <div className="absolute inset-0 z-0">
             <img 
-                src={selectedEpisode?.thumbnail || content.backdrop} 
+                src={currentSeason?.backdrop || content.backdrop} 
                 alt="" 
                 className="w-full h-full object-cover opacity-20 blur-xl scale-110"
             />
@@ -92,7 +92,7 @@ const DownloadPage: React.FC<DownloadPageProps> = ({
                 <div className="lg:col-span-4 flex flex-col items-center lg:items-start animate-fade-in-up">
                     <div className={`relative w-64 md:w-full aspect-[2/3] rounded-3xl overflow-hidden border-4 ${borderAccent} shadow-2xl mb-6`}>
                         <img 
-                            src={selectedEpisode?.thumbnail || content.poster} 
+                            src={currentSeason?.poster || content.poster} 
                             alt={content.title} 
                             className="w-full h-full object-cover"
                         />
@@ -109,7 +109,7 @@ const DownloadPage: React.FC<DownloadPageProps> = ({
                                 <span dir="ltr">{selectedEpisode?.duration || content.duration || 'N/A'}</span>
                             </div>
                             <div className="text-white font-bold bg-white/5 px-3 py-1 rounded-full border border-white/10">
-                                {content.releaseYear}
+                                {currentSeason?.releaseYear || content.releaseYear}
                             </div>
                         </div>
                         <p className="text-gray-400 text-sm leading-relaxed line-clamp-4">
@@ -145,7 +145,7 @@ const DownloadPage: React.FC<DownloadPageProps> = ({
                                                 <DownloadIcon className="w-5 h-5" />
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="font-black text-lg text-white">سيرفر {server.name || (idx + 1)}</span>
+                                                <span className="font-black text-lg text-white">{server.name || (idx + 1)}</span>
                                                 <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Direct High Speed</span>
                                             </div>
                                         </div>
@@ -180,12 +180,12 @@ const DownloadPage: React.FC<DownloadPageProps> = ({
                     {/* Safety Badge */}
                     <div className="flex justify-center items-center gap-6 opacity-40">
                          <div className="flex items-center gap-2">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                             <span className="text-xs font-black">روابط آمنة ومفحوصة</span>
                          </div>
                          <div className="w-px h-4 bg-gray-700"></div>
                          <div className="flex items-center gap-2">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                             <span className="text-xs font-black">سرعة تحميل قصوى</span>
                          </div>
                     </div>

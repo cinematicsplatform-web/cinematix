@@ -1158,16 +1158,12 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 const worksheet = workbook.Sheets[sheetName];
                 const rows = XLSX.utils.sheet_to_json<any>(worksheet);
 
-                // Check if file contains "Season" column to filter, otherwise assume all rows are for this season
-                const hasSeasonColumn = rows.length > 0 && (getRowValue(rows[0], 'الموسم', 'Season', 'Season_Number') !== null);
-
-                // Filter rows for current season if column exists
-                const relevantRows = hasSeasonColumn 
-                    ? rows.filter(r => {
-                        const sNum = parseInt(String(getRowValue(r, 'الموسم', 'Season', 'Season_Number')));
-                        return sNum === seasonNumber;
-                    }) 
-                    : rows;
+                // Use robust key detection for Arabic columns
+                const relevantRows = rows.filter(r => {
+                    const sNumRaw = getRowValue(r, 'الموسم', 'Season', 'Season_Number');
+                    if (sNumRaw === null) return true; // If no season column, assume all rows are for this season
+                    return parseInt(String(sNumRaw)) === seasonNumber;
+                });
 
                 if (relevantRows.length === 0) {
                     addToast(`لم يتم العثور على حلقات للموسم رقم ${seasonNumber} في الملف.`, "info");
@@ -1184,63 +1180,62 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             const eNumRaw = getRowValue(row, 'الحلقة', 'Episode', 'Episode_Number');
                             const eNum = parseInt(String(eNumRaw)) || (idx + 1);
                             
-                            let targetEpisodeIndex = updatedEpisodes.findIndex(ep => (ep.title && ep.title.includes(`${eNum}`)) || ep.title === `Episode ${eNum}`);
-                            
-                            // PREPARE SERVERS
+                            // Build servers for this episode
                             const epServers: Server[] = [];
                             
                             // 1. Generate default VidSrc if enabled
                             if (enableAutoLinks) {
-                                const vipUrl = `https://vidsrc.vip/embed/tv/${formData.id}/${seasonNumber}/${eNum}`;
-                                epServers.push({ id: 99999, name: 'Cinematix VIP', url: vipUrl, downloadUrl: vipUrl, isActive: true });
+                                const idToUse = formData.tmdbId || formData.id;
+                                const vipUrl = `https://vidsrc.vip/embed/tv/${idToUse}/${seasonNumber}/${eNum}`;
+                                epServers.push({ id: 99999 + Math.random(), name: 'Cinematix VIP', url: vipUrl, downloadUrl: vipUrl, isActive: true });
                             }
 
-                            // 2. Loop through Servers 1-8
+                            // 2. Exact match for Arabic server column names: "سيرفر مشاهدة X" and "سيرفر تحميل X"
                             for (let i = 1; i <= 8; i++) {
-                                const url = getRowValue(row, `سيرفر ${i}`, `Server ${i}`, `Watch_Server_${i}`, `Link ${i}`, `server ${i}`);
-                                
-                                let downloadUrl = '';
-                                if (i === 1) {
-                                    downloadUrl = getRowValue(row, 'تحميل 1', 'Download 1', 'Download_Link', 'Download') || '';
-                                } else if (i === 2) {
-                                    downloadUrl = getRowValue(row, 'تحميل 2', 'Download 2') || '';
-                                }
+                                const watchUrl = getRowValue(row, `سيرفر مشاهدة ${i}`, `Watch Server ${i}`, `سيرفر ${i}`);
+                                const downloadUrl = getRowValue(row, `سيرفر تحميل ${i}`, `Download Server ${i}`, `تحميل ${i}`);
 
-                                if (url && String(url).trim() !== '' && String(url).trim().toLowerCase() !== 'nan') {
+                                if ((watchUrl && String(watchUrl).trim() !== '') || (downloadUrl && String(downloadUrl).trim() !== '')) {
                                     epServers.push({
                                         id: Date.now() + i + Math.random(),
                                         name: `سيرفر ${i}`,
-                                        url: String(url).trim(),
-                                        downloadUrl: String(downloadUrl).trim(),
+                                        url: String(watchUrl || '').trim(),
+                                        downloadUrl: String(downloadUrl || '').trim(),
                                         isActive: true
                                     });
                                 }
                             }
 
+                            // Build the episode object
                             const newEpisodeData: Episode = {
                                 id: Date.now() + eNum + Math.random(), 
                                 title: getRowValue(row, 'العنوان', 'Title') || `الحلقة ${eNum}`,
                                 duration: getRowValue(row, 'المدة', 'Duration') || '45:00',
                                 thumbnail: getRowValue(row, 'صورة', 'Thumbnail') || s.backdrop || prev.backdrop,
-                                // FIX: Changed undefined sNum to function parameter seasonNumber
-                                description: getRowValue(row, 'الوصف', 'Description') || `حلقة من الموسم ${seasonNumber}`,
+                                description: getRowValue(row, 'الوصف', 'Description') || `شاهد أحداث الحلقة ${eNum} من الموسم ${seasonNumber}.`,
                                 progress: 0,
                                 servers: epServers
                             };
 
-                            // MERGE LOGIC:
-                            if (targetEpisodeIndex !== -1) {
-                                updatedEpisodes[targetEpisodeIndex] = {
-                                    ...updatedEpisodes[targetEpisodeIndex],
-                                    ...newEpisodeData,
-                                    id: updatedEpisodes[targetEpisodeIndex].id, 
-                                    servers: epServers.length > 0 ? epServers : updatedEpisodes[targetEpisodeIndex].servers 
+                            // SMART MERGE: Find by episode number in title
+                            const targetIdx = updatedEpisodes.findIndex(ep => {
+                                const titleNum = parseInt(ep.title?.replace(/\D/g, '') || '0');
+                                return titleNum === eNum;
+                            });
+
+                            if (targetIdx !== -1) {
+                                // If found, update servers only (as requested: "adds their links to existing rows")
+                                updatedEpisodes[targetIdx] = {
+                                    ...updatedEpisodes[targetIdx],
+                                    servers: epServers.length > 0 ? epServers : updatedEpisodes[targetIdx].servers 
                                 };
                             } else {
+                                // If not found, add new
                                 updatedEpisodes.push(newEpisodeData);
                             }
                         });
 
+                        // Re-sort episodes
                         updatedEpisodes.sort((a, b) => {
                             const numA = parseInt(a.title?.replace(/\D/g, '') || '0') || 0;
                             const numB = parseInt(b.title?.replace(/\D/g, '') || '0') || 0;
@@ -1250,7 +1245,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         return { ...s, episodes: updatedEpisodes };
                     })
                 }));
-                addToast(`تم دمج ${relevantRows.length} حلقة للموسم ${seasonNumber} بنجاح!`, "success");
+                addToast(`تم تحديث روابط ${relevantRows.length} حلقة للموسم ${seasonNumber} بنجاح!`, "success");
             } catch (err) {
                 console.error(err);
                 addToast('حدث خطأ أثناء استيراد الملف.', "error");
@@ -1352,23 +1347,17 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         epServers.push({ id: 99999, name: 'Cinematix VIP', url: vipUrl, downloadUrl: vipUrl, isActive: true });
                     }
                     
-                    // Dynamic Server Loop 1-8 (Robust)
+                    // Use robust key detection for server columns
                     for (let i = 1; i <= 8; i++) {
-                        const url = getRowValue(row, `سيرفر ${i}`, `Server ${i}`, `Watch_Server_${i}`, `Link ${i}`, `server ${i}`);
-                        
-                        let downloadUrl = '';
-                        if (i === 1) {
-                            downloadUrl = getRowValue(row, 'تحميل 1', 'Download 1', 'Download_Link', 'Download') || '';
-                        } else if (i === 2) {
-                            downloadUrl = getRowValue(row, 'تحميل 2', 'Download 2') || '';
-                        }
+                        const watchUrl = getRowValue(row, `سيرفر مشاهدة ${i}`, `Watch Server ${i}`, `سيرفر ${i}`);
+                        const downloadUrl = getRowValue(row, `سيرفر تحميل ${i}`, `Download Server ${i}`, `تحميل ${i}`);
 
-                        if (url && String(url).trim() !== '' && String(url).trim().toLowerCase() !== 'nan') {
+                        if ((watchUrl && String(watchUrl).trim() !== '') || (downloadUrl && String(downloadUrl).trim() !== '')) {
                             epServers.push({
                                 id: Date.now() + i + Math.random(),
                                 name: `سيرفر ${i}`,
-                                url: String(url).trim(),
-                                downloadUrl: String(downloadUrl).trim(),
+                                url: String(watchUrl || '').trim(),
+                                downloadUrl: String(downloadUrl || '').trim(),
                                 isActive: true
                             });
                         }
