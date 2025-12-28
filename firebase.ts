@@ -1,3 +1,4 @@
+
 // FIX: Use 'compat' imports to support v8 namespaced syntax with Firebase v9+ SDK.
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
@@ -38,34 +39,36 @@ if (!firebase.apps.length) {
 }
 const app = firebase.app();
 
-export const db = app.firestore();
-export const storage = app.storage();
+// Initialize Firestore first
+const firestoreInstance = app.firestore();
 
 /**
- * CRITICAL FIX: Resolved connection issues and warnings.
- * 1. Switched to experimentalForceLongPolling to prevent backend timeout issues.
+ * CRITICAL FIX: Resolved connection issues (code=unavailable).
+ * 1. Switched to experimentalForceLongPolling to bypass WebSocket blocks.
+ * 2. Ensure settings are applied BEFORE exporting the db constant.
  */
 try {
-  db.settings({
-    experimentalForceLongPolling: true, 
+  firestoreInstance.settings({
+    experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: true,
     ignoreUndefinedProperties: true,
   });
 } catch (e: any) {
   if (!e.message.includes('already been initialized')) {
-    console.warn("Firestore settings error:", e.message);
+    console.warn("[Cinematix] Firestore settings error:", e.message);
   }
 }
 
+export const db = firestoreInstance;
+export const storage = app.storage();
+
 // Enable offline persistence with a check to prevent deprecation warning where possible
 if (typeof window !== 'undefined') {
-    // Standard persistence for compat mode
     db.enablePersistence({ synchronizeTabs: true })
       .catch((err) => {
           if (err.code === 'failed-precondition') {
-              // Multiple tabs open, persistence can only be enabled in one tab at a a time.
               console.warn("[Cinematix] Persistence failed: Multiple tabs open.");
           } else if (err.code === 'unimplemented') {
-              // The current browser does not support all of the features required to enable persistence
               console.warn("[Cinematix] Persistence failed: Browser not supported.");
           }
       });
@@ -122,6 +125,7 @@ const handleFirestoreError = (error: any, context: string, fallback: any) => {
     }
 
     if (code === 'unavailable' || msg.includes('offline') || code === 'failed-precondition') {
+        console.warn(`[Cinematix] Firestore is currently unavailable (${context}). Operating in offline mode.`);
         return fallback;
     } 
     else if (code === 'permission-denied') {
@@ -351,6 +355,23 @@ export const addReport = async (reportData: {
     });
 };
 
+export const getReports = async (): Promise<any[]> => {
+    try {
+        const snapshot = await db.collection('reports').orderBy('createdAt', 'desc').get();
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeGetTimestamp(doc.data().createdAt)
+        }));
+    } catch (e) {
+        return [];
+    }
+};
+
+export const deleteReport = async (reportId: string): Promise<void> => {
+    await db.collection('reports').doc(reportId).delete();
+};
+
 export const getHomeSections = async (): Promise<HomeSection[]> => {
     try {
         const snapshot = await db.collection('home_sections').orderBy('positionIndex', 'asc').get();
@@ -422,13 +443,8 @@ export const deletePerson = async (personId: string): Promise<void> => {
 };
 
 // --- Stories Functions ---
-/**
- * CRITICAL FIX: Fixed Missing Index issue by performing sorting and filtering client-side.
- * This avoids the need for a composite index on (isActive, createdAt).
- */
 export const getStories = async (onlyActive: boolean = true): Promise<Story[]> => {
     try {
-        // Fetch all stories without a complex query to avoid index errors
         const snapshot = await db.collection('stories').get();
         
         let stories = snapshot.docs.map(doc => {
@@ -440,10 +456,8 @@ export const getStories = async (onlyActive: boolean = true): Promise<Story[]> =
             } as Story;
         });
 
-        // Sort by createdAt desc locally
         stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-        // Filter active stories locally
         if (onlyActive) {
             stories = stories.filter(s => s.isActive);
         }
@@ -481,7 +495,6 @@ export const getUserNotifications = async (userId: string): Promise<Notification
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         
-        // Using basic query to avoid index requirements, then filter locally
         const snapshot = await db.collection('notifications')
             .where('userId', '==', userId)
             .get();
@@ -492,7 +505,6 @@ export const getUserNotifications = async (userId: string): Promise<Notification
             createdAt: safeGetTimestamp(doc.data().createdAt)
         } as Notification));
 
-        // Enforce 7-day rule and sort newest first
         notifications = notifications.filter(n => new Date(n.createdAt) > sevenDaysAgo);
         notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -542,10 +554,7 @@ export const getBroadcastHistory = async (): Promise<BroadcastNotification[]> =>
 
 export const deleteBroadcastNotification = async (broadcastId: string): Promise<void> => {
     try {
-        // 1. Delete from history
         await db.collection('broadcast_history').doc(broadcastId).delete();
-        
-        // 2. Delete all related user notifications (In real apps this should be a cloud function to handle high volume)
         const userNotifs = await db.collection('notifications').where('broadcastId', '==', broadcastId).get();
         const batch = db.batch();
         userNotifs.docs.forEach(doc => batch.delete(doc.ref));

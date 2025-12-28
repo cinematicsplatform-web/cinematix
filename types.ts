@@ -1,3 +1,4 @@
+
 export const ContentType = {
   Movie: 'movie',
   Series: 'series',
@@ -38,7 +39,7 @@ export const genres = [
 
 export type Genre = typeof genres[number];
 
-export type View = 'home' | 'movies' | 'series' | 'programs' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'watch' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance' | 'search' | 'welcome' | 'onboarding' | 'notifications' | 'appDownload' | 'people' | 'personProfile';
+export type View = 'home' | 'movies' | 'series' | 'programs' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'watch' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance' | 'search' | 'welcome' | 'onboarding' | 'notifications' | 'appDownload' | 'people' | 'personProfile' | 'download';
 
 export type LoginError = 'none' | 'userNotFound' | 'wrongPassword';
 

@@ -75,6 +75,24 @@ html, body {
   transition: color 0.3s ease;
 }
 
+/* Theme Aware Borders and Focus Rings */
+.theme-focus-ring:focus-within {
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 15px var(--shadow-color) !important;
+}
+
+.theme-accent-border {
+  border-color: var(--color-accent) !important;
+}
+
+.theme-accent-bg {
+  background-color: var(--color-accent) !important;
+}
+
+.theme-accent-text {
+  color: var(--color-accent) !important;
+}
+
 /* Scrollbar */
 .rtl-scroll::-webkit-scrollbar {
   display: none;
