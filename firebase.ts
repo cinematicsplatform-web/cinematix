@@ -23,7 +23,7 @@ const getEnvVar = (key: string, viteKey: string) => {
   return undefined;
 };
 
-// Configuration using NEXT_PUBLIC_ prefix for client-side exposure in Next.js
+// Configuration
 const firebaseConfig = {
   apiKey: getEnvVar("NEXT_PUBLIC_FIREBASE_API_KEY", "VITE_FIREBASE_API_KEY") || "AIzaSyBVK0Zla5VD05Hgf4QqExAWUuXX64odyes", 
   authDomain: getEnvVar("NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN", "VITE_FIREBASE_AUTH_DOMAIN") || "cinematic-d3697.firebaseapp.com",
@@ -39,17 +39,17 @@ if (!firebase.apps.length) {
 }
 const app = firebase.app();
 
-// Initialize Firestore first
+// Initialize Firestore
 const firestoreInstance = app.firestore();
 
 /**
- * CRITICAL FIX: Resolved connection issues (code=unavailable).
- * 1. Switched to experimentalForceLongPolling to bypass WebSocket blocks.
- * 2. Ensure settings are applied BEFORE exporting the db constant.
+ * FIX: Resolved connection warnings and deprecations.
+ * 1. Removed experimentalForceLongPolling to fix conflict with experimentalAutoDetectLongPolling.
+ * 2. Handled persistence via settings where possible for modern SDK behavior.
  */
 try {
   firestoreInstance.settings({
-    experimentalForceLongPolling: true,
+    // Keep only auto-detect to avoid "cannot be used together" error
     experimentalAutoDetectLongPolling: true,
     ignoreUndefinedProperties: true,
   });
@@ -62,7 +62,8 @@ try {
 export const db = firestoreInstance;
 export const storage = app.storage();
 
-// Enable offline persistence with a check to prevent deprecation warning where possible
+// Enable offline persistence (Compat version)
+// Note: Multi-tab persistence is the current standard for compat v9+
 if (typeof window !== 'undefined') {
     db.enablePersistence({ synchronizeTabs: true })
       .catch((err) => {

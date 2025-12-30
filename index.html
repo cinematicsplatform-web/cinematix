@@ -1,8 +1,19 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('cinematix_active_theme');
+          var r = localStorage.getItem('cinematix_theme_ramadan');
+          if (!t && r === 'true') t = 'ramadan';
+          if (t && t !== 'default') {
+            document.documentElement.classList.add('theme-' + t);
+          }
+        } catch (e) {}
+      })();
+    </script>
     <meta name="google-site-verification" content="EXH46Rn7mAAL5WJwovaVgk4ZYk82r0gINqGVdfFgeqM" />
     
     <!-- --- SEO Critical: Allow Indexing --- -->
@@ -98,7 +109,7 @@
         --color-text-on-primary: #000000;
       }
 
-      body.theme-ramadan {
+      .theme-ramadan {
         --bg-body: #000000; 
         --bg-card: #121212;
         --color-primary-from: #D4AF37; 
@@ -109,7 +120,7 @@
         --color-text-on-primary: #000000;
       }
 
-      body.theme-eid {
+      .theme-eid {
         --bg-body: #141b29; 
         --bg-card: #1f2937;
         --color-primary-from: #6A0DAD;
@@ -120,7 +131,7 @@
         --color-text-on-primary: #ffffff;
       }
 
-      body.theme-ios {
+      .theme-ios {
         --bg-body: #000000;
         --bg-card: #1c1c1e;
         --color-primary-from: #00C6FF;
@@ -134,7 +145,7 @@
         --color-text-on-primary: #ffffff;
       }
 
-      body.theme-night-city {
+      .theme-night-city {
         --bg-body: #050505;
         --bg-card: #0f0f0f;
         --color-primary-from: #FF00FF;
@@ -146,7 +157,7 @@
         --color-text-on-primary: #000000;
       }
 
-      body.theme-nature {
+      .theme-nature {
         --bg-body: #1a2f2f;
         --bg-card: #233e3e;
         --color-primary-from: #8FBC8F;
@@ -159,7 +170,7 @@
         --color-text-on-primary: #ffffff;
       }
 
-      body.theme-cosmic-teal {
+      .theme-cosmic-teal {
         --bg-body: #0b1116;
         --bg-card: #161b22;
         --color-primary-from: #2DD4BF;
@@ -177,7 +188,7 @@
         background-repeat: no-repeat;
       }
       
-      body.theme-cosmic-teal::before {
+      .theme-cosmic-teal::before {
         content: '';
         position: fixed;
         top: 0;
@@ -194,7 +205,7 @@
         pointer-events: none;
       }
 
-      body.theme-netflix-red {
+      .theme-netflix-red {
         --bg-body: #141414;
         --bg-card: #1f1f1f;
         --color-primary-from: #E50914;
@@ -273,39 +284,6 @@
 <link rel="stylesheet" href="/index.css">
 </head>
   <body>
-    <script>
-      try {
-        const savedTheme = localStorage.getItem('cinematix_active_theme');
-        const savedRamadan = localStorage.getItem('cinematix_theme_ramadan');
-        let themeToApply = 'default';
-        if (savedTheme) {
-            themeToApply = savedTheme;
-        } else if (savedRamadan === 'true') {
-            themeToApply = 'ramadan';
-        }
-
-        if (themeToApply === 'ramadan') {
-          document.body.classList.add('theme-ramadan');
-        } else if (themeToApply === 'ios') {
-          document.body.classList.add('theme-ios');
-        } else if (themeToApply === 'night-city') {
-          document.body.classList.add('theme-night-city');
-        } else if (themeToApply === 'nature') {
-          document.body.classList.add('theme-nature');
-        } else if (themeToApply === 'eid') {
-          document.body.classList.add('theme-eid');
-        } else if (themeToApply === 'cosmic-teal') {
-          document.body.classList.add('theme-cosmic-teal');
-        } else if (themeToApply === 'netflix-red') {
-          document.body.classList.add('theme-netflix-red');
-        }
-        
-        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-        if(metaThemeColor) {
-            metaThemeColor.setAttribute('content', '#000000');
-        }
-      } catch (e) {}
-    </script>
     <div id="preloader">
       <div class="preloader-logo">
         <span>سينما</span><span class="accent">تيكس</span>

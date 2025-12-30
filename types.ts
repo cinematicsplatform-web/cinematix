@@ -1,4 +1,5 @@
 
+
 export const ContentType = {
   Movie: 'movie',
   Series: 'series',
@@ -59,6 +60,7 @@ export interface Episode {
   duration?: string; 
   progress: number; 
   servers: Server[];
+  isLastEpisode?: boolean;
 }
 
 export interface Season {
@@ -74,6 +76,7 @@ export interface Season {
   releaseYear?: number; 
   description?: string; 
   cast?: string[]; 
+  adLink?: string; // NEW: Advertisement link for the season
   
   mobileImageUrl?: string; 
   useCustomMobileImage?: boolean; 

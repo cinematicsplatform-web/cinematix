@@ -25,6 +25,7 @@ import SoonPage from './components/SoonPage';
 import PrivacyPolicyPage from './components/PrivacyPolicyPage';
 import CopyrightPage from './components/CopyrightPage';
 import AboutPage from './components/AboutPage';
+import AboutPageOriginal from './components/AboutPage'; // Added suffix to prevent conflict if needed
 import MyListPage from './components/MyListPage';
 import HomePage from './components/HomePage';
 import BottomNavigation from './components/BottomNavigation';
@@ -46,13 +47,13 @@ import DownloadPage from './pages/DownloadPage';
 
 const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0118 0z" />
   </svg>
 );
 
 const ExclamationCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0118 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
   </svg>
 );
 
@@ -259,11 +260,32 @@ const App: React.FC = () => {
 
   useLayoutEffect(() => {
       const prevView = prevViewRef.current;
-      if (view === 'detail' || view === 'watch' || view === 'personProfile' || view === 'download') window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
-      else if (prevView === 'detail' || prevView === 'watch' || prevView === 'personProfile' || prevView === 'download') {
+      
+      // Sub-pages (details/watch) should always reset to top immediately
+      if (view === 'detail' || view === 'watch' || view === 'personProfile' || view === 'download') {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+      } 
+      // When returning TO a main page FROM a sub-page, restore saved scroll position INSTANTLY
+      else {
           const savedPosition = scrollPositions.current[view];
-          window.scrollTo({ top: savedPosition || 0, left: 0, behavior: 'instant' as any });
-      } else window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+          if (savedPosition !== undefined && (
+              prevView === 'detail' || 
+              prevView === 'watch' || 
+              prevView === 'personProfile' || 
+              prevView === 'download' || 
+              prevView === 'category' || 
+              prevView === 'search' ||
+              prevView === 'login' ||
+              prevView === 'register'
+          )) {
+              // We use 'instant' here to ensure the user doesn't see the top of the page.
+              // Note: For dynamic content like carousels, this runs synchronously before browser paint.
+              window.scrollTo({ top: savedPosition, left: 0, behavior: 'instant' as any });
+          } else {
+              // Top-level navigation (e.g. Home to Movies) should usually reset to top
+              window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+          }
+      }
       prevViewRef.current = view;
   }, [view, selectedContent, selectedPersonName]); 
 
@@ -334,8 +356,14 @@ const App: React.FC = () => {
 
   useEffect(() => {
       const handlePopState = () => {
+          // CRITICAL: Immediately save scroll position of the current view before we process state transition
+          // This ensures that when the user goes back, we have captured their exact scroll on the leaving page.
+          const currentView = view;
+          scrollPositions.current[currentView] = window.scrollY;
+
           const newView = getInitialView();
           if (isSearchOpen) { setIsSearchOpen(false); return; }
+          
           setView(newView); 
           const path = decodeURIComponent(window.location.pathname);
           
@@ -351,27 +379,23 @@ const App: React.FC = () => {
       };
       window.addEventListener('popstate', handlePopState);
       return () => window.removeEventListener('popstate', handlePopState);
-  }, [allContent, resolveContentFromUrl, isSearchOpen]);
+  }, [allContent, resolveContentFromUrl, isSearchOpen, view]); 
 
-  useEffect(() => {
-      if (view === 'admin') {
-          document.body.classList.remove('theme-ramadan', 'theme-ios', 'theme-night-city', 'theme-nature', 'theme-eid', 'theme-cosmic-teal', 'theme-netflix-red');
-          return;
-      }
-      document.body.classList.remove('theme-ramadan', 'theme-ios', 'theme-night-city', 'theme-nature', 'theme-eid', 'theme-cosmic-teal', 'theme-netflix-red');
+  useLayoutEffect(() => {
+      const root = document.documentElement;
+      root.classList.remove('theme-ramadan', 'theme-ios', 'theme-night-city', 'theme-nature', 'theme-eid', 'theme-cosmic-teal', 'theme-netflix-red');
+      
+      if (view === 'admin') return;
       
       let active = siteSettings.activeTheme;
 
-      if (active === 'ramadan') document.body.classList.add('theme-ramadan');
-      else if (active === 'ios') document.body.classList.add('theme-ios');
-      else if (active === 'night-city') document.body.classList.add('theme-night-city');
-      else if (active === 'nature') document.body.classList.add('theme-nature');
-      else if (active === 'eid') document.body.classList.add('theme-eid');
-      else if (active === 'cosmic-teal') document.body.classList.add('theme-cosmic-teal');
-      else if (active === 'netflix-red') document.body.classList.add('theme-netflix-red');
+      if (active !== 'default') {
+          root.classList.add(`theme-${active}`);
+      }
+      
       localStorage.setItem('cinematix_active_theme', active);
       localStorage.setItem('cinematix_theme_ramadan', active === 'ramadan' ? 'true' : 'false');
-  }, [siteSettings.activeTheme, view, selectedContent]); 
+  }, [siteSettings.activeTheme, view]); 
 
   const fetchData = useCallback(async () => {
       try {
@@ -472,15 +496,13 @@ const App: React.FC = () => {
   }, []);
 
   const handleSetView = (newView: View, category?: string, params?: any) => {
-      if (view !== 'detail' && view !== 'watch' && view !== 'login' && view !== 'register' && view !== 'personProfile' && view !== 'search' && view !== 'download') {
-          scrollPositions.current[view] = window.scrollY;
-      }
+      // Save scroll position for views that are parents or have content lists
+      scrollPositions.current[view] = window.scrollY;
       
-      const flowViews: View[] = ['login', 'register', 'welcome'];
-      const currentIsFlow = flowViews.includes(view);
-      const nextIsFlow = flowViews.includes(newView);
-
-      if (nextIsFlow && !currentIsFlow && newView !== view) {
+      const subViews: View[] = ['detail', 'watch', 'personProfile', 'download', 'category', 'search', 'login', 'register', 'welcome'];
+      
+      // Update returnView if we are moving TO a sub-view FROM a parent view
+      if (subViews.includes(newView) && !subViews.includes(view)) {
           setReturnView(view);
       }
 
@@ -502,7 +524,6 @@ const App: React.FC = () => {
           }
       } else if (newView === 'download' && params) {
           setDownloadParams(params);
-          // Don't change URL for now as it's a dynamic context view
       } else if (newView === 'personProfile' && params?.name) {
           setSelectedPersonName(params.name);
           safeHistoryPush(`/person/${params.name}`);
@@ -534,8 +555,13 @@ const App: React.FC = () => {
 
   const handleSelectContent = (content: Content, seasonNumber?: number, episodeNumber?: number) => {
       if (isSearchOpen) setIsSearchOpen(false);
+      
+      // Save current scroll position before entering detail view
       scrollPositions.current[view] = window.scrollY;
+      
+      // Always return to the current view from detail
       if (view !== 'detail') setReturnView(view);
+      
       setSelectedContent(content);
       const slug = content.slug || content.id;
       const isEpisodic = content.type === ContentType.Series || content.type === ContentType.Program;
@@ -565,7 +591,10 @@ const App: React.FC = () => {
   };
 
   const handlePersonClick = (name: string) => {
-    if (view !== 'personProfile') setReturnView(view);
+    scrollPositions.current[view] = window.scrollY;
+    if (view !== 'personProfile') {
+        setReturnView(view);
+    }
     handleSetView('personProfile', undefined, { name });
   };
 
@@ -691,7 +720,7 @@ const App: React.FC = () => {
 
       const LoadingSpinner = () => (
           <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-              <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
+              <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-accent)]`}></div>
           </div>
       );
 
@@ -713,11 +742,19 @@ const App: React.FC = () => {
           if (isEpisodic && content.seasons && content.seasons.length > 0) {
               const latestSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
               if (latestSeason) {
+                  // Integrated Meta Logic: Strictly override with season assets if present
                   if (latestSeason.poster) finalContent.poster = latestSeason.poster;
                   if (latestSeason.backdrop) finalContent.backdrop = latestSeason.backdrop;
                   if (latestSeason.logoUrl) { finalContent.logoUrl = latestSeason.logoUrl; finalContent.isLogoEnabled = true; }
                   if (latestSeason.description) finalContent.description = latestSeason.description;
                   if (latestSeason.releaseYear) finalContent.releaseYear = latestSeason.releaseYear;
+                  if (latestSeason.horizontalPoster) finalContent.horizontalPoster = latestSeason.horizontalPoster;
+                  
+                  // Mobile Integration: Map season-specific mobile assets to content overrides
+                  if (latestSeason.mobileImageUrl) finalContent.mobileBackdropUrl = latestSeason.mobileImageUrl;
+                  if (latestSeason.enableMobileCrop !== undefined) finalContent.enableMobileCrop = latestSeason.enableMobileCrop;
+                  if (latestSeason.mobileCropPositionX !== undefined) finalContent.mobileCropPositionX = latestSeason.mobileCropPositionX;
+                  if (latestSeason.mobileCropPositionY !== undefined) finalContent.mobileCropPositionY = latestSeason.mobileCropPositionY;
               }
           }
           return { ...finalContent, bannerNote: p.bannerNote || finalContent.bannerNote };
@@ -797,7 +834,7 @@ const App: React.FC = () => {
            case 'register': if (isAuthLoading) return <LoadingSpinner />; return <CreateAccountPage onSetView={handleSetView} onRegister={handleRegister} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
            case 'profileSelector': if (isAuthLoading) return <LoadingSpinner />; return currentUser ? <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
            case 'myList': if (isAuthLoading) return <LoadingSpinner />; return activeProfile ? <MyListPage allContent={allContent} activeProfile={activeProfile} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
-           case 'category': return <CategoryPage categoryTitle={selectedCategory} allContent={allContent} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} ads={ads} adsEnabled={siteSettings.adsEnabled} onRequestOpen={() => setIsRequestModalOpen(true)} />;
+           case 'category': return <CategoryPage categoryTitle={selectedCategory} allContent={allContent} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} ads={ads} adsEnabled={siteSettings.adsEnabled} onRequestOpen={() => setIsRequestModalOpen(true)} />;
            case 'admin': if (isAuthLoading) return <LoadingSpinner />; return isAdmin ? <AdminPanel allUsers={allUsers} allAds={ads} pinnedItems={pinnedItems} top10Items={top10Items} stories={allStories} siteSettings={siteSettings} onSetSiteSettings={handleUpdateSiteSettings} onSetPinnedItems={handleUpdatePinnedItems} onSetTop10Items={handleUpdateTop10Items} onSetView={handleSetView} onUpdateAd={handleUpdateAd} onDeleteAd={handleDeleteAd} onAddAd={handleAddAd} onAddAdmin={handleAddAdmin} onDeleteUser={handleDeleteUser} onContentChanged={fetchData} addToast={addToast} /> : <HomePage allContent={allContent} pinnedContent={[]} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} activeProfile={activeProfile} isLoading={isContentLoading} />;
            case 'accountSettings': if (isAuthLoading) return <LoadingSpinner />; return currentUser ? <AccountSettingsPage user={currentUser} onUpdateProfile={async (p) => { const updatedProfiles = currentUser.profiles.map(prof => prof.id === p.id ? p : prof); if (!currentUser.profiles.find(prof => prof.id === p.id)) updatedProfiles.push(p); const updatedUser = { ...currentUser, profiles: updatedProfiles }; setCurrentUser(updatedUser); if (activeProfile?.id === p.id) setActiveProfile(p); await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); addToast('تم تحديث الملف الشخصي', 'success'); }} onDeleteProfile={async (pid) => { const updatedProfiles = currentUser.profiles.filter(p => p.id !== pid); setCurrentUser({ ...currentUser, profiles: updatedProfiles }); await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); if (activeProfile?.id === pid) setActiveProfile(null); addToast('تم حذف الملف الشخصي', 'success'); }} onUpdatePassword={async (oldP, newP) => { try { const msg = firebase.auth.EmailAuthProvider.credential(currentUser.email, oldP); await auth.currentUser?.reauthenticateWithCredential(msg); await auth.currentUser?.updatePassword(newP); addToast('تم تغيير كلمة المرور', 'success'); return true; } catch (e) { addToast('كلمة المرور القديمة غير صحيحة', 'error'); return false; } }} onDeleteAccount={async () => { await deleteUserFromFirestore(currentUser.id); await auth.currentUser?.delete(); handleSetView('home'); addToast('تم حذف الحساب', 'info'); }} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
            case 'profileHub': if (isAuthLoading) return <LoadingSpinner />; return (currentUser && activeProfile) ? <ProfileHubPage user={currentUser} activeProfile={activeProfile} onSetView={handleSetView} onLogout={handleLogout} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
@@ -809,7 +846,7 @@ const App: React.FC = () => {
       }
   };
 
-  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'welcome', 'notifications', 'appDownload', 'people', 'personProfile', 'about', 'privacy', 'copyright', 'download'];
+  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'welcome', 'notifications', 'appDownload', 'people', 'personProfile', 'about', 'privacy', 'copyright', 'download', 'category'];
   const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
   const showGlobalFooter = (!fullScreenViews.includes(view) || view === 'search') && !siteSettings.is_maintenance_mode_enabled;
   const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view);
@@ -846,3 +883,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+
