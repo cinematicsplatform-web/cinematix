@@ -1554,7 +1554,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     </button>
                     <button 
                         onClick={() => { setActiveTab('categories'); setIsSidebarOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'categories' ? 'bg-[#1a1f29] text-white border-r-2 border-[var(--color-accent)]' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
+                        className={`w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'categories' ? 'bg-[#1a1f29] text-white border-r-2 border-[var(--color-accent)]' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
                     >
                         <TagIcon className="w-5 h-5"/>
                         <span>التصنيف والأنواع</span>
@@ -2085,7 +2085,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         <span>حفظ ونشر المحتوى</span>
                      </button>
                 </footer>
-            </aside>
+            </main>
 
             {galleryState.isOpen && <ImageGalleryModal isOpen={galleryState.isOpen} onClose={() => setGalleryState(prev => ({ ...prev, isOpen: false }))} tmdbId={formData.tmdbId || formData.id} type={formData.type} targetField={galleryState.imageType} onSelect={(url) => galleryState.onSelect(url)} />}
             {editingServersForEpisode && <ServerManagementModal episode={editingServersForEpisode} onClose={() => setEditingServersForEpisode(null)} onSave={handleUpdateEpisodeServers} onOpenSearch={() => setIsUqloadModalOpen(true)} />}
