@@ -188,10 +188,10 @@ const HomePage: React.FC<HomePageProps> = (props) => {
   if (props.isLoading && props.allContent.length === 0) {
       return (
         <div className="relative min-h-screen bg-[var(--bg-body)]">
-            <div className="h-[80vh] w-full bg-gray-900 animate-pulse"></div>
+            <div className="h-[80vh] w-full bg-[var(--bg-card)] skeleton-shimmer"></div>
             <div className="p-8 space-y-8">
-                <ContentCarousel title="Loading..." contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} />
-                <ContentCarousel title="Loading..." contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} />
+                <ContentCarousel title="" contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} />
+                <ContentCarousel title="" contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} />
             </div>
         </div>
       )

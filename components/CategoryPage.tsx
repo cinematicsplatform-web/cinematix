@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import type { Content, Category, View, Ad, Genre } from '../types';
 import { ContentType } from '../types';
@@ -15,6 +14,7 @@ interface CategoryPageProps {
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
   onSetView: (view: View) => void;
+  returnView?: View; // Prop to know where to return
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
@@ -32,6 +32,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
     myList, 
     onToggleMyList, 
     onSetView,
+    returnView,
     isRamadanTheme,
     isEidTheme,
     isCosmicTealTheme,
@@ -187,7 +188,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                     </h1>
 
                     <button 
-                        onClick={() => onSetView('search')}
+                        onClick={() => onSetView(returnView || 'home')}
                         className={`group flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-300 hover:theme-accent-border hover:text-black hover:scale-105 active:scale-95 shadow-md
                             ${isRamadanTheme 
                                 ? 'hover:bg-[#FFD700]' 
@@ -203,7 +204,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                         <span className="transform rotate-180 transition-transform duration-300 group-hover:-translate-x-1">
                             <ChevronRightIcon className="w-4 h-4 md:w-5 md:h-5" />
                         </span>
-                        <span className="font-bold text-xs md:text-sm">الرجوع للبحث</span>
+                        <span className="font-bold text-xs md:text-sm">رجوع</span>
                     </button>
               </div>
           </div>
@@ -235,21 +236,21 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                 ))}
             </div>
             ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center opacity-80 animate-fade-in-up">
-                <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
-                    <SearchIcon className="h-10 w-10 text-gray-400" />
+            <div className="flex flex-col items-center justify-center py-6 md:py-20 text-center opacity-80 animate-fade-in-up">
+                <div className="w-16 h-16 md:w-24 md:h-24 bg-gray-800 rounded-full flex items-center justify-center mb-4 md:mb-6">
+                    <SearchIcon className="h-8 w-8 md:h-10 md:w-10 text-gray-400" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-300 mb-2">لا توجد نتائج</h2>
-                <p className="text-gray-500 mb-8 max-w-sm mx-auto">لم يتم العثور على محتوى مطابق لبحثك في هذا القسم.</p>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-300 mb-1">لا توجد نتائج</h2>
+                <p className="text-sm text-gray-500 mb-6 md:mb-8 max-w-sm mx-auto">لم يتم العثور على محتوى مطابق لبحثك في هذا القسم.</p>
                 
-                {/* Request Feature Entry Point */}
+                {/* Request Feature Entry Point - Made more compact for mobile */}
                 {onRequestOpen && (
-                    <div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700 max-w-md w-full">
-                        <h3 className="text-lg font-bold text-white mb-2">لم تجد ما تبحث عنه؟</h3>
-                        <p className="text-sm text-gray-400 mb-4">يمكنك طلب إضافة الفيلم أو المسلسل الذي تريده.</p>
+                    <div className="bg-gray-800/50 p-4 md:p-6 rounded-2xl border border-gray-700 max-w-md w-full">
+                        <h3 className="text-base md:text-lg font-bold text-white mb-1">لم تجد ما تبحث عنه؟</h3>
+                        <p className="text-xs md:text-sm text-gray-400 mb-3 md:mb-4">يمكنك طلب إضافة الفيلم أو المسلسل الذي تريده.</p>
                         <button 
                             onClick={onRequestOpen}
-                            className={`w-full py-3 rounded-xl font-bold text-black transition-all hover:scale-[1.02] shadow-lg
+                            className={`w-full py-2.5 md:py-3 rounded-xl font-bold text-black transition-all hover:scale-[1.02] shadow-lg
                                 ${isRamadanTheme 
                                     ? 'bg-[#FFD700] hover:bg-amber-400' 
                                     : isEidTheme 

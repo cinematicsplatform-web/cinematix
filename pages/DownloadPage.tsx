@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import type { Content, View, Server } from '@/types';
 import SEO from '../components/SEO';
@@ -55,7 +54,7 @@ const DownloadPage: React.FC<DownloadPageProps> = ({
     : content.title;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-body)] text-white font-['Cairo'] pb-20 animate-fade-in relative overflow-hidden" dir="rtl">
+    <div className="min-h-screen bg-[var(--bg-body)] text-white font-['Cairo'] pb-20 animate-fade-in relative overflow-x-hidden" dir="rtl">
         <SEO 
             title={`تحميل ${displayTitle}`} 
             description={`صفحة تحميل ${displayTitle} بجودات متعددة وسيرفرات سريعة على سينماتيكس.`}
@@ -63,11 +62,11 @@ const DownloadPage: React.FC<DownloadPageProps> = ({
         />
 
         {/* Cinematic Backdrop */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute top-0 left-0 w-full h-[85vh] z-0">
             <img 
                 src={currentSeason?.backdrop || content.backdrop} 
                 alt="" 
-                className="w-full h-full object-cover opacity-20 blur-xl scale-110"
+                className="w-full h-full object-cover opacity-20 blur-xl scale-110 md:object-top"
             />
             <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-body)] via-transparent to-[var(--bg-body)]"></div>
         </div>

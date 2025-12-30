@@ -102,12 +102,12 @@ const WelcomePage: React.FC<WelcomePageProps> = ({
         <div className="min-h-screen bg-[var(--bg-body)] text-white font-['Cairo'] overflow-x-hidden selection:bg-[var(--color-primary-from)] selection:text-black" dir="rtl">
             
             {/* HERO SECTION */}
-            <section className="relative h-screen w-full flex flex-col overflow-hidden">
+            <section className="relative h-[85vh] md:h-screen w-full flex flex-col overflow-hidden">
                 <div className="absolute inset-0 z-0">
                     <img 
                         src="https://shahid.mbc.net/mediaObject/436ea116-cdae-4007-ace6-3c755df16856?width=1920&type=avif&q=80" 
                         alt="Background" 
-                        className="w-full h-full object-cover opacity-60"
+                        className="w-full h-full object-cover opacity-60 md:object-top"
                     />
                     <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-[var(--bg-body)] via-[var(--bg-body)]/60 to-transparent z-10 hidden md:block"></div>
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[var(--bg-body)]"></div>

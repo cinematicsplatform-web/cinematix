@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { Content, Category, Ad, View, SiteSettings } from '@/types';
+import type { Content, Ad, View, SiteSettings } from '@/types';
 import { ContentType } from '@/types';
 import Hero from './Hero';
 import ContentCarousel from './ContentCarousel';
@@ -10,7 +10,7 @@ import AdZone from './AdZone';
 interface SeriesPageProps {
   allContent: Content[];
   pinnedContent: Content[];
-  top10Content?: Content[]; // Added to fix build error
+  top10Content?: Content[]; 
   onSelectContent: (content: Content) => void;
   isLoggedIn: boolean;
   myList?: string[];
@@ -29,7 +29,7 @@ interface SeriesPageProps {
 const SeriesPage: React.FC<SeriesPageProps> = ({ 
   allContent, 
   pinnedContent,
-  top10Content, // Destructured here
+  top10Content,
   onSelectContent, 
   isLoggedIn, 
   myList, 
@@ -45,23 +45,23 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
   siteSettings 
 }) => {
   
-  // Filter for Series Type
   const allSeries = useMemo(() => allContent.filter(c => c.type === ContentType.Series), [allContent]);
   
-  // 🎯 Master Hero Logic: Ensure 5 items for Infinite Loop
   const heroContent = useMemo(() => {
-    // If pinned content exists for this page, use it
     if (pinnedContent && pinnedContent.length > 0) {
         return pinnedContent;
     }
-    // Fallback: Latest 5 series sorted by createdAt (Newest First)
     const sortedSeries = [...allSeries].sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    // Slice 5 items to enable slider behavior
+    // Ensure 5 items specifically for slider behavior like Kids Page
     return sortedSeries.slice(0, 5);
   }, [pinnedContent, allSeries]);
 
+  // Determine if Hero is present to enforce "no ads" rule for this page
+  const heroIsPresent = heroContent.length > 0;
+  // EFFECTIVE ADS DISABLED ON THIS PAGE AS PER INSTRUCTIONS
+  const pageAdsEnabled = adsEnabled && !heroIsPresent;
 
   const carousels = useMemo(() => {
     const limit = (list: Content[]) => list.slice(0, 12);
@@ -75,8 +75,7 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
 
     const ramadanSeriesContent = limit(allSeries.filter(c => c.categories.includes('رمضان') || c.categories.includes('مسلسلات رمضان')));
 
-    // Top 10 Pinned (Exclusive Ranking)
-    // Use top10Content if available, otherwise fallback to pinnedContent
+    // Top 10 Logic (Using top10Content prop if available)
     const top10Source = (top10Content && top10Content.length > 0) ? top10Content : pinnedContent;
 
     const pinnedSeriesCarousel = { 
@@ -99,7 +98,6 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
     const ramadanCarousel = { id: 's_ramadan', title: ramadanTitle, contents: ramadanSeriesContent, categoryKey: 'مسلسلات رمضان' };
 
     const definedCarousels = [
-      // Conditionally include Top 10
       siteSettings?.showTop10Series ? pinnedSeriesCarousel : null,
       siteSettings?.isShowRamadanCarousel ? ramadanCarousel : null,
       { id: 's_new', title: 'أحدث الإضافات', contents: recentSeries, isNew: true, categoryKey: 'new-series' },
@@ -152,7 +150,10 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
 
   return (
     // CRITICAL FIX: Clean Container Structure - Absolutely NO overflow-x-hidden here to allow sticky/drag gestures
-    <div className="relative min-h-screen bg-[var(--bg-body)]">
+    <div 
+        className="relative min-h-screen bg-[var(--bg-body)] text-white"
+        style={{ touchAction: 'pan-y' }} // Keeping this for iframe scroll safety
+    >
         
         <SEO 
             title="مسلسلات" 
@@ -160,7 +161,7 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
             type="website"
         />
 
-        {/* Wrapped Hero in z-10 for consistent stacking */}
+        {/* Hero Wrapper - z-10 */}
         <div className="relative z-10">
             <Hero 
                 contents={heroContent} 
@@ -173,6 +174,7 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
                 isEidTheme={isEidTheme}
                 isCosmicTealTheme={isCosmicTealTheme}
                 isNetflixRedTheme={isNetflixRedTheme}
+                disableVideo={heroIsPresent} // Modification: Disable background video previews in Hero
             />
         </div>
 
@@ -191,9 +193,10 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
 
             <div className="flex flex-col lg:flex-row gap-6 px-0 md:px-0">
                 <div className="flex-1 w-full">
-                    {adsEnabled && <AdZone position="page_series_top" />}
-                    <AdPlacement ads={ads} placement="listing-top" isEnabled={adsEnabled} />
-                    <AdPlacement ads={ads} placement="series-page" isEnabled={adsEnabled} />
+                    {/* Modification: ads are absolutely not permitted to play on the series page when Hero is present */}
+                    {pageAdsEnabled && <AdZone position="page_series_top" />}
+                    <AdPlacement ads={ads} placement="listing-top" isEnabled={pageAdsEnabled} />
+                    <AdPlacement ads={ads} placement="series-page" isEnabled={pageAdsEnabled} />
                     
                     {carousels.map((carousel) => {
                         return (
@@ -216,11 +219,11 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
                         );
                     })}
                     
-                    <AdPlacement ads={ads} placement="listing-bottom" isEnabled={adsEnabled} />
+                    <AdPlacement ads={ads} placement="listing-bottom" isEnabled={pageAdsEnabled} />
                 </div>
 
                 <div className="hidden lg:block w-[300px] flex-shrink-0 pt-4 pl-4 sticky top-24 h-fit">
-                    <AdPlacement ads={ads} placement="listing-sidebar" isEnabled={adsEnabled} />
+                    <AdPlacement ads={ads} placement="listing-sidebar" isEnabled={pageAdsEnabled} />
                 </div>
             </div>
         </main>

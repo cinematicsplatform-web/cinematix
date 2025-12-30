@@ -1,3 +1,4 @@
+
 export const ContentType = {
   Movie: 'movie',
   Series: 'series',
@@ -53,6 +54,7 @@ export interface Episode {
   duration?: string; // Changed to string to support "45:30" format
   progress: number; // percentage
   servers: Server[];
+  isLastEpisode?: boolean;
 }
 
 export interface Season {

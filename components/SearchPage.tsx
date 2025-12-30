@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Content, View } from '../types';
 import { ContentType } from '../types';
@@ -167,14 +166,14 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
     };
 
     return (
-        <div className="min-h-screen flex flex-col bg-[#0f1014] animate-fade-in pb-20">
+        <div className="min-h-screen flex flex-col bg-[var(--bg-body)] animate-fade-in pb-20">
             <div className="relative flex flex-col w-full h-full">
                 {/* Header */}
-                <div className="bg-[#151922] border-b border-gray-800 shadow-xl z-20">
+                <div className="bg-[var(--bg-card)] border-b border-white/5 shadow-xl z-20">
                     <div className="max-w-[1920px] mx-auto px-4 md:px-8 h-20 flex flex-row items-center gap-6" dir="rtl">
                         
                         {/* THEMED SEARCH CONTAINER */}
-                        <div className="flex-1 relative flex flex-row items-center bg-[#0f1014] border border-gray-700 rounded-full px-4 h-12 focus-within:border-[var(--color-accent)] focus-within:ring-1 focus-within:ring-[var(--color-accent)] focus-within:shadow-[0_0_15px_var(--shadow-color)] transition-all">
+                        <div className="flex-1 relative flex flex-row items-center bg-black/40 border border-white/10 rounded-full px-4 h-12 focus-within:border-[var(--color-accent)] focus-within:ring-1 focus-within:ring-[var(--color-accent)] focus-within:shadow-[0_0_15px_var(--shadow-color)] transition-all">
                             <SearchIcon className="w-5 h-5 theme-accent-text" />
                             
                             <input 
@@ -187,7 +186,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
                             />
                             
                             {query && (
-                                <button onClick={handleClear} className="p-1 rounded-full hover:bg-gray-800 text-gray-400 hover:text-white transition-colors">
+                                <button onClick={handleClear} className="p-1 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
                                     <CloseIcon className="w-5 h-5" />
                                 </button>
                             )}
@@ -202,10 +201,10 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
                     </div>
 
                     {query && relatedTags.length > 0 && (
-                        <div className="w-full border-t border-gray-800 bg-[#12151c]">
+                        <div className="w-full border-t border-white/5 bg-black/20">
                             <div className="max-w-[1920px] mx-auto px-4 md:px-8 py-2 flex items-center justify-start overflow-x-auto rtl-scroll gap-2">
                                 {relatedTags.map((tag, index) => (
-                                    <button key={index} onClick={() => handleTagClick(tag)} className="px-3 py-1 rounded-full bg-[#1f2937] hover:theme-accent-bg hover:text-black text-gray-400 text-xs whitespace-nowrap border border-gray-700 hover:theme-accent-border transition-colors">{tag}</button>
+                                    <button key={index} onClick={() => handleTagClick(tag)} className="px-3 py-1 rounded-full bg-white/5 hover:theme-accent-bg hover:text-black text-gray-400 text-xs whitespace-nowrap border border-white/10 hover:theme-accent-border transition-colors">{tag}</button>
                                 ))}
                             </div>
                         </div>
@@ -213,7 +212,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 overflow-y-auto bg-[#0f1014] w-full">
+                <div className="flex-1 overflow-y-auto bg-[var(--bg-body)] w-full">
                     {query.trim() === '' ? (
                         <div className="max-w-[1920px] mx-auto px-4 md:px-8 pt-8 pb-12">
                             <h2 className="text-white text-xl md:text-2xl font-bold mb-6 flex items-center gap-2">

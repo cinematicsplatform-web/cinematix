@@ -167,8 +167,10 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   const currentSeason = useMemo(() => content?.seasons?.find(s => s.id === selectedSeasonId), [content?.seasons, selectedSeasonId]);
   const episodes = useMemo(() => currentSeason?.episodes || [], [currentSeason]);
+  
   const displayBackdrop = currentSeason?.backdrop || content?.backdrop || '';
   const displayLogo = currentSeason?.logoUrl || content?.logoUrl || '';
+  const displayPoster = currentSeason?.poster || content?.poster || '';
   const displayDescription = currentSeason?.description || content?.description || '';
    
   const activeServers = useMemo(() => {
@@ -222,8 +224,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
       "@context": "https://schema.org",
       "@type": isEpisodic ? "TVSeries" : "Movie",
       "name": content.title,
-      "image": content.poster,
-      "description": content.description,
+      "image": displayPoster,
+      "description": displayDescription,
       "aggregateRating": {
         "@type": "AggregateRating",
         "ratingValue": content.rating,
@@ -248,7 +250,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
     }
 
     return JSON.stringify(schema);
-  }, [content, isLoaded, isEpisodic]);
+  }, [content, isLoaded, isEpisodic, displayPoster, displayDescription]);
 
   const canonicalPath = !isEpisodic ? `/watch/movie/${seriesSlug}` : `/${content.type}/${seriesSlug}/الموسم${currentSeason?.seasonNumber || initialSeasonNumber || 1}`;
 
@@ -340,7 +342,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
   };
 
   const handleDownload = () => {
-      // NEW: Instead of directly downloading, open the new download page
       onSetView('download', undefined, { content: content });
   };
 
@@ -406,12 +407,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const PeopleGrid: React.FC<{ title: string, names: string[] }> = ({ title, names }) => {
     if (!names || names.length === 0) return null;
     return (
-      <div className="mb-12">
+      <div className="mb-12 w-full">
         <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center gap-3">
           <div className="h-6 md:h-8 w-1.5 bg-[var(--color-accent)] rounded-full"></div>
           <span>{title}</span>
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4 w-full">
           {names.map((name, idx) => (
             <PersonCard key={idx} name={name} />
           ))}
@@ -420,9 +421,14 @@ const DetailPage: React.FC<DetailPageProps> = ({
     );
   };
 
+  const cropPosX = currentSeason?.mobileCropPositionX ?? currentSeason?.mobileCropPosition ?? content?.mobileCropPositionX ?? content?.mobileCropPosition ?? 50;
+  const cropPosY = currentSeason?.mobileCropPositionY ?? currentSeason?.mobileCropPositionY ?? content?.mobileCropPositionY ?? 50;
+  const enableCrop = currentSeason?.enableMobileCrop ?? content?.enableMobileCrop ?? false;
+  const imgStyle: React.CSSProperties = { '--mob-x': `${cropPosX}%`, '--mob-y': `${cropPosY}%` } as React.CSSProperties;
+
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0 relative overflow-x-hidden w-full">
-      < Helmet>
+      <Helmet>
         <script type="application/ld+json">{structuredData}</script>
       </Helmet>
       <SEO 
@@ -431,20 +437,24 @@ const DetailPage: React.FC<DetailPageProps> = ({
         keywords={seoData.keywords}
         seasonNumber={isEpisodic ? currentSeason?.seasonNumber : undefined}
         description={currentSeason?.description || content?.description} 
-        image={content?.poster} 
+        image={displayPoster} 
         banner={displayBackdrop}
         url={canonicalPath}
       />
 
-      <div ref={heroRef} className="relative h-[80vh] md:h-[90vh] w-full group z-[45]">
+      <div ref={heroRef} className="relative h-[85vh] md:h-[90vh] lg:h-[90vh] w-full group z-[45]">
         <div className="absolute inset-0 bg-black overflow-hidden">
             {isLoaded ? (
-                <img 
-                    key={displayBackdrop} 
-                    src={displayBackdrop} 
-                    alt={content.title} 
-                    className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}
-                />
+                <picture className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}>
+                    <source media="(max-width: 767px)" srcSet={currentSeason?.mobileImageUrl || content.mobileBackdropUrl || displayBackdrop} />
+                    <img 
+                        key={displayBackdrop} 
+                        src={displayBackdrop} 
+                        alt={content.title} 
+                        className={`absolute inset-0 w-full h-full object-cover ${enableCrop ? 'mobile-custom-crop' : 'object-top'} md:object-top`}
+                        style={imgStyle}
+                    />
+                </picture>
             ) : (
                 <div className="absolute inset-0 bg-[#161b22] skeleton-shimmer"></div>
             )}
@@ -500,7 +510,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         {isSeasonDropdownOpen && (
                             <div className="absolute top-full right-0 mt-2 w-64 bg-[#1f2937] border border-gray-700 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden z-[100] animate-fade-in-up origin-top-right">
                                 <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                                    {[...content.seasons].sort((a, b) => a.seasonNumber - b.seasonNumber).map(season => (
+                                    {[...content.seasons].sort((a, b) => a.seasonNumber - a.seasonNumber).map(season => (
                                         <button
                                             key={season.id}
                                             onClick={() => {
@@ -526,7 +536,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     {isLoaded ? (
                         <>
                             <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
-                                <StarIcon className="w-5 h-5" />
+                                <StarIcon className="h-5 w-5" />
                                 <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
                             </div>
 
@@ -538,7 +548,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 <>
                                     <span className="text-gray-500 opacity-60">|</span>
                                     <div className="flex items-center gap-1.5 px-2 py-0.5 border border-gray-600/50 rounded text-gray-200 text-xs backdrop-blur-sm bg-white/5">
-                                        <ClockIcon className="w-4 h-4" />
+                                        <ClockIcon className="h-4 w-4" />
                                         <span dir="ltr">{content.duration}</span>
                                     </div>
                                 </>
@@ -607,7 +617,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                     className="p-3.5 md:p-6 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group origin-center" 
                                     title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
                                 >
-                                    <SpeakerIcon isMuted={isMuted} className="w-6 h-6 md:w-9 md:h-9 text-white group-hover:scale-110 transition-transform" />
+                                    <SpeakerIcon isMuted={isMuted} className="h-6 w-6 md:h-9 md:w-9 text-white group-hover:scale-110 transition-transform" />
                                 </button>
                             )}
                             
@@ -617,7 +627,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                     className="p-3.5 md:p-6 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group origin-center"
                                     title="عرض الإعلان"
                                 >
-                                    <ExpandIcon className="w-6 h-6 md:w-9 md:h-9 text-white group-hover:scale-110 transition-transform" />
+                                    <ExpandIcon className="h-6 w-6 md:h-9 md:w-9 text-white group-hover:scale-110 transition-transform" />
                                 </button>
                             )}
                         </div>
@@ -633,8 +643,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
       </div>
 
       <div ref={tabsRef} className="sticky top-16 md:top-20 z-40 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 shadow-md w-full">
-          <div className="w-full px-4 md:px-8 flex flex-row items-center justify-between h-14 md:h-16">
-              <div className="flex items-center gap-6 md:gap-8 h-full overflow-x-auto no-scrollbar">
+          <div className="flex h-14 w-full flex-row items-center justify-between px-4 md:h-16 md:px-8">
+              <div className="custom-scrollbar flex h-full items-center gap-6 overflow-x-auto no-scrollbar md:gap-8">
                   {!isSoon && (
                       <>
                         <button onClick={() => setActiveTab('episodes')} className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'episodes' ? activeTabClass : tabHoverClass}`}>{!isEpisodic ? 'المشاهدة' : (isLoaded ? `الحلقات (${episodes.length})` : 'الحلقات')}</button>
@@ -656,11 +666,11 @@ const DetailPage: React.FC<DetailPageProps> = ({
           </div>
       </div>
 
-      <div className="relative w-full bg-[var(--bg-body)] min-h-[400px]">
+      <div className="relative min-h-[400px] w-full bg-[var(--bg-body)]">
           {activeTab === 'episodes' && !isSoon && (
-              <div className="animate-fade-in-up w-full px-4 md:px-8 pt-8">
+              <div className="w-full px-4 pt-8 md:px-8 animate-fade-in-up">
                   {isEpisodic || !isLoaded ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-10 pb-10">
+                      <div className="mb-10 grid grid-cols-1 gap-4 pb-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                           {isLoaded ? episodes.map((ep, index) => {
                               const eNum = index + 1;
                               const sNum = currentSeason?.seasonNumber || 1;
@@ -672,28 +682,35 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                     href={watchUrl}
                                     onClick={(e) => { e.preventDefault(); handleEpisodeSelect(ep, sNum, eNum); }}
                                     aria-label={`شاهد ${content.title} الموسم ${sNum} الحلقة ${eNum}`}
-                                    className="group cursor-pointer relative rounded-xl bg-[var(--bg-card)] border border-gray-800 episode-card-hover overflow-hidden h-full flex flex-col no-underline text-inherit"
+                                    className="episode-card-hover group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-gray-800 bg-[var(--bg-card)] text-inherit no-underline"
                                   >
-                                      <div className="relative w-full aspect-video overflow-hidden bg-black">
-                                          <img src={ep.thumbnail || content.backdrop} alt={ep.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                      <div className="relative aspect-video w-full overflow-hidden bg-black">
+                                          <img src={ep.thumbnail || displayBackdrop} alt={ep.title} className="h-full w-full object-cover transition-transform group-hover:scale-110" />
                                           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                                          <div className="absolute bottom-3 right-3 left-3 flex justify-between items-end">
-                                              <h4 className="text-xl font-bold text-white drop-shadow-md leading-none">{ep.title || `الحلقة ${eNum}`}</h4>
-                                              {ep.duration && <span className="text-xs font-bold text-white bg-black/60 px-2 py-1 rounded-lg">{ep.duration}</span>}
+                                          
+                                          {ep.isLastEpisode && (
+                                            <div className="absolute top-2 left-2 z-10">
+                                                <span className="rounded-md border border-red-500/50 bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-lg">الحلقة الأخيرة</span>
+                                            </div>
+                                          )}
+
+                                          <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
+                                              <h4 className="leading-none text-xl font-bold text-white drop-shadow-md">{ep.title || `الحلقة ${eNum}`}</h4>
+                                              {ep.duration && <span className="rounded-lg bg-black/60 px-2 py-1 text-xs font-bold text-white">{ep.duration}</span>}
                                           </div>
                                       </div>
-                                      <div className="p-3 md:p-4 flex-1"><p className="text-xs md:text-sm text-gray-400 line-clamp-3 leading-relaxed">{getEpisodeDescription(ep.description, eNum, sNum)}</p></div>
+                                      <div className="flex-1 p-3 md:p-4"><p className="leading-relaxed line-clamp-3 text-xs md:text-sm text-gray-400">{getEpisodeDescription(ep.description, eNum, sNum)}</p></div>
                                   </a>
                               );
                           }) : (
                               Array.from({ length: 10 }).map((_, i) => (
-                                  <div key={i} className="rounded-xl bg-gray-800/40 border border-gray-700/50 overflow-hidden h-full flex flex-col skeleton-shimmer">
-                                      <div className="relative w-full aspect-video bg-gray-700/30"></div>
-                                      <div className="p-4 space-y-3">
-                                          <div className="h-4 bg-gray-700/40 rounded w-1/2"></div>
+                                  <div key={i} className="flex h-full flex-col overflow-hidden rounded-xl border border-gray-700/50 bg-gray-800/40 skeleton-shimmer">
+                                      <div className="relative aspect-video w-full bg-gray-700/30"></div>
+                                      <div className="space-y-3 p-4">
+                                          <div className="h-4 w-1/2 rounded bg-gray-700/40"></div>
                                           <div className="space-y-2">
-                                              <div className="h-2 bg-gray-800/40 rounded w-full"></div>
-                                              <div className="h-2 bg-gray-800/40 rounded w-5/6"></div>
+                                              <div className="h-2 w-full rounded bg-gray-700/40"></div>
+                                              <div className="h-2 w-5/6 rounded bg-gray-700/40"></div>
                                           </div>
                                       </div>
                                   </div>
@@ -701,12 +718,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
                           )}
                       </div>
                   ) : (
-                      <div className="max-w-6xl mx-auto w-full py-8 text-center">
-                           <div className="w-full mb-8">
-                                <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-3">
-                                    <span className="text-sm text-gray-400 font-black ml-2 whitespace-nowrap">سيرفرات المشاهدة:</span>
+                      <div className="mx-auto w-full max-w-6xl py-8 text-center">
+                           <div className="mb-8 w-full">
+                                <div className="custom-scrollbar flex items-center gap-3 overflow-x-auto pb-3 no-scrollbar">
+                                    <span className="ml-2 whitespace-nowrap text-sm font-black text-gray-400">سيرفرات المشاهدة:</span>
                                     {activeServers.length > 0 ? activeServers.map((server, idx) => (
-                                        <button key={server.id} onClick={() => setSelectedServer(server)} className={`flex-shrink-0 px-8 py-3 rounded-2xl font-black text-sm transition-all border ${selectedServer?.id === server.id ? `${bgAccent} text-black border-transparent shadow-[0_0_20px_var(--shadow-color)] scale-105` : 'bg-gray-800/50 text-gray-300 border-gray-700 hover:bg-gray-800'}`}>
+                                        <button key={server.id} onClick={() => setSelectedServer(server)} className={`flex-shrink-0 border px-8 py-3 rounded-2xl font-black text-sm transition-all ${selectedServer?.id === server.id ? `scale-105 border-transparent ${bgAccent} text-black shadow-[0_0_20px_var(--shadow-color)]` : 'border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-800'}`}>
                                             سيرفر {idx + 1}
                                         </button>
                                     )) : (
@@ -715,12 +732,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 </div>
                            </div>
 
-                           <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-2xl border border-gray-800 bg-black relative z-10 mx-auto">
-                                <VideoPlayer key={playerKey} tmdbId={content.id} type={content.type} manualSrc={selectedServer?.url} poster={content.backdrop} />
+                           <div className="relative z-10 mx-auto aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl">
+                                <VideoPlayer key={playerKey} tmdbId={content.id} type={content.type} manualSrc={selectedServer?.url} poster={displayBackdrop} />
                            </div>
 
-                           <div className="mt-6 relative flex flex-col items-center gap-2 animate-fade-in-up">
-                                <div className="flex justify-center w-full">
+                           <div className="relative mt-6 flex flex-col items-center gap-2 animate-fade-in-up">
+                                <div className="flex w-full justify-center">
                                     <button 
                                         onClick={handleDownload}
                                         className={`
@@ -744,15 +761,15 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                             }
                                         `}
                                     >
-                                        <DownloadIcon className="w-5 h-5 md:w-6 md:h-6 fill-current" />
+                                        <DownloadIcon className="h-5 w-5 fill-current md:h-6 md:w-6" />
                                         <span>تحميل الآن</span>
                                     </button>
                                 </div>
 
-                                <div className="w-full flex justify-start">
+                                <div className="flex w-full justify-start">
                                     <button 
                                         onClick={() => setIsReportModalOpen(true)} 
-                                        className="px-4 py-1.5 rounded-lg text-red-500/60 hover:text-red-400 hover:bg-red-500/10 active:scale-95 transition-all flex items-center justify-center shrink-0"
+                                        className="flex shrink-0 items-center justify-center rounded-lg px-4 py-1.5 text-red-500/60 transition-all hover:bg-red-500/10 hover:text-red-400 active:scale-95"
                                         title="إبلاغ عن مشكلة"
                                     >
                                         <span className="text-xs font-bold">⚠️ إبلاغ عن مشكلة</span>
@@ -765,12 +782,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
           )}
 
           {activeTab === 'trailer' && trailerVideoId && (
-              <div className="px-4 md:px-8 py-8 animate-fade-in-up w-full">
-                  <div className="max-w-5xl mx-auto w-full">
-                      <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-2xl border border-gray-800 bg-black">
+              <div className="w-full px-4 py-8 md:px-8 animate-fade-in-up">
+                  <div className="mx-auto w-full max-w-5xl">
+                      <div className="aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl">
                           <iframe 
                               src={modalEmbedUrl} 
-                              className="w-full h-full" 
+                              className="h-full w-full" 
                               allow="autoplay; encrypted-media; picture-in-picture; fullscreen" 
                               allowFullScreen
                               title="Official Trailer"
@@ -781,148 +798,138 @@ const DetailPage: React.FC<DetailPageProps> = ({
           )}
 
           {activeTab === 'details' && (
-              <div className="px-4 md:px-8 py-8 animate-fade-in-up w-full">
-                  <div className="w-full flex flex-col gap-12">
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
-                          <div className="md:col-span-8 space-y-10 order-1">
-                              {isLoaded ? (
-                                  <>
-                                    <div>
-                                        <h3 className="text-xl md:text-2xl font-bold text-white mb-4 flex items-center gap-3">
-                                            <div className="h-6 md:h-8 w-1.5 bg-[var(--color-accent)] rounded-full"></div>
-                                            <span>القصة</span>
-                                        </h3>
-                                        <p className="text-gray-300 text-lg leading-loose text-justify">{displayDescription}</p>
-                                    </div>
-                                     
-                                    <div>
-                                        <h3 className="text-xl md:text-2xl font-bold text-white mb-4 flex items-center gap-3">
-                                            <div className="h-6 md:h-8 w-1.5 bg-[var(--color-accent)] rounded-full"></div>
-                                            <span>التصنيف النوعي</span>
-                                        </h3>
-                                        <div className="flex flex-wrap gap-2">
-                                            {content?.genres?.map((genre, index) => (
-                                                <div key={index} className="px-4 py-2 rounded-xl text-sm font-bold border border-gray-700 bg-gray-800/50 text-gray-300 hover:border-gray-500 transition-colors">
-                                                    {genre}
-                                                </div>
-                                            ))}
+              <div className="w-full animate-fade-in-up">
+                  <div className="px-4 py-8 md:px-8">
+                    <div className="flex w-full flex-col gap-12">
+                        <div className="grid grid-cols-1 gap-10 md:grid-cols-12">
+                            <div className="order-1 space-y-10 md:col-span-8">
+                                {isLoaded ? (
+                                    <>
+                                        <div>
+                                            <h3 className="mb-4 flex items-center gap-3 text-xl font-bold text-white md:text-2xl">
+                                                <div className="h-6 w-1.5 rounded-full bg-[var(--color-accent)] md:h-8"></div>
+                                                <span>القصة</span>
+                                            </h3>
+                                            <p className="leading-loose text-justify text-lg text-gray-300">{displayDescription}</p>
+                                        </div>
+                                        
+                                        <div>
+                                            <h3 className="mb-4 flex items-center gap-3 text-xl font-bold text-white md:text-2xl">
+                                                <div className="h-6 w-1.5 rounded-full bg-[var(--color-accent)] md:h-8"></div>
+                                                <span>التصنيف النوعي</span>
+                                            </h3>
+                                            <div className="flex flex-wrap gap-2">
+                                                {content?.genres?.map((genre, index) => (
+                                                    <div key={index} className="rounded-xl border border-gray-700 bg-gray-800/50 px-4 py-2 text-sm font-bold text-gray-300 transition-colors hover:border-gray-500">
+                                                        {genre}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="space-y-12">
+                                        <div className="space-y-4">
+                                            <div className="h-6 w-32 rounded bg-gray-800/40 skeleton-shimmer"></div>
+                                            <div className="space-y-2">
+                                                <div className="h-4 w-full rounded bg-gray-800/40 skeleton-shimmer"></div>
+                                                <div className="h-4 w-full rounded bg-gray-800/40 skeleton-shimmer"></div>
+                                                <div className="h-4 w-2/3 rounded bg-gray-800/40 skeleton-shimmer"></div>
+                                            </div>
                                         </div>
                                     </div>
-                                  </>
-                              ) : (
-                                  <div className="space-y-12">
-                                      <div className="space-y-4">
-                                          <div className="h-6 bg-gray-800/40 rounded w-32 skeleton-shimmer"></div>
-                                          <div className="space-y-2">
-                                              <div className="h-4 bg-gray-800/40 rounded w-full skeleton-shimmer"></div>
-                                              <div className="h-4 bg-gray-800/40 rounded w-full skeleton-shimmer"></div>
-                                              <div className="h-4 bg-gray-800/40 rounded w-2/3 skeleton-shimmer"></div>
-                                          </div>
-                                      </div>
-                                  </div>
-                              )}
-                          </div>
+                                )}
+                            </div>
 
-                          <div className="md:col-span-4 order-2 md:mt-2">
-                              {isLoaded ? (
-                                  <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden shadow-xl w-full">
-                                      <div className="flex flex-col divide-y divide-white/10">
-                                          <div className="p-4 flex flex-col gap-1">
-                                              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">سنة الإنتاج</span>
-                                              <span className="text-white font-black text-base">{currentSeason?.releaseYear || content.releaseYear}</span>
-                                          </div>
-                                          
-                                          <div className="p-4 flex flex-col gap-1">
-                                              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">وقت العمل</span>
-                                              <span className="text-white font-black text-base" dir="ltr">{content.duration || (isEpisodic ? '45m+' : 'N/A')}</span>
-                                          </div>
+                            <div className="order-2 w-full md:col-span-4 md:mt-2">
+                                {isLoaded ? (
+                                    <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-xl">
+                                        <div className="flex flex-col divide-y divide-white/10">
+                                            <div className="flex flex-col gap-1 p-4">
+                                                <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">سنة الإنتاج</span>
+                                                <span className="text-base font-black text-white">{currentSeason?.releaseYear || content.releaseYear}</span>
+                                            </div>
+                                            
+                                            <div className="flex flex-col gap-1 p-4">
+                                                <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">وقت العمل</span>
+                                                <span className="text-base font-black text-white" dir="ltr">{content.duration || (isEpisodic ? '45m+' : 'N/A')}</span>
+                                            </div>
 
-                                          <div className="p-4 flex flex-col gap-1">
-                                              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">التصنيف العمري</span>
-                                              <div className="w-fit border border-gray-600 rounded px-2 py-0.5 text-xs font-black text-gray-200">
-                                                  {content.ageRating}
-                                              </div>
-                                          </div>
+                                            <div className="flex flex-col gap-1 p-4">
+                                                <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">التصنيف العمري</span>
+                                                <div className="w-fit rounded border border-gray-600 px-2 py-0.5 text-xs font-black text-gray-200">
+                                                    {content.ageRating}
+                                                </div>
+                                            </div>
 
-                                          {isEpisodic && (
-                                              <>
-                                                  <div className="p-4 flex flex-col gap-1">
-                                                      <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">عدد المواسم</span>
-                                                      <span className="text-white font-black text-base">{content.seasons?.length || 1}</span>
-                                                  </div>
-                                                  <div className="p-4 flex flex-col gap-1">
-                                                      <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">عدد الحلقات</span>
-                                                      <span className="text-white font-black text-base">{episodes.length}</span>
-                                                  </div>
-                                              </>
-                                          )}
+                                            {isEpisodic && (
+                                                <>
+                                                    <div className="flex flex-col gap-1 p-4">
+                                                        <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">عدد المواسم</span>
+                                                        <span className="text-base font-black text-white">{content.seasons?.length || 0}</span>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="w-full h-64 bg-gray-800/20 rounded-2xl skeleton-shimmer border border-white/5"></div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                  </div>
 
-                                          <div className="p-4 flex flex-col gap-1">
-                                              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">التقييم</span>
-                                              <div className="flex items-center gap-1.5 text-yellow-500">
-                                                  <StarIcon className="w-4 h-4" />
-                                                  <span className="font-black text-base">{content.rating.toFixed(1)}</span>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </div>
-                              ) : (
-                                  <div className="h-64 bg-gray-800/40 rounded-2xl skeleton-shimmer"></div>
-                              )}
-                          </div>
-                      </div>
-
-                      <div className="border-t border-white/5 pt-12">
-                          {content.cast && content.cast.length > 0 && <PeopleGrid title="طاقم التمثيل" names={content.cast} />}
-
-                          {(content.director || content.writer) && (
-                            <div className="mb-12">
-                              <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                  {/* Cast and Crew Integrated inside Details Tab - UPDATED TO FULL WIDTH AND 6 COLS */}
+                  {isLoaded && (
+                    <div className="relative z-10 px-4 md:px-8 py-12 mt-12 border-t border-white/5 bg-black/20 w-full">
+                        <div className="w-full text-right">
+                            {content.cast && content.cast.length > 0 && <PeopleGrid title="طاقم التمثيل" names={content.cast} />}
+                            
+                            {(content.director || content.writer) && (
+                            <div className="mb-12 w-full text-right">
+                                <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center gap-3">
                                 <div className="h-6 md:h-8 w-1.5 bg-[var(--color-accent)] rounded-full"></div>
                                 <span>صنّاع العمل</span>
-                              </h3>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
-                                 {content.director && <PersonCard name={content.director} label="إخراج" />}
-                                 {content.writer && <PersonCard name={content.writer} label="تأليف" />}
-                              </div>
+                                </h3>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4 w-full">
+                                {content.director && <PersonCard name={content.director} label="إخراج" />}
+                                {content.writer && <PersonCard name={content.writer} label="تأليف" />}
+                                </div>
                             </div>
-                          )}
-                      </div>
-                  </div>
+                            )}
+                        </div>
+                    </div>
+                  )}
               </div>
           )}
+
           {activeTab === 'related' && (
-              <div className="py-8 animate-fade-in-up w-full">
-                  <ContentCarousel title="قد يعجبك أيضاً" contents={similarContent} onSelectContent={onSelectContent} isLoggedIn={isLoggedIn} myList={myList} onToggleMyList={onToggleMyList} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isHorizontal={true} isLoading={!isLoaded} />
+              <div className="w-full px-4 py-8 md:px-8 animate-fade-in-up">
+                  <ContentCarousel 
+                      title="أعمال مشابهة" 
+                      contents={similarContent} 
+                      onSelectContent={onSelectContent} 
+                      isLoggedIn={isLoggedIn} 
+                      myList={myList} 
+                      onToggleMyList={onToggleMyList}
+                      isRamadanTheme={isRamadanTheme}
+                      isEidTheme={isEidTheme}
+                      isCosmicTealTheme={isCosmicTealTheme}
+                      isNetflixRedTheme={isNetflixRedTheme}
+                  />
               </div>
           )}
       </div>
 
-      <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} contentId={content?.id} contentTitle={content?.title} />
-
-      {isDownloadErrorOpen && createPortal(
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setIsDownloadErrorOpen(false)}>
-              <div className="bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up" onClick={e => e.stopPropagation()}>
-                  <div className="p-6 text-center">
-                      <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20 shadow-inner">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-                          </svg>
-                      </div>
-                      <h3 className="text-xl font-bold text-white mb-2">عذراً، الرابط غير متوفر</h3>
-                      <p className="text-gray-400 text-sm mb-6 leading-relaxed">رابط التحميل غير متوفر لهذا السيرفر حالياً، يرجى تجربة سيرفر آخر.</p>
-                      <button 
-                          onClick={() => setIsDownloadErrorOpen(false)}
-                          className={`w-full py-3 rounded-xl font-bold text-white transition-all transform active:scale-95 shadow-lg
-                              ${isNetflixRedTheme ? 'bg-[#E50914] hover:bg-[#b20710]' : isCosmicTealTheme ? 'bg-[#35F18B] hover:bg-[#2596be] !text-black' : 'bg-[#00A7F8] hover:bg-[#008ecf]'}`}
-                      >
-                          حسنًا، فهمت
-                      </button>
-                  </div>
-              </div>
-          </div>,
-          document.body
-      )}
+      <ReportModal 
+          isOpen={isReportModalOpen} 
+          onClose={() => setIsReportModalOpen(false)} 
+          contentId={content.id} 
+          contentTitle={content.title}
+          isCosmicTealTheme={isCosmicTealTheme}
+          isNetflixRedTheme={isNetflixRedTheme}
+      />
     </div>
   );
 };

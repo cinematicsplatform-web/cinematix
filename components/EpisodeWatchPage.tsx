@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Content, Episode, Server, Ad, View, Person } from '../types';
@@ -73,6 +72,10 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
         return null;
     }, [currentSeason, episodeNumber]);
 
+    // Added constants to fix missing variables
+    const displayBackdrop = currentSeason?.backdrop || content?.backdrop || '';
+    const displayDescription = currentSeason?.description || content?.description || '';
+
     const canonicalUrl = isEpisodic ? `/${content.type}/${content?.slug || content?.id}` : `/watch/movie/${content?.slug || content?.id}`;
 
     const activeServers = useMemo(() => {
@@ -94,7 +97,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     const [isDownloadErrorOpen, setIsDownloadErrorOpen] = useState(false);
 
     const accentColor = isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-500' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]';
-    const bgAccent = isRamadanTheme ? 'bg-amber-500' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]';
+    const bgAccent = isRamadanTheme ? 'bg-amber-500' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'bg-[#00A7F8]';
     const borderAccent = isRamadanTheme ? 'border-amber-500/30' : isEidTheme ? 'border-purple-500/30' : isCosmicTealTheme ? 'border-[#35F18B]/30' : isNetflixRedTheme ? 'border-[#E50914]/30' : 'border-[#00A7F8]/30';
 
     const isArabic = (text: string) => /[\u0600-\u06FF]/.test(text);
@@ -153,7 +156,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     };
 
     const handleDownload = () => {
-        // NEW: Instead of directly downloading, open the new download page
         onSetView('download', undefined, { 
             content: content,
             season: seasonNumber,
@@ -161,18 +163,38 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
         });
     };
 
+    // ✅ Background respects season-specific desktop images for mobile display tailoring
+    const cropPosX = currentSeason?.mobileCropPositionX ?? currentSeason?.mobileCropPosition ?? content?.mobileCropPositionX ?? content?.mobileCropPosition ?? 50;
+    const cropPosY = currentSeason?.mobileCropPositionY ?? currentSeason?.mobileCropPositionY ?? content?.mobileCropPositionY ?? 50;
+    const enableCrop = currentSeason?.enableMobileCrop ?? content?.enableMobileCrop ?? false;
+    const imgStyle: React.CSSProperties = { '--mob-x': `${cropPosX}%`, '--mob-y': `${cropPosY}%` } as React.CSSProperties;
+
     return (
-        <div className="min-h-screen bg-[var(--bg-body)] text-white pb-20 animate-fade-in-up">
+        <div className="min-h-screen bg-[var(--bg-body)] text-white pb-20 animate-fade-in-up relative overflow-x-hidden overflow-y-auto">
             <SEO 
                 type={isEpisodic ? "series" : "movie"} 
                 title={content?.title} 
                 seasonNumber={seasonNumber}
                 episodeNumber={episodeNumber}
-                description={selectedEpisode?.description || `مشاهدة الحلقة ${episodeNumber} من الموسم ${seasonNumber} لـ ${content?.title}`} 
-                image={selectedEpisode?.thumbnail || content?.poster}
+                description={selectedEpisode?.description || currentSeason?.description || content?.description} 
+                image={selectedEpisode?.thumbnail || currentSeason?.poster || content?.poster}
                 url={canonicalUrl}
                 noIndex={true} 
             />
+
+            {/* Background Backdrop adapted to Episode/Season metadata - MODIFIED: Set to hidden for solid color background */}
+            <div className="absolute top-0 left-0 w-full h-[85vh] z-0 pointer-events-none">
+                 <picture className={`hidden w-full h-full object-cover opacity-20 blur-md scale-110 ${enableCrop ? 'mobile-custom-crop' : 'object-top'} md:object-top`} style={imgStyle}>
+                    {/* Elements kept but hidden as requested */}
+                    <source media="(max-width: 767px)" srcSet={currentSeason?.mobileImageUrl || content.mobileBackdropUrl || selectedEpisode?.thumbnail || currentSeason?.backdrop || content.backdrop} />
+                    <img 
+                        src={selectedEpisode?.thumbnail || currentSeason?.backdrop || content.backdrop} 
+                        alt="" 
+                        className="w-full h-full object-cover md:object-top"
+                    />
+                 </picture>
+                <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-body)] via-transparent to-[var(--bg-body)] opacity-0"></div>
+            </div>
 
             <div className="sticky top-0 z-50 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 px-4 h-16 flex items-center justify-between shadow-lg">
                 <div className="flex items-center gap-4 w-full">
@@ -183,7 +205,12 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                         {isLoaded ? (
                             <>
                                 <h1 className="text-sm md:text-base font-bold text-gray-200 truncate">{content.title}</h1>
-                                <span className={`text-[10px] md:text-xs font-bold ${accentColor}`}>الموسم {seasonNumber} | الحلقة {episodeNumber}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-[10px] md:text-xs font-bold ${accentColor}`}>الموسم {seasonNumber} | الحلقة {episodeNumber}</span>
+                                    {selectedEpisode?.isLastEpisode && (
+                                        <span className="bg-red-600/20 text-red-500 border border-red-500/30 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">الحلقة الأخيرة</span>
+                                    )}
+                                </div>
                             </>
                         ) : (
                             <div className="flex flex-col gap-1">
@@ -195,7 +222,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 md:px-0 pt-6 text-center">
+            <div className="relative z-10 max-w-5xl mx-auto px-4 md:px-0 pt-6 text-center">
                 
                 <div className="w-full mb-6">
                     <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-3">
@@ -221,7 +248,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                             season={seasonNumber} 
                             episode={episodeNumber} 
                             manualSrc={selectedServer?.url} 
-                            poster={selectedEpisode?.thumbnail || content.backdrop} 
+                            poster={selectedEpisode?.thumbnail || displayBackdrop} 
                         />
                     ) : (
                         <div className="absolute inset-0 bg-[#0f1014] skeleton-shimmer flex items-center justify-center">
@@ -279,7 +306,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                             <div className="flex justify-between items-start">
                                 <h2 className="text-2xl font-bold text-white">{selectedEpisode?.title || `الحلقة ${episodeNumber}`}</h2>
                             </div>
-                            <p className="text-sm text-gray-400 max-w-3xl leading-loose">{selectedEpisode?.description || content.description}</p>
+                            <p className="text-sm text-gray-400 max-w-3xl leading-loose">{selectedEpisode?.description || displayDescription}</p>
                             
                             <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden shadow-xl max-w-4xl mt-4">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap divide-x divide-y md:divide-y-0 divide-white/10 rtl:divide-x-reverse">
@@ -328,25 +355,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 </div>
             </div>
 
-            <div className="px-4 md:px-8 py-12 mt-12 border-t border-white/5 bg-black/20">
-                <div className="max-w-7xl mx-auto w-full">
-                    {content.cast && content.cast.length > 0 && <PeopleGrid title="طاقم التمثيل" names={content.cast} />}
-                    
-                    {(content.director || content.writer) && (
-                      <div className="mb-12">
-                        <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                          <div className="h-6 md:h-8 w-1.5 bg-[var(--color-accent)] rounded-full"></div>
-                          <span>صنّاع العمل</span>
-                        </h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
-                           {content.director && <PersonCard name={content.director} label="إخراج" />}
-                           {content.writer && <PersonCard name={content.writer} label="تأليف" />}
-                        </div>
-                      </div>
-                    )}
-                </div>
-            </div>
-            
             <ReportModal 
                 isOpen={isReportModalOpen} 
                 onClose={() => setIsReportModalOpen(false)} 
@@ -359,7 +367,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
             {isDownloadErrorOpen && createPortal(
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setIsDownloadErrorOpen(false)}>
-                    <div className="bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                    <div className="bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl w-full max-sm overflow-hidden animate-fade-in-up" onClick={e => e.stopPropagation()}>
                         <div className="p-6 text-center">
                             <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20 shadow-inner">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">

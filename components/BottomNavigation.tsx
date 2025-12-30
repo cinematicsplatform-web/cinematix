@@ -86,10 +86,11 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetV
                 ? 'ring-[#E50914]'
                 : 'ring-[#00A7F8]';
 
-  const fallbackBg = "bg-[#0D121B]/95 backdrop-blur-[15px]";
+  // THEME AWARE BACKGROUND
+  const themedBg = "bg-[var(--bg-body)]/95 backdrop-blur-[20px]";
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 z-[1000] md:hidden pb-safe transition-all duration-500 ${fallbackBg} border-t border-white/5 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]`}>
+    <div className={`fixed bottom-0 left-0 right-0 z-[1000] md:hidden pb-safe transition-all duration-500 ${themedBg} border-t border-white/10 shadow-[0_-8px_25px_rgba(0,0,0,0.6)]`}>
       <div className="flex justify-between items-center px-2 h-[76px] w-full max-w-lg mx-auto">
         {navItems.map((item) => {
           const isActive = currentView === item.view || (item.id === 'home' && (currentView === 'home' || currentView === 'kids'));
@@ -106,14 +107,14 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetV
               }}
               className="flex flex-col items-center justify-center flex-1 h-full gap-1.5 active:scale-90 transition-all group relative"
             >
-              <div className={`transition-all duration-300 relative ${isActive ? `-translate-y-1 ${activeColorClass}` : 'text-white'}`}>
+              <div className={`transition-all duration-300 relative ${isActive ? `-translate-y-1 ${activeColorClass}` : 'text-white/70'}`}>
                 {showAvatar ? (
-                   <div className={`w-[30px] h-[30px] md:w-[34px] md:h-[34px] rounded-full overflow-hidden ring-2 transition-all duration-300 ${isActive ? activeRingColor : 'ring-white opacity-100'}`}>
+                   <div className={`w-[30px] h-[30px] md:w-[34px] md:h-[34px] rounded-full overflow-hidden ring-2 transition-all duration-300 ${isActive ? activeRingColor : 'ring-white/40 opacity-90'}`}>
                        <img src={activeProfile.avatar} alt="Profile" className="w-full h-full object-cover" />
                    </div>
                 ) : (
                     <Icon 
-                        className={`w-[28px] h-[28px] md:w-[32px] md:h-[32px] transition-all duration-300 ${isActive ? 'drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] opacity-100' : 'opacity-100 text-white'}`} 
+                        className={`w-[28px] h-[28px] md:w-[32px] md:h-[32px] transition-all duration-300 ${isActive ? 'drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] opacity-100' : 'opacity-70 group-hover:opacity-100'}`} 
                     />
                 )}
               </div>
@@ -122,13 +123,11 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetV
                 className={`text-[12px] md:text-[13px] font-bold truncate max-w-[65px] transition-all duration-300 ${
                     isActive 
                     ? `${activeColorClass} opacity-100`
-                    : 'text-white opacity-100'
+                    : 'text-white/50 group-hover:text-white opacity-100'
                 }`}
               >
                 {item.label}
               </span>
-              
-              {/* تمت إزالة النقطة (المؤشر) من هنا بناءً على طلب المستخدم */}
             </button>
           );
         })}

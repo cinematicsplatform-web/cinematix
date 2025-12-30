@@ -17,6 +17,7 @@ interface HeroProps {
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
   hideDescription?: boolean;
+  disableVideo?: boolean; // Prop to disable background video playback
 }
 
 const Hero: React.FC<HeroProps> = ({ 
@@ -30,19 +31,21 @@ const Hero: React.FC<HeroProps> = ({
     isEidTheme,
     isCosmicTealTheme,
     isNetflixRedTheme,
-    hideDescription = false
+    hideDescription = false,
+    disableVideo = false
 }) => {
     const [unboundedIndex, setUnboundedIndex] = useState(0);
     const [isDirectJump, setIsDirectJump] = useState(false);
     const [showVideo, setShowVideo] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     const [isPaused, setIsPaused] = useState(false);
-    const [isInView, setIsInView] = useState(true); // تتبع حالة الرؤية
-    // Fix: Moved videoEnded state definition higher to be available for effects
+    const [isInView, setIsInView] = useState(true); 
     const [videoEnded, setVideoEnded] = useState(false);
     
     const [isDragging, setIsDragging] = useState(false);
     const [startPos, setStartPos] = useState(0);
+    const [startPosY, setStartPosY] = useState(0);
+    const [isScrollAttempt, setIsScrollAttempt] = useState(false);
     const [dragOffset, setDragOffset] = useState(0);
     
     const containerRef = useRef<HTMLDivElement>(null);
@@ -64,13 +67,13 @@ const Hero: React.FC<HeroProps> = ({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // --- مراقبة التمرير (Intersection Observer) ---
     useEffect(() => {
         const observer = new IntersectionObserver(
             ([entry]) => {
-                setIsInView(entry.isIntersecting);
+                // If less than 30% of the hero is visible, consider it out of view to pause playback
+                setIsInView(entry.intersectionRatio > 0.3);
             },
-            { threshold: 0.1 } // توقف عند اختفاء 90% من القسم
+            { threshold: [0, 0.3, 0.5, 1.0] }
         );
 
         if (containerRef.current) {
@@ -114,7 +117,7 @@ const Hero: React.FC<HeroProps> = ({
         setIsDirectJump(false);
         hasTransitionedRef.current = false;
 
-        if (!activeContent || !activeContent.trailerUrl || isMobile) return;
+        if (!activeContent || !activeContent.trailerUrl || isMobile || disableVideo) return;
 
         const trailerTimer = setTimeout(() => {
             setShowVideo(true);
@@ -123,9 +126,8 @@ const Hero: React.FC<HeroProps> = ({
         return () => {
             clearTimeout(trailerTimer);
         };
-    }, [activeContent?.id, isMobile]);
+    }, [activeContent?.id, isMobile, disableVideo]);
 
-    // التحكم في تشغيل وإيقاف الفيديو عند التمرير
     useEffect(() => {
         if (!showVideo || !activeIframeRef.current) return;
 
@@ -134,34 +136,16 @@ const Hero: React.FC<HeroProps> = ({
 
         try {
             if (isInView) {
-                // استئناف التشغيل ومزامنة الصوت
                 win.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
                 win.postMessage(JSON.stringify({ event: 'command', func: isMuted ? 'mute' : 'unMute', args: '' }), '*');
             } else {
-                // إيقاف مؤقت عند الخروج من الكادر
                 win.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
             }
         } catch (e) {}
     }, [isInView, showVideo, isMuted]);
 
-    // Fix: Defined the toggleMute function
-    const toggleMute = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        const newMuted = !isMuted;
-        setIsMuted(newMuted);
-        if (activeIframeRef.current) {
-            try {
-                activeIframeRef.current.contentWindow?.postMessage(JSON.stringify({
-                    event: 'command',
-                    func: newMuted ? 'mute' : 'unMute',
-                    args: ''
-                }), '*');
-            } catch (err) {}
-        }
-    }, [isMuted]);
-
     useEffect(() => {
-        if (showVideo && isInView) { // يتوقف التايمر الإجباري إذا لم يكن في الكادر
+        if (showVideo && isInView) {
             forceStopTimerRef.current = setTimeout(() => {
                 if (!hasTransitionedRef.current) {
                     hasTransitionedRef.current = true;
@@ -223,24 +207,38 @@ const Hero: React.FC<HeroProps> = ({
         hasTransitionedRef.current = false;
     }, [activeIndex, len]);
 
-    const handleStart = (clientX: number) => {
+    const handleStart = (clientX: number, clientY: number) => {
         if (!hasMultiple) return;
         setIsDragging(true);
+        setIsScrollAttempt(false);
         setStartPos(clientX);
+        setStartPosY(clientY);
         setDragOffset(0);
         setIsDirectJump(false);
     };
 
-    const handleMove = (clientX: number) => {
-        if (!isDragging) return;
-        const diff = clientX - startPos;
-        setDragOffset(diff);
+    const handleMove = (clientX: number, clientY: number) => {
+        if (!isDragging || isScrollAttempt) return;
+        
+        const diffX = clientX - startPos;
+        const diffY = clientY - startPosY;
+
+        // Smart Swipe vs Scroll Detection
+        // If the user moves more vertically than horizontally, we disable dragging to allow page scroll
+        if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 5) {
+            setIsScrollAttempt(true);
+            setIsDragging(false);
+            setDragOffset(0);
+            return;
+        }
+
+        setDragOffset(diffX);
     };
 
     const handleEnd = () => {
         if (!isDragging) return;
         setIsDragging(false);
-        const threshold = window.innerWidth * 0.2;
+        const threshold = window.innerWidth * 0.15;
         if (dragOffset > threshold) {
             setUnboundedIndex(prev => prev - 1);
             hasTransitionedRef.current = false;
@@ -251,6 +249,12 @@ const Hero: React.FC<HeroProps> = ({
         setDragOffset(0);
     };
 
+    const toggleMute = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsMuted(prev => !prev);
+    };
+
     if (!contents || contents.length === 0) return null;
 
     const containerBgColor = isRamadanTheme ? 'bg-[#1a1000]' : isEidTheme ? 'bg-[#1a0b2e]' : isCosmicTealTheme ? 'bg-[#0b1116]' : isNetflixRedTheme ? 'bg-[#141414]' : 'bg-black';    
@@ -258,39 +262,44 @@ const Hero: React.FC<HeroProps> = ({
     return (
         <div 
             ref={containerRef}
-            className={`relative h-[80vh] md:h-[90vh] w-full overflow-hidden group ${containerBgColor} select-none touch-pan-y`}
-            onMouseDown={(e) => handleStart(e.clientX)}
-            onMouseMove={(e) => handleMove(e.clientX)}
+            className={`relative min-h-[500px] h-[85vh] sm:h-[85vh] md:h-[90vh] lg:h-[90vh] w-full overflow-hidden group ${containerBgColor}`}
+            onMouseDown={(e) => { if(e.button === 0) handleStart(e.clientX, e.clientY); }}
+            onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
             onMouseUp={handleEnd}
             onMouseLeave={(e) => { handleEnd(); setIsPaused(false); }}
             onMouseEnter={() => setIsPaused(true)}
-            onTouchStart={(e) => handleStart(e.targetTouches[0].clientX)}
-            onTouchMove={(e) => handleMove(e.targetTouches[0].clientX)}
+            onTouchStart={(e) => handleStart(e.targetTouches[0].clientX, e.targetTouches[0].clientY)}
+            onTouchMove={(e) => handleMove(e.targetTouches[0].clientX, e.targetTouches[0].clientY)}
             onTouchEnd={handleEnd}
-            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+            style={{ 
+                cursor: isDragging ? 'grabbing' : hasMultiple ? 'grab' : 'default',
+                touchAction: 'pan-y' // CRITICAL: This allows vertical scrolling to pass through
+            }}
         >
             {contents.map((content, index) => {
                 const isActive = index === activeIndex;
                 const posX = content.mobileCropPositionX ?? content.mobileCropPosition ?? 50;
                 const posY = content.mobileCropPositionY ?? 50;
                 const imgStyle: React.CSSProperties = { '--mob-x': `${posX}%`, '--mob-y': `${posY}%` } as React.CSSProperties;
-                const cropClass = (content.enableMobileCrop && !content.mobileBackdropUrl) ? 'mobile-custom-crop' : '';
+                
+                // Ensure mobile cropping applies if enabled
+                const cropClass = content.enableMobileCrop ? 'mobile-custom-crop' : '';
 
                 let embedUrl = '';
-                if (isActive && content.trailerUrl) {
+                if (isActive && content.trailerUrl && !disableVideo) {
                     const videoId = getVideoId(content.trailerUrl);
                     if (videoId) {
                         const origin = typeof window !== 'undefined' ? window.location.origin : '';
                         embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${origin}`;
                     }
                 }
-                const shouldShowVideo = isActive && showVideo && embedUrl && !isMobile;
+                const shouldShowVideo = isActive && showVideo && embedUrl && !isMobile && !disableVideo;
 
                 let offset = (index - unboundedIndex) % len;
                 if (offset < 0) offset += len; 
                 if (offset > len / 2) offset -= len;
                 const baseTranslate = offset * 100;
-                const transitionStyle = isDragging ? 'none' : 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
+                const transitionStyle = (isDragging || isScrollAttempt) ? 'none' : 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
                 const textOpacityClass = isDirectJump ? (isActive ? 'opacity-100' : 'opacity-0') : 'opacity-100';
 
                 return (
@@ -305,26 +314,28 @@ const Hero: React.FC<HeroProps> = ({
                     >
                         <div className="absolute inset-0 w-full h-full">
                             {shouldShowVideo && (
-                                <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in-up pointer-events-none"> 
+                                <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in-up pointer-events-auto"> 
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
                                         <iframe 
                                             ref={activeIframeRef}
                                             src={embedUrl} 
                                             className="w-full h-full pointer-events-none" 
+                                            tabIndex={-1} 
                                             allow="autoplay; encrypted-media; picture-in-picture" 
                                             title={`Trailer for ${content.title}`}
                                             frameBorder="0"
+                                            style={{ pointerEvents: 'none' }} 
                                         ></iframe>
                                     </div>
                                 </div>
                             )}
 
                             <picture className={`absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-1000 ${shouldShowVideo ? 'opacity-0' : 'opacity-100'}`}>
-                                {content.mobileBackdropUrl && <source media="(max-width: 767px)" srcSet={content.mobileBackdropUrl} />}
+                                <source media="(max-width: 767px)" srcSet={content.mobileBackdropUrl || content.backdrop} />
                                 <img 
                                     src={content.backdrop} 
                                     alt={content.title} 
-                                    className={`absolute inset-0 w-full h-full object-cover object-top z-10 pointer-events-none ${cropClass}`}
+                                    className={`absolute inset-0 w-full h-full object-cover z-10 pointer-events-none ${cropClass} ${content.enableMobileCrop ? 'md:object-top' : 'object-top'} md:object-top`}
                                     style={imgStyle}
                                     draggable={false}
                                     loading={isActive ? "eager" : "lazy"}
@@ -335,11 +346,11 @@ const Hero: React.FC<HeroProps> = ({
                             <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-body)]/90 via-[var(--bg-body)]/40 via-50% to-transparent z-20 hidden md:block pointer-events-none"></div>
                         </div>
 
-                        <div className={`absolute inset-0 z-30 flex flex-col justify-end px-4 md:px-12 pb-4 md:pb-32 text-white pointer-events-none transition-opacity duration-500 ease-in-out ${textOpacityClass}`}>
+                        <div className={`absolute inset-0 z-30 flex flex-col justify-end px-4 md:px-12 pb-16 md:pb-32 text-white pointer-events-none transition-opacity duration-500 ease-in-out ${textOpacityClass}`}>
                             <div className="max-w-3xl w-full flex flex-col items-center md:items-start text-center md:text-right pointer-events-auto">
                                 {content.bannerNote && (
-                                    <div className={`mb-1 md:mb-2 text-sm font-medium shadow-sm w-fit animate-fade-in-up ${isRamadanTheme ? 'bg-[#D4AF37]/10 text-white border border-[#D4AF37]/10 px-3 py-1 rounded-lg backdrop-blur-md' : isEidTheme ? 'bg-purple-600/10 text-white border border-purple-500/10 px-3 py-1 rounded-lg backdrop-blur-md' : isCosmicTealTheme ? 'bg-[#35F18B]/10 text-white border border-[#35F18B]/10 px-3 py-1 rounded-lg backdrop-blur-md' : isNetflixRedTheme ? 'bg-[#E50914]/20 text-white border border-[#E50914]/20 px-3 py-1 rounded-lg backdrop-blur-md' : 'bg-[rgba(15,35,55,0.5)] text-[#00D2FF] border border-[rgba(0,210,255,0.3)] rounded-[6px] px-[12px] py-[4px] backdrop-blur-[4px]'}`}>
-                                        {content.bannerNote}
+                                    <div className={`mb-2 md:mb-2 text-sm font-medium shadow-sm w-fit animate-fade-in-up ${isRamadanTheme ? 'bg-[#D4AF37]/10 text-white border border-[#D4AF37]/10 px-3 py-1 rounded-lg backdrop-blur-md' : isEidTheme ? 'bg-purple-600/10 text-white border border-purple-500/10 px-3 py-1 rounded-lg backdrop-blur-md' : isCosmicTealTheme ? 'bg-[#35F18B]/10 text-white border border-[#35F18B]/10 px-3 py-1 rounded-lg backdrop-blur-md' : isNetflixRedTheme ? 'bg-[#E50914]/20 text-white border border-[#E50914]/20 px-3 py-1 rounded-lg backdrop-blur-md' : 'bg-[rgba(15,35,55,0.5)] text-[#00D2FF] border border-[rgba(0,210,255,0.3)] rounded-[6px] px-[12px] py-[4px] backdrop-blur-[4px]'}`}>
+                                            {content.bannerNote}
                                     </div>
                                 )}
                                 <div className={`transition-all duration-700 ease-in-out transform origin-center md:origin-right ${shouldShowVideo ? 'translate-y-4 scale-75 mb-1 md:mb-2' : 'translate-y-0 scale-100 mb-2 md:mb-6'}`}>
@@ -408,7 +419,7 @@ const Hero: React.FC<HeroProps> = ({
                                     )}
                                 </div>
                                 {hasMultiple && (
-                                    <div className="flex gap-1.5 pointer-events-none justify-center w-full mt-4 md:hidden" dir="rtl">
+                                    <div className="flex gap-1.5 pointer-events-none justify-center w-full mt-8 md:hidden" dir="rtl">
                                         {contents.map((_, idx) => (
                                             <button key={idx} className={`h-1.5 transition-all duration-300 pointer-events-auto cursor-pointer rounded-full ${activeIndex === idx ? (isRamadanTheme ? 'bg-amber-500 w-6' : isEidTheme ? 'bg-purple-500 w-6' : isCosmicTealTheme ? 'bg-[#35F18B] w-6 shadow-[0_0_10px_#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914] w-6 shadow-[0_0_10px_rgba(229,9,20,0.5)]' : 'bg-[#00A7F8] w-6') : 'bg-white/30 hover:bg-white/60 w-2'}`} onClick={(e) => { e.stopPropagation(); handleManualSlide(idx); }} />
                                         ))}

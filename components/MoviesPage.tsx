@@ -55,6 +55,11 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
     return sortedMovies.slice(0, 5);
   }, [pinnedContent, allMovies]);
 
+  // Determine if Hero is present to enforce "no ads" rule for this page
+  const heroIsPresent = heroContent.length > 0;
+  // EFFECTIVE ADS DISABLED ON THIS PAGE AS PER INSTRUCTIONS
+  const pageAdsEnabled = adsEnabled && !heroIsPresent;
+
   const carousels = useMemo(() => {
     const limit = (list: Content[]) => list.slice(0, 12);
 
@@ -152,6 +157,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
                 isEidTheme={isEidTheme}
                 isCosmicTealTheme={isCosmicTealTheme}
                 isNetflixRedTheme={isNetflixRedTheme}
+                disableVideo={heroIsPresent} // Modification: Disable background video "ads" in Hero
             />
         </div>
 
@@ -170,9 +176,10 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
 
             <div className="flex flex-col lg:flex-row gap-6 px-0 md:px-0">
                 <div className="flex-1 w-full">
-                    {adsEnabled && <AdZone position="page_movies_top" />}
-                    <AdPlacement ads={ads} placement="listing-top" isEnabled={adsEnabled} />
-                    <AdPlacement ads={ads} placement="movies-page" isEnabled={adsEnabled} />
+                    {/* Modification: ads are absolutely not permitted to play on the movies page when Hero is present */}
+                    {pageAdsEnabled && <AdZone position="page_movies_top" />}
+                    <AdPlacement ads={ads} placement="listing-top" isEnabled={pageAdsEnabled} />
+                    <AdPlacement ads={ads} placement="movies-page" isEnabled={pageAdsEnabled} />
                     
                     {carousels.map((carousel) => {
                         return (
@@ -195,11 +202,11 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
                         );
                     })}
                     
-                    <AdPlacement ads={ads} placement="listing-bottom" isEnabled={adsEnabled} />
+                    <AdPlacement ads={ads} placement="listing-bottom" isEnabled={pageAdsEnabled} />
                 </div>
 
                 <div className="hidden lg:block w-[300px] flex-shrink-0 pt-4 pl-4 sticky top-24 h-fit">
-                    <AdPlacement ads={ads} placement="listing-sidebar" isEnabled={adsEnabled} />
+                    <AdPlacement ads={ads} placement="listing-sidebar" isEnabled={pageAdsEnabled} />
                 </div>
             </div>
         </main>

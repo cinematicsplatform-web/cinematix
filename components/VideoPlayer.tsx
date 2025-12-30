@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 
 interface VideoPlayerProps {
@@ -80,7 +79,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
   // --- مكون شاشة التحميل (محسن بـ Tailwind + معالجة الصور) ---
   const LoadingOverlay = () => (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black transition-opacity duration-500">
-        <div className="absolute inset-0 z-0">
+        {/* MODIFIED: Hidden the blurred image container to make it plain */}
+        <div className="absolute inset-0 z-0 hidden">
             <img 
                 src={poster || 'https://placehold.co/1920x1080/101010/101010/png'} 
                 onError={(e) => { 
@@ -113,7 +113,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
   if (!activeSource && !isLoading) {
     return (
       <div className="aspect-video w-full bg-black rounded-xl overflow-hidden relative group flex items-center justify-center p-4 border border-gray-800">
-        <div className="absolute inset-0 z-0">
+        {/* MODIFIED: Hidden the blurred image container to make it plain */}
+        <div className="absolute inset-0 z-0 hidden">
             <img 
                 src={poster || 'https://placehold.co/1920x1080/101010/101010/png'} 
                 onError={(e) => { 
