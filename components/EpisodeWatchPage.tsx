@@ -72,7 +72,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
         return null;
     }, [currentSeason, episodeNumber]);
 
-    // Added constants to fix missing variables
     const displayBackdrop = currentSeason?.backdrop || content?.backdrop || '';
     const displayDescription = currentSeason?.description || content?.description || '';
 
@@ -163,7 +162,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
         });
     };
 
-    // ✅ Background respects season-specific desktop images for mobile display tailoring
     const cropPosX = currentSeason?.mobileCropPositionX ?? currentSeason?.mobileCropPosition ?? content?.mobileCropPositionX ?? content?.mobileCropPosition ?? 50;
     const cropPosY = currentSeason?.mobileCropPositionY ?? currentSeason?.mobileCropPositionY ?? content?.mobileCropPositionY ?? 50;
     const enableCrop = currentSeason?.enableMobileCrop ?? content?.enableMobileCrop ?? false;
@@ -182,18 +180,23 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 noIndex={true} 
             />
 
-            {/* Background Backdrop adapted to Episode/Season metadata - MODIFIED: Set to hidden for solid color background */}
-            <div className="absolute top-0 left-0 w-full h-[85vh] z-0 pointer-events-none">
-                 <picture className={`hidden w-full h-full object-cover opacity-20 blur-md scale-110 ${enableCrop ? 'mobile-custom-crop' : 'object-top'} md:object-top`} style={imgStyle}>
-                    {/* Elements kept but hidden as requested */}
-                    <source media="(max-width: 767px)" srcSet={currentSeason?.mobileImageUrl || content.mobileBackdropUrl || selectedEpisode?.thumbnail || currentSeason?.backdrop || content.backdrop} />
-                    <img 
-                        src={selectedEpisode?.thumbnail || currentSeason?.backdrop || content.backdrop} 
-                        alt="" 
-                        className="w-full h-full object-cover md:object-top"
-                    />
-                 </picture>
-                <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-body)] via-transparent to-[var(--bg-body)] opacity-0"></div>
+            {/* MODIFIED: Background images are now hidden to satisfy the plain background request without deleting elements */}
+            <div className="absolute top-0 left-0 w-full h-[85vh] z-0 pointer-events-none overflow-hidden bg-[var(--bg-body)]">
+                {/* Desktop Backdrop - HIDDEN as requested */}
+                <img 
+                    src={selectedEpisode?.thumbnail || currentSeason?.backdrop || content.backdrop} 
+                    alt="" 
+                    className="absolute inset-0 w-full h-full object-cover opacity-10 blur-xl scale-110 bg-only-desktop object-top hidden"
+                />
+                {/* Mobile Backdrop - HIDDEN as requested */}
+                <img 
+                    src={currentSeason?.mobileImageUrl || content.mobileBackdropUrl || selectedEpisode?.thumbnail || currentSeason?.backdrop || content.backdrop} 
+                    alt="" 
+                    className={`absolute inset-0 w-full h-full object-cover opacity-10 blur-xl scale-110 bg-only-mobile ${enableCrop ? 'mobile-custom-crop' : 'object-top'} hidden`}
+                    style={imgStyle}
+                />
+                {/* Plain Themed Gradient Overlay remains for aesthetic depth */}
+                <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-body)] via-[var(--bg-body)]/80 to-[var(--bg-body)]"></div>
             </div>
 
             <div className="sticky top-0 z-50 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 px-4 h-16 flex items-center justify-between shadow-lg">
@@ -284,7 +287,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                                 }
                             `}
                         >
-                            <DownloadIcon className="w-5 h-5 md:w-6 md:h-6 fill-current" />
+                            <DownloadIcon className="h-5 w-5 md:w-6 md:h-6 fill-current" />
                             <span>تحميل الآن</span>
                         </button>
                     </div>

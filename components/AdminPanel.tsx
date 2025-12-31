@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { db, generateSlug, getContentRequests, deleteContentRequest, getUserProfile, getPinnedContent, updatePinnedContentForPage, getStories, saveStory, deleteStory, serverTimestamp, getBroadcastHistory, deleteBroadcastNotification, getReports, deleteReport } from '../firebase';
 import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, Top10State, PageKey, ThemeType, Category, Genre, Season, Episode, Server, ContentRequest, Story, Notification, BroadcastNotification } from '../types';
@@ -630,7 +629,7 @@ const ContentManagementTab: React.FC<any> = ({content, onEdit, onNew, onRequestD
                         </div>
                     )}
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
                         {filteredContent.map((c:any) => {
                             const meta = getTypeMeta(c.type);
                             return (

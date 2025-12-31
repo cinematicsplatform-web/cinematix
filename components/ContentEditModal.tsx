@@ -7,6 +7,9 @@ import ToggleSwitch from './ToggleSwitch';
 import * as XLSX from 'xlsx';
 import UqloadSearchModal from './UqloadSearchModal';
 import { normalizeText } from '@/utils/textUtils';
+import ActionButtons from './ActionButtons';
+import { StarIcon } from './icons/StarIcon';
+import { ClockIcon } from './icons/ClockIcon';
 
 // --- ICONS (Professional Custom SVGs) ---
 const CloseIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -60,9 +63,16 @@ const ExitIcon = (props: React.SVGProps<SVGSVGElement>) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
     </svg>
 );
-const ShieldCheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296a3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068-1.593a3.746 3.746 0 011.043 3.296a3.745 3.745 0 0121 12z" />
+const EyeIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.644C3.414 6.811 7.272 4.125 12 4.125s8.586 2.686 9.964 7.553a1.012 1.012 0 0 1 0 .644C20.586 17.189 16.728 19.875 12 19.875s-8.586-2.686-9.964-7.553Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+    </svg>
+);
+const FamilyIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M12 11.35l-1.45-1.32C8.4 8 7 9.5 7 11.5c0 1.1.9 2 2 2 .35 0 .69-.07 1-.18.31.11.65.18 1 .18 1.1 0 2-.9 2-2 0-2-1.4-3.5-3.55-5.18L12 11.35z" fill="currentColor" stroke="none"/> 
     </svg>
 );
 const AdultIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -105,6 +115,11 @@ const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 0-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
   </svg>
 );
+const LanguageIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802" />
+    </svg>
+);
 
 // --- REFINED STYLES ---
 const INPUT_BG = "bg-[#161b22]"; 
@@ -138,9 +153,10 @@ interface MobileSimulatorProps {
     posY: number;
     onUpdateX: (val: number) => void;
     onUpdateY: (val: number) => void;
+    children?: React.ReactNode;
 }
 
-const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY, onUpdateX, onUpdateY }) => {
+const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY, onUpdateX, onUpdateY, children }) => {
     return (
         <div className="mt-6 flex flex-col items-center gap-12 rounded-3xl border border-gray-800 bg-[#080a0f] p-8 md:flex-row md:items-start shadow-2xl">
             <div className="relative mx-auto flex-shrink-0 md:mx-0">
@@ -148,28 +164,32 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                     className="relative overflow-hidden rounded-[3rem] border-[10px] border-[#1f2127] bg-black shadow-2xl ring-1 ring-white/10"
                     style={{ width: '300px', height: '620px' }} 
                 >
-                    <div 
-                        className="absolute inset-0 h-full w-full bg-cover bg-no-repeat transition-all duration-100 ease-out"
-                        style={{ 
-                            backgroundImage: `url(${imageUrl || 'https://placehold.co/1080x1920/101010/101010/png'})`, 
-                            backgroundPosition: `${posX}% ${posY}%` 
-                        }}
-                    />
-                    
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0f1014] via-[#0f1014]/60 via-30% to-transparent pointer-events-none"></div>
+                    {children ? children : (
+                        <>
+                            <div 
+                                className="absolute inset-0 h-full w-full bg-cover bg-no-repeat transition-all duration-100 ease-out"
+                                style={{ 
+                                    backgroundImage: `url(${imageUrl || 'https://placehold.co/1080x1920/101010/101010/png'})`, 
+                                    backgroundPosition: `${posX}% ${posY}%` 
+                                }}
+                            />
+                            
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#0f1014] via-[#0f1014]/60 via-30% to-transparent pointer-events-none"></div>
 
-                    <div className="absolute bottom-0 left-0 w-full p-5 flex flex-col justify-end items-center text-center z-10 pointer-events-none">
-                        <div className="w-3/4 h-12 bg-white/10 rounded-lg backdrop-blur-sm mb-3 skeleton-shimmer"></div>
-                        <div className="flex gap-2 mb-3 justify-center opacity-70">
-                            <div className="w-8 h-4 bg-white/20 rounded"></div>
-                            <div className="w-12 h-4 bg-white/20 rounded"></div>
-                            <div className="w-8 h-4 bg-white/20 rounded"></div>
-                        </div>
-                        <div className="flex gap-3 w-full justify-center">
-                            <div className="w-full h-10 bg-[var(--color-accent)] rounded-xl shadow-lg"></div>
-                            <div className="w-12 h-10 bg-white/10 rounded-xl"></div>
-                        </div>
-                    </div>
+                            <div className="absolute bottom-0 left-0 w-full p-5 flex flex-col justify-end items-center text-center z-10 pointer-events-none">
+                                <div className="w-3/4 h-12 bg-white/10 rounded-lg backdrop-blur-sm mb-3 skeleton-shimmer"></div>
+                                <div className="flex gap-2 mb-3 justify-center opacity-70">
+                                    <div className="w-8 h-4 bg-white/20 rounded"></div>
+                                    <div className="w-12 h-4 bg-white/20 rounded"></div>
+                                    <div className="w-8 h-4 bg-white/20 rounded"></div>
+                                </div>
+                                <div className="flex gap-3 w-full justify-center">
+                                    <div className="w-full h-10 bg-[var(--color-accent)] rounded-xl shadow-lg"></div>
+                                    <div className="w-12 h-10 bg-white/10 rounded-xl"></div>
+                                </div>
+                            </div>
+                        </>
+                    )}
 
                     <div className="absolute top-0 left-1/2 z-30 h-7 w-36 -translate-x-1/2 rounded-b-2xl bg-[#1f2127]"></div>
                     <div className="absolute top-3 right-6 z-30 h-3 w-3 rounded-full bg-gray-600/30"></div>
@@ -356,6 +376,120 @@ const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ isOpen, onClose, 
     );
 };
 
+interface TitleGalleryModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    tmdbId: string;
+    type: ContentType;
+    onSelect: (title: string) => void;
+}
+
+const TitleGalleryModal: React.FC<TitleGalleryModalProps> = ({ isOpen, onClose, tmdbId, type, onSelect }) => {
+    const [titles, setTitles] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const API_KEY = 'b8d66e320b334f4d56728d98a7e39697';
+
+    useEffect(() => {
+        if (isOpen && tmdbId) {
+            fetchTitles();
+        }
+    }, [isOpen, tmdbId]);
+
+    const fetchTitles = async () => {
+        setLoading(true);
+        try {
+            const endpointType = (type === ContentType.Movie || type === ContentType.Play || type === ContentType.Concert) ? 'movie' : 'tv';
+            
+            // 1. Fetch Main Info for Original Name/Title
+            const infoRes = await fetch(`https://api.themoviedb.org/3/${endpointType}/${tmdbId}?api_key=${API_KEY}&language=ar-SA`);
+            const info = await infoRes.json();
+            
+            const results: any[] = [];
+            
+            // Add primary titles
+            if (info.title) results.push({ title: info.title, iso_3166_1: 'Primary (AR)', type: 'Main' });
+            if (info.name) results.push({ title: info.name, iso_3166_1: 'Primary (AR)', type: 'Main' });
+            if (info.original_title && info.original_title !== info.title) results.push({ title: info.original_title, iso_3166_1: info.original_language?.toUpperCase() || 'Original', type: 'Original' });
+            if (info.original_name && info.original_name !== info.name) results.push({ title: info.original_name, iso_3166_1: info.original_language?.toUpperCase() || 'Original', type: 'Original' });
+
+            // 2. Fetch Alternative Titles
+            const altRes = await fetch(`https://api.themoviedb.org/3/${endpointType}/${tmdbId}/alternative_titles?api_key=${API_KEY}`);
+            const altData = await altRes.json();
+            
+            if (altData.titles || altData.results) {
+                const altList = altData.titles || altData.results;
+                altList.forEach((item: any) => {
+                    if (!results.some(r => r.title === (item.title || item.name))) {
+                        results.push({
+                            title: item.title || item.name,
+                            iso_3166_1: item.iso_3166_1 || 'Alt',
+                            type: 'Alternative'
+                        });
+                    }
+                });
+            }
+
+            setTitles(results);
+        } catch (error) {
+            console.error("Error fetching titles:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm" onClick={onClose}>
+            <div className="flex h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-800 bg-[#0f1014] shadow-2xl" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between border-b border-gray-800 bg-[#161b22] px-6 py-4">
+                    <h3 className="flex items-center gap-3 text-xl font-bold text-white">
+                        <LanguageIcon className="w-6 h-6 text-[var(--color-accent)]"/>
+                        عناوين بديلة (Alternative Titles)
+                    </h3>
+                    <button onClick={onClose} className="rounded-lg bg-gray-800 p-2 text-gray-400 transition-colors hover:bg-red-500 hover:text-white">
+                        <CloseIcon className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div className="custom-scrollbar flex-1 overflow-y-auto bg-[#0a0a0a] p-6 space-y-3">
+                    {loading ? (
+                        <div className="flex h-full items-center justify-center text-gray-500">جاري تحميل العناوين...</div>
+                    ) : titles.length === 0 ? (
+                        <div className="flex h-full items-center justify-center text-gray-500">لا توجد عناوين بديلة متاحة.</div>
+                    ) : (
+                        titles.map((item, idx) => (
+                            <div 
+                                key={idx} 
+                                onClick={() => { onSelect(item.title); onClose(); }} 
+                                className="group flex items-center justify-between p-4 bg-[#161b22] hover:bg-[#1f2937] border border-gray-800 hover:border-[var(--color-accent)] rounded-xl cursor-pointer transition-all shadow-md"
+                            >
+                                <div className="flex flex-col text-right">
+                                    <span className="text-white font-bold text-lg group-hover:text-[var(--color-accent)] transition-colors">{item.title}</span>
+                                    <span className="text-xs text-gray-500 font-mono mt-1">{item.type} • {item.iso_3166_1}</span>
+                                </div>
+                                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <PlusIcon className="w-5 h-5 text-[var(--color-accent)]" />
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                <div className="flex justify-end border-t border-gray-800 bg-[#161b22] p-4">
+                    <button 
+                        type="button" 
+                        onClick={onClose} 
+                        className="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-6 py-2 text-sm font-bold text-white transition-all hover:bg-gray-700"
+                    >
+                        إغلاق
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 interface ServerManagementModalProps {
     episode: Episode;
     onClose: () => void;
@@ -499,6 +633,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const isNewContent = content === null;
     const [activeTab, setActiveTab] = useState('general');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const getDefaultFormData = (): Content => ({
         id: '', tmdbId: '', title: '', description: '', type: ContentType.Movie, poster: '', top10Poster: '', backdrop: '', horizontalPoster: '', mobileBackdropUrl: '',
@@ -526,6 +661,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         imageType: 'poster' | 'backdrop' | 'logo';
         onSelect: (url: string) => void;
     }>({ isOpen: false, imageType: 'poster', onSelect: () => {} });
+
+    const [isTitleModalOpen, setIsTitleModalOpen] = useState(false);
 
     const globalFileInputRef = useRef<HTMLInputElement>(null);
     
@@ -630,6 +767,15 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             return;
         }
         setGalleryState({ isOpen: true, imageType: type, onSelect: callback });
+    };
+
+    const openTitleGallery = () => {
+        const idToUse = formData.tmdbId || formData.id;
+        if (!idToUse) {
+            addToast("يرجى جلب بيانات المحتوى أولاً (ID مطلوب) لفتح قائمة العناوين.", "info");
+            return;
+        }
+        setIsTitleModalOpen(true);
     };
 
     const renderImageInput = (
@@ -1137,23 +1283,22 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     if (s.id !== seasonId) return s;
                     
                     const existingEps = s.episodes || [];
-                    const newEpsFromTmdb = sData.episodes.filter((tep: any) => 
-                        !existingEps.some(eep => parseInt(eep.title?.replace(/\D/g, '') || '0') === tep.episode_number)
-                    ).map((tep: any) => {
+                    const newEpsFromTmdb = sData.episodes.filter((ep: any) => 
+                        !existingEps.some(eep => parseInt(eep.title?.replace(/\D/g, '') || '0') === ep.episode_number)
+                    ).map((ep: any) => {
                         let epDuration = '';
-                        if (tep.runtime) {
-                             if(tep.runtime > 60) epDuration = `${Math.floor(tep.runtime/60)}h ${tep.runtime%60}m`;
-                             else epDuration = `${tep.runtime}:00`;
+                        if (ep.runtime) {
+                             if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
+                             else epDuration = `${ep.runtime}:00`;
                         }
                         return {
-                            id: Date.now() + tep.episode_number + Math.random(),
-                            title: `الحلقة ${tep.episode_number}`,
-                            description: tep.overview || `شاهد أحداث الحلقة ${tep.episode_number} من الموسم ${seasonNumber}.`,
-                            /* Fix: Replaced undefined 'prev' with 'formData' */
-                            thumbnail: tep.still_path ? `https://image.tmdb.org/t/p/w500${tep.still_path}` : (s.backdrop || formData.backdrop), 
+                            id: Date.now() + ep.episode_number + Math.random(),
+                            title: `الحلقة ${ep.episode_number}`,
+                            description: ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${seasonNumber}.`,
+                            thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : (s.backdrop || formData.backdrop), 
                             duration: epDuration,
                             progress: 0,
-                            servers: generateEpisodeServers(String(idToUse), seasonNumber, tep.episode_number)
+                            servers: generateEpisodeServers(String(idToUse), seasonNumber, ep.episode_number)
                         };
                     });
                     
@@ -1231,8 +1376,10 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         });
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSubmitting) return; 
+
         if (!formData.title) { addToast('الرجاء تعبئة حقول العنوان.', "info"); return; }
         if (formData.categories.length === 0) { addToast('الرجاء اختيار تصنيف واحد على الأقل.', "info"); return; }
         
@@ -1255,7 +1402,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             createdAt: formData.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
-        onSave(contentToSave);
+
+        setIsSubmitting(true);
+        try {
+            await onSave(contentToSave);
+        } catch (err) {
+            console.error("Submit failed:", err);
+            setIsSubmitting(false);
+        }
     };
 
     const toggleSeason = (id: number) => {
@@ -1346,7 +1500,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 id: Date.now() + eNum + Math.random(), 
                                 title: getRowValue(row, 'العنوان', 'Title') || `الحلقة ${eNum}`,
                                 duration: getRowValue(row, 'المدة', 'Duration') || '45:00',
-                                /* Fix: Replaced undefined 'prev' with 'formData' */
                                 thumbnail: getRowValue(row, 'صورة', 'Thumbnail') || s.backdrop || formData.backdrop,
                                 description: getRowValue(row, 'الوصف', 'Description') || `شاهد أحداث الحلقة ${eNum} من الموسم ${seasonNumber}.`,
                                 progress: 0,
@@ -1524,6 +1677,168 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         reader.readAsBinaryString(file);
     };
 
+    const getSearchBadge = (mediaType: string) => {
+        switch (mediaType) {
+            case 'movie': return { label: 'فيلم', color: 'bg-blue-600/90' };
+            case 'tv': return { label: 'مسلسل', color: 'bg-purple-600/90' };
+            default: return { label: mediaType === 'person' ? 'فنان' : mediaType, color: 'bg-gray-600/90' };
+        }
+    };
+
+    const renderLivePreview = () => {
+        const isEpisodicView = formData.type === ContentType.Series || formData.type === ContentType.Program;
+        const posX = formData.mobileCropPositionX ?? 50;
+        const posY = formData.mobileCropPositionY ?? 50;
+        const imgStyle: React.CSSProperties = { '--mob-x': `${posX}%`, '--mob-y': `${posY}%` } as React.CSSProperties;
+        const cropClass = formData.enableMobileCrop ? 'mobile-custom-crop' : '';
+
+        return (
+            <div className="space-y-12 animate-fade-in">
+                {/* Mobile Preview - High Fidelity Replica */}
+                <div className="flex flex-col items-center gap-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <span className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">📱</span>
+                        معاينة الجوال (Mobile View)
+                    </h3>
+                    <div className="relative w-[320px] h-[650px] bg-black border-[10px] border-[#1f2127] rounded-[3rem] shadow-2xl overflow-hidden ring-1 ring-white/10">
+                        {/* Mock Header */}
+                        <div className="absolute top-0 left-0 right-0 h-14 bg-gradient-to-b from-black/80 to-transparent z-40 px-6 flex items-center">
+                            <div className="w-6 h-6 rounded-full bg-white/10"></div>
+                        </div>
+                        
+                        {/* Detail Mockup Layout */}
+                        <div className="h-full bg-[#141b29] overflow-y-auto no-scrollbar scroll-smooth">
+                            {/* Hero Part */}
+                            <div className="relative h-[480px] w-full">
+                                <img 
+                                    src={formData.mobileBackdropUrl || formData.backdrop || 'https://placehold.co/1080x1920/101010/101010/png'} 
+                                    className={`absolute inset-0 w-full h-full object-cover ${cropClass} object-top`} 
+                                    style={imgStyle}
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#141b29] via-[#141b29]/40 via-40% to-transparent z-10"></div>
+                                
+                                <div className="absolute inset-0 z-20 flex flex-col justify-end p-5 pb-8 text-white text-center">
+                                    {formData.bannerNote && (
+                                        <div className="mb-2 mx-auto text-[10px] font-bold bg-[#6366f1]/80 text-white border border-[#6366f1]/30 px-2 py-0.5 rounded backdrop-blur-md w-fit">
+                                            {formData.bannerNote}
+                                        </div>
+                                    )}
+                                    <div className="mb-3">
+                                        {formData.isLogoEnabled && formData.logoUrl ? (
+                                            <img src={formData.logoUrl} className="max-w-[160px] max-h-[100px] object-contain drop-shadow-2xl mx-auto" />
+                                        ) : (
+                                            <h1 className="text-2xl font-black drop-shadow-lg leading-tight">{formData.title || 'العنوان'}</h1>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] text-gray-200 mb-4 font-bold">
+                                        <div className="flex items-center gap-1 text-yellow-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/10">
+                                            <StarIcon className="w-2.5 h-2.5" />
+                                            <span>{formData.rating.toFixed(1)}</span>
+                                        </div>
+                                        <span>•</span>
+                                        <span>{formData.releaseYear}</span>
+                                        <span>•</span>
+                                        <span className="px-1 border border-gray-500 rounded text-[8px]">{formData.ageRating || 'G'}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <div className="flex-1 bg-[#00A7F8] text-black h-10 rounded-full flex items-center justify-center font-black text-xs gap-2">
+                                            <PlayIcon className="w-3 h-3 fill-black" />
+                                            شاهد الآن
+                                        </div>
+                                        <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center font-bold text-lg">+</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tab Bar Mockup */}
+                            <div className="sticky top-0 z-30 bg-[#141b29]/95 backdrop-blur-md border-b border-white/5 flex gap-4 px-4 h-12 items-center">
+                                <div className="text-[10px] font-black border-b-2 border-[#00A7F8] py-3 text-white">الحلقات</div>
+                                <div className="text-[10px] font-black text-gray-500 py-3">التفاصيل</div>
+                                <div className="text-[10px] font-black text-gray-500 py-3">أعمال مشابهة</div>
+                            </div>
+
+                            {/* Info Section */}
+                            <div className="p-4 space-y-4">
+                                <p className="text-[11px] text-gray-400 leading-relaxed text-justify line-clamp-4">
+                                    {formData.description || 'قصة العمل تظهر هنا...'}
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
+                                        <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">المخرج</span>
+                                        <span className="text-[10px] font-bold text-gray-300 truncate block">{formData.director || 'N/A'}</span>
+                                    </div>
+                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
+                                        <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">التقييم</span>
+                                        <span className="text-[10px] font-bold text-yellow-400">★ {formData.rating}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Notch */}
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#1f2127] rounded-b-2xl z-50"></div>
+                    </div>
+                </div>
+
+                {/* Desktop Preview - High Fidelity Replica */}
+                <div className="flex flex-col items-center gap-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <span className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">💻</span>
+                        معاينة المتصفح (Desktop View)
+                    </h3>
+                    <div className="w-full max-w-4xl aspect-video bg-[#141b29] rounded-2xl border border-gray-800 shadow-2xl overflow-hidden relative group/desk">
+                        {/* Browser Chrome */}
+                        <div className="h-8 bg-[#1f2127] border-b border-gray-800 flex items-center px-4 gap-1.5 z-50 relative">
+                            <div className="w-2.5 h-2.5 rounded-full bg-red-500/50"></div>
+                            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/50"></div>
+                            <div className="w-2.5 h-2.5 rounded-full bg-green-500/50"></div>
+                            <div className="flex-1 max-sm h-5 bg-black/40 rounded-md mx-auto flex items-center px-3"><span className="text-[8px] text-gray-600 font-mono">cinematix.watch/{formData.slug || 'slug'}</span></div>
+                        </div>
+
+                        <div className="relative h-full w-full">
+                            <img src={formData.backdrop || 'https://placehold.co/1920x1080/101010/101010/png'} className="w-full h-full object-cover" />
+                            {/* PRODUCTION GRADIENTS */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-[#141b29] via-[#141b29]/40 to-transparent z-10"></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#141b29] via-transparent to-transparent z-10"></div>
+                            
+                            <div className="absolute inset-0 p-12 flex flex-col justify-center items-start max-w-2xl text-right z-20">
+                                {formData.bannerNote && (
+                                    <div className="mb-4 text-sm font-medium bg-[#6366f1]/80 text-white border border-[#6366f1]/30 px-3 py-1 rounded-lg backdrop-blur-md">
+                                        {formData.bannerNote}
+                                    </div>
+                                )}
+                                <div className="mb-6">
+                                    {formData.isLogoEnabled && formData.logoUrl ? (
+                                        <img src={formData.logoUrl} className="h-24 md:h-32 object-contain drop-shadow-2xl" />
+                                    ) : (
+                                        <h1 className="text-5xl font-black text-white drop-shadow-lg leading-tight">{formData.title || 'العنوان'}</h1>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-4 mb-6 text-sm font-bold">
+                                    <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 px-3 py-1 rounded-full border border-white/10">
+                                        <StarIcon className="w-4 h-4" />
+                                        <span>{formData.rating.toFixed(1)}</span>
+                                    </div>
+                                    <span className="text-gray-500">|</span>
+                                    <span className="text-white font-black">{formData.releaseYear}</span>
+                                    <span className="text-gray-500">|</span>
+                                    <span className="border border-gray-500 px-2 py-0.5 rounded text-xs font-black">{formData.ageRating || 'G'}</span>
+                                </div>
+                                <p className="text-gray-300 text-lg line-clamp-3 mb-10 leading-relaxed font-medium">{formData.description || 'وصف العمل يظهر هنا بشكل احترافي ومميز ليعبر عن قصة المحتوى الرائعة التي تقدمها المنصة للمشاهدين...'}</p>
+                                <div className="flex gap-4">
+                                    <div className="bg-[#00A7F8] text-black px-12 py-4 rounded-full font-black text-xl flex items-center gap-3 shadow-xl hover:scale-105 transition-all">
+                                        <PlayIcon className="w-6 h-6 fill-black"/> شاهد الآن
+                                    </div>
+                                    <div className="bg-white/10 backdrop-blur-md px-12 py-4 rounded-full font-black text-xl border border-white/20 hover:bg-white/20 transition-all">+ قائمتي</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="flex h-screen w-full bg-[#090b10] text-gray-200 overflow-hidden font-sans selection:bg-[var(--color-accent)] selection:text-black" dir="rtl">
             {/* Mobile Sidebar Backdrop */}
@@ -1554,7 +1869,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     </button>
                     <button 
                         onClick={() => { setActiveTab('categories'); setIsSidebarOpen(false); }}
-                        className={`w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'categories' ? 'bg-[#1a1f29] text-white border-r-2 border-[var(--color-accent)]' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'categories' ? 'bg-[#1a1f29] text-white border-r-2 border-[var(--color-accent)]' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
                     >
                         <TagIcon className="w-5 h-5"/>
                         <span>التصنيف والأنواع</span>
@@ -1586,6 +1901,17 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             <span>السيرفرات</span>
                         </button>
                     )}
+
+                    <div className="h-px bg-gray-800 my-4"></div>
+                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-2">Live Preview</div>
+
+                    <button 
+                        onClick={() => { setActiveTab('preview'); setIsSidebarOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'preview' ? 'bg-[#1a1f29] text-white border-r-2 border-blue-500' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
+                    >
+                        <EyeIcon className="w-5 h-5"/>
+                        <span>معاينة مباشرة</span>
+                    </button>
                 </nav>
 
                 <div className="h-20 border-t border-gray-800 flex items-center px-4 bg-black/10">
@@ -1608,7 +1934,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         </button>
                         <div className="flex flex-col">
                              <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
-                                {isNewContent ? 'إضافة محتوى جديد' : 'تعديل المحتوى'}
+                                {activeTab === 'preview' ? 'المعاينة الحية للمحتوى' : isNewContent ? 'إضافة محتوى جديد' : 'تعديل المحتوى'}
                              </h2>
                              <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500 mt-1">
                                  <span>المكتبة</span>
@@ -1630,12 +1956,12 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar pb-32">
-                    <form onSubmit={handleSubmit} className="max-w-6xl mx-auto space-y-10">
+                    <div className="max-w-6xl mx-auto space-y-10">
                         
                         {activeTab === 'general' && (
-                            <div className="grid grid-cols-12 gap-8 animate-fade-in-up">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in-up">
                                 {/* LINK BOX (TMDB SECTION) */}
-                                <div className="col-span-12 rounded-2xl border border-blue-500/10 bg-gradient-to-r from-blue-900/10 to-transparent p-6 relative overflow-hidden">
+                                <div className="lg:col-span-12 rounded-2xl border border-blue-500/10 bg-gradient-to-r from-blue-900/10 to-transparent p-6 relative overflow-hidden">
                                     <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                                         <CloudArrowDownIcon className="w-40 h-40"/>
                                     </div>
@@ -1680,36 +2006,59 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
                                          {tmdbSearchMode === 'name' && tmdbSearchResults.length > 0 && (
                                             <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
-                                                {tmdbSearchResults.map((result) => (
-                                                    <div key={result.id} onClick={() => handleSelectSearchResult(result)} className="group cursor-pointer">
-                                                        <div className="aspect-[2/3] rounded-lg overflow-hidden border border-gray-700 relative">
-                                                            {result.poster_path ? <img src={`https://image.tmdb.org/t/p/w200${result.poster_path}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" /> : <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs">No Image</div>}
-                                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><span className="bg-blue-600 text-white text-[10px] px-2 py-1 rounded">اختر</span></div>
+                                                {tmdbSearchResults.map((result) => {
+                                                    const badgeInfo = getSearchBadge(result.media_type);
+                                                    return (
+                                                        <div key={result.id} onClick={() => handleSelectSearchResult(result)} className="group cursor-pointer">
+                                                            <div className="aspect-[2/3] rounded-lg overflow-hidden border border-gray-700 relative">
+                                                                {result.poster_path ? <img src={`https://image.tmdb.org/t/p/w200${result.poster_path}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" /> : <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs">No Image</div>}
+                                                                <div className={`absolute top-1 left-1 z-10 px-2 py-0.5 rounded text-[9px] font-black text-white shadow-lg backdrop-blur-sm ${badgeInfo.color}`}>
+                                                                    {badgeInfo.label}
+                                                                </div>
+                                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><span className="bg-blue-600 text-white text-[10px] px-2 py-1 rounded">اختر</span></div>
+                                                            </div>
+                                                            <div className="mt-2 text-center">
+                                                                <div className="text-xs font-bold text-white truncate">{result.title || result.name}</div>
+                                                                <div className="text-[10px] text-gray-500">{result.release_date?.substring(0,4) || result.first_air_date?.substring(0,4)}</div>
+                                                            </div>
                                                         </div>
-                                                        <div className="mt-2 text-center">
-                                                            <div className="text-xs font-bold text-white truncate">{result.title || result.name}</div>
-                                                            <div className="text-[10px] text-gray-500">{result.release_date?.substring(0,4) || result.first_air_date?.substring(0,4)}</div>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                          )}
                                     </div>
                                 </div>
 
-                                {/* CONTENT BOX (BASIC INFORMATION) - SPANS FULL WIDTH UNDER LINK BOX */}
-                                <div className="col-span-12 space-y-6">
-                                    <div className={sectionBoxClass}>
-                                        <h4 className="text-sm font-bold text-[#00A7F8] mb-6 uppercase border-b border-gray-800 pb-2">البيانات الأساسية (Content Box)</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="col-span-1 md:col-span-2">
-                                                <label className={labelClass}>عنوان العمل</label>
-                                                <input type="text" name="title" value={formData.title} onChange={handleChange} className={inputClass} placeholder="اسم الفيلم أو المسلسل" />
+                                {/* Row 1: Basic Details (75%) + Content Type (25%) */}
+                                <div className={`${sectionBoxClass} lg:col-span-9 h-full flex flex-col`}>
+                                    <h4 className="text-sm font-bold text-[#00A7F8] mb-6 uppercase border-b border-gray-800 pb-2">البيانات الأساسية (Content Box)</h4>
+                                    <div className="space-y-6 flex-1">
+                                        <div>
+                                            <label className={labelClass}>عنوان العمل</label>
+                                            <div className="flex items-stretch gap-2">
+                                                <input 
+                                                    type="text" 
+                                                    name="title" 
+                                                    value={formData.title} 
+                                                    onChange={handleChange} 
+                                                    className={`${inputClass} flex-1`} 
+                                                    placeholder="اسم الفيلم أو المسلسل" 
+                                                />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={openTitleGallery} 
+                                                    className="flex items-center justify-center rounded-lg bg-gray-800 px-4 text-white shadow-md transition-all hover:bg-gray-700 hover:text-[var(--color-accent)] border border-gray-700" 
+                                                    title="اختر عنواناً بدلاً من TMDB"
+                                                >
+                                                    <LanguageIcon className="w-5 h-5"/>
+                                                </button>
                                             </div>
-                                            <div className="col-span-1 md:col-span-2">
-                                                <label className={labelClass}>الوصف (القصة)</label>
-                                                <textarea name="description" value={formData.description} onChange={handleChange} rows={5} className={inputClass + " resize-none"} placeholder="اكتب ملخص القصة..." />
-                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>الوصف (القصة)</label>
+                                            <textarea name="description" value={formData.description} onChange={handleChange} rows={5} className={inputClass + " resize-none h-40"} placeholder="اكتب ملخص القصة..." />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className={labelClass}>سنة الإنتاج</label>
                                                 <input type="number" name="releaseYear" value={formData.releaseYear} onChange={handleChange} className={inputClass} />
@@ -1722,92 +2071,78 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     </div>
                                 </div>
 
-                                {/* ADDITIONAL DETAILS AND CONTROLS - FULL WIDTH FLOW */}
-                                <div className="col-span-12 space-y-6">
-                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                        {/* Additional Details Box */}
-                                        <div className="col-span-12 lg:col-span-8">
-                                            <div className={sectionBoxClass + " h-full"}>
-                                                <h4 className="text-sm font-bold text-gray-500 mb-4 uppercase border-b border-gray-800 pb-2">تفاصيل إضافية</h4>
-                                                <div className="grid grid-cols-2 gap-6">
-                                                     <div><label className={labelClass}>المخرج</label><input type="text" name="director" value={formData.director || ''} onChange={handleChange} className={inputClass} /></div>
-                                                     <div><label className={labelClass}>الكاتب</label><input type="text" name="writer" value={formData.writer || ''} onChange={handleChange} className={inputClass} /></div>
-                                                     <div><label className={labelClass}>التصنيف العمري</label><input type="text" name="ageRating" value={formData.ageRating} onChange={handleChange} className={inputClass} placeholder="+13" /></div>
-                                                     {isStandalone && <div><label className={labelClass}>المدة</label><input type="text" name="duration" value={formData.duration || ''} onChange={handleChange} className={inputClass} placeholder="1h 30m" /></div>}
-                                                     <div className="col-span-2">
-                                                        <label className={labelClass}>Slug (الرابط)</label>
-                                                        <input type="text" name="slug" value={formData.slug || ''} onChange={handleChange} className={inputClass + " font-mono text-xs text-blue-400"} />
-                                                     </div>
-                                                     {/* TMDB ID Input moved here, below Slug */}
-                                                     <div className="col-span-2">
-                                                        <label className={labelClass}>كود المحتوى (TMDB ID)</label>
-                                                        <input 
-                                                            type="text" 
-                                                            name="tmdbId" 
-                                                            value={formData.tmdbId || ''} 
-                                                            onChange={handleChange} 
-                                                            className={inputClass + " font-mono text-[var(--color-accent)]"} 
-                                                            placeholder="مثال: 12345" 
-                                                        />
-                                                     </div>
-                                                </div>
+                                <div className={`${sectionBoxClass} lg:col-span-3 h-full flex flex-col`}>
+                                    <h4 className="text-sm font-bold text-gray-500 mb-6 uppercase border-b border-gray-800 pb-2">نوع المحتوى</h4>
+                                    <div className="flex flex-col gap-3 flex-1 justify-center">
+                                        {[ContentType.Movie, ContentType.Series, ContentType.Program, ContentType.Play, ContentType.Concert].map((type) => (
+                                            <button key={type} type="button" onClick={() => setFormData(prev => ({...prev, type: type}))} className={`flex items-center justify-between px-5 py-4 rounded-xl border transition-all ${formData.type === type ? 'bg-[var(--color-accent)]/10 border-[var(--color-accent)] text-[var(--color-accent)] font-bold' : 'bg-[#161b22] border-transparent text-gray-400 hover:border-gray-600'}`}>
+                                                <span className="text-base">{type === ContentType.Movie ? 'فيلم' : type === ContentType.Series ? 'مسلسل' : type === ContentType.Program ? 'برنامج' : type === ContentType.Play ? 'مسرحية' : 'حفلة'}</span>
+                                                {formData.type === type && <CheckSmallIcon className="w-5 h-5"/>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Row 2: Additional Details (75%) + Audience (25%) */}
+                                <div className={`${sectionBoxClass} lg:col-span-9 h-full flex flex-col`}>
+                                    <h4 className="text-sm font-bold text-gray-500 mb-6 uppercase border-b border-gray-800 pb-2">تفاصيل إضافية</h4>
+                                    <div className="space-y-6 flex-1">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <div><label className={labelClass}>المخرج</label><input type="text" name="director" value={formData.director || ''} onChange={handleChange} className={inputClass} /></div>
+                                            <div><label className={labelClass}>الكاتب</label><input type="text" name="writer" value={formData.writer || ''} onChange={handleChange} className={inputClass} /></div>
+                                            <div><label className={labelClass}>التصنيف العمري</label><input type="text" name="ageRating" value={formData.ageRating} onChange={handleChange} className={inputClass} placeholder="+13" /></div>
+                                            {isStandalone && <div><label className={labelClass}>المدة</label><input type="text" name="duration" value={formData.duration || ''} onChange={handleChange} className={inputClass} placeholder="1h 30m" /></div>}
+                                        </div>
+                                        
+                                        <div className="border-t border-gray-800 pt-4">
+                                            <label className={labelClass}>طاقم العمل</label>
+                                            <div className="relative mb-3">
+                                                <input type="text" value={castQuery} onChange={(e) => searchCast(e.target.value)} className={inputClass} placeholder="بحث عن ممثل في TMDB..." />
+                                                {isSearchingCast && <div className="absolute left-3 top-3"><div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"/></div>}
+                                                {castResults.length > 0 && (
+                                                    <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-[#1a1f29] border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                                                        {castResults.map(person => (
+                                                            <div key={person.id} onClick={() => addCastMember(person)} className="flex items-center gap-3 p-2 hover:bg-gray-700 cursor-pointer border-b border-gray-800 last:border-0">
+                                                                <img src={person.profile_path ? `https://image.tmdb.org/t/p/w45${person.profile_path}` : 'https://placehold.co/45x45'} className="w-8 h-8 rounded-full object-cover" alt=""/>
+                                                                <span className="text-xs text-white">{person.name}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto custom-scrollbar p-1">
+                                                {formData.cast.map((c, i) => (
+                                                    <span key={i} className="flex items-center gap-1 bg-gray-800 text-[11px] font-bold px-3 py-1 rounded-full border border-gray-700 text-gray-300">
+                                                        {c} <button type="button" onClick={() => removeCastMember(c)} className="text-gray-500 hover:text-red-400 transition-colors mr-1"><CloseIcon className="w-3 h-3"/></button>
+                                                    </span>
+                                                ))}
                                             </div>
                                         </div>
 
-                                        {/* Right Sidebar Controls (Type / Visibility) */}
-                                        <div className="col-span-12 lg:col-span-4 space-y-6">
-                                            <div className={sectionBoxClass}>
-                                                <label className={labelClass}>نوع المحتوى</label>
-                                                <div className="flex flex-col gap-2">
-                                                    {[ContentType.Movie, ContentType.Series, ContentType.Program, ContentType.Play, ContentType.Concert].map((type) => (
-                                                        <button key={type} type="button" onClick={() => setFormData(prev => ({...prev, type: type}))} className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${formData.type === type ? 'bg-[var(--color-accent)]/10 border-[var(--color-accent)] text-[var(--color-accent)] font-bold' : 'bg-[#161b22] border-transparent text-gray-400 hover:border-gray-600'}`}>
-                                                            <span>{type === ContentType.Movie ? 'فيلم' : type === ContentType.Series ? 'مسلسل' : type === ContentType.Program ? 'برنامج' : type === ContentType.Play ? 'مسرحية' : 'حفلة'}</span>
-                                                            {formData.type === type && <CheckSmallIcon className="w-4 h-4"/>}
-                                                        </button>
-                                                    ))}
-                                                </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-800 pt-4">
+                                            <div>
+                                                <label className={labelClass}>Slug (الرابط)</label>
+                                                <input type="text" name="slug" value={formData.slug || ''} onChange={handleChange} className={inputClass + " font-mono text-xs text-blue-400"} />
                                             </div>
-
-                                            <div className={sectionBoxClass}>
-                                                <label className={labelClass}>جمهور المشاهدة</label>
-                                                <div className="space-y-3">
-                                                    <button type="button" onClick={() => setFormData(prev => ({...prev, visibility: 'general'}))} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${formData.visibility === 'general' ? 'border-green-500/50 bg-green-500/10' : 'border-gray-800 bg-[#161b22]'}`}>
-                                                        <div className={`p-2 rounded-full ${formData.visibility === 'general' ? 'bg-green-500 text-black' : 'bg-gray-700 text-gray-500'}`}><ShieldCheckIcon className="w-5 h-5"/></div>
-                                                        <div className="text-right"><div className={`font-bold ${formData.visibility === 'general' ? 'text-green-400' : 'text-gray-300'}`}>عائلي (عام)</div><div className="text-[10px] text-gray-500">مناسب للجميع</div></div>
-                                                    </button>
-                                                    <button type="button" onClick={() => setFormData(prev => ({...prev, visibility: 'adults'}))} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${formData.visibility === 'adults' ? 'border-red-500/50 bg-red-500/10' : 'border-gray-800 bg-[#161b22]'}`}>
-                                                        <div className={`p-2 rounded-full ${formData.visibility === 'adults' ? 'bg-red-500 text-white' : 'bg-gray-700 text-gray-500'}`}><AdultIcon className="w-5 h-5"/></div>
-                                                        <div className="text-right"><div className={`font-bold ${formData.visibility === 'adults' ? 'text-red-400' : 'text-gray-300'}`}>للكبار فقط</div><div className="text-[10px] text-gray-500">+18 محتوى مقيد</div></div>
-                                                    </button>
-                                                </div>
+                                            <div>
+                                                <label className={labelClass}>كود (TMDB ID)</label>
+                                                <input type="text" name="tmdbId" value={formData.tmdbId || ''} onChange={handleChange} className={inputClass + " font-mono text-[var(--color-accent)]"} />
                                             </div>
                                         </div>
                                     </div>
-                                    
-                                    {/* Cast Member Box - Full Width */}
-                                    <div className={sectionBoxClass}>
-                                         <label className={labelClass}>طاقم العمل</label>
-                                         <div className="relative mb-3">
-                                            <input type="text" value={castQuery} onChange={(e) => searchCast(e.target.value)} className={inputClass} placeholder="بحث عن ممثل..." />
-                                            {isSearchingCast && <div className="absolute left-3 top-3"><div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"/></div>}
-                                            {castResults.length > 0 && (
-                                                <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-[#1a1f29] border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                                                    {castResults.map(person => (
-                                                        <div key={person.id} onClick={() => addCastMember(person)} className="flex items-center gap-3 p-2 hover:bg-gray-700 cursor-pointer border-b border-gray-800 last:border-0">
-                                                            <img src={person.profile_path ? `https://image.tmdb.org/t/p/w45${person.profile_path}` : 'https://placehold.co/45x45'} className="w-8 h-8 rounded-full object-cover"/>
-                                                            <span className="text-xs text-white">{person.name}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                         </div>
-                                         <div className="flex flex-wrap gap-2">
-                                             {formData.cast.map((c, i) => (
-                                                 <span key={i} className="flex items-center gap-1 bg-gray-800 text-xs px-2 py-1 rounded-full border border-gray-700">
-                                                     {c} <button type="button" onClick={() => removeCastMember(c)} className="text-gray-500 hover:text-red-400"><CloseIcon className="w-3 h-3"/></button>
-                                                 </span>
-                                             ))}
-                                         </div>
+                                </div>
+
+                                <div className={`${sectionBoxClass} lg:col-span-3 h-full flex flex-col`}>
+                                    <h4 className="text-sm font-bold text-gray-500 mb-6 uppercase border-b border-gray-800 pb-2">جمهور المشاهدة</h4>
+                                    <div className="space-y-6 flex-1 justify-center flex flex-col">
+                                        <button type="button" onClick={() => setFormData(prev => ({...prev, visibility: 'general'}))} className={`w-full flex items-center gap-4 p-5 rounded-2xl border transition-all ${formData.visibility === 'general' ? 'border-green-500/50 bg-green-500/10 ring-1 ring-green-500/20' : 'border-gray-800 bg-[#161b22]'}`}>
+                                            <div className={`p-3 rounded-full ${formData.visibility === 'general' ? 'bg-green-500 text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-gray-700 text-gray-500'}`}><FamilyIcon className="w-6 h-6"/></div>
+                                            <div className="text-right"><div className={`text-lg font-black ${formData.visibility === 'general' ? 'text-green-400' : 'text-gray-300'}`}>عائلي (عام)</div><div className="text-xs text-gray-500 font-bold">مناسب للجميع وآمن للأطفال</div></div>
+                                        </button>
+                                        <button type="button" onClick={() => setFormData(prev => ({...prev, visibility: 'adults'}))} className={`w-full flex items-center gap-4 p-5 rounded-2xl border transition-all ${formData.visibility === 'adults' ? 'border-red-500/50 bg-red-500/10 ring-1 ring-red-500/20' : 'border-gray-800 bg-[#161b22]'}`}>
+                                            <div className={`p-3 rounded-full ${formData.visibility === 'adults' ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'bg-gray-700 text-gray-500'}`}><AdultIcon className="w-6 h-6"/></div>
+                                            <div className="text-right"><div className={`text-lg font-black ${formData.visibility === 'adults' ? 'text-red-400' : 'text-gray-300'}`}>للكبار فقط</div><div className="text-xs text-gray-500 font-bold">+18 محتوى مقيد للبالغين</div></div>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1844,7 +2179,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">النوع الفني (Genres)</h3>
                                         <div className="flex flex-wrap gap-2">
                                             {genres.map((g: Genre) => (
-                                                <button key={g} type="button" onClick={() => handleGenreChange(g)} className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-bold transition-all duration-200 ${formData.genres.includes(g) ? 'bg-white text-black border-white' : `${INPUT_BG} border-gray-700 text-gray-400 hover:text-white`}`}>
+                                                <button key={g} type="button" onClick={() => handleGenreChange(g)} className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-bold transition-all duration-200 ${formData.genres.includes(g) ? 'bg-white text-black border-white' : `${INPUT_BG} border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white`}`}>
                                                     {g}
                                                     {formData.genres.includes(g) && <CheckSmallIcon />}
                                                 </button>
@@ -2016,7 +2351,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                             <div key={ep.id} className="flex flex-col gap-4 p-5 rounded-2xl border border-gray-800 bg-[#161b22] hover:border-gray-700 transition-all group">
                                                                 <div className="flex items-start gap-4">
                                                                     <div className="w-32 h-20 bg-black rounded-xl overflow-hidden border border-gray-800 flex-shrink-0 relative group/thumb">
-                                                                        {ep.thumbnail ? <img src={ep.thumbnail} className="w-full h-full object-cover transition-transform group-hover/thumb:scale-110"/> : <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-600">No Image</div>}
+                                                                        {ep.thumbnail ? <img src={ep.thumbnail} className="w-full h-full object-cover transition-transform group-hover/thumb:scale-110" alt=""/> : <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-600">No Image</div>}
                                                                         <button type="button" onClick={() => openGallery('backdrop', (url) => handleUpdateEpisode(season.id, ep.id, 'thumbnail', url))} className="absolute inset-0 bg-black/60 hidden group-hover/thumb:flex items-center justify-center text-white"><PhotoIcon className="w-5 h-5"/></button>
                                                                     </div>
                                                                     <div className="flex-1 space-y-3">
@@ -2065,29 +2400,38 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                              </div>
                         )}
 
-                    </form>
+                        {activeTab === 'preview' && renderLivePreview()}
+
+                    </div>
                 </div>
 
                 <footer className="h-20 border-t border-gray-800 bg-[#0f1014]/95 backdrop-blur-xl flex items-center justify-between px-4 md:px-10 z-50 sticky bottom-0 w-full shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
                      <button 
                         type="button" 
                         onClick={onClose} 
-                        className="flex-none px-8 py-3 rounded-xl text-sm font-bold text-gray-400 bg-gray-800/50 border border-gray-700 hover:bg-gray-800 hover:text-white transition-all shadow-sm"
+                        disabled={isSubmitting}
+                        className="flex-none px-8 py-3 rounded-xl text-sm font-bold text-gray-400 bg-gray-800/50 border border-gray-700 hover:bg-gray-800 hover:text-white transition-all shadow-sm disabled:opacity-50"
                      >
                         إلغاء
                      </button>
                      <button 
                         type="button" 
                         onClick={handleSubmit} 
-                        className="flex-none px-8 py-3 rounded-xl text-sm font-black bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-lg shadow-[var(--color-accent)]/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+                        disabled={isSubmitting}
+                        className={`flex-none px-8 py-3 rounded-xl text-sm font-black bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-lg shadow-[var(--color-accent)]/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
                      >
-                        <CheckSmallIcon className="w-4 h-4" />
-                        <span>حفظ ونشر المحتوى</span>
+                        {isSubmitting ? (
+                            <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                            <CheckSmallIcon className="w-4 h-4" />
+                        )}
+                        <span>{isSubmitting ? 'جاري الحفظ...' : 'حفظ ونشر المحتوى'}</span>
                      </button>
                 </footer>
             </main>
 
             {galleryState.isOpen && <ImageGalleryModal isOpen={galleryState.isOpen} onClose={() => setGalleryState(prev => ({ ...prev, isOpen: false }))} tmdbId={formData.tmdbId || formData.id} type={formData.type} targetField={galleryState.imageType} onSelect={(url) => galleryState.onSelect(url)} />}
+            {isTitleModalOpen && <TitleGalleryModal isOpen={isTitleModalOpen} onClose={() => setIsTitleModalOpen(false)} tmdbId={formData.tmdbId || formData.id || ''} type={formData.type} onSelect={(title) => setFormData(prev => ({...prev, title}))} />}
             {editingServersForEpisode && <ServerManagementModal episode={editingServersForEpisode} onClose={() => setEditingServersForEpisode(null)} onSave={handleUpdateEpisodeServers} onOpenSearch={() => setIsUqloadModalOpen(true)} />}
             {isManagingMovieServers && <ServerManagementModal episode={{id: 0, title: 'الفيلم', progress: 0, servers: formData.servers || []}} onClose={() => setIsManagingMovieServers(false)} onSave={handleUpdateMovieServers} onOpenSearch={() => setIsUqloadModalOpen(true)} />}
             <DeleteConfirmationModal isOpen={deleteSeasonState.isOpen} onClose={() => setDeleteSeasonState({ isOpen: false, seasonId: null, title: '' })} onConfirm={executeDeleteSeason} title="حذف الموسم" message={`هل أنت متأكد من حذف ${deleteSeasonState.title}؟`} />

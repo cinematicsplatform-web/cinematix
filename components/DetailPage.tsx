@@ -442,19 +442,24 @@ const DetailPage: React.FC<DetailPageProps> = ({
         url={canonicalPath}
       />
 
-      <div ref={heroRef} className="relative h-[85vh] md:h-[90vh] lg:h-[90vh] w-full group z-[45]">
+      <div className="relative h-[85vh] md:h-[90vh] lg:h-[90vh] w-full group z-[45]">
         <div className="absolute inset-0 bg-black overflow-hidden">
             {isLoaded ? (
-                <picture className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}>
-                    <source media="(max-width: 767px)" srcSet={currentSeason?.mobileImageUrl || content.mobileBackdropUrl || displayBackdrop} />
+                <div className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}>
+                    {/* Desktop Backdrop - Strictly Hidden on Mobile */}
                     <img 
-                        key={displayBackdrop} 
                         src={displayBackdrop} 
                         alt={content.title} 
-                        className={`absolute inset-0 w-full h-full object-cover ${enableCrop ? 'mobile-custom-crop' : 'object-top'} md:object-top`}
+                        className="absolute inset-0 w-full h-full object-cover bg-only-desktop object-top"
+                    />
+                    {/* Mobile Backdrop - Strictly Hidden on Desktop */}
+                    <img 
+                        src={currentSeason?.mobileImageUrl || content.mobileBackdropUrl || displayBackdrop} 
+                        alt={content.title} 
+                        className={`absolute inset-0 w-full h-full object-cover bg-only-mobile ${enableCrop ? 'mobile-custom-crop' : 'object-top'} md:object-top`}
                         style={imgStyle}
                     />
-                </picture>
+                </div>
             ) : (
                 <div className="absolute inset-0 bg-[#161b22] skeleton-shimmer"></div>
             )}
@@ -532,7 +537,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     </div>
                 )}
 
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 md:gap-4 mb-2 text-sm md:text-base font-medium text-gray-200 w-full transition-all duration-700 ease-in-out">
+                <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-2 text-sm md:text-base font-medium text-gray-200 w-full transition-all duration-700 ease-in-out">
                     {isLoaded ? (
                         <>
                             <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">

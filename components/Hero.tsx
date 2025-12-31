@@ -224,7 +224,7 @@ const Hero: React.FC<HeroProps> = ({
         const diffY = clientY - startPosY;
 
         // Smart Swipe vs Scroll Detection
-        // If the user moves more vertically than horizontally, we disable dragging to allow page scroll
+        // If vertical movement is greater than horizontal, it's a scroll attempt
         if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 5) {
             setIsScrollAttempt(true);
             setIsDragging(false);
@@ -272,8 +272,8 @@ const Hero: React.FC<HeroProps> = ({
             onTouchMove={(e) => handleMove(e.targetTouches[0].clientX, e.targetTouches[0].clientY)}
             onTouchEnd={handleEnd}
             style={{ 
-                cursor: isDragging ? 'grabbing' : hasMultiple ? 'grab' : 'default',
-                touchAction: 'pan-y' // CRITICAL: This allows vertical scrolling to pass through
+                cursor: isDragging ? 'grabbing' : 'pointer', // MODIFIED: Returned to pointer (hand) for interactivity while grab/grabbing for drag
+                touchAction: 'pan-y' // Vital to allow vertical scrolling on touch devices while swiping horizontally
             }}
         >
             {contents.map((content, index) => {
@@ -282,7 +282,6 @@ const Hero: React.FC<HeroProps> = ({
                 const posY = content.mobileCropPositionY ?? 50;
                 const imgStyle: React.CSSProperties = { '--mob-x': `${posX}%`, '--mob-y': `${posY}%` } as React.CSSProperties;
                 
-                // Ensure mobile cropping applies if enabled
                 const cropClass = content.enableMobileCrop ? 'mobile-custom-crop' : '';
 
                 let embedUrl = '';
@@ -330,30 +329,37 @@ const Hero: React.FC<HeroProps> = ({
                                 </div>
                             )}
 
-                            <picture className={`absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-1000 ${shouldShowVideo ? 'opacity-0' : 'opacity-100'}`}>
-                                <source media="(max-width: 767px)" srcSet={content.mobileBackdropUrl || content.backdrop} />
+                            <div className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${shouldShowVideo ? 'opacity-0' : 'opacity-100'}`}>
                                 <img 
                                     src={content.backdrop} 
                                     alt={content.title} 
-                                    className={`absolute inset-0 w-full h-full object-cover z-10 pointer-events-none ${cropClass} ${content.enableMobileCrop ? 'md:object-top' : 'object-top'} md:object-top`}
+                                    className="absolute inset-0 w-full h-full object-cover z-10 bg-only-desktop object-top"
+                                    draggable={false}
+                                    loading={isActive ? "eager" : "lazy"}
+                                />
+                                <img 
+                                    src={content.mobileBackdropUrl || content.backdrop} 
+                                    alt={content.title} 
+                                    className={`absolute inset-0 w-full h-full object-cover z-10 bg-only-mobile ${cropClass} object-top`}
                                     style={imgStyle}
                                     draggable={false}
                                     loading={isActive ? "eager" : "lazy"}
                                 />
-                            </picture>
+                            </div>
 
                             <div className={`absolute inset-0 z-20 pointer-events-none ${isRamadanTheme ? "bg-gradient-to-t from-black via-black/80 via-25% to-transparent" : "bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/60 via-40% to-transparent"}`}></div>
                             <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-body)]/90 via-[var(--bg-body)]/40 via-50% to-transparent z-20 hidden md:block pointer-events-none"></div>
                         </div>
 
-                        <div className={`absolute inset-0 z-30 flex flex-col justify-end px-4 md:px-12 pb-16 md:pb-32 text-white pointer-events-none transition-opacity duration-500 ease-in-out ${textOpacityClass}`}>
+                        <div className={`absolute inset-0 z-30 flex flex-col justify-end md:justify-end px-4 md:px-12 pb-4 md:pb-32 text-white pointer-events-none transition-opacity duration-500 ease-in-out ${textOpacityClass}`}>
                             <div className="max-w-3xl w-full flex flex-col items-center md:items-start text-center md:text-right pointer-events-auto">
                                 {content.bannerNote && (
                                     <div className={`mb-2 md:mb-2 text-sm font-medium shadow-sm w-fit animate-fade-in-up ${isRamadanTheme ? 'bg-[#D4AF37]/10 text-white border border-[#D4AF37]/10 px-3 py-1 rounded-lg backdrop-blur-md' : isEidTheme ? 'bg-purple-600/10 text-white border border-purple-500/10 px-3 py-1 rounded-lg backdrop-blur-md' : isCosmicTealTheme ? 'bg-[#35F18B]/10 text-white border border-[#35F18B]/10 px-3 py-1 rounded-lg backdrop-blur-md' : isNetflixRedTheme ? 'bg-[#E50914]/20 text-white border border-[#E50914]/20 px-3 py-1 rounded-lg backdrop-blur-md' : 'bg-[rgba(15,35,55,0.5)] text-[#00D2FF] border border-[rgba(0,210,255,0.3)] rounded-[6px] px-[12px] py-[4px] backdrop-blur-[4px]'}`}>
                                             {content.bannerNote}
                                     </div>
                                 )}
-                                <div className={`transition-all duration-700 ease-in-out transform origin-center md:origin-right ${shouldShowVideo ? 'translate-y-4 scale-75 mb-1 md:mb-2' : 'translate-y-0 scale-100 mb-2 md:mb-6'}`}>
+                                
+                                <div className={`transition-all duration-700 ease-in-out transform origin-center md:origin-right ${shouldShowVideo ? 'translate-y-4 scale-75 mb-1 md:mb-2' : 'translate-y-0 scale-100 mb-1 md:mb-6'}`}>
                                     {content.isLogoEnabled && content.logoUrl ? (
                                         <img src={content.logoUrl} alt={content.title} className="w-auto h-auto max-w-[190px] md:max-w-[380px] max-h-[165px] md:max-h-[245px] object-contain drop-shadow-2xl mx-auto md:mx-0" draggable={false} />
                                     ) : (
@@ -388,7 +394,7 @@ const Hero: React.FC<HeroProps> = ({
                                                 {content.genres.slice(0, 3).map((genre, index) => (
                                                     <React.Fragment key={index}>
                                                         <span className={`font-medium ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]'}`}>
-                                                            {genre}
+                                                                {genre}
                                                         </span>
                                                         {index < Math.min(content.genres.length, 3) - 1 && <span className="text-gray-500 text-[10px] md:text-xs">|</span>}
                                                     </React.Fragment>
@@ -406,20 +412,21 @@ const Hero: React.FC<HeroProps> = ({
                                 </div>
 
                                 {!hideDescription && (
-                                    <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-3 md:mb-4'}`}>
-                                        <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-2 md:line-clamp-3 leading-relaxed mx-auto md:mx-0 max-w-xl font-medium">{content.description}</p>
+                                    <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-2 md:mb-4'}`}>
+                                        <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-2 md:line-clamp-3 leading-relaxed mx-auto md:mx-0 font-medium">{content.description}</p>
                                     </div>
                                 )}
                                 <div className="flex items-center gap-4 w-full justify-center md:justify-start relative z-40 mt-1 md:mt-2">
                                     <ActionButtons onWatch={() => onWatchNow(content)} onToggleMyList={() => onToggleMyList(content.id)} isInMyList={!!myList?.includes(content.id)} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} showMyList={isLoggedIn} content={content} />
                                     {shouldShowVideo && (
-                                        <button onClick={toggleMute} className="p-3.5 md:p-6 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group origin-center" title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}>
+                                        <button onClick={toggleMute} className="p-3.5 md:p-6 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group origin-center cursor-pointer" title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}>
                                             <SpeakerIcon isMuted={isMuted} className="w-6 h-6 md:w-9 md:h-9 text-white group-hover:scale-110 transition-transform" />
                                         </button>
                                     )}
                                 </div>
+
                                 {hasMultiple && (
-                                    <div className="flex gap-1.5 pointer-events-none justify-center w-full mt-8 md:hidden" dir="rtl">
+                                    <div className="flex gap-1.5 pointer-events-none justify-center w-full mt-2 md:hidden" dir="rtl">
                                         {contents.map((_, idx) => (
                                             <button key={idx} className={`h-1.5 transition-all duration-300 pointer-events-auto cursor-pointer rounded-full ${activeIndex === idx ? (isRamadanTheme ? 'bg-amber-500 w-6' : isEidTheme ? 'bg-purple-500 w-6' : isCosmicTealTheme ? 'bg-[#35F18B] w-6 shadow-[0_0_10px_#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914] w-6 shadow-[0_0_10px_rgba(229,9,20,0.5)]' : 'bg-[#00A7F8] w-6') : 'bg-white/30 hover:bg-white/60 w-2'}`} onClick={(e) => { e.stopPropagation(); handleManualSlide(idx); }} />
                                         ))}
@@ -437,7 +444,7 @@ const Hero: React.FC<HeroProps> = ({
                         const isActiveItem = idx === activeIndex;
                         const indicatorColor = isRamadanTheme ? 'bg-[#FFD700]' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]';
                         return (
-                            <button key={`thumb-${c.id}`} onClick={(e) => { e.stopPropagation(); handleManualSlide(idx); }} className={`relative transition-all duration-500 ease-out group flex flex-col items-center gap-2 pb-2 pointer-events-auto ${isActiveItem ? `opacity-100 scale-110 filter-none` : 'opacity-50 grayscale hover:opacity-100 hover:grayscale-0 hover:scale-105'}`}>
+                            <button key={`thumb-${c.id}`} onClick={(e) => { e.stopPropagation(); handleManualSlide(idx); }} className={`relative transition-all duration-500 ease-out group flex flex-col items-center gap-2 pb-2 pointer-events-auto cursor-pointer ${isActiveItem ? `opacity-100 scale-110 filter-none` : 'opacity-50 grayscale hover:opacity-100 hover:grayscale-0 hover:scale-105'}`}>
                                 {c.logoUrl ? <img src={c.logoUrl} alt={c.title} className="h-20 w-auto object-contain max-w-[140px] drop-shadow-lg" loading="lazy" /> : <span className="text-sm font-bold text-white max-w-[100px] truncate block bg-black/50 px-3 py-1 rounded">{c.title}</span>}
                                 <div className={`h-[3px] rounded-full transition-all duration-300 mt-1 ${isActiveItem ? `w-12 opacity-100 ${indicatorColor} shadow-[0_0_8px_rgba(255,255,255,0.3)]` : 'w-0 opacity-0 bg-transparent'}`}></div>
                             </button>
