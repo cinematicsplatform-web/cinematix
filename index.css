@@ -1,4 +1,3 @@
-
 /* Global overrides */
 body, h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, select, textarea {
     font-family: 'Cairo', sans-serif !important;
@@ -189,6 +188,25 @@ html, body {
 @media (max-width: 768px) {
   .mobile-custom-crop {
     object-position: var(--mob-x, 50%) var(--mob-y, 50%) !important;
+  }
+}
+
+/* --- Device Specific Background Control --- */
+@media (min-width: 769px) {
+  .bg-only-mobile {
+    display: none !important;
+  }
+  .bg-only-desktop {
+    display: block !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .bg-only-desktop {
+    display: none !important;
+  }
+  .bg-only-mobile {
+    display: block !important;
   }
 }
 
