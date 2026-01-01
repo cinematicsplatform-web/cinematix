@@ -6,6 +6,9 @@ import DeleteConfirmationModal from './DeleteConfirmationModal';
 import ToggleSwitch from './ToggleSwitch';
 import * as XLSX from 'xlsx';
 import UqloadSearchModal from './UqloadSearchModal';
+import DailymotionSearchModal from './DailymotionSearchModal';
+import YouTubeSearchModal from './YouTubeSearchModal';
+import VkSearchModal from './VkSearchModal';
 import { normalizeText } from '@/utils/textUtils';
 import ActionButtons from './ActionButtons';
 import { StarIcon } from './icons/StarIcon';
@@ -120,6 +123,11 @@ const LanguageIcon = (props: React.SVGProps<SVGSVGElement>) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802" />
     </svg>
 );
+const YouTubeIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
+);
 
 // --- REFINED STYLES ---
 const INPUT_BG = "bg-[#161b22]"; 
@@ -153,58 +161,173 @@ interface MobileSimulatorProps {
     posY: number;
     onUpdateX: (val: number) => void;
     onUpdateY: (val: number) => void;
+    contentData: Content; 
     children?: React.ReactNode;
 }
 
-const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY, onUpdateX, onUpdateY, children }) => {
+const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY, onUpdateX, onUpdateY, contentData, children }) => {
+    const cropClass = contentData.enableMobileCrop ? 'mobile-custom-crop' : '';
+    const imgStyle: React.CSSProperties = { 
+        '--mob-x': `${posX}%`, 
+        '--mob-y': `${posY}%`,
+        // We add object-position directly here to ensure "live" feel and bypass any CSS lag/restriction
+        objectPosition: `${posX}% ${posY}%`
+    } as React.CSSProperties;
+    
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [isPanning, setIsPanning] = useState(false);
+    const startPosRef = useRef({ x: 0, y: 0 });
+    const startPercentageRef = useRef({ x: 50, y: 50 });
+
+    const handlePointerDown = (e: React.PointerEvent) => {
+        setIsPanning(true);
+        startPosRef.current = { x: e.clientX, y: e.clientY };
+        startPercentageRef.current = { x: posX, y: posY };
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    };
+
+    const handlePointerMove = (e: React.PointerEvent) => {
+        if (!isPanning || !containerRef.current) return;
+
+        const rect = containerRef.current.getBoundingClientRect();
+        const deltaX = e.clientX - startPosRef.current.x;
+        const deltaY = e.clientY - startPosRef.current.y;
+
+        // Panning sensitivity adjustment
+        const sensitivity = 0.5;
+        let newX = startPercentageRef.current.x - (deltaX / rect.width) * 100 * sensitivity;
+        let newY = startPercentageRef.current.y - (deltaY / rect.height) * 100 * sensitivity;
+
+        // Clamp values 0-100
+        newX = Math.max(0, Math.min(100, Math.round(newX)));
+        newY = Math.max(0, Math.min(100, Math.round(newY)));
+
+        onUpdateX(newX);
+        onUpdateY(newY);
+    };
+
+    const handlePointerUp = (e: React.PointerEvent) => {
+        setIsPanning(false);
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    };
+
     return (
         <div className="mt-6 flex flex-col items-center gap-12 rounded-3xl border border-gray-800 bg-[#080a0f] p-8 md:flex-row md:items-start shadow-2xl">
             <div className="relative mx-auto flex-shrink-0 md:mx-0">
                 <div 
-                    className="relative overflow-hidden rounded-[3rem] border-[10px] border-[#1f2127] bg-black shadow-2xl ring-1 ring-white/10"
-                    style={{ width: '300px', height: '620px' }} 
+                    ref={containerRef}
+                    className="relative overflow-hidden rounded-[3rem] border-[10px] border-[#1f2127] bg-black shadow-2xl ring-1 ring-white/10 select-none touch-none"
+                    style={{ width: '300px', height: '620px', cursor: isPanning ? 'grabbing' : 'grab' }} 
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
                 >
                     {children ? children : (
-                        <>
-                            <div 
-                                className="absolute inset-0 h-full w-full bg-cover bg-no-repeat transition-all duration-100 ease-out"
-                                style={{ 
-                                    backgroundImage: `url(${imageUrl || 'https://placehold.co/1080x1920/101010/101010/png'})`, 
-                                    backgroundPosition: `${posX}% ${posY}%` 
-                                }}
-                            />
-                            
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#0f1014] via-[#0f1014]/60 via-30% to-transparent pointer-events-none"></div>
-
-                            <div className="absolute bottom-0 left-0 w-full p-5 flex flex-col justify-end items-center text-center z-10 pointer-events-none">
-                                <div className="w-3/4 h-12 bg-white/10 rounded-lg backdrop-blur-sm mb-3 skeleton-shimmer"></div>
-                                <div className="flex gap-2 mb-3 justify-center opacity-70">
-                                    <div className="w-8 h-4 bg-white/20 rounded"></div>
-                                    <div className="w-12 h-4 bg-white/20 rounded"></div>
-                                    <div className="w-8 h-4 bg-white/20 rounded"></div>
+                        <div className="h-full bg-[#141b29] overflow-y-auto no-scrollbar scroll-smooth flex flex-col pointer-events-none">
+                            {/* Hero Part Replica */}
+                            <div className="relative h-[440px] w-full flex-shrink-0">
+                                <img 
+                                    src={imageUrl || 'https://placehold.co/1080x1920/101010/101010/png'} 
+                                    className={`absolute inset-0 h-full w-full object-cover ${cropClass} object-top transition-none`}
+                                    style={imgStyle}
+                                    draggable={false}
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#141b29] via-[#141b29]/40 via-30% to-transparent z-10"></div>
+                                
+                                <div className="absolute inset-0 z-20 flex flex-col justify-end p-5 pb-8 text-white text-center pointer-events-none">
+                                    {contentData.bannerNote && (
+                                        <div className="mb-2 mx-auto text-[10px] font-bold bg-[#6366f1]/80 text-white border border-[#6366f1]/30 px-2 py-0.5 rounded backdrop-blur-md w-fit">
+                                            {contentData.bannerNote}
+                                        </div>
+                                    )}
+                                    <div className="mb-3">
+                                        {contentData.isLogoEnabled && contentData.logoUrl ? (
+                                            <img src={contentData.logoUrl} className="max-w-[160px] max-h-[100px] object-contain drop-shadow-2xl mx-auto" alt="" />
+                                        ) : (
+                                            <h1 className="text-2xl font-black drop-shadow-lg leading-tight">{contentData.title || 'العنوان'}</h1>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] text-gray-200 mb-4 font-bold">
+                                        <div className="flex items-center gap-1 text-yellow-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/10">
+                                            <StarIcon className="w-2.5 h-2.5" />
+                                            <span>{contentData.rating.toFixed(1)}</span>
+                                        </div>
+                                        <span>•</span>
+                                        <span>{contentData.releaseYear}</span>
+                                        <span>•</span>
+                                        <span className="px-1 border border-gray-500 rounded text-[8px]">{contentData.ageRating || 'G'}</span>
+                                    </div>
+                                    <div className="flex gap-2 w-full">
+                                        <div className="flex-1 bg-[var(--color-accent)] text-black h-10 rounded-full flex items-center justify-center font-black text-xs gap-2">
+                                            <PlayIcon className="w-3 h-3 fill-black" />
+                                            شاهد الآن
+                                        </div>
+                                        <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center font-bold text-lg">+</div>
+                                    </div>
                                 </div>
-                                <div className="flex gap-3 w-full justify-center">
-                                    <div className="w-full h-10 bg-[var(--color-accent)] rounded-xl shadow-lg"></div>
-                                    <div className="w-12 h-10 bg-white/10 rounded-xl"></div>
+
+                                {/* Interactive Crosshair Indicator */}
+                                <div 
+                                    className="absolute z-50 w-8 h-8 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-50"
+                                    style={{ left: `${posX}%`, top: `${posY}%` }}
+                                >
+                                    <div className="w-full h-full relative">
+                                        <div className="absolute top-1/2 left-0 w-full h-px bg-white"></div>
+                                        <div className="absolute left-1/2 top-0 w-px h-full bg-white"></div>
+                                        <div className="absolute inset-0 border-2 border-white rounded-full"></div>
+                                    </div>
                                 </div>
                             </div>
-                        </>
+
+                            {/* Tab Bar Mockup */}
+                            <div className="sticky top-0 z-30 bg-[#141b29]/95 backdrop-blur-md border-b border-white/5 flex gap-4 px-4 h-12 items-center flex-shrink-0">
+                                <div className="text-[10px] font-black border-b-2 border-[var(--color-accent)] py-3 text-white">الحلقات</div>
+                                <div className="text-[10px] font-black text-gray-500 py-3">التفاصيل</div>
+                                <div className="text-[10px] font-black text-gray-500 py-3">أعمال مشابهة</div>
+                            </div>
+
+                            {/* Info Section */}
+                            <div className="p-4 space-y-4 flex-1">
+                                <p className="text-[11px] text-gray-400 leading-relaxed text-justify line-clamp-4">
+                                    {contentData.description || 'قصة العمل تظهر هنا...'}
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
+                                        <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">المخرج</span>
+                                        <span className="text-[10px] font-bold text-gray-300 truncate block">{contentData.director || 'N/A'}</span>
+                                    </div>
+                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
+                                        <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">التقييم</span>
+                                        <span className="text-[10px] font-bold text-yellow-400">★ {contentData.rating}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     )}
 
-                    <div className="absolute top-0 left-1/2 z-30 h-7 w-36 -translate-x-1/2 rounded-b-2xl bg-[#1f2127]"></div>
-                    <div className="absolute top-3 right-6 z-30 h-3 w-3 rounded-full bg-gray-600/30"></div>
-                    <div className="absolute bottom-2 left-1/2 z-30 h-1 w-32 -translate-x-1/2 rounded-full bg-white/20"></div>
+                    <div className="absolute top-0 left-1/2 z-30 h-7 w-36 -translate-x-1/2 rounded-b-2xl bg-[#1f2127] pointer-events-none"></div>
+                    <div className="absolute top-3 right-6 z-30 h-3 w-3 rounded-full bg-gray-600/30 pointer-events-none"></div>
+                    <div className="absolute bottom-2 left-1/2 z-30 h-1 w-32 -translate-x-1/2 rounded-full bg-white/20 pointer-events-none"></div>
                 </div>
                 <div className="mt-6 text-center font-mono text-xs text-gray-500 uppercase tracking-[0.2em]">Mobile Preview</div>
             </div>
 
             <div className="flex w-full flex-1 flex-col gap-8 pt-4">
-                <div>
-                    <h3 className="text-xl font-bold text-white mb-2">تخصيص العرض للجوال</h3>
-                    <p className="text-sm text-gray-400 leading-relaxed">
-                        تحكم دقيق في نقطة تركيز الصورة (Focal Point) لتظهر بشكل مثالي على جميع شاشات الهواتف. 
-                        الصورة المعروضة في الهاتف تمثل كيف سيراها المستخدم بالضبط مع تراكب النصوص والأزرار.
-                    </p>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="text-xl font-bold text-white mb-2">تخصيص العرض للجوال</h3>
+                        <p className="text-sm text-gray-400 leading-relaxed">
+                            تحكم دقيق في نقطة تركيز الصورة (Focal Point) لتظهر بشكل مثالي على صفحة العرض الرسمية في الجوال. 
+                            المعاينة أمامك هي نسخة طبق الأصل لما سيراه المستخدم النهائي. يمكنك السحب مباشرة على صورة الجوال للتحريك.
+                        </p>
+                    </div>
+                    <button 
+                        type="button" 
+                        onClick={() => { onUpdateX(50); onUpdateY(50); }}
+                        className="px-4 py-2 bg-gray-800 text-gray-300 text-xs font-bold rounded-lg border border-gray-700 hover:bg-gray-700 transition-all shadow-sm"
+                    >
+                        إعادة ضبط
+                    </button>
                 </div>
                 
                 <div className="space-y-6">
@@ -495,9 +618,11 @@ interface ServerManagementModalProps {
     onClose: () => void;
     onSave: (servers: Server[]) => void;
     onOpenSearch: () => void;
+    onOpenDailymotion: () => void;
+    onOpenVk: () => void;
 }
 
-const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, onClose, onSave, onOpenSearch }) => {
+const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, onClose, onSave, onOpenSearch, onOpenDailymotion, onOpenVk }) => {
     const [servers, setServers] = useState<Server[]>(() => {
         const existing = [...(episode.servers || [])];
         if (existing.length === 0) {
@@ -545,10 +670,17 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                          <ServerIcon className="w-5 h-5 text-[var(--color-accent)]"/>
                          إدارة السيرفرات: <span className="text-[var(--color-accent)]">{episode.title}</span>
                     </h3>
-                    <div className="flex items-center gap-2">
-                        <button onClick={onOpenSearch} className="flex items-center gap-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-500/20 hover:border-blue-500/40">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button onClick={onOpenVk} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-4 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
+                             <span>VK</span>
+                        </button>
+                        <button onClick={onOpenDailymotion} className="flex items-center gap-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
+                            <span className="w-4 h-4 flex items-center justify-center font-black">d</span>
+                            <span>Dailymotion</span>
+                        </button>
+                        <button onClick={onOpenSearch} className="flex items-center gap-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
                             <SearchIcon className="w-4 h-4"/>
-                            <span>بحث Uqload</span>
+                            <span>Uqload</span>
                         </button>
                         <button onClick={onClose} className="ml-2 text-gray-400 hover:text-white"><CloseIcon className="w-5 h-5"/></button>
                     </div>
@@ -656,6 +788,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [castResults, setCastResults] = useState<any[]>([]);
     const [isSearchingCast, setIsSearchingCast] = useState(false);
 
+    const [youTubeSearchState, setYouTubeSearchState] = useState<{ isOpen: boolean; targetId: 'main' | number | null }>({ isOpen: false, targetId: null });
+
     const [galleryState, setGalleryState] = useState<{
         isOpen: boolean;
         imageType: 'poster' | 'backdrop' | 'logo';
@@ -680,6 +814,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     }>({ isOpen: false, seasonId: null, episodeId: null, title: '' });
 
     const [isUqloadModalOpen, setIsUqloadModalOpen] = useState(false);
+    const [isDailymotionModalOpen, setIsDailymotionModalOpen] = useState(false);
+    const [isVkModalOpen, setIsVkModalOpen] = useState(false);
 
     const [tmdbIdInput, setTmdbIdInput] = useState(content?.id && !isNaN(Number(content.id)) ? content.id : '');
     const [fetchLoading, setFetchLoading] = useState(false);
@@ -1689,7 +1825,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         const isEpisodicView = formData.type === ContentType.Series || formData.type === ContentType.Program;
         const posX = formData.mobileCropPositionX ?? 50;
         const posY = formData.mobileCropPositionY ?? 50;
-        const imgStyle: React.CSSProperties = { '--mob-x': `${posX}%`, '--mob-y': `${posY}%` } as React.CSSProperties;
+        const imgStyle: React.CSSProperties = { 
+            '--mob-x': `${posX}%`, 
+            '--mob-y': `${posY}%`,
+            objectPosition: `${posX}% ${posY}%`
+        } as React.CSSProperties;
         const cropClass = formData.enableMobileCrop ? 'mobile-custom-crop' : '';
 
         return (
@@ -1707,12 +1847,12 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         </div>
                         
                         {/* Detail Mockup Layout */}
-                        <div className="h-full bg-[#141b29] overflow-y-auto no-scrollbar scroll-smooth">
+                        <div className="h-full bg-[#141b29] overflow-y-auto no-scrollbar scroll-smooth flex flex-col">
                             {/* Hero Part */}
-                            <div className="relative h-[480px] w-full">
+                            <div className="relative h-[480px] w-full flex-shrink-0">
                                 <img 
                                     src={formData.mobileBackdropUrl || formData.backdrop || 'https://placehold.co/1080x1920/101010/101010/png'} 
-                                    className={`absolute inset-0 w-full h-full object-cover ${cropClass} object-top`} 
+                                    className={`absolute inset-0 w-full h-full object-cover ${cropClass} object-top transition-none`} 
                                     style={imgStyle}
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-[#141b29] via-[#141b29]/40 via-40% to-transparent z-10"></div>
@@ -1724,6 +1864,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         </div>
                                     )}
                                     <div className="mb-3">
+                                        {/* FIXED: Replaced undefined 'contentData' with correct state 'formData' */}
                                         {formData.isLogoEnabled && formData.logoUrl ? (
                                             <img src={formData.logoUrl} className="max-w-[160px] max-h-[100px] object-contain drop-shadow-2xl mx-auto" />
                                         ) : (
@@ -1751,14 +1892,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             </div>
 
                             {/* Tab Bar Mockup */}
-                            <div className="sticky top-0 z-30 bg-[#141b29]/95 backdrop-blur-md border-b border-white/5 flex gap-4 px-4 h-12 items-center">
+                            <div className="sticky top-0 z-30 bg-[#141b29]/95 backdrop-blur-md border-b border-white/5 flex gap-4 px-4 h-12 items-center flex-shrink-0">
                                 <div className="text-[10px] font-black border-b-2 border-[#00A7F8] py-3 text-white">الحلقات</div>
                                 <div className="text-[10px] font-black text-gray-500 py-3">التفاصيل</div>
                                 <div className="text-[10px] font-black text-gray-500 py-3">أعمال مشابهة</div>
                             </div>
 
                             {/* Info Section */}
-                            <div className="p-4 space-y-4">
+                            <div className="p-4 space-y-4 flex-1">
                                 <p className="text-[11px] text-gray-400 leading-relaxed text-justify line-clamp-4">
                                     {formData.description || 'قصة العمل تظهر هنا...'}
                                 </p>
@@ -1896,10 +2037,10 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         <button 
                             onClick={() => { setActiveTab('servers'); setIsSidebarOpen(false); }}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'servers' ? 'bg-[#1a1f29] text-white border-r-2 border-[var(--color-accent)]' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
-                        >
-                            <ServerIcon className="w-5 h-5"/>
-                            <span>السيرفرات</span>
-                        </button>
+                    >
+                        <ServerIcon className="w-5 h-5"/>
+                        <span>السيرفرات</span>
+                    </button>
                     )}
 
                     <div className="h-px bg-gray-800 my-4"></div>
@@ -2011,7 +2152,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     return (
                                                         <div key={result.id} onClick={() => handleSelectSearchResult(result)} className="group cursor-pointer">
                                                             <div className="aspect-[2/3] rounded-lg overflow-hidden border border-gray-700 relative">
-                                                                {result.poster_path ? <img src={`https://image.tmdb.org/t/p/w200${result.poster_path}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" /> : <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs">No Image</div>}
+                                                                {result.poster_path ? <img src={`https://image.tmdb.org/t/p/w200${result.poster_path}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" /> : <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs">No Image</div>}
                                                                 <div className={`absolute top-1 left-1 z-10 px-2 py-0.5 rounded text-[9px] font-black text-white shadow-lg backdrop-blur-sm ${badgeInfo.color}`}>
                                                                     {badgeInfo.label}
                                                                 </div>
@@ -2152,7 +2293,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             <div className={sectionBoxClass + " animate-fade-in-up"}>
                                 <div className="space-y-8">
                                     <div>
-                                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">القوائم الرئيسية</h3>
+                                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">التصنيفات الرئيسية</h3>
                                         <div className="flex flex-wrap gap-3">
                                             {filteredCategories.map((cat: Category) => (
                                                 <button key={cat} type="button" onClick={() => handleCategoryChange(cat)} className={`flex items-center gap-2 rounded-full border px-5 py-2 text-xs font-bold transition-all duration-300 ${formData.categories.includes(cat) ? 'scale-105 border-transparent bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-lg shadow-[var(--color-accent)]/20' : `${INPUT_BG} border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white`}`}>
@@ -2216,7 +2357,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         {renderImageInput("", formData.logoUrl, (val) => setFormData(prev => ({...prev, logoUrl: val})), 'logo', "https://...", "hidden")}
                                         {formData.logoUrl && (
                                             <div className="mt-2 bg-[url('https://www.transparenttextures.com/patterns/checkerboard.png')] bg-gray-800 p-4 rounded-lg flex justify-center">
-                                                <img src={formData.logoUrl} className="h-16 object-contain"/>
+                                                <img src={formData.logoUrl} className="h-16 object-contain" alt="" />
                                             </div>
                                         )}
                                     </div>
@@ -2224,7 +2365,17 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     <div>
                                          <label className={labelClass}>رابط التريلر (YouTube)</label>
                                          <div className="flex items-center gap-2">
-                                            <input type="text" value={formData.trailerUrl || ''} onChange={(e) => setFormData(prev => ({...prev, trailerUrl: e.target.value}))} className={inputClass} placeholder="https://youtube.com/..." />
+                                            <div className="flex-1 relative">
+                                                <input type="text" value={formData.trailerUrl || ''} onChange={(e) => setFormData(prev => ({...prev, trailerUrl: e.target.value}))} className={inputClass} placeholder="https://youtube.com/..." />
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setYouTubeSearchState({ isOpen: true, targetId: 'main' })}
+                                                    className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 text-[10px] font-black hover:bg-red-600 hover:text-white transition-all flex items-center gap-1.5"
+                                                >
+                                                    <YouTubeIcon className="w-3.5 h-3.5" />
+                                                    <span>بحث YouTube</span>
+                                                </button>
+                                            </div>
                                             {formData.trailerUrl && <a href={formData.trailerUrl} target="_blank" className="p-3 bg-red-600 rounded-lg text-white hover:bg-red-500"><PlayIcon className="w-5 h-5"/></a>}
                                          </div>
                                     </div>
@@ -2246,6 +2397,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                 imageUrl={formData.mobileBackdropUrl || formData.backdrop || ''}
                                                 posX={formData.mobileCropPositionX ?? 50}
                                                 posY={formData.mobileCropPositionY ?? 50}
+                                                contentData={formData}
                                                 onUpdateX={(v) => setFormData(prev => ({...prev, mobileCropPositionX: v}))}
                                                 onUpdateY={(v) => setFormData(prev => ({...prev, mobileCropPositionY: v}))}
                                             />
@@ -2320,14 +2472,37 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                         {renderImageInput("شعار الموسم (Logo)", season.logoUrl, (val) => handleUpdateSeason(season.id, 'logoUrl', val), 'logo', "Logo URL")}
                                                         {renderImageInput("صورة الموبايل (Mobile)", season.mobileImageUrl, (val) => handleUpdateSeason(season.id, 'mobileImageUrl', val), 'poster', "Mobile Image URL")}
                                                         
-                                                        <div>
-                                                            <label className={labelClass}>رابط الإعلان (Ad Link)</label>
-                                                            <input 
-                                                                value={season.adLink || ''} 
-                                                                onChange={(e) => handleUpdateSeason(season.id, 'adLink', e.target.value)} 
-                                                                className={inputClass} 
-                                                                placeholder="رابط إعلاني خاص بالموسم" 
-                                                            />
+                                                        <div className="space-y-4">
+                                                            <div>
+                                                                <label className={labelClass}>رابط الإعلان (Ad Link)</label>
+                                                                <input 
+                                                                    value={season.adLink || ''} 
+                                                                    onChange={(e) => handleUpdateSeason(season.id, 'adLink', e.target.value)} 
+                                                                    className={inputClass} 
+                                                                    placeholder="رابط إعلاني خاص بالموسم" 
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className={labelClass}>رابط التريلر (YouTube)</label>
+                                                                <div className="flex gap-2">
+                                                                    <div className="flex-1 relative">
+                                                                        <input 
+                                                                            value={season.trailerUrl || ''} 
+                                                                            onChange={(e) => handleUpdateSeason(season.id, 'trailerUrl', e.target.value)} 
+                                                                            className={inputClass} 
+                                                                            placeholder="YouTube Trailer URL" 
+                                                                        />
+                                                                        <button 
+                                                                            type="button"
+                                                                            onClick={() => setYouTubeSearchState({ isOpen: true, targetId: season.id })}
+                                                                            className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 text-[10px] font-black hover:bg-red-600 hover:text-white transition-all flex items-center gap-1.5"
+                                                                        >
+                                                                            <YouTubeIcon className="w-3.5 h-3.5" />
+                                                                            <span>YouTube</span>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
 
                                                         <div className="col-span-full">
@@ -2339,7 +2514,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                             <div className="flex justify-between items-center mb-4"><label className={labelClass}>تخصيص الموبايل لهذا الموسم</label><input type="checkbox" checked={season.enableMobileCrop || false} onChange={(e) => handleUpdateSeason(season.id, 'enableMobileCrop', e.target.checked)} className="accent-[var(--color-accent)]"/></div>
                                                             {season.enableMobileCrop && (
                                                                 <div className="mt-2">
-                                                                     <MobileSimulator imageUrl={season.mobileImageUrl || season.backdrop || ''} posX={season.mobileCropPositionX ?? 50} posY={season.mobileCropPositionY ?? 50} onUpdateX={(v) => handleUpdateSeason(season.id, 'mobileCropPositionX', v)} onUpdateY={(v) => handleUpdateSeason(season.id, 'mobileCropPositionY', v)} />
+                                                                     <MobileSimulator 
+                                                                        imageUrl={season.mobileImageUrl || season.backdrop || formData.backdrop || ''} 
+                                                                        posX={season.mobileCropPositionX ?? 50} 
+                                                                        posY={season.mobileCropPositionY ?? 50} 
+                                                                        contentData={{...formData, ...season, id: formData.id} as Content}
+                                                                        onUpdateX={(v) => handleUpdateSeason(season.id, 'mobileCropPositionX', v)} 
+                                                                        onUpdateY={(v) => handleUpdateSeason(season.id, 'mobileCropPositionY', v)} 
+                                                                     />
                                                                 </div>
                                                             )}
                                                         </div>
@@ -2430,10 +2612,10 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 </footer>
             </main>
 
-            {galleryState.isOpen && <ImageGalleryModal isOpen={galleryState.isOpen} onClose={() => setGalleryState(prev => ({ ...prev, isOpen: false }))} tmdbId={formData.tmdbId || formData.id} type={formData.type} targetField={galleryState.imageType} onSelect={(url) => galleryState.onSelect(url)} />}
+            {galleryState.isOpen && <ImageGalleryModal isOpen={galleryState.isOpen} onClose={() => setGalleryState(prev => ({ ...prev, isOpen: false }))} tmdbId={formData.tmdbId || formData.id} type={formData.type} targetField={galleryState.imageType} onSelect={(url) => galleryState.imageType === 'logo' ? setFormData(prev => ({...prev, logoUrl: url, isLogoEnabled: true})) : galleryState.onSelect(url)} />}
             {isTitleModalOpen && <TitleGalleryModal isOpen={isTitleModalOpen} onClose={() => setIsTitleModalOpen(false)} tmdbId={formData.tmdbId || formData.id || ''} type={formData.type} onSelect={(title) => setFormData(prev => ({...prev, title}))} />}
-            {editingServersForEpisode && <ServerManagementModal episode={editingServersForEpisode} onClose={() => setEditingServersForEpisode(null)} onSave={handleUpdateEpisodeServers} onOpenSearch={() => setIsUqloadModalOpen(true)} />}
-            {isManagingMovieServers && <ServerManagementModal episode={{id: 0, title: 'الفيلم', progress: 0, servers: formData.servers || []}} onClose={() => setIsManagingMovieServers(false)} onSave={handleUpdateMovieServers} onOpenSearch={() => setIsUqloadModalOpen(true)} />}
+            {editingServersForEpisode && <ServerManagementModal episode={editingServersForEpisode} onClose={() => setEditingServersForEpisode(null)} onSave={handleUpdateEpisodeServers} onOpenSearch={() => setIsUqloadModalOpen(true)} onOpenDailymotion={() => setIsDailymotionModalOpen(true)} onOpenVk={() => setIsVkModalOpen(true)} />}
+            {isManagingMovieServers && <ServerManagementModal episode={{id: 0, title: 'الفيلم', progress: 0, servers: formData.servers || []}} onClose={() => setIsManagingMovieServers(false)} onSave={handleUpdateMovieServers} onOpenSearch={() => setIsUqloadModalOpen(true)} onOpenDailymotion={() => setIsDailymotionModalOpen(true)} onOpenVk={() => setIsVkModalOpen(true)} />}
             <DeleteConfirmationModal isOpen={deleteSeasonState.isOpen} onClose={() => setDeleteSeasonState({ isOpen: false, seasonId: null, title: '' })} onConfirm={executeDeleteSeason} title="حذف الموسم" message={`هل أنت متأكد من حذف ${deleteSeasonState.title}؟`} />
             <DeleteConfirmationModal isOpen={deleteEpisodeState.isOpen} onClose={() => setDeleteEpisodeState({ isOpen: false, seasonId: null, episodeId: null, title: '' })} onConfirm={executeDeleteEpisode} title="حذف الحلقة" message={`هل أنت متأكد من حذف ${deleteEpisodeState.title}؟`} />
             {isUqloadModalOpen && (
@@ -2448,6 +2630,53 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             handleUpdateMovieServers([...(formData.servers || []), newServer]); 
                         } 
                     }} 
+                />
+            )}
+            {isDailymotionModalOpen && (
+                <DailymotionSearchModal 
+                    isOpen={isDailymotionModalOpen} 
+                    onClose={() => setIsDailymotionModalOpen(false)} 
+                    onSelect={(res) => { 
+                        const newServer: Server = { id: Date.now(), name: 'Dailymotion', url: res.embedUrl, downloadUrl: res.embedUrl, isActive: true };
+                        if (editingServersForEpisode) { 
+                            handleUpdateEpisodeServers([...(editingServersForEpisode.servers || []), newServer]); 
+                        } else if (isManagingMovieServers) { 
+                            handleUpdateMovieServers([...(formData.servers || []), newServer]); 
+                        } 
+                        addToast(`تم إضافة فيديو: ${res.title}`, 'success');
+                    }} 
+                />
+            )}
+            {isVkModalOpen && (
+                <VkSearchModal 
+                    isOpen={isVkModalOpen}
+                    onClose={() => setIsVkModalOpen(false)} 
+                    onSelect={(res) => {
+                        const newServer: Server = { id: Date.now(), name: 'VK Video', url: res.embedUrl, downloadUrl: res.downloadUrl, isActive: true };
+                        if (editingServersForEpisode) { 
+                            handleUpdateEpisodeServers([...(editingServersForEpisode.servers || []), newServer]); 
+                        } else if (isManagingMovieServers) { 
+                            handleUpdateMovieServers([...(formData.servers || []), newServer]); 
+                        } 
+                        addToast(`تم إضافة فيديو VK: ${res.title}`, 'success');
+                    }}
+                />
+            )}
+            {youTubeSearchState.isOpen && (
+                <YouTubeSearchModal 
+                    isOpen={youTubeSearchState.isOpen}
+                    onClose={() => setYouTubeSearchState({ isOpen: false, targetId: null })}
+                    initialQuery={formData.title}
+                    onSelect={(url) => {
+                        const { targetId } = youTubeSearchState;
+                        if (targetId === 'main') {
+                            setFormData(prev => ({ ...prev, trailerUrl: url }));
+                        } else if (typeof targetId === 'number') {
+                            handleUpdateSeason(targetId, 'trailerUrl', url);
+                        }
+                        setYouTubeSearchState({ isOpen: false, targetId: null });
+                        addToast("تم تحديث رابط التريلر بنجاح!", "success");
+                    }}
                 />
             )}
         </div>

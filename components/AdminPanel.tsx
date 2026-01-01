@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { db, generateSlug, getContentRequests, deleteContentRequest, getUserProfile, getPinnedContent, updatePinnedContentForPage, getStories, saveStory, deleteStory, serverTimestamp, getBroadcastHistory, deleteBroadcastNotification, getReports, deleteReport } from '../firebase';
-import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, Top10State, PageKey, ThemeType, Category, Genre, Season, Episode, Server, ContentRequest, Story, Notification, BroadcastNotification } from '../types';
+import { db, generateSlug, getContentRequests, deleteContentRequest, getUserProfile, getPinnedContent, updatePinnedContentForPage, getStories, saveStory, deleteStory, serverTimestamp, getBroadcastHistory, deleteBroadcastNotification, getReports, deleteReport, getReleaseSchedules } from '../firebase';
+import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, Top10State, PageKey, ThemeType, Category, Genre, Season, Episode, Server, ContentRequest, Story, Notification, BroadcastNotification, ReleaseSchedule } from '../types';
 import { ContentType, UserRole, adPlacementLabels } from '../types';
 import ContentEditModal from './ContentEditModal'; 
 import AdEditModal from './AdEditModal';
@@ -15,6 +15,7 @@ import { PlayIcon } from './icons/PlayIcon';
 import SEO from './SEO';
 import AppConfigTab from './admin/AppConfigTab';
 import PeopleManagerTab from './admin/PeopleManagerTab';
+import ContentRadarTab from './admin/ContentRadarTab';
 
 // --- PROFESSIONAL ICONS FOR SIDEBAR ---
 const HomeIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -64,6 +65,9 @@ const MenuIcon = (props: React.SVGProps<SVGSVGElement>) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
   </svg>
 );
+const MapIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-10.5v.008H15V4.5Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0Zm-.375 5.25V11.25H15v-.008Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0Zm-.375 5.25V16.5H15v-.008Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0Zm-.375 5.25v.008h-.008v-.008Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0ZM12 4.5v.008H12V4.5Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0ZM12 9.75v.008H12V9.75Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0ZM12 15v.008H12V15Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0ZM12 20.25v.008H12v-.008Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0ZM9 15v.008H9V15Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0ZM9 20.25v.008H9v-.008Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0ZM9 6.75v.008H9V6.75Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0ZM9 11.25v.008H9v-.008Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0ZM6 6.75V15m-3-10.5v.008H3V4.5Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0Zm-.375 5.25V11.25H3v-.008Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0Zm-.375 5.25V16.5H3v-.008Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0Zm-.375 5.25v.008h-.008v-.008Zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0Z" /></svg>
+);
 
 // Inner Content Icons
 const ArrowUpTrayIcon = () => (
@@ -87,7 +91,7 @@ const TrashIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 0-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
 );
 
-type AdminTab = 'dashboard' | 'content' | 'top_content' | 'top10' | 'users' | 'requests' | 'reports' | 'ads' | 'themes' | 'settings' | 'analytics' | 'notifications' | 'stories' | 'app_config' | 'people';
+type AdminTab = 'dashboard' | 'content' | 'top_content' | 'top10' | 'users' | 'requests' | 'reports' | 'ads' | 'themes' | 'settings' | 'analytics' | 'notifications' | 'stories' | 'app_config' | 'people' | 'content_radar';
 
 const getAccessToken = async (serviceAccountJson: string): Promise<string | null> => {
     try {
@@ -157,6 +161,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const [allContent, setAllContent] = useState<Content[]>([]);
     const [isLoadingContent, setIsLoadingContent] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [radarCount, setRadarCount] = useState(0);
 
     const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; type: 'content' | 'user' | 'ad' | 'pinned' | 'story' | 'broadcast' | 'report'; id: string; title?: string; meta?: any; }>({ isOpen: false, type: 'content', id: '' });
 
@@ -174,6 +179,18 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             setIsLoadingContent(false);
         };
         getContent();
+        
+        // Fetch radar count for notifications
+        getReleaseSchedules().then(schedules => {
+            const today = new Date().getDay();
+            const todayStr = new Date().toDateString();
+            const pendingToday = schedules.filter(s => {
+                const lastAddedDate = s.lastAddedAt ? new Date(s.lastAddedAt) : null;
+                const alreadyPublished = lastAddedDate && lastAddedDate.toDateString() === todayStr;
+                return s.dayOfWeek === today && s.isActive && !alreadyPublished;
+            });
+            setRadarCount(pendingToday.length);
+        });
     }, []); 
 
     const totalMovies = allContent.filter(c => c.type === ContentType.Movie).length;
@@ -227,6 +244,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             case 'analytics': return <AnalyticsTab allContent={allContent} allUsers={props.allUsers}/>;
             case 'app_config': return <AppConfigTab settings={props.siteSettings} onUpdate={props.onSetSiteSettings} />;
             case 'people': return <PeopleManagerTab addToast={props.addToast} />;
+            case 'content_radar': return <ContentRadarTab addToast={props.addToast} onRequestDelete={(id, title) => setDeleteModalState({ isOpen: true, type: 'report', id, title })} onEditContent={openContentModalForEdit} allPublishedContent={allContent} />;
             case 'dashboard': default: return <DashboardTab stats={{totalMovies, totalSeries, totalUsers}} allContent={allContent} />;
         }
     };
@@ -245,6 +263,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const navItems: {id: AdminTab, label: string, icon: any}[] = [
         { id: 'dashboard', label: 'نظرة عامة', icon: HomeIcon },
         { id: 'content', label: 'المحتوى', icon: FilmIcon },
+        { id: 'content_radar', label: 'رادار البث', icon: MapIcon }, // NEW Content Radar Nav
         { id: 'top_content', label: 'المثبت (Hero)', icon: StarIcon },
         { id: 'top10', label: 'قائمة التوب 10', icon: TrophyIcon },
         { id: 'stories', label: 'إدارة الستوري', icon: PlayCircleIcon },
@@ -300,6 +319,9 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                         >
                             <item.icon className="w-5 h-5"/>
                             <span>{item.label}</span>
+                            {item.id === 'content_radar' && radarCount > 0 && (
+                                <span className="mr-auto bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center animate-bounce">{radarCount}</span>
+                            )}
                         </button>
                     ))}
                 </nav>
@@ -338,6 +360,16 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
+                        <div className="relative mr-4">
+                             <button onClick={() => setActiveTab('content_radar')} className="p-2.5 bg-gray-800/50 rounded-xl border border-gray-700 hover:bg-gray-700 transition-all text-gray-400 hover:text-white relative group">
+                                <BellIcon className="w-6 h-6" />
+                                {radarCount > 0 && (
+                                    <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#0f1014] shadow-lg group-hover:scale-110 transition-transform">
+                                        {radarCount > 9 ? '+9' : radarCount}
+                                    </span>
+                                )}
+                             </button>
+                        </div>
                         <div className="px-3 py-1 bg-gray-900 rounded border border-gray-800 font-mono text-xs text-gray-400">
                              v2.5.1
                         </div>

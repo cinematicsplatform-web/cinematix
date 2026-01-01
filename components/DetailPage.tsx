@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { createPortal } from 'react-dom';
@@ -264,7 +265,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
       } catch (e) { return null; }
   };
 
-  const trailerVideoId = getVideoId((isEpisodic && currentSeason?.trailerUrl) ? currentSeason.trailerUrl : content?.trailerUrl);
+  // STRICT AD LOGIC: If episodic, strictly use season trailer. Never fallback to content.trailerUrl.
+  const trailerVideoId = useMemo(() => {
+    if (isEpisodic) {
+        return getVideoId(currentSeason?.trailerUrl);
+    }
+    return getVideoId(content?.trailerUrl);
+  }, [isEpisodic, currentSeason?.trailerUrl, content?.trailerUrl]);
 
   const heroEmbedUrl = useMemo(() => {
       if (!trailerVideoId) return '';
@@ -282,6 +289,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
       const timer = setTimeout(() => { setShowVideo(true); }, 2000); 
       return () => clearTimeout(timer);
   }, [content?.id, trailerVideoId, isMobile, selectedSeasonId]);
+
+  // Tab Auto-reset: If user is on trailer tab and switches to a season with no trailer, move to episodes.
+  useEffect(() => {
+      if (activeTab === 'trailer' && !trailerVideoId) {
+          setActiveTab('episodes');
+      }
+  }, [activeTab, trailerVideoId]);
 
   useEffect(() => {
     if (!showVideo || !iframeRef.current) return;
@@ -442,10 +456,10 @@ const DetailPage: React.FC<DetailPageProps> = ({
         url={canonicalPath}
       />
 
-      <div className="relative h-[85vh] md:h-[90vh] lg:h-[90vh] w-full group z-[45]">
+      <div ref={heroRef} className="relative h-[85vh] md:h-[90vh] lg:h-[90vh] w-full group z-[45]">
         <div className="absolute inset-0 bg-black overflow-hidden">
             {isLoaded ? (
-                <div className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}>
+                <div key={`season-backdrop-${selectedSeasonId}`} className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}>
                     {/* Desktop Backdrop - Strictly Hidden on Mobile */}
                     <img 
                         src={displayBackdrop} 
@@ -465,7 +479,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
             )}
             
             {showVideo && !videoEnded && heroEmbedUrl && !isMobile && isLoaded && (
-                <div className="absolute inset-0 w-full h-full overflow-hidden animate-fade-in pointer-events-auto">
+                <div key={`season-ad-container-${selectedSeasonId}`} className="absolute inset-0 w-full h-full overflow-hidden animate-fade-in pointer-events-auto">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
                         <iframe 
                             ref={iframeRef} 
