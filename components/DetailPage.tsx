@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { createPortal } from 'react-dom';
@@ -356,6 +355,14 @@ const DetailPage: React.FC<DetailPageProps> = ({
   };
 
   const handleDownload = () => {
+      // التحقق من توفر روابط تحميل في أي سيرفر
+      const hasDownloadLinks = (content.servers || []).some(s => s.downloadUrl && s.downloadUrl.trim().length > 0);
+      
+      if (!isEpisodic && !hasDownloadLinks) {
+          setIsDownloadErrorOpen(true);
+          return;
+      }
+
       onSetView('download', undefined, { content: content });
   };
 
@@ -504,10 +511,10 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         <img 
                             src={displayLogo} 
                             alt={content.title} 
-                            className={`w-auto h-auto max-w-[190px] md:max-w-[435px] max-h-[190px] md:max-h-[300px] mb-3 object-contain drop-shadow-2xl transition-transform duration-700 ${showVideo ? 'scale-90 origin-bottom-right' : 'scale-100'}`}
+                            className={`w-auto h-auto max-w-[190px] md:max-w-[435px] max-h-[190px] md:max-h-[300px] mb-3 object-contain drop-shadow-2xl transition-transform duration-700 mx-auto md:mx-0 ${showVideo ? 'scale-90 origin-bottom-right' : 'scale-100'}`}
                         />
                     ) : (
-                        <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-3 leading-tight text-white drop-shadow-lg">{content.title}</h1>
+                        <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-3 leading-tight text-white drop-shadow-lg text-center md:text-right">{content.title}</h1>
                     )
                 ) : (
                     <div className="w-64 md:w-96 h-12 md:h-20 bg-gray-800/40 rounded-xl skeleton-shimmer mb-4 border border-white/5"></div>
@@ -551,7 +558,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     </div>
                 )}
 
-                <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-2 text-sm md:text-base font-medium text-gray-200 w-full transition-all duration-700 ease-in-out">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 md:gap-4 mb-2 text-sm md:text-base font-medium text-gray-200 w-full transition-all duration-700 ease-in-out">
                     {isLoaded ? (
                         <>
                             <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
@@ -579,7 +586,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             {content.genres && content.genres.length > 0 && (
                                 <>
                                     <span className="text-gray-500 opacity-60">|</span>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center justify-center md:justify-start gap-2">
                                         {content.genres.slice(0, 3).map((genre, index) => (
                                             <React.Fragment key={index}>
                                                 <span className={`font-medium ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]'}`}>
@@ -599,7 +606,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
                 <div className="overflow-hidden transition-all duration-700 ease-in-out w-full opacity-100 max-h-40 mb-3 md:mb-4">
                     {isLoaded ? (
-                        <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-3 leading-relaxed mx-auto md:mx-0 font-medium">{displayDescription}</p>
+                        <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-3 leading-relaxed mx-auto md:mx-0 font-medium text-center md:text-right">{displayDescription}</p>
                     ) : (
                         <div className="space-y-2 w-full max-w-xl">
                             <div className="h-4 bg-gray-800/40 rounded skeleton-shimmer w-full border border-white/5"></div>
@@ -688,7 +695,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
       <div className="relative min-h-[400px] w-full bg-[var(--bg-body)]">
           {activeTab === 'episodes' && !isSoon && (
               <div className="w-full px-4 pt-8 md:px-8 animate-fade-in-up">
-                  {isEpisodic || !isLoaded ? (
+                  {/* Logic Fix: Separate Movie Skeletons from Series Skeletons during Loading */}
+                  {isEpisodic ? (
                       <div className="mb-10 grid grid-cols-1 gap-4 pb-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                           {isLoaded ? episodes.map((ep, index) => {
                               const eNum = index + 1;
@@ -710,6 +718,14 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                           {ep.isLastEpisode && (
                                             <div className="absolute top-2 left-2 z-10">
                                                 <span className="rounded-md border border-red-500/50 bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-lg">الحلقة الأخيرة</span>
+                                            </div>
+                                          )}
+                                          
+                                          {ep.badgeText && (
+                                            <div className="absolute top-2 right-2 z-10">
+                                                <span className="rounded-md border border-amber-500/50 bg-amber-600/90 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold text-white shadow-lg">
+                                                    {ep.badgeText}
+                                                </span>
                                             </div>
                                           )}
 
@@ -737,64 +753,80 @@ const DetailPage: React.FC<DetailPageProps> = ({
                           )}
                       </div>
                   ) : (
+                      /* MOVIE VIEW (Standalone) */
                       <div className="mx-auto w-full max-w-6xl py-8 text-center">
-                           <div className="mb-8 w-full">
-                                <div className="custom-scrollbar flex items-center gap-3 overflow-x-auto pb-3 no-scrollbar">
-                                    <span className="ml-2 whitespace-nowrap text-sm font-black text-gray-400">سيرفرات المشاهدة:</span>
-                                    {activeServers.length > 0 ? activeServers.map((server, idx) => (
-                                        <button key={server.id} onClick={() => setSelectedServer(server)} className={`flex-shrink-0 border px-8 py-3 rounded-2xl font-black text-sm transition-all ${selectedServer?.id === server.id ? `scale-105 border-transparent ${bgAccent} text-black shadow-[0_0_20px_var(--shadow-color)]` : 'border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-800'}`}>
-                                            سيرفر {idx + 1}
-                                        </button>
-                                    )) : (
-                                        <span className="text-xs text-gray-600">جاري تحميل السيرفرات...</span>
-                                    )}
-                                </div>
-                           </div>
-
-                           <div className="relative z-10 mx-auto aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl">
-                                <VideoPlayer key={playerKey} tmdbId={content.id} type={content.type} manualSrc={selectedServer?.url} poster={displayBackdrop} />
-                           </div>
-
-                           <div className="relative mt-6 flex flex-col items-center gap-2 animate-fade-in-up">
-                                <div className="flex w-full justify-center">
-                                    <button 
-                                        onClick={handleDownload}
-                                        className={`
-                                            inline-flex items-center justify-center gap-3
-                                            font-bold 
-                                            py-3 px-8 md:py-4 md:px-12
-                                            rounded-full
-                                            text-base md:text-lg
-                                            transform transition-all duration-200
-                                            active:scale-95
-                                            shadow-lg hover:shadow-2xl
-                                            ${isRamadanTheme 
-                                                ? "bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)]" 
-                                                : isEidTheme 
-                                                    ? "bg-gradient-to-r from-purple-800 to-purple-500 text-white shadow-[0_0_15px_rgba(106,13,173,0.4)]" 
-                                                    : isCosmicTealTheme 
-                                                        ? "bg-gradient-to-r from-[#35F18B] to-[#2596be] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)]" 
-                                                        : isNetflixRedTheme 
-                                                            ? "bg-[#E50914] text-white" 
-                                                            : "bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-[0_0_15px_var(--shadow-color)]"
-                                            }
-                                        `}
-                                    >
-                                        <DownloadIcon className="h-5 w-5 fill-current md:h-6 md:w-6" />
-                                        <span>تحميل الآن</span>
-                                    </button>
+                           {!isLoaded ? (
+                               /* Movie Loading Skeleton: Identical structure to Movie Mode */
+                               <div className="space-y-8 animate-fade-in">
+                                   <div className="w-full flex flex-col gap-6">
+                                        <div className="h-8 w-48 bg-gray-800/40 rounded skeleton-shimmer mx-auto md:mx-0"></div>
+                                        <div className="relative z-10 mx-auto aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-[#0f1014] skeleton-shimmer shadow-2xl"></div>
+                                        <div className="flex justify-center mt-6">
+                                            <div className="w-48 h-14 bg-gray-800/40 rounded-full skeleton-shimmer"></div>
+                                        </div>
+                                   </div>
+                               </div>
+                           ) : (
+                               <>
+                                <div className="mb-8 w-full">
+                                        <div className="custom-scrollbar flex items-center gap-3 overflow-x-auto pb-3 no-scrollbar">
+                                            <span className="ml-2 whitespace-nowrap text-sm font-black text-gray-400">سيرفر المشاهدة:</span>
+                                            {activeServers.length > 0 ? activeServers.map((server, idx) => (
+                                                <button key={server.id} onClick={() => setSelectedServer(server)} className={`flex-shrink-0 border px-8 py-3 rounded-2xl font-black text-sm transition-all ${selectedServer?.id === server.id ? `scale-105 border-transparent ${bgAccent} text-black shadow-[0_0_20px_var(--shadow-color)]` : 'border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-800'}`}>
+                                                    سيرفر {idx + 1}
+                                                </button>
+                                            )) : (
+                                                <span className="text-xs text-gray-600">جاري تحميل السيرفرات...</span>
+                                            )}
+                                        </div>
                                 </div>
 
-                                <div className="flex w-full justify-start">
-                                    <button 
-                                        onClick={() => setIsReportModalOpen(true)} 
-                                        className="flex shrink-0 items-center justify-center rounded-lg px-4 py-1.5 text-red-500/60 transition-all hover:bg-red-500/10 hover:text-red-400 active:scale-95"
-                                        title="إبلاغ عن مشكلة"
-                                    >
-                                        <span className="text-xs font-bold">⚠️ إبلاغ عن مشكلة</span>
-                                    </button>
+                                <div className="relative z-10 mx-auto aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl">
+                                        <VideoPlayer key={playerKey} tmdbId={content.id} type={content.type} manualSrc={selectedServer?.url} poster={displayBackdrop} />
                                 </div>
-                           </div>
+
+                                <div className="relative mt-6 flex flex-col items-center gap-2 animate-fade-in-up">
+                                        <div className="flex w-full justify-center">
+                                            <button 
+                                                onClick={handleDownload}
+                                                className={`
+                                                    inline-flex items-center justify-center gap-3
+                                                    font-bold 
+                                                    py-3 px-8 md:py-4 md:px-12
+                                                    rounded-full
+                                                    text-base md:text-lg
+                                                    transform transition-all duration-200
+                                                    active:scale-95
+                                                    shadow-lg hover:shadow-2xl
+                                                    ${isRamadanTheme 
+                                                        ? "bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)]" 
+                                                        : isEidTheme 
+                                                            ? "bg-gradient-to-r from-purple-800 to-purple-500 text-white shadow-[0_0_15px_rgba(106,13,173,0.4)]" 
+                                                            : isCosmicTealTheme 
+                                                                ? "bg-gradient-to-r from-[#35F18B] to-[#2596be] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)]" 
+                                                                : isNetflixRedTheme 
+                                                                    ? "bg-[#E50914] text-white" 
+                                                                    : "bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-[0_0_15px_var(--shadow-color)]"
+                                                    }
+                                                `}
+                                            >
+                                                <DownloadIcon className="h-5 w-5 fill-current md:h-6 md:w-6" />
+                                                <span>تحميل الآن</span>
+                                            </button>
+                                        </div>
+
+                                        <div className="flex w-full justify-start">
+                                            <button 
+                                                onClick={() => setIsReportModalOpen(true)} 
+                                                className="flex shrink-0 items-center justify-center rounded-lg px-4 py-1.5 text-red-500/60 transition-all hover:bg-red-500/10 hover:text-red-400 active:scale-95"
+                                                title="إبلاغ عن مشكلة"
+                                            >
+                                                <span className="text-xs font-bold">⚠️ إبلاغ عن مشكلة</span>
+                                            </button>
+                                        </div>
+                                </div>
+                               </>
+                           )}
                       </div>
                   )}
               </div>
@@ -824,20 +856,22 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             <div className="order-1 space-y-10 md:col-span-8">
                                 {isLoaded ? (
                                     <>
-                                        <div>
-                                            <h3 className="mb-4 flex items-center gap-3 text-xl font-bold text-white md:text-2xl">
+                                        <div className="text-right">
+                                            <h3 className="mb-4 flex items-center justify-start gap-3 text-xl font-bold text-white md:text-2xl">
                                                 <div className="h-6 w-1.5 rounded-full bg-[var(--color-accent)] md:h-8"></div>
                                                 <span>القصة</span>
                                             </h3>
-                                            <p className="leading-loose text-justify text-lg text-gray-300">{displayDescription}</p>
+                                            {/* Story: text-sm on mobile, text-lg on desktop, forced text-right */}
+                                            <p className="leading-loose text-justify text-sm md:text-lg text-gray-300 text-right">{displayDescription}</p>
                                         </div>
                                         
-                                        <div>
-                                            <h3 className="mb-4 flex items-center gap-3 text-xl font-bold text-white md:text-2xl">
+                                        <div className="text-right">
+                                            <h3 className="mb-4 flex items-center justify-start gap-3 text-xl font-bold text-white md:text-2xl">
                                                 <div className="h-6 w-1.5 rounded-full bg-[var(--color-accent)] md:h-8"></div>
                                                 <span>التصنيف النوعي</span>
                                             </h3>
-                                            <div className="flex flex-wrap gap-2">
+                                            {/* Genre: justify-start for Right alignment in RTL */}
+                                            <div className="flex flex-wrap gap-2 justify-start">
                                                 {content?.genres?.map((genre, index) => (
                                                     <div key={index} className="rounded-xl border border-gray-700 bg-gray-800/50 px-4 py-2 text-sm font-bold text-gray-300 transition-colors hover:border-gray-500">
                                                         {genre}
@@ -864,17 +898,17 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 {isLoaded ? (
                                     <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-xl">
                                         <div className="flex flex-col divide-y divide-white/10">
-                                            <div className="flex flex-col gap-1 p-4">
+                                            <div className="flex flex-col items-center md:items-start gap-1 p-4">
                                                 <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">سنة الإنتاج</span>
                                                 <span className="text-base font-black text-white">{currentSeason?.releaseYear || content.releaseYear}</span>
                                             </div>
                                             
-                                            <div className="flex flex-col gap-1 p-4">
+                                            <div className="flex flex-col items-center md:items-start gap-1 p-4">
                                                 <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">وقت العمل</span>
                                                 <span className="text-base font-black text-white" dir="ltr">{content.duration || (isEpisodic ? '45m+' : 'N/A')}</span>
                                             </div>
 
-                                            <div className="flex flex-col gap-1 p-4">
+                                            <div className="flex flex-col items-center md:items-start gap-1 p-4">
                                                 <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">التصنيف العمري</span>
                                                 <div className="w-fit rounded border border-gray-600 px-2 py-0.5 text-xs font-black text-gray-200">
                                                     {content.ageRating}
@@ -883,7 +917,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
                                             {isEpisodic && (
                                                 <>
-                                                    <div className="flex flex-col gap-1 p-4">
+                                                    <div className="flex flex-col items-center md:items-start gap-1 p-4">
                                                         <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">عدد المواسم</span>
                                                         <span className="text-base font-black text-white">{content.seasons?.length || 0}</span>
                                                     </div>
@@ -907,7 +941,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             
                             {(content.director || content.writer) && (
                             <div className="mb-12 w-full text-right">
-                                <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                                <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center justify-center md:justify-start gap-3">
                                 <div className="h-6 md:h-8 w-1.5 bg-[var(--color-accent)] rounded-full"></div>
                                 <span>صنّاع العمل</span>
                                 </h3>
@@ -949,6 +983,30 @@ const DetailPage: React.FC<DetailPageProps> = ({
           isCosmicTealTheme={isCosmicTealTheme}
           isNetflixRedTheme={isNetflixRedTheme}
       />
+
+      {isDownloadErrorOpen && createPortal(
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setIsDownloadErrorOpen(false)}>
+                    <div className="bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20 shadow-inner">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">عذراً، الرابط غير متوفر</h3>
+                            <p className="text-gray-400 text-sm mb-6 leading-relaxed">التحميل غير متوفر حالياً لهذا العمل، يرجى تجربة وقت آخر أو سيرفر آخر إن وجد.</p>
+                            <button 
+                                onClick={() => setIsDownloadErrorOpen(false)}
+                                className={`w-full py-3 rounded-xl font-bold text-white transition-all transform active:scale-95 shadow-lg
+                                    ${isNetflixRedTheme ? 'bg-[#E50914] hover:bg-[#b20710]' : isCosmicTealTheme ? 'bg-[#35F18B] hover:bg-[#2596be] !text-black' : 'bg-[#00A7F8] hover:bg-[#008ecf]'}`}
+                            >
+                                حسنًا، فهمت
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
     </div>
   );
 };

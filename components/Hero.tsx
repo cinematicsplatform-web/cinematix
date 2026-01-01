@@ -272,8 +272,8 @@ const Hero: React.FC<HeroProps> = ({
             onTouchMove={(e) => handleMove(e.targetTouches[0].clientX, e.targetTouches[0].clientY)}
             onTouchEnd={handleEnd}
             style={{ 
-                cursor: isDragging ? 'grabbing' : 'pointer', // MODIFIED: Returned to pointer (hand) for interactivity while grab/grabbing for drag
-                touchAction: 'pan-y' // Vital to allow vertical scrolling on touch devices while swiping horizontally
+                cursor: isDragging ? 'grabbing' : 'pointer',
+                touchAction: 'pan-y' 
             }}
         >
             {contents.map((content, index) => {
@@ -390,7 +390,7 @@ const Hero: React.FC<HeroProps> = ({
                                     {content.genres && content.genres.length > 0 && (
                                         <>
                                             <span className="text-gray-500 text-sm md:text-lg">|</span>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center justify-center md:justify-start gap-2">
                                                 {content.genres.slice(0, 3).map((genre, index) => (
                                                     <React.Fragment key={index}>
                                                         <span className={`font-medium ${isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]'}`}>

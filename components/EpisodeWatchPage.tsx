@@ -137,7 +137,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
         if (!names || names.length === 0) return null;
         return (
           <div className="mb-12">
-            <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center gap-3">
+            <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center justify-center md:justify-start gap-3">
               <div className="h-6 md:h-8 w-1.5 bg-[var(--color-accent)] rounded-full"></div>
               <span>{title}</span>
             </h3>
@@ -155,6 +155,15 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     };
 
     const handleDownload = () => {
+        // التحقق من توفر روابط تحميل لهذه الحلقة
+        const episodeServers = selectedEpisode?.servers || [];
+        const hasDownloadLinks = episodeServers.some(s => s.downloadUrl && s.downloadUrl.trim().length > 0);
+
+        if (!hasDownloadLinks) {
+            setIsDownloadErrorOpen(true);
+            return;
+        }
+
         onSetView('download', undefined, { 
             content: content,
             season: seasonNumber,
@@ -180,22 +189,19 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 noIndex={true} 
             />
 
-            {/* MODIFIED: Background images are now hidden to satisfy the plain background request without deleting elements */}
+            {/* Background images hidden to satisfy plain background request */}
             <div className="absolute top-0 left-0 w-full h-[85vh] z-0 pointer-events-none overflow-hidden bg-[var(--bg-body)]">
-                {/* Desktop Backdrop - HIDDEN as requested */}
                 <img 
                     src={selectedEpisode?.thumbnail || currentSeason?.backdrop || content.backdrop} 
                     alt="" 
                     className="absolute inset-0 w-full h-full object-cover opacity-10 blur-xl scale-110 bg-only-desktop object-top hidden"
                 />
-                {/* Mobile Backdrop - HIDDEN as requested */}
                 <img 
                     src={currentSeason?.mobileImageUrl || content.mobileBackdropUrl || selectedEpisode?.thumbnail || currentSeason?.backdrop || content.backdrop} 
                     alt="" 
                     className={`absolute inset-0 w-full h-full object-cover opacity-10 blur-xl scale-110 bg-only-mobile ${enableCrop ? 'mobile-custom-crop' : 'object-top'} hidden`}
                     style={imgStyle}
                 />
-                {/* Plain Themed Gradient Overlay remains for aesthetic depth */}
                 <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-body)] via-[var(--bg-body)]/80 to-[var(--bg-body)]"></div>
             </div>
 
@@ -228,7 +234,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
             <div className="relative z-10 max-w-5xl mx-auto px-4 md:px-0 pt-6 text-center">
                 
                 <div className="w-full mb-6">
-                    <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-3">
+                    <div className="flex items-center justify-center md:justify-start gap-3 overflow-x-auto no-scrollbar pb-3">
                         <span className="text-sm text-gray-400 font-black ml-2 whitespace-nowrap">سيرفر المشاهدة:</span>
                         {isLoaded && activeServers.length > 0 ? activeServers.map((server, idx) => (
                             <button key={server.id} onClick={() => setSelectedServer(server)} className={`flex-shrink-0 px-8 py-3 rounded-2xl font-black text-sm transition-all border ${selectedServer?.id === server.id ? `${bgAccent} text-black border-transparent shadow-[0_0_20px_var(--shadow-color)] scale-105` : 'bg-gray-800/50 text-gray-300 border-gray-700 hover:bg-gray-800 hover:border-gray-600 hover:border-gray-600'}`}>
@@ -292,7 +298,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                         </button>
                     </div>
 
-                    <div className="w-full flex justify-start">
+                    <div className="w-full flex justify-center md:justify-start">
                         <button 
                             onClick={() => setIsReportModalOpen(true)} 
                             className="px-4 py-1.5 rounded-lg text-red-500/60 hover:text-red-400 hover:bg-red-500/10 active:scale-95 transition-all flex items-center justify-center shrink-0"
@@ -303,39 +309,39 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                     </div>
                 </div>
 
-                <div className="mt-8 flex flex-col gap-6 text-right">
+                <div className="mt-8 flex flex-col items-center md:items-start gap-6 text-center md:text-right">
                     {isLoaded ? (
-                        <div className="space-y-6">
-                            <div className="flex justify-between items-start">
-                                <h2 className="text-2xl font-bold text-white">{selectedEpisode?.title || `الحلقة ${episodeNumber}`}</h2>
+                        <div className="space-y-6 w-full">
+                            <div className="flex justify-center md:justify-between items-start">
+                                <h2 className="text-2xl font-bold text-white text-center md:text-right">{selectedEpisode?.title || `الحلقة ${episodeNumber}`}</h2>
                             </div>
-                            <p className="text-sm text-gray-400 max-w-3xl leading-loose">{selectedEpisode?.description || displayDescription}</p>
+                            <p className="text-sm text-gray-400 max-w-3xl leading-loose mx-auto md:mx-0">{selectedEpisode?.description || displayDescription}</p>
                             
-                            <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden shadow-xl max-w-4xl mt-4">
+                            <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden shadow-xl max-w-4xl mt-4 mx-auto md:mx-0">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap divide-x divide-y md:divide-y-0 divide-white/10 rtl:divide-x-reverse">
-                                    <div className="p-4 flex flex-col gap-1 flex-1 min-w-[120px]">
+                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 flex-1 min-w-[120px]">
                                         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">سنة العرض</span>
                                         <span className="text-white font-black text-sm md:text-base">{currentSeason?.releaseYear || content.releaseYear}</span>
                                     </div>
                                     
-                                    <div className="p-4 flex flex-col gap-1 flex-1 min-w-[120px]">
+                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 flex-1 min-w-[120px]">
                                         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">مدة الحلقة</span>
                                         <span className="text-white font-black text-sm md:text-base" dir="ltr">{selectedEpisode?.duration || '45m+'}</span>
                                     </div>
 
-                                    <div className="p-4 flex flex-col gap-1 flex-1 min-w-[120px]">
+                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 flex-1 min-w-[120px]">
                                         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">التصنيف</span>
                                         <div className="w-fit border border-gray-600 rounded px-1.5 py-0.5 text-[10px] font-black text-gray-200">
                                             {content.ageRating}
                                         </div>
                                     </div>
 
-                                    <div className="p-4 flex flex-col gap-1 flex-1 min-w-[120px]">
+                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 flex-1 min-w-[120px]">
                                         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">الحلقة</span>
                                         <span className="text-white font-black text-sm md:text-base">{episodeNumber}</span>
                                     </div>
 
-                                    <div className="p-4 flex flex-col gap-1 flex-1 min-w-[120px]">
+                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 flex-1 min-w-[120px]">
                                         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">التقييم</span>
                                         <div className="flex items-center gap-1.5 text-yellow-500">
                                             <StarIcon className="w-3 h-3" />
@@ -378,7 +384,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                                 </svg>
                             </div>
                             <h3 className="text-xl font-bold text-white mb-2">عذراً، الرابط غير متوفر</h3>
-                            <p className="text-gray-400 text-sm mb-6 leading-relaxed">رابط التحميل غير متوفر لهذا السيرفر حالياً، يرجى تجربة سيرفر آخر.</p>
+                            <p className="text-gray-400 text-sm mb-6 leading-relaxed">التحميل غير متوفر حالياً لهذا العمل، يرجى تجربة وقت آخر أو سيرفر آخر إن وجد.</p>
                             <button 
                                 onClick={() => setIsDownloadErrorOpen(false)}
                                 className={`w-full py-3 rounded-xl font-bold text-white transition-all transform active:scale-95 shadow-lg

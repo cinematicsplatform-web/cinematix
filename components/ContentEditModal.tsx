@@ -14,7 +14,7 @@ import ActionButtons from './ActionButtons';
 import { StarIcon } from './icons/StarIcon';
 import { ClockIcon } from './icons/ClockIcon';
 
-// --- ICONS (Professional Custom SVGs) ---
+// --- PREMIUM ICONS ---
 const CloseIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -177,7 +177,7 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
     const containerRef = useRef<HTMLDivElement>(null);
     const [isPanning, setIsPanning] = useState(false);
     const startPosRef = useRef({ x: 0, y: 0 });
-    const startPercentageRef = useRef({ x: 50, y: 50 });
+    const startPercentageRef = useRef({ x: posX, y: posY });
 
     const handlePointerDown = (e: React.PointerEvent) => {
         setIsPanning(true);
@@ -674,11 +674,11 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                         <button onClick={onOpenVk} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-4 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
                              <span>VK</span>
                         </button>
-                        <button onClick={onOpenDailymotion} className="flex items-center gap-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
+                        <button onClick={onOpenDailymotion} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
                             <span className="w-4 h-4 flex items-center justify-center font-black">d</span>
                             <span>Dailymotion</span>
                         </button>
-                        <button onClick={onOpenSearch} className="flex items-center gap-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
+                        <button onClick={onOpenSearch} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
                             <SearchIcon className="w-4 h-4"/>
                             <span>Uqload</span>
                         </button>
@@ -831,8 +831,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const isEpisodic = formData.type === ContentType.Series || formData.type === ContentType.Program;
     const isStandalone = !isEpisodic;
 
-    const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-
     useEffect(() => {
         const initData = getDefaultFormData();
         if (initData.mobileCropPosition !== undefined && initData.mobileCropPositionX === undefined) {
@@ -847,54 +845,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         setSlugManuallyEdited(!!content?.slug);
         setTmdbIdInput(content?.id && !isNaN(Number(content.id)) ? content.id : '');
     }, [content]);
-
-    useEffect(() => {
-        if (formData.backdrop && !formData.mobileBackdropUrl) {
-            if (!timersRef.current['main']) {
-                timersRef.current['main'] = setTimeout(() => {
-                    setFormData(prev => {
-                        if (prev.backdrop && !prev.mobileBackdropUrl) {
-                            return { ...prev, mobileBackdropUrl: prev.backdrop };
-                        }
-                        return prev;
-                    });
-                    delete timersRef.current['main'];
-                }, 5000);
-            }
-        } else if (timersRef.current['main']) {
-            clearTimeout(timersRef.current['main']);
-            delete timersRef.current['main'];
-        }
-
-        if (formData.seasons && isEpisodic) {
-            formData.seasons.forEach(s => {
-                const sId = String(s.id);
-                const effectiveBackdrop = s.backdrop || formData.backdrop;
-                if (expandedSeasons.has(s.id) && effectiveBackdrop && !s.mobileImageUrl) {
-                    if (!timersRef.current[sId]) {
-                        timersRef.current[sId] = setTimeout(() => {
-                            setFormData(prev => ({
-                                ...prev,
-                                seasons: prev.seasons?.map(item => 
-                                    (item.id === s.id && !item.mobileImageUrl) 
-                                    ? { ...item, mobileImageUrl: item.backdrop || prev.backdrop } 
-                                    : item
-                                )
-                            }));
-                            delete timersRef.current[sId];
-                        }, 5000);
-                    }
-                } else if (timersRef.current[sId]) {
-                    clearTimeout(timersRef.current[sId]);
-                    delete timersRef.current[sId];
-                }
-            });
-        }
-
-        return () => {
-            Object.values(timersRef.current).forEach(clearTimeout);
-        };
-    }, [formData.backdrop, formData.mobileBackdropUrl, formData.seasons, expandedSeasons, isEpisodic]);
 
     const openGallery = (type: 'poster' | 'backdrop' | 'logo', callback: (url: string) => void) => {
         const idToUse = formData.tmdbId || formData.id;
@@ -912,6 +862,66 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             return;
         }
         setIsTitleModalOpen(true);
+    };
+
+    // --- DELETE SECTION HANDLER ---
+    const handleDeleteSection = (tabId: string) => {
+        if (!confirm(`هل أنت متأكد من حذف (تصفير) بيانات قسم "${tabId}" بالكامل؟`)) return;
+        
+        setFormData(prev => {
+            const updated = { ...prev };
+            switch (tabId) {
+                case 'general':
+                    updated.title = '';
+                    updated.description = '';
+                    updated.releaseYear = new Date().getFullYear();
+                    updated.rating = 0;
+                    updated.director = '';
+                    updated.writer = '';
+                    updated.cast = [];
+                    updated.bannerNote = '';
+                    break;
+                case 'categories':
+                    updated.categories = [];
+                    updated.genres = [];
+                    break;
+                case 'media':
+                    updated.poster = '';
+                    updated.backdrop = '';
+                    updated.logoUrl = '';
+                    updated.isLogoEnabled = false;
+                    updated.trailerUrl = '';
+                    updated.mobileBackdropUrl = '';
+                    updated.enableMobileCrop = false;
+                    break;
+                case 'seasons':
+                    updated.seasons = [];
+                    break;
+                case 'servers':
+                    updated.servers = [];
+                    break;
+            }
+            return updated;
+        });
+        addToast(`تم تصفير بيانات قسم ${tabId} بنجاح.`, 'info');
+    };
+
+    const handleClearSeasonMedia = (seasonId: number) => {
+        if (!confirm('هل أنت متأكد من مسح كافة حقول الميديا لهذا الموسم؟')) return;
+        setFormData(prev => ({
+            ...prev,
+            seasons: (prev.seasons || []).map(s => s.id === seasonId ? {
+                ...s,
+                poster: '',
+                backdrop: '',
+                horizontalPoster: '',
+                logoUrl: '',
+                mobileImageUrl: '',
+                trailerUrl: '',
+                adLink: ''
+            } : s)
+        }));
+        addToast('تم تصفير ميديا الموسم بنجاح.', 'info');
     };
 
     const renderImageInput = (
@@ -1029,6 +1039,188 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             addToast("حدث خطأ أثناء البحث في TMDB.", "error");
         } finally {
             setIsSearchingTMDB(false);
+        }
+    };
+
+    const handleComprehensiveUpdate = async () => {
+        const idToUse = formData.tmdbId || formData.id;
+
+        if (!idToUse) {
+            addToast('يجب أن يكون للمحتوى كود TMDB للتحقق من التحديثات.', "info");
+            return;
+        }
+        setUpdateLoading(true);
+
+        try {
+            const res = await fetch(`https://api.themoviedb.org/3/tv/${idToUse}?api_key=${API_KEY}&language=ar-SA`);
+            
+            if(!res.ok) {
+                if (res.status === 404) throw new Error("لم يتم العثور على المسلسل في TMDB. تأكد من صحة كود TMDB.");
+                throw new Error("فشل الاتصال بـ TMDB");
+            }
+            
+            const details = await res.json();
+
+            let hasUpdates = false;
+            let currentSeasons = [...(formData.seasons || [])];
+            const backdrop = formData.backdrop || '';
+
+            const validTmdbSeasons = details.seasons.filter((s:any) => s.season_number > 0);
+
+            for (const tmdbSeason of validTmdbSeasons) {
+                let existingSeasonIndex = currentSeasons.findIndex(s => s.seasonNumber === tmdbSeason.season_number);
+
+                if (existingSeasonIndex === -1) {
+                    const sRes = await fetch(`https://api.themoviedb.org/3/tv/${idToUse}/season/${tmdbSeason.season_number}?api_key=${API_KEY}&language=ar-SA`);
+                    const sData = await sRes.json();
+                    
+                    const mappedEpisodes: Episode[] = sData.episodes?.map((ep: any) => {
+                          let epDuration = '';
+                          if (ep.runtime) {
+                             if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
+                             else epDuration = `${ep.runtime}:00`;
+                          }
+                          
+                          const fixedTitle = `الحلقة ${ep.episode_number}`;
+                          const isGenericTitle = !ep.name || ep.name.match(/^Episode \d+$/i) || ep.name.match(/^الحلقة \d+$/i);
+                          let finalDescription = ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${sData.season_number}.`;
+                          if (!isGenericTitle && ep.name) finalDescription = `${ep.name} : ${ep.overview || ''}`;
+
+                          return {
+                             id: Date.now() + ep.episode_number + Math.random(),
+                             title: fixedTitle,
+                             description: finalDescription,
+                             thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : backdrop, 
+                             duration: epDuration,
+                             progress: 0,
+                             servers: generateEpisodeServers(String(idToUse), sData.season_number, ep.episode_number)
+                          };
+                    }) || [];
+
+                    currentSeasons.push({
+                        id: Date.now() + Math.random(),
+                        seasonNumber: tmdbSeason.season_number,
+                        title: sData.name || `الموسم ${tmdbSeason.season_number}`,
+                        releaseYear: sData.air_date ? new Date(sData.air_date).getFullYear() : new Date().getFullYear(),
+                        description: sData.overview,
+                        poster: sData.poster_path ? `https://image.tmdb.org/t/p/w500${sData.poster_path}` : formData.poster,
+                        backdrop: backdrop,
+                        mobileImageUrl: '', 
+                        logoUrl: '',
+                        episodes: mappedEpisodes
+                    });
+                    hasUpdates = true;
+
+                } else {
+                    const existingSeason = currentSeasons[existingSeasonIndex];
+                    
+                    if (tmdbSeason.episode_count > (existingSeason.episodes?.length || 0)) {
+                        const sRes = await fetch(`https://api.themoviedb.org/3/tv/${idToUse}/season/${tmdbSeason.season_number}?api_key=${API_KEY}&language=ar-SA`);
+                        const sData = await sRes.json();
+                        
+                        const currentCount = existingSeason.episodes?.length || 0;
+                        const newEpisodesData = sData.episodes.slice(currentCount);
+                        
+                        if (newEpisodesData.length > 0) {
+                            const newMappedEpisodes: Episode[] = newEpisodesData.map((ep: any) => {
+                                let epDuration = '';
+                                if (ep.runtime) {
+                                     if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
+                                     else epDuration = `${ep.runtime}:00`;
+                                }
+
+                                const fixedTitle = `الحلقة ${ep.episode_number}`;
+                                const isGenericTitle = !ep.name || ep.name.match(/^Episode \d+$/i) || ep.name.match(/^الحلقة \d+$/i);
+                                let finalDescription = ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${tmdbSeason.season_number}.`;
+                                if (!isGenericTitle && ep.name) finalDescription = `${ep.name} : ${ep.overview || ''}`;
+
+                                return {
+                                    id: Date.now() + ep.episode_number + Math.random(),
+                                    title: fixedTitle,
+                                    description: finalDescription,
+                                    thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : (existingSeason.backdrop || backdrop), 
+                                    duration: epDuration,
+                                    progress: 0,
+                                    servers: generateEpisodeServers(String(idToUse), tmdbSeason.season_number, ep.episode_number)
+                                };
+                            });
+                            
+                            currentSeasons[existingSeasonIndex] = {
+                                ...existingSeason,
+                                episodes: [...(existingSeason.episodes || []), ...newMappedEpisodes]
+                            };
+                            hasUpdates = true;
+                        }
+                    }
+                }
+            }
+
+            if (hasUpdates) {
+                currentSeasons.sort((a,b) => a.seasonNumber - b.seasonNumber);
+                setFormData(prev => ({ ...prev, seasons: currentSeasons }));
+                addToast("تم تحديث البيانات وإضافة الحلقات/المواسم الجديدة بنجاح!", "success");
+            } else {
+                addToast("لم يتم العثور على تحديثات جديدة (المحتوى مكتمل).", "info");
+            }
+
+        } catch (e: any) {
+            console.error(e);
+            addToast("حدث خطأ أثناء البحث عن تحديثات: " + e.message, "error");
+        } finally {
+            setDeleteSeasonState({ isOpen: false, seasonId: null, title: '' });
+            setUpdateLoading(false);
+        }
+    };
+
+    const handleUpdateSpecificSeasonFromTMDB = async (seasonId: number, seasonNumber: number) => {
+        const idToUse = formData.tmdbId || formData.id;
+        if (!idToUse) {
+            addToast('يجب توفر كود TMDB للمحتوى.', "info");
+            return;
+        }
+        
+        try {
+            const sRes = await fetch(`https://api.themoviedb.org/3/tv/${idToUse}/season/${seasonNumber}?api_key=${API_KEY}&language=ar-SA`);
+            if (!sRes.ok) throw new Error("فشل جلب الموسم من TMDB.");
+            const sData = await sRes.json();
+            
+            setFormData(prev => ({
+                ...prev,
+                seasons: (prev.seasons || []).map(s => {
+                    if (s.id !== seasonId) return s;
+                    
+                    const existingEps = s.episodes || [];
+                    const newEpsFromTmdb = sData.episodes.filter((ep: any) => 
+                        !existingEps.some(eep => parseInt(eep.title?.replace(/\D/g, '') || '0') === ep.episode_number)
+                    ).map((ep: any) => {
+                        let epDuration = '';
+                        if (ep.runtime) {
+                             if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
+                             else epDuration = `${ep.runtime}:00`;
+                        }
+                        return {
+                            id: Date.now() + ep.episode_number + Math.random(),
+                            title: `الحلقة ${ep.episode_number}`,
+                            description: ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${seasonNumber}.`,
+                            thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : (s.backdrop || formData.backdrop), 
+                            duration: epDuration,
+                            progress: 0,
+                            servers: generateEpisodeServers(String(idToUse), seasonNumber, ep.episode_number)
+                        };
+                    });
+                    
+                    const merged = [...existingEps, ...newEpsFromTmdb].sort((a, b) => {
+                        const numA = parseInt(a.title?.replace(/\D/g, '') || '0') || 0;
+                        const numB = parseInt(b.title?.replace(/\D/g, '') || '0') || 0;
+                        return numA - numB;
+                    });
+                    
+                    return { ...s, episodes: merged };
+                })
+            }));
+            addToast(`تم التحقق من الموسم ${seasonNumber} وإضافة الحلقات الجديدة.`, "success");
+        } catch (e: any) {
+            addToast(e.message, "error");
         }
     };
 
@@ -1230,7 +1422,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         description: ds.overview,
                         poster: ds.poster_path ? `https://image.tmdb.org/t/p/w500${ds.poster_path}` : poster,
                         backdrop: backdrop,
-                        mobileImageUrl: backdrop, 
+                        mobileImageUrl: '', 
                         logoUrl: ds.season_number === 1 ? logoUrl : '',
                         episodes: mappedEpisodes
                     };
@@ -1245,7 +1437,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 description,
                 poster,
                 backdrop,
-                mobileBackdropUrl: backdrop, 
+                mobileBackdropUrl: '', 
                 logoUrl,
                 isLogoEnabled: !!logoUrl,
                 trailerUrl,
@@ -1269,187 +1461,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         } finally {
             setFetchLoading(false);
             setUpdateLoading(false);
-        }
-    };
-
-    const handleComprehensiveUpdate = async () => {
-        const idToUse = formData.tmdbId || formData.id;
-
-        if (!idToUse) {
-            addToast('يجب أن يكون للمحتوى كود TMDB للتحقق من التحديثات.', "info");
-            return;
-        }
-        setUpdateLoading(true);
-
-        try {
-            const res = await fetch(`https://api.themoviedb.org/3/tv/${idToUse}?api_key=${API_KEY}&language=ar-SA`);
-            
-            if(!res.ok) {
-                if (res.status === 404) throw new Error("لم يتم العثور على المسلسل في TMDB. تأكد من صحة كود TMDB.");
-                throw new Error("فشل الاتصال بـ TMDB");
-            }
-            
-            const details = await res.json();
-
-            let hasUpdates = false;
-            let currentSeasons = [...(formData.seasons || [])];
-            const backdrop = formData.backdrop || '';
-
-            const validTmdbSeasons = details.seasons.filter((s:any) => s.season_number > 0);
-
-            for (const tmdbSeason of validTmdbSeasons) {
-                let existingSeasonIndex = currentSeasons.findIndex(s => s.seasonNumber === tmdbSeason.season_number);
-
-                if (existingSeasonIndex === -1) {
-                    const sRes = await fetch(`https://api.themoviedb.org/3/tv/${idToUse}/season/${tmdbSeason.season_number}?api_key=${API_KEY}&language=ar-SA`);
-                    const sData = await sRes.json();
-                    
-                    const mappedEpisodes: Episode[] = sData.episodes?.map((ep: any) => {
-                          let epDuration = '';
-                          if (ep.runtime) {
-                             if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
-                             else epDuration = `${ep.runtime}:00`;
-                          }
-                          
-                          const fixedTitle = `الحلقة ${ep.episode_number}`;
-                          const isGenericTitle = !ep.name || ep.name.match(/^Episode \d+$/i) || ep.name.match(/^الحلقة \d+$/i);
-                          let finalDescription = ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${sData.season_number}.`;
-                          if (!isGenericTitle && ep.name) finalDescription = `${ep.name} : ${ep.overview || ''}`;
-
-                          return {
-                             id: Date.now() + ep.episode_number + Math.random(),
-                             title: fixedTitle,
-                             description: finalDescription,
-                             thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : backdrop, 
-                             duration: epDuration,
-                             progress: 0,
-                             servers: generateEpisodeServers(String(idToUse), sData.season_number, ep.episode_number)
-                          };
-                    }) || [];
-
-                    currentSeasons.push({
-                        id: Date.now() + Math.random(),
-                        seasonNumber: tmdbSeason.season_number,
-                        title: sData.name || `الموسم ${tmdbSeason.season_number}`,
-                        releaseYear: sData.air_date ? new Date(sData.air_date).getFullYear() : new Date().getFullYear(),
-                        description: sData.overview,
-                        poster: sData.poster_path ? `https://image.tmdb.org/t/p/w500${sData.poster_path}` : formData.poster,
-                        backdrop: backdrop,
-                        mobileImageUrl: backdrop, 
-                        logoUrl: '',
-                        episodes: mappedEpisodes
-                    });
-                    hasUpdates = true;
-
-                } else {
-                    const existingSeason = currentSeasons[existingSeasonIndex];
-                    
-                    if (tmdbSeason.episode_count > (existingSeason.episodes?.length || 0)) {
-                        const sRes = await fetch(`https://api.themoviedb.org/3/tv/${idToUse}/season/${tmdbSeason.season_number}?api_key=${API_KEY}&language=ar-SA`);
-                        const sData = await sRes.json();
-                        
-                        const currentCount = existingSeason.episodes?.length || 0;
-                        const newEpisodesData = sData.episodes.slice(currentCount);
-                        
-                        if (newEpisodesData.length > 0) {
-                            const newMappedEpisodes: Episode[] = newEpisodesData.map((ep: any) => {
-                                let epDuration = '';
-                                if (ep.runtime) {
-                                     if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
-                                     else epDuration = `${ep.runtime}:00`;
-                                }
-
-                                const fixedTitle = `الحلقة ${ep.episode_number}`;
-                                const isGenericTitle = !ep.name || ep.name.match(/^Episode \d+$/i) || ep.name.match(/^الحلقة \d+$/i);
-                                let finalDescription = ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${tmdbSeason.season_number}.`;
-                                if (!isGenericTitle && ep.name) finalDescription = `${ep.name} : ${ep.overview || ''}`;
-
-                                return {
-                                    id: Date.now() + ep.episode_number + Math.random(),
-                                    title: fixedTitle,
-                                    description: finalDescription,
-                                    thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : (existingSeason.backdrop || backdrop), 
-                                    duration: epDuration,
-                                    progress: 0,
-                                    servers: generateEpisodeServers(String(idToUse), tmdbSeason.season_number, ep.episode_number)
-                                };
-                            });
-                            
-                            currentSeasons[existingSeasonIndex] = {
-                                ...existingSeason,
-                                episodes: [...(existingSeason.episodes || []), ...newMappedEpisodes]
-                            };
-                            hasUpdates = true;
-                        }
-                    }
-                }
-            }
-
-            if (hasUpdates) {
-                currentSeasons.sort((a,b) => a.seasonNumber - b.seasonNumber);
-                setFormData(prev => ({ ...prev, seasons: currentSeasons }));
-                addToast("تم تحديث البيانات وإضافة الحلقات/المواسم الجديدة بنجاح!", "success");
-            } else {
-                addToast("لم يتم العثور على تحديثات جديدة (المحتوى مكتمل).", "info");
-            }
-
-        } catch (e: any) {
-            console.error(e);
-            addToast("حدث خطأ أثناء البحث عن تحديثات: " + e.message, "error");
-        } finally {
-            setUpdateLoading(false);
-        }
-    };
-
-    const handleUpdateSpecificSeasonFromTMDB = async (seasonId: number, seasonNumber: number) => {
-        const idToUse = formData.tmdbId || formData.id;
-        if (!idToUse) {
-            addToast('يجب توفر كود TMDB للمحتوى.', "info");
-            return;
-        }
-        
-        try {
-            const sRes = await fetch(`https://api.themoviedb.org/3/tv/${idToUse}/season/${seasonNumber}?api_key=${API_KEY}&language=ar-SA`);
-            if (!sRes.ok) throw new Error("فشل جلب الموسم من TMDB.");
-            const sData = await sRes.json();
-            
-            setFormData(prev => ({
-                ...prev,
-                seasons: (prev.seasons || []).map(s => {
-                    if (s.id !== seasonId) return s;
-                    
-                    const existingEps = s.episodes || [];
-                    const newEpsFromTmdb = sData.episodes.filter((ep: any) => 
-                        !existingEps.some(eep => parseInt(eep.title?.replace(/\D/g, '') || '0') === ep.episode_number)
-                    ).map((ep: any) => {
-                        let epDuration = '';
-                        if (ep.runtime) {
-                             if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
-                             else epDuration = `${ep.runtime}:00`;
-                        }
-                        return {
-                            id: Date.now() + ep.episode_number + Math.random(),
-                            title: `الحلقة ${ep.episode_number}`,
-                            description: ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${seasonNumber}.`,
-                            thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : (s.backdrop || formData.backdrop), 
-                            duration: epDuration,
-                            progress: 0,
-                            servers: generateEpisodeServers(String(idToUse), seasonNumber, ep.episode_number)
-                        };
-                    });
-                    
-                    const merged = [...existingEps, ...newEpsFromTmdb].sort((a, b) => {
-                        const numA = parseInt(a.title?.replace(/\D/g, '') || '0') || 0;
-                        const numB = parseInt(b.title?.replace(/\D/g, '') || '0') || 0;
-                        return numA - numB;
-                    });
-                    
-                    return { ...s, episodes: merged };
-                })
-            }));
-            addToast(`تم التحقق من الموسم ${seasonNumber} وإضافة الحلقات الجديدة.`, "success");
-        } catch (e: any) {
-            addToast(e.message, "error");
         }
     };
 
@@ -1520,11 +1531,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         if (formData.categories.length === 0) { addToast('الرجاء اختيار تصنيف واحد على الأقل.', "info"); return; }
         
         const backdrop = formData.backdrop;
-        const mobileBackdrop = formData.mobileBackdropUrl || backdrop;
+        const mobileBackdrop = formData.mobileBackdropUrl || '';
         
         const seasons = formData.seasons?.map(s => ({
             ...s,
-            mobileImageUrl: s.mobileImageUrl || s.backdrop || backdrop
+            mobileImageUrl: s.mobileImageUrl || ''
         }));
 
         const finalSlug = formData.slug?.trim() || generateSlug(formData.title);
@@ -1822,7 +1833,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     };
 
     const renderLivePreview = () => {
-        const isEpisodicView = formData.type === ContentType.Series || formData.type === ContentType.Program;
         const posX = formData.mobileCropPositionX ?? 50;
         const posY = formData.mobileCropPositionY ?? 50;
         const imgStyle: React.CSSProperties = { 
@@ -1852,7 +1862,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             <div className="relative h-[480px] w-full flex-shrink-0">
                                 <img 
                                     src={formData.mobileBackdropUrl || formData.backdrop || 'https://placehold.co/1080x1920/101010/101010/png'} 
-                                    className={`absolute inset-0 w-full h-full object-cover ${cropClass} object-top transition-none`} 
+                                    className={`absolute inset-0 h-full w-full object-cover ${cropClass} object-top transition-none`} 
                                     style={imgStyle}
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-[#141b29] via-[#141b29]/40 via-40% to-transparent z-10"></div>
@@ -1864,9 +1874,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         </div>
                                     )}
                                     <div className="mb-3">
-                                        {/* FIXED: Replaced undefined 'contentData' with correct state 'formData' */}
                                         {formData.isLogoEnabled && formData.logoUrl ? (
-                                            <img src={formData.logoUrl} className="max-w-[160px] max-h-[100px] object-contain drop-shadow-2xl mx-auto" />
+                                            <img src={formData.logoUrl} className="max-w-[160px] max-h-[100px] object-contain drop-shadow-2xl mx-auto" alt="" />
                                         ) : (
                                             <h1 className="text-2xl font-black drop-shadow-lg leading-tight">{formData.title || 'العنوان'}</h1>
                                         )}
@@ -1937,7 +1946,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         </div>
 
                         <div className="relative h-full w-full">
-                            <img src={formData.backdrop || 'https://placehold.co/1920x1080/101010/101010/png'} className="w-full h-full object-cover" />
+                            <img src={formData.backdrop || 'https://placehold.co/1920x1080/101010/101010/png'} className="w-full h-full object-cover" alt="" />
                             {/* PRODUCTION GRADIENTS */}
                             <div className="absolute inset-0 bg-gradient-to-r from-[#141b29] via-[#141b29]/40 to-transparent z-10"></div>
                             <div className="absolute inset-0 bg-gradient-to-t from-[#141b29] via-transparent to-transparent z-10"></div>
@@ -1950,7 +1959,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 )}
                                 <div className="mb-6">
                                     {formData.isLogoEnabled && formData.logoUrl ? (
-                                        <img src={formData.logoUrl} className="h-24 md:h-32 object-contain drop-shadow-2xl" />
+                                        <img src={formData.logoUrl} className="h-24 md:h-32 object-contain drop-shadow-2xl" alt="" />
                                     ) : (
                                         <h1 className="text-5xl font-black text-white drop-shadow-lg leading-tight">{formData.title || 'العنوان'}</h1>
                                     )}
@@ -2001,47 +2010,24 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 
                 <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar">
                     <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-2">Main Menu</div>
-                    <button 
-                        onClick={() => { setActiveTab('general'); setIsSidebarOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'general' ? 'bg-[#1a1f29] text-white border-r-2 border-[var(--color-accent)]' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
-                    >
-                        <DashboardIcon className="w-5 h-5"/>
-                        <span>البيانات الأساسية</span>
-                    </button>
-                    <button 
-                        onClick={() => { setActiveTab('categories'); setIsSidebarOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'categories' ? 'bg-[#1a1f29] text-white border-r-2 border-[var(--color-accent)]' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
-                    >
-                        <TagIcon className="w-5 h-5"/>
-                        <span>التصنيف والأنواع</span>
-                    </button>
-                    <button 
-                        onClick={() => { setActiveTab('media'); setIsSidebarOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'media' ? 'bg-[#1a1f29] text-white border-r-2 border-[var(--color-accent)]' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
-                    >
-                        <PhotoIcon className="w-5 h-5"/>
-                        <span>الصور والميديا</span>
-                    </button>
                     
-                    {isEpisodic && (
-                        <button 
-                            onClick={() => { setActiveTab('seasons'); setIsSidebarOpen(false); }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'seasons' ? 'bg-[#1a1f29] text-white border-r-2 border-[var(--color-accent)]' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
-                        >
-                            <LayersIcon className="w-5 h-5"/>
-                            <span>المواسم والحلقات</span>
-                        </button>
-                    )}
-                    
-                    {isStandalone && (
-                        <button 
-                            onClick={() => { setActiveTab('servers'); setIsSidebarOpen(false); }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'servers' ? 'bg-[#1a1f29] text-white border-r-2 border-[var(--color-accent)]' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
-                    >
-                        <ServerIcon className="w-5 h-5"/>
-                        <span>السيرفرات</span>
-                    </button>
-                    )}
+                    {[
+                        { id: 'general', label: 'البيانات الأساسية', icon: DashboardIcon },
+                        { id: 'categories', label: 'التصنيف والأنواع', icon: TagIcon },
+                        { id: 'media', label: 'الصور والميديا', icon: PhotoIcon },
+                        ...(isEpisodic ? [{ id: 'seasons', label: 'المواسم والحلقات', icon: LayersIcon }] : []),
+                        ...(isStandalone ? [{ id: 'servers', label: 'السيرفرات', icon: ServerIcon }] : [])
+                    ].map(tab => (
+                        <div key={tab.id} className="relative">
+                            <button 
+                                onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(false); }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === tab.id ? 'bg-[#1a1f29] text-white border-r-2 border-[var(--color-accent)]' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
+                            >
+                                <tab.icon className="w-5 h-5"/>
+                                <span>{tab.label}</span>
+                            </button>
+                        </div>
+                    ))}
 
                     <div className="h-px bg-gray-800 my-4"></div>
                     <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-2">Live Preview</div>
@@ -2152,7 +2138,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     return (
                                                         <div key={result.id} onClick={() => handleSelectSearchResult(result)} className="group cursor-pointer">
                                                             <div className="aspect-[2/3] rounded-lg overflow-hidden border border-gray-700 relative">
-                                                                {result.poster_path ? <img src={`https://image.tmdb.org/t/p/w200${result.poster_path}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" /> : <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs">No Image</div>}
+                                                                {result.poster_path ? <img src={`https://image.tmdb.org/t/p/w200${result.poster_path}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="" /> : <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs">No Image</div>}
                                                                 <div className={`absolute top-1 left-1 z-10 px-2 py-0.5 rounded text-[9px] font-black text-white shadow-lg backdrop-blur-sm ${badgeInfo.color}`}>
                                                                     {badgeInfo.label}
                                                                 </div>
@@ -2194,6 +2180,18 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     <LanguageIcon className="w-5 h-5"/>
                                                 </button>
                                             </div>
+                                        </div>
+                                        {/* NEW: Text Label field added right here as requested */}
+                                        <div>
+                                            <label className={labelClass}>النص الوصفي (يظهر على البوستر)</label>
+                                            <input 
+                                                type="text" 
+                                                name="bannerNote" 
+                                                value={formData.bannerNote || ''} 
+                                                onChange={handleChange} 
+                                                className={inputClass} 
+                                                placeholder="مثال: مترجم، مدبلج، حصري..." 
+                                            />
                                         </div>
                                         <div>
                                             <label className={labelClass}>الوصف (القصة)</label>
@@ -2370,10 +2368,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                 <button 
                                                     type="button"
                                                     onClick={() => setYouTubeSearchState({ isOpen: true, targetId: 'main' })}
-                                                    className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 text-[10px] font-black hover:bg-red-600 hover:text-white transition-all flex items-center gap-1.5"
+                                                    className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 text-[10px] font-black hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
                                                 >
-                                                    <YouTubeIcon className="w-3.5 h-3.5" />
-                                                    <span>بحث YouTube</span>
+                                                    <YouTubeIcon className="w-4 h-4" />
                                                 </button>
                                             </div>
                                             {formData.trailerUrl && <a href={formData.trailerUrl} target="_blank" className="p-3 bg-red-600 rounded-lg text-white hover:bg-red-500"><PlayIcon className="w-5 h-5"/></a>}
@@ -2389,7 +2386,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     <div className="mt-6">
                                         <div className="flex justify-between items-center mb-4">
                                             <span className="text-xs font-bold text-gray-400 uppercase">تفعيل القص التلقائي</span>
-                                            <input type="checkbox" checked={formData.enableMobileCrop || false} onChange={(e) => setFormData(prev => ({...prev, enableMobileCrop: e.target.checked}))} className="w-5 h-5 accent-[var(--color-accent)]"/>
+                                            <ToggleSwitch 
+                                                checked={formData.enableMobileCrop || false} 
+                                                onChange={(val) => setFormData(prev => ({...prev, enableMobileCrop: val}))} 
+                                                label={formData.enableMobileCrop ? "مفعل" : "معطل"}
+                                            />
                                         </div>
                                         
                                         {formData.enableMobileCrop && (
@@ -2455,7 +2456,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     <input onClick={e => e.stopPropagation()} type="file" id={`excel-${season.id}`} className="hidden" accept=".xlsx" onChange={(e) => handleSeasonExcelImport(e, season.id, season.seasonNumber)}/>
                                                     <label htmlFor={`excel-${season.id}`} className="p-2 hover:bg-green-900/30 text-green-600 rounded cursor-pointer" title="استيراد حلقات"><ExcelIcon className="w-4 h-4"/></label>
                                                     <button type="button" onClick={(e) => {e.stopPropagation(); handleAddEpisode(season.id)}} className="p-2 hover:bg-gray-800 text-blue-400 rounded"><PlusIcon className="w-4 h-4"/></button>
-                                                    <button type="button" onClick={(e) => {e.stopPropagation(); requestDeleteSeason(season.id, season.title)}} className="p-2 hover:bg-red-900/20 text-red-500 rounded"><TrashIcon className="w-4 h-4"/></button>
                                                 </div>
                                             </div>
 
@@ -2474,16 +2474,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                         
                                                         <div className="space-y-4">
                                                             <div>
-                                                                <label className={labelClass}>رابط الإعلان (Ad Link)</label>
-                                                                <input 
-                                                                    value={season.adLink || ''} 
-                                                                    onChange={(e) => handleUpdateSeason(season.id, 'adLink', e.target.value)} 
-                                                                    className={inputClass} 
-                                                                    placeholder="رابط إعلاني خاص بالموسم" 
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className={labelClass}>رابط التريلر (YouTube)</label>
+                                                                <label className={labelClass}>رابط التريلر (Trailer Link)</label>
                                                                 <div className="flex gap-2">
                                                                     <div className="flex-1 relative">
                                                                         <input 
@@ -2495,13 +2486,22 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                         <button 
                                                                             type="button"
                                                                             onClick={() => setYouTubeSearchState({ isOpen: true, targetId: season.id })}
-                                                                            className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 text-[10px] font-black hover:bg-red-600 hover:text-white transition-all flex items-center gap-1.5"
+                                                                            className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
                                                                         >
-                                                                            <YouTubeIcon className="w-3.5 h-3.5" />
-                                                                            <span>YouTube</span>
+                                                                            <YouTubeIcon className="w-4 h-4" />
                                                                         </button>
                                                                     </div>
                                                                 </div>
+                                                            </div>
+                                                            <div>
+                                                                <label className={labelClass}>سنة إنتاج الموسم</label>
+                                                                <input 
+                                                                    type="number" 
+                                                                    value={season.releaseYear || ''} 
+                                                                    onChange={e => handleUpdateSeason(season.id, 'releaseYear', parseInt(e.target.value))} 
+                                                                    className={inputClass}
+                                                                    placeholder="مثال: 2024"
+                                                                />
                                                             </div>
                                                         </div>
 
@@ -2511,7 +2511,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                         </div>
                                                         
                                                         <div className="col-span-full mt-4 p-4 border-t border-gray-800">
-                                                            <div className="flex justify-between items-center mb-4"><label className={labelClass}>تخصيص الموبايل لهذا الموسم</label><input type="checkbox" checked={season.enableMobileCrop || false} onChange={(e) => handleUpdateSeason(season.id, 'enableMobileCrop', e.target.checked)} className="accent-[var(--color-accent)]"/></div>
+                                                            <div className="flex justify-between items-center mb-4">
+                                                                <label className={labelClass}>تخصيص الموبايل لهذا الموسم</label>
+                                                                <ToggleSwitch 
+                                                                    checked={season.enableMobileCrop || false} 
+                                                                    onChange={(val) => handleUpdateSeason(season.id, 'enableMobileCrop', val)} 
+                                                                    label={season.enableMobileCrop ? "مفعل" : "معطل"}
+                                                                />
+                                                            </div>
                                                             {season.enableMobileCrop && (
                                                                 <div className="mt-2">
                                                                      <MobileSimulator 
@@ -2547,9 +2554,15 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                                 {!ep.isLastEpisode && <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">الحلقة الأخيرة؟</span>}
                                                                             </label>
                                                                         </div>
-                                                                        <div>
-                                                                            <label className="text-[9px] font-bold text-gray-600 mb-1 block uppercase">رابط صورة الحلقة (Thumbnail URL)</label>
-                                                                            <input value={ep.thumbnail || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'thumbnail', e.target.value)} className="w-full bg-black/30 border border-gray-800 rounded-lg px-3 py-1.5 text-[10px] text-gray-400 focus:border-[var(--color-accent)] focus:outline-none dir-ltr" placeholder="Episode direct image link..."/>
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                            <div>
+                                                                                <label className="text-[9px] font-bold text-gray-600 mb-1 block uppercase">رابط صورة الحلقة (Thumbnail URL)</label>
+                                                                                <input value={ep.thumbnail || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'thumbnail', e.target.value)} className="w-full bg-black/30 border border-gray-800 rounded-lg px-3 py-1.5 text-[10px] text-gray-400 focus:border-[var(--color-accent)] focus:outline-none dir-ltr" placeholder="Episode direct image link..."/>
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="text-[9px] font-bold text-gray-400 mb-1 block uppercase">وسام مخصص (Custom Badge)</label>
+                                                                                <input value={ep.badgeText || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'badgeText', e.target.value)} className="w-full bg-black/30 border border-gray-800 rounded-lg px-3 py-1.5 text-[10px] text-amber-400 focus:border-amber-500 focus:outline-none" placeholder="مثال: مؤجل، 15 مايو..."/>
+                                                                            </div>
                                                                         </div>
                                                                         <input value={ep.description || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'description', e.target.value)} className="w-full bg-transparent text-xs text-gray-500 focus:outline-none placeholder:text-gray-700" placeholder="اكتب وصفاً مختصراً لهذه الحلقة..."/>
                                                                     </div>
@@ -2557,7 +2570,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                         <button type="button" onClick={() => setEditingServersForEpisode(ep)} className={`px-4 py-2 text-[10px] font-black rounded-lg flex items-center gap-2 shadow-sm transition-all ${ep.servers?.length ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-gray-800 text-gray-500 hover:bg-gray-700'}`}>
                                                                             <ServerIcon className="w-3.5 h-3.5"/> سيرفرات ({ep.servers?.length || 0})
                                                                         </button>
-                                                                        <button type="button" onClick={() => requestDeleteEpisode(season.id, ep.id, ep.title || '')} className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors self-end" title="حذف الحلقة"><TrashIcon className="w-4.5 h-4.5"/></button>
+                                                                        <button 
+                                                                            type="button" 
+                                                                            onClick={() => requestDeleteEpisode(season.id, ep.id, ep.title || '')} 
+                                                                            className="p-2 text-red-500 bg-red-500/10 hover:bg-red-500 hover:text-white rounded-xl transition-all self-end border border-red-500/20 shadow-sm" 
+                                                                            title="حذف الحلقة"
+                                                                        >
+                                                                            <TrashIcon className="w-5 h-5"/>
+                                                                        </button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -2576,9 +2596,18 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                  <ServerIcon className="w-16 h-16 text-gray-700 mb-4"/>
                                  <h3 className="text-xl font-bold text-white mb-2">سيرفرات المشاهدة</h3>
                                  <p className="text-gray-500 text-sm mb-6 max-w-md">أضف روابط المشاهدة والتحميل لهذا الفيلم. يمكنك إضافة عدة سيرفرات لضمان التوفر.</p>
-                                 <button type="button" onClick={() => setIsManagingMovieServers(true)} className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all transform hover:scale-105">
-                                     إدارة السيرفرات ({formData.servers?.length || 0})
-                                 </button>
+                                 <div className="flex flex-col items-center gap-4">
+                                     <button type="button" onClick={() => setIsManagingMovieServers(true)} className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all transform hover:scale-105">
+                                         إدارة السيرفرات ({formData.servers?.length || 0})
+                                     </button>
+                                     <button 
+                                        type="button" 
+                                        onClick={() => handleDeleteSection('servers')}
+                                        className="text-red-500 text-xs font-bold hover:underline"
+                                     >
+                                         حذف هذا القسم
+                                     </button>
+                                 </div>
                              </div>
                         )}
 
