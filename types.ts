@@ -59,6 +59,7 @@ export interface Episode {
   progress: number; 
   servers: Server[];
   isLastEpisode?: boolean;
+  badgeText?: string; // NEW: Custom manual label for the episode thumbnail
 }
 
 export interface Season {
@@ -439,14 +440,22 @@ export interface ReleaseSource {
   url: string;
 }
 
+export type ReleasePriority = 'low' | 'medium' | 'high' | 'hot';
+export type ReleaseStatus = 'ongoing' | 'hiatus' | 'finished' | 'upcoming';
+
 export interface ReleaseSchedule {
   id: string;
   seriesId?: string;
   seriesName: string;
   poster: string;
-  dayOfWeek: number; // 0-6
+  daysOfWeek: number[]; 
   time: string; // "HH:mm"
   sources: ReleaseSource[];
   isActive: boolean;
   lastAddedAt: string | null;
+  priority: ReleasePriority; 
+  status: ReleaseStatus; 
+  releaseYear?: number; // ADDED
+  nextEpisodeNumber?: number; 
+  internalNotes?: string; 
 }
