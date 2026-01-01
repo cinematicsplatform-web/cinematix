@@ -1,5 +1,3 @@
-
-
 export const ContentType = {
   Movie: 'movie',
   Series: 'series',
@@ -433,4 +431,22 @@ export interface HomeSection {
   showRanking?: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// --- NEW: Content Radar Types ---
+export interface ReleaseSource {
+  name: string;
+  url: string;
+}
+
+export interface ReleaseSchedule {
+  id: string;
+  seriesId?: string;
+  seriesName: string;
+  poster: string;
+  dayOfWeek: number; // 0-6
+  time: string; // "HH:mm"
+  sources: ReleaseSource[];
+  isActive: boolean;
+  lastAddedAt: string | null;
 }

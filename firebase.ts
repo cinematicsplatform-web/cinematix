@@ -1,4 +1,3 @@
-
 // FIX: Use 'compat' imports to support v8 namespaced syntax with Firebase v9+ SDK.
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
@@ -6,7 +5,7 @@ import "firebase/compat/firestore";
 import "firebase/compat/messaging";
 import "firebase/compat/storage";
 
-import type { Ad, SiteSettings, User, PinnedContentState, PinnedItem, PageKey, ContentRequest, HomeSection, Content, Top10State, Story, Notification, BroadcastNotification, Person } from '@/types';
+import type { Ad, SiteSettings, User, PinnedContentState, PinnedItem, PageKey, ContentRequest, HomeSection, Content, Top10State, Story, Notification, BroadcastNotification, Person, ReleaseSchedule } from '@/types';
 import { initialSiteSettings, pinnedContentData as initialPinnedData, top10ContentData as initialTop10Data } from './data';
 import { UserRole } from '@/types';
 
@@ -563,4 +562,39 @@ export const deleteBroadcastNotification = async (broadcastId: string): Promise<
     } catch (e) {
         console.error('Error deleting broadcast notification:', e);
     }
+};
+
+// --- Content Radar Functions ---
+export const getReleaseSchedules = async (): Promise<ReleaseSchedule[]> => {
+  try {
+    const snapshot = await db.collection('release_radar').get();
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as ReleaseSchedule));
+  } catch (error) {
+    return handleFirestoreError(error, 'release radar', []);
+  }
+};
+
+export const saveReleaseSchedule = async (schedule: Partial<ReleaseSchedule>): Promise<void> => {
+  const { id, ...data } = schedule;
+  if (id) {
+    await db.collection('release_radar').doc(id).update(data);
+  } else {
+    await db.collection('release_radar').add({
+      ...data,
+      lastAddedAt: null
+    });
+  }
+};
+
+export const deleteReleaseSchedule = async (id: string): Promise<void> => {
+  await db.collection('release_radar').doc(id).delete();
+};
+
+export const markScheduleAsAdded = async (id: string): Promise<void> => {
+  await db.collection('release_radar').doc(id).update({
+    lastAddedAt: new Date().toISOString()
+  });
 };

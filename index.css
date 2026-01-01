@@ -185,10 +185,8 @@ html, body {
 }
 
 /* --- Mobile Custom Crop Utility --- */
-@media (max-width: 768px) {
-  .mobile-custom-crop {
-    object-position: var(--mob-x, 50%) var(--mob-y, 50%) !important;
-  }
+.mobile-custom-crop {
+  object-position: var(--mob-x, 50%) var(--mob-y, 50%) !important;
 }
 
 /* --- Device Specific Background Control --- */

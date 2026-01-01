@@ -750,7 +750,14 @@ const App: React.FC = () => {
                   if (latestSeason.releaseYear) finalContent.releaseYear = latestSeason.releaseYear;
                   if (latestSeason.horizontalPoster) finalContent.horizontalPoster = latestSeason.horizontalPoster;
                   
-                  // Mobile Integration: Map season-specific mobile assets to content overrides
+                  // STRICT AD RULE: Use season trailer ONLY. If none, do NOT fallback to global.
+                  if (latestSeason.trailerUrl) {
+                      finalContent.trailerUrl = latestSeason.trailerUrl;
+                  } else {
+                      finalContent.trailerUrl = undefined;
+                  }
+                  
+                  // Mobile Integration
                   if (latestSeason.mobileImageUrl) finalContent.mobileBackdropUrl = latestSeason.mobileImageUrl;
                   if (latestSeason.enableMobileCrop !== undefined) finalContent.enableMobileCrop = latestSeason.enableMobileCrop;
                   if (latestSeason.mobileCropPositionX !== undefined) finalContent.mobileCropPositionX = latestSeason.mobileCropPositionX;
@@ -883,4 +890,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
