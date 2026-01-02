@@ -2,35 +2,38 @@
 import React, { useEffect, useRef } from 'react';
 
 interface AdDisplayProps {
-  adCode: string; // The raw HTML/Script code from the database
+  adCode: string; // الكود البرمجي الخام القادم من قاعدة البيانات
   className?: string;
 }
 
+/**
+ * مكون AdDisplay: يقوم بإجبار المتصفح على تنفيذ السكربتات
+ * نستخدم createContextualFragment لأن innerHTML لا يشغل السكربتات برمجياً
+ */
 const AdDisplay: React.FC<AdDisplayProps> = ({ adCode, className = '' }) => {
   const adContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Exit if no code or ref is missing
     if (!adCode || !adContainerRef.current) return;
 
     const container = adContainerRef.current;
 
-    // 1. Clear previous content to avoid duplicates
+    // 1. تنظيف المحتوى السابق لمنع تكرار الإعلانات
     container.innerHTML = '';
 
     try {
-        // 2. Create a range and fragment (This allows script execution)
+        // 2. إنشاء Range و Fragment (هذا هو المفتاح لتشغيل السكربتات)
         const range = document.createRange();
         range.selectNode(container);
         const documentFragment = range.createContextualFragment(adCode);
 
-        // 3. Inject the ad
+        // 3. حقن الإعلان في الحاوية
         container.appendChild(documentFragment);
     } catch (err) {
-        console.error("Error rendering ad:", err);
+        console.error("Cinematix Ad Error:", err);
     }
 
-    // Cleanup on unmount
+    // تنظيف عند الخروج
     return () => {
         if (container) container.innerHTML = '';
     };

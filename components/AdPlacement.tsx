@@ -11,7 +11,7 @@ interface AdPlacementProps {
 }
 
 const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, className }) => {
-  // 1. Determine device type with real-time responsiveness
+  // 1. تحديد نوع الجهاز بشكل حيوي
   const [isMobile, setIsMobile] = useState<boolean>(
      typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
@@ -22,16 +22,13 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 2. Filter logic synchronized with Admin Panel data
+  // 2. فلترة الإعلان النشط لهذا المكان وهذا الجهاز
   const activeAd = ads.find(ad => {
-    // Basic filter
     if (ad.placement !== placement && ad.position !== placement) return false;
     
-    // Status check
     const isAdActive = ad.status === 'active' || ad.isActive === true;
     if (!isAdActive) return false;
     
-    // Device targeting logic
     const target = ad.targetDevice || 'all';
     if (target === 'mobile' && !isMobile) return false;
     if (target === 'desktop' && isMobile) return false;
@@ -44,7 +41,7 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
   const defaultClasses = "ad-container w-full flex justify-center items-center my-4 overflow-hidden z-10";
   const finalClasses = className ? `${defaultClasses} ${className}` : defaultClasses;
 
-  // Render Image Banners directly via JSX for better performance/safety
+  // في حال كان الإعلان بانر صوري
   if (activeAd.type === 'banner' && activeAd.imageUrl) {
       return (
           <div className={finalClasses}>
@@ -65,7 +62,7 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
       );
   }
 
-  // Render Code Slot using the Smart Ad Renderer
+  // في حال كان الإعلان كود برمجي (Adsterra, Monetag, etc)
   return (
     <AdDisplay 
       adCode={activeAd.code || activeAd.scriptCode || ''} 

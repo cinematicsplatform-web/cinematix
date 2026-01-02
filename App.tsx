@@ -148,12 +148,9 @@ const App: React.FC = () => {
       if (normalizedPath.startsWith('/category/')) return 'category';
       if (normalizedPath.startsWith('/person/')) return 'personProfile';
       
-      // تحسين اكتشاف مسارات المشاهدة للافلام مقابل الحلقات
-      // روابط الحلقات تحتوي عادة على كلمة "الموسم" و "الحلقة" أو أرقام تدل عليها
       const isEpisodicWatch = normalizedPath.match(/^\/(?:watch|مشاهدة)\/.*?\/.*?\d+.*?\/.*?\d+/);
       if (isEpisodicWatch) return 'watch';
 
-      // روابط الأفلام أو الهبوط للمسلسلات تعتبر Detail
       if (normalizedPath.match(/^\/(?:watch|مشاهدة)\/(?:movie|فيلم)\//) || 
           normalizedPath.match(/^\/(?:series|program|مسلسل|برنامج|movie|فيلم|play|concert|watch|مشاهدة)\/([^\/]+)/)) {
           return 'detail';
@@ -228,34 +225,42 @@ const App: React.FC = () => {
       }
   }, [activeProfile, view]);
 
+  // FIX: Popunder logic now uses createRange logic for execution
   useEffect(() => {
       if (!siteSettings.adsEnabled) return;
       const handleSmartPopunder = (e: MouseEvent) => {
-          const activePopunders = ads.filter(a => a.placement === 'global-popunder' && a.status === 'active');
+          const activePopunders = ads.filter(a => a.placement === 'global-popunder' && (a.status === 'active' || a.isActive === true));
           const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
           const isMobile = /android|iPad|iPhone|iPod/i.test(userAgent) || window.innerWidth <= 768;
+          
           activePopunders.forEach(ad => {
               const targetDevice = ad.targetDevice || 'all';
               if (targetDevice === 'mobile' && !isMobile) return;
               if (targetDevice === 'desktop' && isMobile) return;
+              
               const lastRun = localStorage.getItem(`popunder_last_run_${ad.id}`);
               const now = Date.now();
               const oneDay = 24 * 60 * 60 * 1000;
               if (lastRun && (now - parseInt(lastRun) < oneDay)) return; 
+              
               const triggerKey = ad.triggerTarget || 'all';
               const selector = triggerSelectors[triggerKey];
               const targetElement = (e.target as Element).closest(selector);
+              
               if (targetElement) {
                   const div = document.createElement('div');
                   div.style.display = 'none';
-                  div.className = `smart-popunder-${ad.id}`;
+                  div.className = `smart-popunder-container-${ad.id}`;
                   try {
                       const range = document.createRange();
-                      const fragment = range.createContextualFragment(ad.code || '');
+                      range.selectNode(document.body);
+                      const fragment = range.createContextualFragment(ad.code || ad.scriptCode || '');
                       div.appendChild(fragment);
                       document.body.appendChild(div);
                       localStorage.setItem(`popunder_last_run_${ad.id}`, now.toString());
-                  } catch (err) {}
+                  } catch (err) {
+                      console.error("Popunder Execution Error:", err);
+                  }
               }
           });
       };
@@ -303,7 +308,6 @@ const App: React.FC = () => {
         return;
       }
 
-      // 1. منطق روابط المسلسلات والبرامج (حلقات)
       const watchMatch = decodedPath.match(/^\/(?:watch|مشاهدة)\/([^\/]+)\/(?:الموسم|season)?(\d+)\/(?:الحلقة|episode)?(\d+)/) || 
                          decodedPath.match(/^\/(?:watch|مشاهدة)\/([^\/]+)\/(\d+)\/(\d+)/);
       
@@ -320,7 +324,6 @@ const App: React.FC = () => {
           }
       }
 
-      // 2. منطق روابط الأفلام (توجيهها دائماً لـ detail)
       const movieWatchMatch = decodedPath.match(/^\/(?:watch|مشاهدة)\/(?:movie|فيلم|video\.movie)\/([^\/]+)/) ||
                               decodedPath.match(/^\/(?:watch|مشاهدة)\/([^\/]+)$/);
       if (movieWatchMatch) {
@@ -328,13 +331,11 @@ const App: React.FC = () => {
           const foundContent = contentList.find(c => (c.slug === slug) || (c.id === slug));
           if (foundContent) {
               setSelectedContent(foundContent);
-              // للافلام دائما نستخدم DetailPage لعرض المشغل والجدول
               setView('detail');
               return;
           }
       }
 
-      // 3. روابط الهبوط للمسلسلات حسب الموسم
       const seriesDetailMatch = decodedPath.match(/^\/(?:series|program|مسلسل|برنامج)\/([^\/]+)\/(?:الموسم|season)?(\d+)/);
       if (seriesDetailMatch) {
           const slug = seriesDetailMatch[1];
@@ -348,7 +349,6 @@ const App: React.FC = () => {
           }
       }
 
-      // 4. الروابط العامة
       const match = decodedPath.match(/^\/(?:series|program|مسلسل|برنامج|movie|فيلم|play|concert)\/([^\/]+)/);
       if (match && match[1]) {
           const slug = match[1];
@@ -504,22 +504,12 @@ const App: React.FC = () => {
 
   const handleSetView = (newView: View, category?: string, params?: any) => {
       scrollPositions.current[view] = window.scrollY;
-      
       const subViews: View[] = ['detail', 'watch', 'personProfile', 'download', 'category', 'search', 'login', 'register', 'welcome'];
-      
-      if (subViews.includes(newView) && !subViews.includes(view)) {
-          setReturnView(view);
-      }
-
-      if (newView === 'login' && params?.email) {
-          setAuthPrefillEmail(params.email);
-      } else if (newView === 'login' && !params?.email) {
-          setAuthPrefillEmail('');
-      }
-
+      if (subViews.includes(newView) && !subViews.includes(view)) setReturnView(view);
+      if (newView === 'login' && params?.email) setAuthPrefillEmail(params.email);
+      else if (newView === 'login' && !params?.email) setAuthPrefillEmail('');
       setView(newView);
       if (category) setSelectedCategory(category);
-
       if (newView === 'watch' && params) {
           setWatchParams(params);
           setDetailParams(null);
@@ -539,21 +529,17 @@ const App: React.FC = () => {
           }
           let path = REVERSE_VIEW_PATHS[newView];
           if (newView === 'category' && category) path = `/category/${category}`;
-          
           if (newView === 'detail' && selectedContent) {
               const slug = selectedContent.slug || selectedContent.id;
               const type = selectedContent.type;
               const isEpisodic = type === ContentType.Series || type === ContentType.Program;
-              
-              if (!isEpisodic) {
-                  path = `/watch/movie/${slug}`;
-              } else {
+              if (!isEpisodic) path = `/watch/movie/${slug}`;
+              else {
                   const sNum = params?.season || detailParams?.seasonNumber || 1;
                   path = `/${type}/${slug}/الموسم${sNum}`;
                   if (!detailParams || detailParams.seasonNumber !== sNum) setDetailParams({ seasonNumber: sNum });
               }
           } else if (newView === 'detail') setDetailParams(null);
-          
           if (path && window.location.pathname !== path) safeHistoryPush(path);
       }
   };
@@ -562,18 +548,13 @@ const App: React.FC = () => {
       if (isSearchOpen) setIsSearchOpen(false);
       scrollPositions.current[view] = window.scrollY;
       if (view !== 'detail') setReturnView(view);
-      
       setSelectedContent(content);
       const slug = content.slug || content.id;
       const isEpisodic = content.type === ContentType.Series || content.type === ContentType.Program;
-      
       if (isEpisodic) {
           let targetSeason = seasonNumber;
-          if (!targetSeason && content.seasons && content.seasons.length > 0) {
-             targetSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0].seasonNumber;
-          }
+          if (!targetSeason && content.seasons && content.seasons.length > 0) targetSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0].seasonNumber;
           if (!targetSeason) targetSeason = 1; 
-
           if (episodeNumber) {
               setWatchParams({ season: targetSeason, episode: episodeNumber });
               setDetailParams(null);
@@ -593,17 +574,12 @@ const App: React.FC = () => {
 
   const handlePersonClick = (name: string) => {
     scrollPositions.current[view] = window.scrollY;
-    if (view !== 'personProfile') {
-        setReturnView(view);
-    }
+    if (view !== 'personProfile') setReturnView(view);
     handleSetView('personProfile', undefined, { name });
   };
 
   const handleLogin = async (email: string, pass: string): Promise<LoginError> => {
-      try { 
-        await auth.signInWithEmailAndPassword(email, pass); 
-        return 'none'; 
-      }
+      try { await auth.signInWithEmailAndPassword(email, pass); return 'none'; }
       catch (error: any) { return (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') ? error.code.replace('auth/', '') as any : 'userNotFound'; }
   };
 
@@ -612,36 +588,15 @@ const App: React.FC = () => {
           const cred = await auth.createUserWithEmailAndPassword(newUser.email, newUser.password || '');
           if (cred.user) {
                const selectedAvatar = newUser.gender === 'female' ? (femaleAvatars[1] || femaleAvatars[0]) : defaultAvatar;
-               
-               const defaultProfile: Profile = { 
-                 id: Date.now(), 
-                 name: newUser.firstName || 'المستخدم', 
-                 avatar: selectedAvatar, 
-                 isKid: false, 
-                 watchHistory: [], 
-                 myList: [] 
-               };
-
-               await createUserProfileInFirestore(cred.user.uid, { 
-                 firstName: newUser.firstName, 
-                 lastName: newUser.lastName, 
-                 email: newUser.email, 
-                 profiles: [defaultProfile],
-                 setupCompleted: false 
-               });
-
+               const defaultProfile: Profile = { id: Date.now(), name: newUser.firstName || 'المستخدم', avatar: selectedAvatar, isKid: false, watchHistory: [], myList: [] };
+               await createUserProfileInFirestore(cred.user.uid, { firstName: newUser.firstName, lastName: newUser.lastName, email: newUser.email, profiles: [defaultProfile], setupCompleted: false });
                addToast('تم إنشاء الحساب بنجاح!', 'success');
                setActiveProfile(defaultProfile);
                handleSetView('onboarding');
                return null;
           }
           return 'unknown-error';
-      } catch (error: any) {
-          if (error.code !== 'auth/email-already-in-use') {
-              console.error(error);
-          }
-          return error.code;
-      }
+      } catch (error: any) { return error.code; }
   };
 
   const handleLogout = async () => { localStorage.removeItem('cinematix_active_profile'); await auth.signOut(); setCurrentUser(null); setActiveProfile(null); handleSetView('home'); addToast('تم تسجيل الخروج.', 'info'); };
@@ -651,12 +606,7 @@ const App: React.FC = () => {
       if (currentUser && activeProfile) {
           const updatedProfile = { ...activeProfile, ...profileData };
           const updatedProfiles = currentUser.profiles.map(p => p.id === activeProfile.id ? updatedProfile : p);
-          
-          await updateUserProfileInFirestore(currentUser.id, { 
-            profiles: updatedProfiles,
-            setupCompleted: true 
-          });
-          
+          await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles, setupCompleted: true });
           setActiveProfile(updatedProfile);
           setCurrentUser(prev => prev ? { ...prev, setupCompleted: true, profiles: updatedProfiles } : null);
           addToast('تم إعداد حسابك بنجاح!', 'success');
@@ -711,35 +661,24 @@ const App: React.FC = () => {
   const renderView = () => {
       const isAdmin = currentUser?.role === UserRole.Admin;
       const isMaintenance = siteSettings.is_maintenance_mode_enabled;
-      
-      const isRamadanGlobal = siteSettings.activeTheme === 'ramadan';
-      const isRamadanTheme = isRamadanGlobal;
-
+      const isRamadanTheme = siteSettings.activeTheme === 'ramadan';
       const isEidTheme = siteSettings.activeTheme === 'eid';
       const isCosmicTealTheme = siteSettings.activeTheme === 'cosmic-teal';
       const isNetflixRedTheme = siteSettings.activeTheme === 'netflix-red';
-
-      const LoadingSpinner = () => (
-          <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-              <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-accent)]`}></div>
-          </div>
-      );
+      const LoadingSpinner = () => (<div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]"><div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-accent)]`}></div></div>);
 
       if (isMaintenance && !isAdmin) {
           if (view === 'login') return <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
           return <MaintenancePage socialLinks={siteSettings.socialLinks} onSetView={handleSetView} />;
       }
       
-      if (!isAuthLoading && currentUser && currentUser.setupCompleted && !activeProfile && view !== 'profileSelector' && view !== 'accountSettings' && view !== 'admin' && view !== 'onboarding') {
-          return <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} />;
-      }
+      if (!isAuthLoading && currentUser && currentUser.setupCompleted && !activeProfile && view !== 'profileSelector' && view !== 'accountSettings' && view !== 'admin' && view !== 'onboarding') return <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} />;
 
       const getContentWithMeta = (items: PinnedItem[]) => items.map((p): Content | null => {
           const content = allContent.find(c => c.id === p.contentId);
           if (!content) return null;
           let finalContent = { ...content };
           const isEpisodic = content.type === ContentType.Series || content.type === ContentType.Program;
-          
           if (isEpisodic && content.seasons && content.seasons.length > 0) {
               const latestSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
               if (latestSeason) {
@@ -749,13 +688,7 @@ const App: React.FC = () => {
                   if (latestSeason.description) finalContent.description = latestSeason.description;
                   if (latestSeason.releaseYear) finalContent.releaseYear = latestSeason.releaseYear;
                   if (latestSeason.horizontalPoster) finalContent.horizontalPoster = latestSeason.horizontalPoster;
-                  
-                  if (latestSeason.trailerUrl) {
-                      finalContent.trailerUrl = latestSeason.trailerUrl;
-                  } else {
-                      finalContent.trailerUrl = undefined;
-                  }
-                  
+                  finalContent.trailerUrl = latestSeason.trailerUrl || undefined;
                   if (latestSeason.mobileImageUrl) finalContent.mobileBackdropUrl = latestSeason.mobileImageUrl;
                   if (latestSeason.enableMobileCrop !== undefined) finalContent.enableMobileCrop = latestSeason.enableMobileCrop;
                   if (latestSeason.mobileCropPositionX !== undefined) finalContent.mobileCropPositionX = latestSeason.mobileCropPositionX;
@@ -784,56 +717,15 @@ const App: React.FC = () => {
           case 'personProfile': return <PersonProfilePage name={selectedPersonName} allContent={allContent} people={people} onSelectContent={handleSelectContent} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} returnView={returnView} />;
           case 'detail':
                return (
-                   <DetailPage 
-                        key={window.location.pathname}
-                        locationPath={window.location.pathname}
-                        content={selectedContent || ({} as Content)}
-                        people={people}
-                        initialSeasonNumber={detailParams?.seasonNumber}
-                        ads={ads}
-                        adsEnabled={siteSettings.adsEnabled}
-                        allContent={allContent}
-                        onSelectContent={handleSelectContent}
-                        onPersonClick={handlePersonClick}
-                        isLoggedIn={!!currentUser}
-                        myList={activeProfile?.myList}
-                        onToggleMyList={handleToggleMyList}
-                        onSetView={handleSetView}
-                        isRamadanTheme={isRamadanTheme}
-                        isEidTheme={isEidTheme}
-                        isCosmicTealTheme={isCosmicTealTheme}
-                        isNetflixRedTheme={isNetflixRedTheme}
-                   />
+                   <DetailPage key={window.location.pathname} locationPath={window.location.pathname} content={selectedContent || ({} as Content)} people={people} initialSeasonNumber={detailParams?.seasonNumber} ads={ads} adsEnabled={siteSettings.adsEnabled} allContent={allContent} onSelectContent={handleSelectContent} onPersonClick={handlePersonClick} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
                );
           case 'watch':
                return (
-                   <EpisodeWatchPage 
-                       content={selectedContent || ({} as Content)}
-                       seasonNumber={watchParams?.season || 1}
-                       episodeNumber={watchParams?.episode || 1}
-                       allContent={allContent}
-                       onSetView={handleSetView}
-                       ads={ads}
-                       adsEnabled={siteSettings.adsEnabled}
-                       isRamadanTheme={isRamadanTheme}
-                       isEidTheme={isEidTheme}
-                       isCosmicTealTheme={isCosmicTealTheme}
-                       isNetflixRedTheme={isNetflixRedTheme}
-                   />
+                   <EpisodeWatchPage content={selectedContent || ({} as Content)} seasonNumber={watchParams?.season || 1} episodeNumber={watchParams?.episode || 1} allContent={allContent} onSetView={handleSetView} ads={ads} adsEnabled={siteSettings.adsEnabled} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
                );
            case 'download':
                return (
-                   <DownloadPage
-                       content={selectedContent || ({} as Content)}
-                       seasonNumber={downloadParams?.season}
-                       episodeNumber={downloadParams?.episode}
-                       onSetView={handleSetView}
-                       isRamadanTheme={isRamadanTheme}
-                       isEidTheme={isEidTheme}
-                       isCosmicTealTheme={isCosmicTealTheme}
-                       isNetflixRedTheme={isNetflixRedTheme}
-                       returnView={returnView}
-                   />
+                   <DownloadPage content={selectedContent || ({} as Content)} seasonNumber={downloadParams?.season} episodeNumber={downloadParams?.episode} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} returnView={returnView} />
                );
            case 'login': if (isAuthLoading) return <LoadingSpinner />; return <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
            case 'register': if (isAuthLoading) return <LoadingSpinner />; return <CreateAccountPage onSetView={handleSetView} onRegister={handleRegister} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
