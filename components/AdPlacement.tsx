@@ -1,6 +1,7 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Ad } from '@/types';
+import AdDisplay from './AdDisplay';
 
 interface AdPlacementProps {
   ads: Ad[];
@@ -10,9 +11,7 @@ interface AdPlacementProps {
 }
 
 const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, className }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  // 1. Determine device type (Simple & Effective)
+  // 1. Determine device type with real-time responsiveness
   const [isMobile, setIsMobile] = useState<boolean>(
      typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
@@ -23,58 +22,29 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 2. Smart Filtering: Select the appropriate ad for device and placement
+  // 2. Filter logic synchronized with Admin Panel data
   const activeAd = ads.find(ad => {
-    if (ad.placement !== placement || ad.status !== 'active') return false;
+    // Basic filter
+    if (ad.placement !== placement && ad.position !== placement) return false;
     
-    // If no targeting or 'all', it's valid
-    if (!ad.targetDevice || ad.targetDevice === 'all') return true;
+    // Status check
+    const isAdActive = ad.status === 'active' || ad.isActive === true;
+    if (!isAdActive) return false;
     
-    // Precise targeting logic
-    if (ad.targetDevice === 'mobile' && isMobile) return true;
-    if (ad.targetDevice === 'desktop' && !isMobile) return true;
+    // Device targeting logic
+    const target = ad.targetDevice || 'all';
+    if (target === 'mobile' && !isMobile) return false;
+    if (target === 'desktop' && isMobile) return false;
 
-    return false; 
+    return true; 
   });
 
-  // Execute Ad Code (Manual Injection) - Only for CODE type
-  useEffect(() => {
-    const container = containerRef.current;
-    
-    // Clean container to prevent duplication
-    if (container) {
-        container.innerHTML = ''; 
-    }
+  if (!isEnabled || !activeAd) return null;
 
-    if (!isEnabled || !activeAd || !container) return;
-    
-    // If it's a banner, we render via JSX below, don't inject.
-    if (activeAd.type === 'banner') return;
-
-    // Legacy support: if type is undefined, treat as code
-    if (activeAd.type === 'code' || !activeAd.type) {
-        try {
-            const range = document.createRange();
-            range.selectNode(container);
-            // Support both 'code' (new) and 'scriptCode' (old)
-            const adContent = activeAd.code || activeAd.scriptCode || '';
-            const documentFragment = range.createContextualFragment(adContent);
-            container.appendChild(documentFragment);
-        } catch (e) {
-            console.error('Ad Injection Error:', e);
-        }
-    }
-  }, [activeAd, isEnabled, isMobile, placement]);
-
-  // 3. If no suitable ad is found for this device, return null.
-  if (!isEnabled || !activeAd) {
-      return null; 
-  }
-
-  const defaultClasses = "ad-container w-full flex justify-center items-center my-2 overflow-hidden";
+  const defaultClasses = "ad-container w-full flex justify-center items-center my-4 overflow-hidden z-10";
   const finalClasses = className ? `${defaultClasses} ${className}` : defaultClasses;
 
-  // RENDER BANNER TYPE
+  // Render Image Banners directly via JSX for better performance/safety
   if (activeAd.type === 'banner' && activeAd.imageUrl) {
       return (
           <div className={finalClasses}>
@@ -82,12 +52,12 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
                 href={activeAd.destinationUrl || '#'} 
                 target="_blank" 
                 rel="nofollow noopener noreferrer"
-                className="block transition-transform hover:scale-[1.01] max-w-full"
+                className="block transition-all hover:scale-[1.01] active:scale-[0.98] max-w-full"
               >
                   <img 
                     src={activeAd.imageUrl} 
-                    alt={activeAd.title} 
-                    className="max-w-full h-auto rounded-xl shadow-md object-contain"
+                    alt={activeAd.title || "Cinemaitx Ad"} 
+                    className="max-w-full h-auto rounded-2xl shadow-xl object-contain border border-white/5"
                     style={{ maxHeight: '250px' }}
                   />
               </a>
@@ -95,13 +65,11 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
       );
   }
 
-  // RENDER CODE TYPE (Container for injection)
+  // Render Code Slot using the Smart Ad Renderer
   return (
-    <div 
-      ref={containerRef} 
-      id={`ad-${placement}`}
-      className={finalClasses}
-      style={{ minHeight: 'auto' }} 
+    <AdDisplay 
+      adCode={activeAd.code || activeAd.scriptCode || ''} 
+      className={finalClasses} 
     />
   );
 };

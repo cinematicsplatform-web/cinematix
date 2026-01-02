@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Ad } from '@/types';
 import { CloseIcon } from '@/components/icons/CloseIcon';
-import { SpeakerIcon } from '@/components/icons/SpeakerIcon';
-import { ExpandIcon } from '@/components/icons/ExpandIcon';
+import AdDisplay from './AdDisplay';
 
 interface AdWaiterModalProps {
     isOpen: boolean;
@@ -15,8 +15,6 @@ interface AdWaiterModalProps {
 const AdWaiterModal: React.FC<AdWaiterModalProps> = ({ isOpen, ad, onComplete, onClose }) => {
     const [timeLeft, setTimeLeft] = useState<number>(ad.timerDuration || 0);
     const [canSkip, setCanSkip] = useState<boolean>(false);
-    const [isMuted, setIsMuted] = useState(true);
-    const adContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -46,29 +44,6 @@ const AdWaiterModal: React.FC<AdWaiterModalProps> = ({ isOpen, ad, onComplete, o
         }, 1000);
         return () => clearInterval(timer);
     }, [isOpen, timeLeft]);
-
-    useEffect(() => {
-        if (isOpen && adContainerRef.current) {
-            adContainerRef.current.innerHTML = '';
-            if (ad.type !== 'banner') {
-                try {
-                    const range = document.createRange();
-                    range.selectNode(adContainerRef.current);
-                    const codeContent = ad.code || ad.scriptCode || '';
-                    const fragment = range.createContextualFragment(codeContent);
-                    adContainerRef.current.appendChild(fragment);
-                } catch (e) {
-                    console.error("AdWaiter Script Error:", e);
-                }
-            }
-        }
-    }, [isOpen, ad]);
-
-    const handleExpandAd = () => {
-        if (ad.destinationUrl) {
-            window.open(ad.destinationUrl, '_blank', 'noopener,noreferrer');
-        }
-    };
 
     if (!isOpen) return null;
 
@@ -102,7 +77,7 @@ const AdWaiterModal: React.FC<AdWaiterModalProps> = ({ isOpen, ad, onComplete, o
 
                 {/* AD CONTENT AREA */}
                 <div className="w-full flex-1 flex items-center justify-center p-2 md:p-6 overflow-hidden">
-                    <div className="relative max-w-full max-h-full flex items-center justify-center">
+                    <div className="relative max-w-full max-h-full flex items-center justify-center w-full h-full">
                         {ad.type === 'banner' && ad.imageUrl ? (
                             <a href={ad.destinationUrl || '#'} target="_blank" rel="noopener noreferrer" className="block relative">
                                 <img 
@@ -112,7 +87,10 @@ const AdWaiterModal: React.FC<AdWaiterModalProps> = ({ isOpen, ad, onComplete, o
                                 />
                             </a>
                         ) : (
-                            <div ref={adContainerRef} className="w-full h-full flex items-center justify-center overflow-auto rounded-2xl bg-gray-900" />
+                            <AdDisplay 
+                                adCode={ad.code || ad.scriptCode || ''} 
+                                className="w-full h-full rounded-2xl bg-gray-900"
+                            />
                         )}
                     </div>
                 </div>
