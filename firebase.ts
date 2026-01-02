@@ -1,3 +1,4 @@
+
 // FIX: Use 'compat' imports to support v8 namespaced syntax with Firebase v9+ SDK.
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
@@ -41,14 +42,8 @@ const app = firebase.app();
 // Initialize Firestore
 const firestoreInstance = app.firestore();
 
-/**
- * FIX: Resolved connection warnings and deprecations.
- * 1. Removed experimentalForceLongPolling to fix conflict with experimentalAutoDetectLongPolling.
- * 2. Handled persistence via settings where possible for modern SDK behavior.
- */
 try {
   firestoreInstance.settings({
-    // Keep only auto-detect to avoid "cannot be used together" error
     experimentalAutoDetectLongPolling: true,
     ignoreUndefinedProperties: true,
   });
@@ -61,8 +56,6 @@ try {
 export const db = firestoreInstance;
 export const storage = app.storage();
 
-// Enable offline persistence (Compat version)
-// Note: Multi-tab persistence is the current standard for compat v9+
 if (typeof window !== 'undefined') {
     db.enablePersistence({ synchronizeTabs: true })
       .catch((err) => {
@@ -78,7 +71,6 @@ export const auth = app.auth();
 export const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
 export const Timestamp = firebase.firestore.Timestamp;
 
-// --- Messaging Initialization ---
 export let messaging: firebase.messaging.Messaging | null = null;
 if (typeof window !== 'undefined') {
     try {
@@ -90,7 +82,6 @@ if (typeof window !== 'undefined') {
     }
 }
 
-// --- Helpers ---
 const safeGetTimestamp = (timestamp: any): string => {
     if (timestamp && typeof timestamp.toDate === 'function') {
         return timestamp.toDate().toISOString();
@@ -114,26 +105,16 @@ export const generateSlug = (title: string): string => {
         .replace(/-+$/, '');
 };
 
-// Helper to handle Firestore errors
 const handleFirestoreError = (error: any, context: string, fallback: any) => {
     const code = error?.code;
     const msg = error?.message || '';
-
     if (msg.toLowerCase().includes('index')) {
-        console.error(`[Cinematix] Missing Index for ${context}. Please click the link in original console error.`);
+        console.error(`[Cinematix] Missing Index for ${context}.`);
         return fallback;
     }
-
     if (code === 'unavailable' || msg.includes('offline') || code === 'failed-precondition') {
-        console.warn(`[Cinematix] Firestore is currently unavailable (${context}). Operating in offline mode.`);
         return fallback;
     } 
-    else if (code === 'permission-denied') {
-        console.warn(`[Cinematix] Permission denied for ${context}.`);
-    } 
-    else {
-        console.error(`Error fetching ${context}:`, error);
-    }
     return fallback;
 };
 
@@ -196,31 +177,57 @@ export const updateTop10ContentForPage = async (pageKey: PageKey, items: PinnedI
     }, { merge: true });
 };
 
+// REFINED: Standard Ads fetching with full field mapping
 export const getAds = async (): Promise<Ad[]> => {
     try {
         const querySnapshot = await db.collection("ads").orderBy("updatedAt", "desc").get();
-        return querySnapshot.docs.map(d => ({
-            ...(d.data() as Omit<Ad, 'id' | 'updatedAt'>),
-            id: d.id,
-            placement: d.data().placement || d.data().position || 'home-top',
-            timerDuration: d.data().timerDuration || 0,
-            updatedAt: safeGetTimestamp(d.data().updatedAt),
-        })) as Ad[];
+        return querySnapshot.docs.map(d => {
+            const data = d.data();
+            return {
+                ...data,
+                id: d.id,
+                placement: data.placement || data.position || 'home-top',
+                type: data.type || 'code',
+                status: data.status || (data.isActive === false ? 'disabled' : 'active'),
+                timerDuration: data.timerDuration || 0,
+                updatedAt: safeGetTimestamp(data.updatedAt),
+            };
+        }) as Ad[];
     } catch (error) {
         return handleFirestoreError(error, 'ads', []);
     }
 };
 
+// REFINED: Direct Fetch for standalone zones
 export const getAdByPosition = async (position: string): Promise<Ad | null> => {
   try {
+    // Try querying by placement field
     let q = db.collection("ads")
         .where("placement", "==", position)
         .where("status", "==", "active")
         .limit(1);
-    const snap = await q.get();
+    
+    let snap = await q.get();
+    
+    // Fallback for legacy position field
+    if (snap.empty) {
+        q = db.collection("ads")
+            .where("position", "==", position)
+            .where("status", "==", "active")
+            .limit(1);
+        snap = await q.get();
+    }
+
     if (!snap.empty) {
         const doc = snap.docs[0];
-        return { id: doc.id, ...doc.data() } as Ad;
+        const data = doc.data();
+        return { 
+            id: doc.id, 
+            ...data, 
+            placement: data.placement || data.position || position,
+            type: data.type || 'code',
+            status: 'active'
+        } as Ad;
     }
     return null;
   } catch (e) {
@@ -405,7 +412,6 @@ export const deleteHomeSection = async (sectionId: string): Promise<void> => {
     await db.collection('home_sections').doc(sectionId).delete();
 };
 
-// --- People Management Functions ---
 export const getPeople = async (): Promise<Person[]> => {
   try {
     const snapshot = await db.collection('people').get();
@@ -442,11 +448,9 @@ export const deletePerson = async (personId: string): Promise<void> => {
   await db.collection('people').doc(personId).delete();
 };
 
-// --- Stories Functions ---
 export const getStories = async (onlyActive: boolean = true): Promise<Story[]> => {
     try {
         const snapshot = await db.collection('stories').get();
-        
         let stories = snapshot.docs.map(doc => {
             const data = doc.data();
             return {
@@ -455,13 +459,10 @@ export const getStories = async (onlyActive: boolean = true): Promise<Story[]> =
                 createdAt: safeGetTimestamp(data.createdAt)
             } as Story;
         });
-
         stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
         if (onlyActive) {
             stories = stories.filter(s => s.isActive);
         }
-
         return stories;
     } catch (e) {
         return handleFirestoreError(e, 'stories', []);
@@ -474,7 +475,6 @@ export const saveStory = async (story: Partial<Story>): Promise<void> => {
         ...data,
         createdAt: data.createdAt ? data.createdAt : serverTimestamp()
     };
-
     if (id) {
         await db.collection('stories').doc(id).update(dataToSave);
     } else {
@@ -489,25 +489,20 @@ export const deleteStory = async (storyId: string): Promise<void> => {
     await db.collection('stories').doc(storyId).delete();
 };
 
-// --- Notification Functions ---
 export const getUserNotifications = async (userId: string): Promise<Notification[]> => {
     try {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        
         const snapshot = await db.collection('notifications')
             .where('userId', '==', userId)
             .get();
-        
         let notifications = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
             createdAt: safeGetTimestamp(doc.data().createdAt)
         } as Notification));
-
         notifications = notifications.filter(n => new Date(n.createdAt) > sevenDaysAgo);
         notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
         return notifications;
     } catch (error) {
         return handleFirestoreError(error, 'notifications', []);
@@ -528,7 +523,6 @@ export const markAllNotificationsAsRead = async (userId: string): Promise<void> 
             .where('userId', '==', userId)
             .where('isRead', '==', false)
             .get();
-        
         const batch = db.batch();
         unreadSnapshot.docs.forEach(doc => {
             batch.update(doc.ref, { isRead: true });
@@ -564,7 +558,6 @@ export const deleteBroadcastNotification = async (broadcastId: string): Promise<
     }
 };
 
-// --- Content Radar Functions ---
 export const getReleaseSchedules = async (): Promise<ReleaseSchedule[]> => {
   try {
     const snapshot = await db.collection('release_radar').get();

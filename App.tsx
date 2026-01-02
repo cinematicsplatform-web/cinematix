@@ -25,7 +25,6 @@ import SoonPage from './components/SoonPage';
 import PrivacyPolicyPage from './components/PrivacyPolicyPage';
 import CopyrightPage from './components/CopyrightPage';
 import AboutPage from './components/AboutPage';
-import AboutPageOriginal from './components/AboutPage'; // Added suffix to prevent conflict if needed
 import MyListPage from './components/MyListPage';
 import HomePage from './components/HomePage';
 import BottomNavigation from './components/BottomNavigation';
@@ -148,8 +147,18 @@ const App: React.FC = () => {
       if (VIEW_PATHS[normalizedPath]) return VIEW_PATHS[normalizedPath];
       if (normalizedPath.startsWith('/category/')) return 'category';
       if (normalizedPath.startsWith('/person/')) return 'personProfile';
-      if (normalizedPath.match(/^\/مشاهدة\//) || normalizedPath.startsWith('/watch/')) return 'watch';
-      if (normalizedPath.match(/^\/(?:series|program|مسلسل|برنامج|movie|فيلم|play|concert)\/([^\/]+)/)) return 'detail';
+      
+      // تحسين اكتشاف مسارات المشاهدة للافلام مقابل الحلقات
+      // روابط الحلقات تحتوي عادة على كلمة "الموسم" و "الحلقة" أو أرقام تدل عليها
+      const isEpisodicWatch = normalizedPath.match(/^\/(?:watch|مشاهدة)\/.*?\/.*?\d+.*?\/.*?\d+/);
+      if (isEpisodicWatch) return 'watch';
+
+      // روابط الأفلام أو الهبوط للمسلسلات تعتبر Detail
+      if (normalizedPath.match(/^\/(?:watch|مشاهدة)\/(?:movie|فيلم)\//) || 
+          normalizedPath.match(/^\/(?:series|program|مسلسل|برنامج|movie|فيلم|play|concert|watch|مشاهدة)\/([^\/]+)/)) {
+          return 'detail';
+      }
+      
       return 'home';
   };
 
@@ -261,11 +270,9 @@ const App: React.FC = () => {
   useLayoutEffect(() => {
       const prevView = prevViewRef.current;
       
-      // Sub-pages (details/watch) should always reset to top immediately
       if (view === 'detail' || view === 'watch' || view === 'personProfile' || view === 'download') {
           window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
       } 
-      // When returning TO a main page FROM a sub-page, restore saved scroll position INSTANTLY
       else {
           const savedPosition = scrollPositions.current[view];
           if (savedPosition !== undefined && (
@@ -278,11 +285,8 @@ const App: React.FC = () => {
               prevView === 'login' ||
               prevView === 'register'
           )) {
-              // We use 'instant' here to ensure the user doesn't see the top of the page.
-              // Note: For dynamic content like carousels, this runs synchronously before browser paint.
               window.scrollTo({ top: savedPosition, left: 0, behavior: 'instant' as any });
           } else {
-              // Top-level navigation (e.g. Home to Movies) should usually reset to top
               window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
           }
       }
@@ -299,9 +303,9 @@ const App: React.FC = () => {
         return;
       }
 
-      const watchMatch = decodedPath.match(/^\/watch\/([^\/]+)\/الموسم(\d+)\/الحلقة(\d+)/) || 
-                         decodedPath.match(/^\/مشاهدة\/([^\/]+)\/الموسم\/(\d+)\/الحلقة\/(\d+)/) ||
-                         decodedPath.match(/^\/watch\/([^\/]+)\/(\d+)\/(\d+)/);
+      // 1. منطق روابط المسلسلات والبرامج (حلقات)
+      const watchMatch = decodedPath.match(/^\/(?:watch|مشاهدة)\/([^\/]+)\/(?:الموسم|season)?(\d+)\/(?:الحلقة|episode)?(\d+)/) || 
+                         decodedPath.match(/^\/(?:watch|مشاهدة)\/([^\/]+)\/(\d+)\/(\d+)/);
       
       if (watchMatch) {
           const slug = watchMatch[1];
@@ -316,18 +320,22 @@ const App: React.FC = () => {
           }
       }
 
-      const movieWatchMatch = decodedPath.match(/^\/watch\/[^\/]+\/([^\/]+)/);
+      // 2. منطق روابط الأفلام (توجيهها دائماً لـ detail)
+      const movieWatchMatch = decodedPath.match(/^\/(?:watch|مشاهدة)\/(?:movie|فيلم|video\.movie)\/([^\/]+)/) ||
+                              decodedPath.match(/^\/(?:watch|مشاهدة)\/([^\/]+)$/);
       if (movieWatchMatch) {
           const slug = movieWatchMatch[1];
           const foundContent = contentList.find(c => (c.slug === slug) || (c.id === slug));
           if (foundContent) {
               setSelectedContent(foundContent);
+              // للافلام دائما نستخدم DetailPage لعرض المشغل والجدول
               setView('detail');
               return;
           }
       }
 
-      const seriesDetailMatch = decodedPath.match(/^\/(?:series|program)\/([^\/]+)\/الموسم(\d+)/);
+      // 3. روابط الهبوط للمسلسلات حسب الموسم
+      const seriesDetailMatch = decodedPath.match(/^\/(?:series|program|مسلسل|برنامج)\/([^\/]+)\/(?:الموسم|season)?(\d+)/);
       if (seriesDetailMatch) {
           const slug = seriesDetailMatch[1];
           const season = parseInt(seriesDetailMatch[2]);
@@ -340,6 +348,7 @@ const App: React.FC = () => {
           }
       }
 
+      // 4. الروابط العامة
       const match = decodedPath.match(/^\/(?:series|program|مسلسل|برنامج|movie|فيلم|play|concert)\/([^\/]+)/);
       if (match && match[1]) {
           const slug = match[1];
@@ -356,8 +365,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
       const handlePopState = () => {
-          // CRITICAL: Immediately save scroll position of the current view before we process state transition
-          // This ensures that when the user goes back, we have captured their exact scroll on the leaving page.
           const currentView = view;
           scrollPositions.current[currentView] = window.scrollY;
 
@@ -496,12 +503,10 @@ const App: React.FC = () => {
   }, []);
 
   const handleSetView = (newView: View, category?: string, params?: any) => {
-      // Save scroll position for views that are parents or have content lists
       scrollPositions.current[view] = window.scrollY;
       
       const subViews: View[] = ['detail', 'watch', 'personProfile', 'download', 'category', 'search', 'login', 'register', 'welcome'];
       
-      // Update returnView if we are moving TO a sub-view FROM a parent view
       if (subViews.includes(newView) && !subViews.includes(view)) {
           setReturnView(view);
       }
@@ -541,7 +546,7 @@ const App: React.FC = () => {
               const isEpisodic = type === ContentType.Series || type === ContentType.Program;
               
               if (!isEpisodic) {
-                  path = `/watch/${type}/${slug}`;
+                  path = `/watch/movie/${slug}`;
               } else {
                   const sNum = params?.season || detailParams?.seasonNumber || 1;
                   path = `/${type}/${slug}/الموسم${sNum}`;
@@ -555,11 +560,7 @@ const App: React.FC = () => {
 
   const handleSelectContent = (content: Content, seasonNumber?: number, episodeNumber?: number) => {
       if (isSearchOpen) setIsSearchOpen(false);
-      
-      // Save current scroll position before entering detail view
       scrollPositions.current[view] = window.scrollY;
-      
-      // Always return to the current view from detail
       if (view !== 'detail') setReturnView(view);
       
       setSelectedContent(content);
@@ -586,7 +587,7 @@ const App: React.FC = () => {
       } else { 
           setDetailParams(null); 
           setView('detail'); 
-          safeHistoryPush(`/watch/${content.type}/${slug}`); 
+          safeHistoryPush(`/watch/movie/${slug}`); 
       }
   };
 
@@ -742,7 +743,6 @@ const App: React.FC = () => {
           if (isEpisodic && content.seasons && content.seasons.length > 0) {
               const latestSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
               if (latestSeason) {
-                  // Integrated Meta Logic: Strictly override with season assets if present
                   if (latestSeason.poster) finalContent.poster = latestSeason.poster;
                   if (latestSeason.backdrop) finalContent.backdrop = latestSeason.backdrop;
                   if (latestSeason.logoUrl) { finalContent.logoUrl = latestSeason.logoUrl; finalContent.isLogoEnabled = true; }
@@ -750,14 +750,12 @@ const App: React.FC = () => {
                   if (latestSeason.releaseYear) finalContent.releaseYear = latestSeason.releaseYear;
                   if (latestSeason.horizontalPoster) finalContent.horizontalPoster = latestSeason.horizontalPoster;
                   
-                  // STRICT AD RULE: Use season trailer ONLY. If none, do NOT fallback to global.
                   if (latestSeason.trailerUrl) {
                       finalContent.trailerUrl = latestSeason.trailerUrl;
                   } else {
                       finalContent.trailerUrl = undefined;
                   }
                   
-                  // Mobile Integration
                   if (latestSeason.mobileImageUrl) finalContent.mobileBackdropUrl = latestSeason.mobileImageUrl;
                   if (latestSeason.enableMobileCrop !== undefined) finalContent.enableMobileCrop = latestSeason.enableMobileCrop;
                   if (latestSeason.mobileCropPositionX !== undefined) finalContent.mobileCropPositionX = latestSeason.mobileCropPositionX;
