@@ -47,12 +47,12 @@ const AdZone: React.FC<AdZoneProps> = ({ position, className }) => {
                     href={ad.destinationUrl || '#'} 
                     target="_blank" 
                     rel="nofollow noopener noreferrer"
-                    className="block transition-transform hover:scale-[1.01] active:scale-[0.98] max-w-full"
+                    className="block transition-transform hover:scale-[1.01] active:scale-[0.98] max-w-full mx-auto"
                 >
                     <img 
                         src={ad.imageUrl} 
                         alt={ad.title || "Advertisement"} 
-                        className="max-w-full h-auto rounded-2xl shadow-2xl object-contain border border-white/5"
+                        className="max-w-full h-auto rounded-2xl shadow-2xl object-contain border border-white/5 mx-auto"
                         style={{ maxHeight: '250px' }} 
                     />
                 </a>
@@ -61,10 +61,13 @@ const AdZone: React.FC<AdZoneProps> = ({ position, className }) => {
     }
 
     if (adType === 'code') {
+        const minHeight = position === 'global_head' ? '0px' : '90px';
+        
         return (
             <AdDisplay 
                 adCode={ad.code || ad.scriptCode || ''} 
                 className={`ad-zone-code-wrapper w-full flex justify-center my-4 ${className || ''}`}
+                style={{ minHeight: minHeight }}
             />
         );
     }

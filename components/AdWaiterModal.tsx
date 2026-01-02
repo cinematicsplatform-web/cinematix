@@ -90,6 +90,7 @@ const AdWaiterModal: React.FC<AdWaiterModalProps> = ({ isOpen, ad, onComplete, o
                             <AdDisplay 
                                 adCode={ad.code || ad.scriptCode || ''} 
                                 className="w-full h-full rounded-2xl bg-gray-900"
+                                style={{ minHeight: '300px', minWidth: '300px' }}
                             />
                         )}
                     </div>

@@ -1,48 +1,67 @@
 
 import React, { useEffect, useRef } from 'react';
+// @ts-ignore
+import postscribe from 'postscribe';
 
 interface AdDisplayProps {
-  adCode: string; // الكود البرمجي الخام القادم من قاعدة البيانات
+  adCode: string;       // الكود البرمجي الخام القادم من قاعدة البيانات
   className?: string;
+  style?: React.CSSProperties; // للسماح بحجز المساحة (minHeight)
 }
 
 /**
- * مكون AdDisplay: يقوم بإجبار المتصفح على تنفيذ السكربتات
- * نستخدم createContextualFragment لأن innerHTML لا يشغل السكربتات برمجياً
+ * مكون AdDisplay المتطور:
+ * 1. يستخدم postscribe لحقن السكربتات بشكل متوافق مع React.
+ * 2. يسمح بحجز مساحة (minHeight) لمنع الشبكات الإعلانية من اعتبار الإعلان مخفياً.
+ * 3. يطلق أحداث scroll/resize وهمية "لإيقاظ" السكربتات الكسولة.
+ * 4. يضمن توسيط المحتوى المحقون في منتصف الحاوية تماماً.
  */
-const AdDisplay: React.FC<AdDisplayProps> = ({ adCode, className = '' }) => {
-  const adContainerRef = useRef<HTMLDivElement>(null);
+const AdDisplay: React.FC<AdDisplayProps> = ({ adCode, className = '', style }) => {
+  const adRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!adCode || !adContainerRef.current) return;
-
-    const container = adContainerRef.current;
-
-    // 1. تنظيف المحتوى السابق لمنع تكرار الإعلانات
-    container.innerHTML = '';
-
-    try {
-        // 2. إنشاء Range و Fragment (هذا هو المفتاح لتشغيل السكربتات)
-        const range = document.createRange();
-        range.selectNode(container);
-        const documentFragment = range.createContextualFragment(adCode);
-
-        // 3. حقن الإعلان في الحاوية
-        container.appendChild(documentFragment);
-    } catch (err) {
-        console.error("Cinematix Ad Error:", err);
+    if (adRef.current && adCode) {
+      const container = adRef.current;
+      
+      // 1. تنظيف الحاوية
+      container.innerHTML = '';
+      
+      // 2. حقن الإعلان باستخدام Postscribe
+      try {
+        postscribe(container, adCode, {
+          done: () => {
+            // 3. الحل الجذري: إرسال أحداث وهمية لتنبيه السكربتات "الكسولة"
+            setTimeout(() => {
+              window.dispatchEvent(new Event('scroll'));
+              window.dispatchEvent(new Event('resize'));
+            }, 150); 
+          },
+          error: (err: any) => {
+             console.error("Ad Injection Error:", err);
+          }
+        });
+      } catch (err) {
+        console.error("Critical Ad Render Failure:", err);
+      }
     }
 
-    // تنظيف عند الخروج
     return () => {
-        if (container) container.innerHTML = '';
+        // Postscribe handles its own cleanup usually, but we ensure inner content is dead on unmount
     };
   }, [adCode]);
 
   return (
     <div 
-      ref={adContainerRef} 
-      className={`ad-wrapper flex justify-center items-center overflow-hidden ${className}`}
+      ref={adRef} 
+      className={`ad-container flex justify-center items-center overflow-hidden ${className}`}
+      // تعديل display إلى flex مع justify-content لضمان توسيط الإعلان برمجياً
+      style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        width: '100%',
+        ...style 
+      }} 
     />
   );
 };

@@ -846,6 +846,64 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         setTmdbIdInput(content?.id && !isNaN(Number(content.id)) ? content.id : '');
     }, [content]);
 
+    // NEW EFFECT: Synchronize single season media from content management automatically
+    useEffect(() => {
+        if (isEpisodic && formData.seasons?.length === 1) {
+            setFormData(prev => {
+                const season = prev.seasons![0];
+                const updatedSeason = {
+                    ...season,
+                    poster: prev.poster,
+                    backdrop: prev.backdrop,
+                    horizontalPoster: prev.horizontalPoster,
+                    logoUrl: prev.logoUrl,
+                    mobileImageUrl: prev.mobileBackdropUrl,
+                    enableMobileCrop: prev.enableMobileCrop,
+                    mobileCropPositionX: prev.mobileCropPositionX,
+                    mobileCropPositionY: prev.mobileCropPositionY,
+                    trailerUrl: prev.trailerUrl,
+                    description: prev.description,
+                    releaseYear: prev.releaseYear
+                };
+                
+                // Compare carefully to avoid state infinite loop
+                const isChanged = 
+                    season.poster !== updatedSeason.poster ||
+                    season.backdrop !== updatedSeason.backdrop ||
+                    season.horizontalPoster !== updatedSeason.horizontalPoster ||
+                    season.logoUrl !== updatedSeason.logoUrl ||
+                    season.mobileImageUrl !== updatedSeason.mobileImageUrl ||
+                    season.enableMobileCrop !== updatedSeason.enableMobileCrop ||
+                    season.mobileCropPositionX !== updatedSeason.mobileCropPositionX ||
+                    season.mobileCropPositionY !== updatedSeason.mobileCropPositionY ||
+                    season.trailerUrl !== updatedSeason.trailerUrl ||
+                    season.description !== updatedSeason.description ||
+                    season.releaseYear !== updatedSeason.releaseYear;
+
+                if (!isChanged) return prev;
+
+                return {
+                    ...prev,
+                    seasons: [updatedSeason]
+                };
+            });
+        }
+    }, [
+        isEpisodic,
+        formData.seasons?.length,
+        formData.poster,
+        formData.backdrop,
+        formData.horizontalPoster,
+        formData.logoUrl,
+        formData.mobileBackdropUrl,
+        formData.enableMobileCrop,
+        formData.mobileCropPositionX,
+        formData.mobileCropPositionY,
+        formData.trailerUrl,
+        formData.description,
+        formData.releaseYear
+    ]);
+
     const openGallery = (type: 'poster' | 'backdrop' | 'logo', callback: (url: string) => void) => {
         const idToUse = formData.tmdbId || formData.id;
         if (!idToUse) {
@@ -2455,7 +2513,15 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     </button>
                                                     <input onClick={e => e.stopPropagation()} type="file" id={`excel-${season.id}`} className="hidden" accept=".xlsx" onChange={(e) => handleSeasonExcelImport(e, season.id, season.seasonNumber)}/>
                                                     <label htmlFor={`excel-${season.id}`} className="p-2 hover:bg-green-900/30 text-green-600 rounded cursor-pointer" title="استيراد حلقات"><ExcelIcon className="w-4 h-4"/></label>
-                                                    <button type="button" onClick={(e) => {e.stopPropagation(); handleAddEpisode(season.id)}} className="p-2 hover:bg-gray-800 text-blue-400 rounded"><PlusIcon className="w-4 h-4"/></button>
+                                                    <button type="button" onClick={(e) => {e.stopPropagation(); handleAddEpisode(season.id)}} className="p-2 hover:bg-gray-800 text-blue-400 rounded" title="إضافة حلقة"><PlusIcon className="w-4 h-4"/></button>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={(e) => { e.stopPropagation(); requestDeleteSeason(season.id, season.title || `الموسم ${season.seasonNumber}`); }} 
+                                                        className="p-2 hover:bg-red-900/30 text-red-500 rounded"
+                                                        title="حذف الموسم"
+                                                    >
+                                                        <TrashIcon className="w-4 h-4" />
+                                                    </button>
                                                 </div>
                                             </div>
 
@@ -2464,74 +2530,95 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 p-6 bg-[#13161c] rounded-2xl border border-gray-800/50">
                                                         <div className="col-span-full mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
                                                             <h4 className="text-sm font-bold text-blue-400">بيانات الموسم {season.seasonNumber}</h4>
-                                                        </div>
-                                                        
-                                                        {renderImageInput("بوستر الموسم (Booster)", season.poster, (val) => handleUpdateSeason(season.id, 'poster', val), 'poster', "Poster URL")}
-                                                        {renderImageInput("خلفية الموسم (Background)", season.backdrop, (val) => handleUpdateSeason(season.id, 'backdrop', val), 'backdrop', "Backdrop URL")}
-                                                        {renderImageInput("بوستر عريض (Wide)", season.horizontalPoster, (val) => handleUpdateSeason(season.id, 'horizontalPoster', val), 'backdrop', "Horizontal Poster URL")}
-                                                        {renderImageInput("شعار الموسم (Logo)", season.logoUrl, (val) => handleUpdateSeason(season.id, 'logoUrl', val), 'logo', "Logo URL")}
-                                                        {renderImageInput("صورة الموبايل (Mobile)", season.mobileImageUrl, (val) => handleUpdateSeason(season.id, 'mobileImageUrl', val), 'poster', "Mobile Image URL")}
-                                                        
-                                                        <div className="space-y-4">
-                                                            <div>
-                                                                <label className={labelClass}>رابط التريلر (Trailer Link)</label>
-                                                                <div className="flex gap-2">
-                                                                    <div className="flex-1 relative">
-                                                                        <input 
-                                                                            value={season.trailerUrl || ''} 
-                                                                            onChange={(e) => handleUpdateSeason(season.id, 'trailerUrl', e.target.value)} 
-                                                                            className={inputClass} 
-                                                                            placeholder="YouTube Trailer URL" 
-                                                                        />
-                                                                        <button 
-                                                                            type="button"
-                                                                            onClick={() => setYouTubeSearchState({ isOpen: true, targetId: season.id })}
-                                                                            className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
-                                                                        >
-                                                                            <YouTubeIcon className="w-4 h-4" />
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div>
-                                                                <label className={labelClass}>سنة إنتاج الموسم</label>
-                                                                <input 
-                                                                    type="number" 
-                                                                    value={season.releaseYear || ''} 
-                                                                    onChange={e => handleUpdateSeason(season.id, 'releaseYear', parseInt(e.target.value))} 
-                                                                    className={inputClass}
-                                                                    placeholder="مثال: 2024"
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="col-span-full">
-                                                            <label className={labelClass}>قصة الموسم</label>
-                                                            <textarea value={season.description || ''} onChange={(e) => handleUpdateSeason(season.id, 'description', e.target.value)} className={inputClass} rows={2}/>
-                                                        </div>
-                                                        
-                                                        <div className="col-span-full mt-4 p-4 border-t border-gray-800">
-                                                            <div className="flex justify-between items-center mb-4">
-                                                                <label className={labelClass}>تخصيص الموبايل لهذا الموسم</label>
-                                                                <ToggleSwitch 
-                                                                    checked={season.enableMobileCrop || false} 
-                                                                    onChange={(val) => handleUpdateSeason(season.id, 'enableMobileCrop', val)} 
-                                                                    label={season.enableMobileCrop ? "مفعل" : "معطل"}
-                                                                />
-                                                            </div>
-                                                            {season.enableMobileCrop && (
-                                                                <div className="mt-2">
-                                                                     <MobileSimulator 
-                                                                        imageUrl={season.mobileImageUrl || season.backdrop || formData.backdrop || ''} 
-                                                                        posX={season.mobileCropPositionX ?? 50} 
-                                                                        posY={season.mobileCropPositionY ?? 50} 
-                                                                        contentData={{...formData, ...season, id: formData.id} as Content}
-                                                                        onUpdateX={(v) => handleUpdateSeason(season.id, 'mobileCropPositionX', v)} 
-                                                                        onUpdateY={(v) => handleUpdateSeason(season.id, 'mobileCropPositionY', v)} 
-                                                                     />
-                                                                </div>
+                                                            {formData.seasons?.length === 1 && (
+                                                                <span className="text-[10px] font-black bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20">تزامن تلقائي مفعل للموسم الفردي</span>
                                                             )}
                                                         </div>
+                                                        
+                                                        {formData.seasons?.length === 1 ? (
+                                                            <div className="col-span-full p-8 bg-black/20 rounded-2xl border border-dashed border-gray-800 text-center animate-fade-in">
+                                                                <p className="text-gray-400 text-sm font-bold">
+                                                                    يتم مزامنة صور وميديا هذا الموسم تلقائياً مع بيانات العمل الأساسية.
+                                                                </p>
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={() => setActiveTab('media')}
+                                                                    className="mt-4 text-[var(--color-accent)] text-xs font-black hover:underline flex items-center justify-center gap-2 mx-auto"
+                                                                >
+                                                                    <PhotoIcon className="w-4 h-4" />
+                                                                    انتقل لقسم "الصور والميديا" للتعديل
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                {renderImageInput("بوستر الموسم (Booster)", season.poster, (val) => handleUpdateSeason(season.id, 'poster', val), 'poster', "Poster URL")}
+                                                                {renderImageInput("خلفية الموسم (Background)", season.backdrop, (val) => handleUpdateSeason(season.id, 'backdrop', val), 'backdrop', "Backdrop URL")}
+                                                                {renderImageInput("بوستر عريض (Wide)", season.horizontalPoster, (val) => handleUpdateSeason(season.id, 'horizontalPoster', val), 'backdrop', "Horizontal Poster URL")}
+                                                                {renderImageInput("شعار الموسم (Logo)", season.logoUrl, (val) => handleUpdateSeason(season.id, 'logoUrl', val), 'logo', "Logo URL")}
+                                                                {renderImageInput("صورة الموبايل (Mobile)", season.mobileImageUrl, (val) => handleUpdateSeason(season.id, 'mobileImageUrl', val), 'poster', "Mobile Image URL")}
+                                                                
+                                                                <div className="space-y-4">
+                                                                    <div>
+                                                                        <label className={labelClass}>رابط التريلر (Trailer Link)</label>
+                                                                        <div className="flex gap-2">
+                                                                            <div className="flex-1 relative">
+                                                                                <input 
+                                                                                    value={season.trailerUrl || ''} 
+                                                                                    onChange={(e) => handleUpdateSeason(season.id, 'trailerUrl', e.target.value)} 
+                                                                                    className={inputClass} 
+                                                                                    placeholder="YouTube Trailer URL" 
+                                                                                />
+                                                                                <button 
+                                                                                    type="button"
+                                                                                    onClick={() => setYouTubeSearchState({ isOpen: true, targetId: season.id })}
+                                                                                    className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
+                                                                                >
+                                                                                    <YouTubeIcon className="w-4 h-4" />
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className={labelClass}>سنة إنتاج الموسم</label>
+                                                                        <input 
+                                                                            type="number" 
+                                                                            value={season.releaseYear || ''} 
+                                                                            onChange={e => handleUpdateSeason(season.id, 'releaseYear', parseInt(e.target.value))} 
+                                                                            className={inputClass}
+                                                                            placeholder="مثال: 2024"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="col-span-full">
+                                                                    <label className={labelClass}>قصة الموسم</label>
+                                                                    <textarea value={season.description || ''} onChange={(e) => handleUpdateSeason(season.id, 'description', e.target.value)} className={inputClass} rows={2}/>
+                                                                </div>
+                                                                
+                                                                <div className="col-span-full mt-4 p-4 border-t border-gray-800">
+                                                                    <div className="flex justify-between items-center mb-4">
+                                                                        <label className={labelClass}>تخصيص الموبايل لهذا الموسم</label>
+                                                                        <ToggleSwitch 
+                                                                            checked={season.enableMobileCrop || false} 
+                                                                            onChange={(val) => handleUpdateSeason(season.id, 'enableMobileCrop', val)} 
+                                                                            label={season.enableMobileCrop ? "مفعل" : "معطل"}
+                                                                        />
+                                                                    </div>
+                                                                    {season.enableMobileCrop && (
+                                                                        <div className="mt-2">
+                                                                            <MobileSimulator 
+                                                                                imageUrl={season.mobileImageUrl || season.backdrop || formData.backdrop || ''} 
+                                                                                posX={season.mobileCropPositionX ?? 50} 
+                                                                                posY={season.mobileCropPositionY ?? 50} 
+                                                                                contentData={{...formData, ...season, id: formData.id} as Content}
+                                                                                onUpdateX={(v) => handleUpdateSeason(season.id, 'mobileCropPositionX', v)} 
+                                                                                onUpdateY={(v) => handleUpdateSeason(season.id, 'mobileCropPositionY', v)} 
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </div>
 
                                                     <div className="space-y-3">
