@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { db, generateSlug, getContentRequests, deleteContentRequest, getUserProfile, getPinnedContent, updatePinnedContentForPage, getStories, saveStory, deleteStory, serverTimestamp, getBroadcastHistory, deleteBroadcastNotification, getReports, deleteReport, getReleaseSchedules, deleteReleaseSchedule } from '../firebase';
 import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, Top10State, PageKey, ThemeType, Category, Genre, Season, Episode, Server, ContentRequest, Story, Notification, BroadcastNotification, ReleaseSchedule } from '../types';
@@ -13,6 +12,7 @@ import * as jsrsasign from 'jsrsasign';
 import ManageStories from './ManageStories';
 import { BellIcon } from './icons/BellIcon';
 import { PlayIcon } from './icons/PlayIcon';
+import { SearchIcon } from './icons/SearchIcon';
 import SEO from './SEO';
 import AppConfigTab from './admin/AppConfigTab';
 import PeopleManagerTab from './admin/PeopleManagerTab';
@@ -643,12 +643,12 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
     const categoryButtons = [
         { id: 'all', label: 'الكل', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
         { id: 'arabic_movies', label: 'أفلام عربي', color: 'bg-green-500/10 text-green-400 border-green-500/30' },
-        { id: 'arabic_series', label: 'مسلسلات عربي', color: 'bg-purple-500/10 text-purple-400 border-purple-500/30' },
+        { id: 'arabic_series', label: 'مسلسلات عربي', color: 'bg-purple-500/10 text-purple-400 border-green-500/30' },
         { id: 'turkish_movies', label: 'أفلام تركي', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
         { id: 'turkish_series', label: 'مسلسلات تركي', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' },
         { id: 'foreign_movies', label: 'أفلام أجنبي', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' },
         { id: 'foreign_series', label: 'مسلسلات أجنبي', color: 'bg-pink-500/10 text-pink-400 border-pink-500/30' },
-        { id: 'animation', label: 'أفلام أنيميشن', color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' },
+        { id: 'animation', label: 'أفلام أنميشن', color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' },
     ];
 
     const currentCategoryLabel = categoryButtons.find(b => b.id === radarType)?.label || 'الكل';
@@ -991,7 +991,7 @@ const ContentManagementTab: React.FC<any> = ({content, onEdit, onNew, onRequestD
     return (
         <div>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#1f2937] p-6 rounded-2xl mb-8 border border-gray-700/50 shadow-lg">
-                <input type="text" placeholder="ابحث عن فيلم أو مسلسل..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-auto md:min-w-[350px] bg-gray-900 border border-gray-700 rounded-xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-[#00A7F8] text-white placeholder-gray-500 shadow-inner"/>
+                <input type="text" placeholder="ابحث عن فيلم أو مسلسل..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-auto md:min-w-[350px] bg-gray-900 border border-gray-700 rounded-xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-[#00A7F8] text-white placeholder-gray-600 shadow-inner"/>
                 <div className="flex gap-3 w-full md:w-auto flex-wrap">
                     <button onClick={generateExcelTemplate} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-5 rounded-xl transition-colors text-sm border border-gray-600" title="تحميل نموذج Excel"><TableCellsIcon /><span className="hidden sm:inline">تحميل نموذج Excel</span></button>
                     <input type="file" accept=".xlsx, .xls" ref={excelInputRef} onChange={handleExcelUpload} className="hidden" />
@@ -1124,8 +1124,333 @@ const ReportsManagementTab: React.FC<any> = ({ addToast, onRequestDelete }) => {
 };
 
 const UserManagementTab: React.FC<any> = ({users, onAddAdmin, onRequestDelete, addToast}) => { const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [firstName, setFirstName] = useState(''); const handleAddAdminSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (email && password) { try { await onAddAdmin({email, password, firstName}); setEmail(''); setPassword(''); setFirstName(''); addToast('تمت إضافة المستخدم بنجاح.', 'success'); } catch (error: any) { addToast(error.message, 'error'); } } }; return (<div className="space-y-8"><div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><h3 className="text-xl font-bold mb-6 text-[#00FFB0]">إضافة مستخدم جديد</h3><form onSubmit={handleAddAdminSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end"><div className="w-full"><label className="block text-xs font-bold text-gray-400 mb-2">الاسم</label><input value={firstName} onChange={e => setFirstName(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#00A7F8] text-white placeholder-gray-600" required/></div><div className="w-full"><label className="block text-xs font-bold text-gray-400 mb-2">البريد الإلكتروني</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#00A7F8] text-white placeholder-gray-600" required/></div><div className="flex gap-4 w-full"><div className="flex-1"><label className="block text-xs font-bold text-gray-400 mb-2">كلمة المرور</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#00A7F8] text-white placeholder-gray-600" required/></div><button type="submit" className="bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-bold py-3 px-6 rounded-xl hover:shadow-[0_0_15px_rgba(0,167,248,0.4)] transition-all transform hover:scale-105 h-[48px] mt-auto">إضافة</button></div></form></div><div className="overflow-x-auto bg-[#1f2937] rounded-2xl border border-gray-700/50 shadow-xl"><table className="min-w-full text-sm text-right text-gray-300 whitespace-nowrap"><thead className="bg-gray-800/50 text-xs uppercase font-bold text-gray-400"><tr><th scope="col" className="px-8 py-4">الاسم</th><th scope="col" className="px-8 py-4">البريد الإلكتروني</th><th scope="col" className="px-8 py-4">الدور</th><th scope="col" className="px-8 py-4">إجراءات</th></tr></thead><tbody>{users.map((user:any) => (<tr key={user.id} className="border-b border-gray-700/50 hover:bg-gray-700/20 transition-colors"><td className="px-8 py-4 font-bold text-white">{user.firstName} {user.lastName || ''}</td><td className="px-8 py-4">{user.email}</td><td className="px-8 py-4"><span className={`px-3 py-1 rounded-full text-xs font-bold ${user.role === UserRole.Admin ? 'bg-yellow-500/10 text-yellow-400' : 'bg-gray-700 text-gray-400 border-gray-600'}`}>{user.role === UserRole.Admin ? 'مسؤول' : 'مستخدم'}</span></td><td className="px-8 py-4"><button onClick={() => onRequestDelete(user.id, user.email)} className="text-red-400 hover:text-red-300 font-bold text-xs bg-red-500/10 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors">حذف</button></td></tr>))}</tbody></table></div></div>); };
-const PinnedContentManagementTab: React.FC<any> = ({ allContent, pinnedState, setPinnedItems }) => { const [selectedPage, setSelectedPage] = useState<PageKey>('home'); const [searchTerm, setSearchTerm] = useState(''); const [localPinnedItems, setLocalPinnedItems] = useState<PinnedItem[]>([]); const [draggedItem, setDraggedItem] = useState<PinnedItem | null>(null); const [dragOverItem, setDraggedOverItem] = useState<PinnedItem | null>(null); useEffect(() => { setLocalPinnedItems(pinnedState[selectedPage] || []); }, [pinnedState, selectedPage]); const isDirty = JSON.stringify(localPinnedItems) !== JSON.stringify(pinnedState[selectedPage] || []); const pinnedContentDetails = useMemo(() => localPinnedItems.map(pin => { const content = allContent.find((c:any) => c.id === pin.contentId); return content ? { ...pin, contentDetails: content } : null; }).filter((item): item is { contentDetails: Content } & PinnedItem => item !== null), [localPinnedItems, allContent]); const availableContent = useMemo(() => { const pinnedIds = new Set(localPinnedItems.map(p => p.contentId)); let filtered = allContent.filter((c:any) => !pinnedIds.has(c.id)); if (selectedPage === 'movies') filtered = filtered.filter((c:any) => c.type === ContentType.Movie); else if (selectedPage === 'series') filtered = filtered.filter((c:any) => c.type === ContentType.Series); else if (selectedPage === 'kids') filtered = filtered.filter((c:any) => c.categories.includes('افلام أنميشن') || c.visibility === 'kids' || c.genres.includes('أطفال')); else if (selectedPage === 'ramadan') filtered = filtered.filter((c:any) => c.categories.includes('رمضان')); else if (selectedPage === 'soon') filtered = filtered.filter((c:any) => c.categories.includes('قريباً')); return filtered.filter((c:any) => (c.title || '').toLowerCase().includes(searchTerm.toLowerCase())); }, [allContent, localPinnedItems, searchTerm, selectedPage]); const handlePin = (contentId: string) => { if (pinnedContentDetails.length >= 10) { alert('يمكنك تثبيت 10 عناصر كحد أقصى.'); return; } setLocalPinnedItems([...localPinnedItems, { contentId, bannerNote: '' }]); }; const handleUnpin = (contentId: string) => { setLocalPinnedItems(localPinnedItems.filter(p => p.contentId !== contentId)); }; const handleBannerNoteChange = (contentId: string, note: string) => { setLocalPinnedItems(localPinnedItems.map(p => p.contentId === contentId ? { ...p, bannerNote: note } : p)); }; const onDragStart = (e: React.DragEvent<HTMLLIElement>, item: PinnedItem) => { setDraggedItem(item); e.dataTransfer.effectAllowed = 'move'; }; const onDragOver = (e: React.DragEvent<HTMLLIElement>, item: PinnedItem) => { e.preventDefault(); if (draggedItem?.contentId !== item.contentId) { setDraggedOverItem(item); } }; const onDrop = () => { if (!draggedItem || !dragOverItem) return; const currentItems = [...localPinnedItems]; const fromIndex = currentItems.findIndex(p => p.contentId === draggedItem.contentId); const toIndex = currentItems.findIndex(p => p.contentId === dragOverItem.contentId); if (fromIndex === -1 || toIndex === -1) return; const updatedItems = [...currentItems]; const [movedItem] = updatedItems.splice(fromIndex, 1); updatedItems.splice(toIndex, 0, movedItem); setLocalPinnedItems(updatedItems); setDraggedItem(null); setDraggedOverItem(null); }; const onDragEnd = () => { setDraggedItem(null); setDraggedOverItem(null); }; const pageLabels: Record<string, string> = { home: 'الصفحة الرئيسية', movies: 'صفحة الأفلام', series: 'صفحة المسلسلات', ramadan: 'صفحة رمضان', soon: 'صفحة قريباً', kids: 'صفحة الأطفال' }; return ( <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"> <div className="lg:col-span-3 bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 mb-2 shadow-lg"><h3 className="text-gray-400 mb-4 text-sm font-bold uppercase tracking-wider">اختر الصفحة للتحكم في (Hero Slider):</h3><div className="flex flex-wrap gap-3">{(Object.keys(pageLabels) as PageKey[]).map(key => (<button key={key} onClick={() => setSelectedPage(key)} className={`px-6 py-3 rounded-xl text-sm font-bold transition-all border ${selectedPage === key ? 'bg-[#00A7F8]/20 border-[#00A7F8] text-[#00A7F8] shadow-[0_0_15px_rgba(0,167,248,0.2)]' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500'}`}>{pageLabels[key]}</button>))}</div></div> <div className="lg:col-span-2 bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 shadow-xl"><div className="flex justify-between items-center mb-6"><div><h3 className="text-xl font-bold text-[#00FFB0]">المحتوى المميز (Hero): {pageLabels[selectedPage]}</h3><p className="text-sm text-gray-400 mt-1">يتحكم هذا في سلايدر الهيرو (أول 5).</p></div><button onClick={() => setPinnedItems(selectedPage, localPinnedItems)} disabled={!isDirty} className="bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-bold py-2 px-6 rounded-xl hover:shadow-[0_0_15px_rgba(0,167,248,0.4)] transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none">حفظ التغييرات</button></div>{pinnedContentDetails.length > 0 ? (<ul onDrop={onDrop} onDragLeave={() => setDraggedOverItem(null)} className="space-y-4">{pinnedContentDetails.map((item, index) => (<li key={item.contentId} draggable onDragStart={(e) => onDragStart(e, item)} onDragOver={(e) => onDragOver(e, item)} onDragEnd={onDragEnd} className={`flex items-center gap-4 p-4 rounded-xl transition-all duration-200 cursor-grab border ${draggedItem?.contentId === item.contentId ? 'opacity-50' : ''} ${dragOverItem?.contentId === item.contentId ? 'bg-gray-700 border-[#00A7F8]' : 'bg-gray-800/50 border-gray-700'}`}><div className="flex flex-col items-center justify-center w-8 text-gray-600 cursor-grab"><div className="w-1.5 h-1.5 bg-gray-600 rounded-full mb-1"></div><div className="w-1.5 h-1.5 bg-gray-600 rounded-full mb-1"></div><div className="w-1.5 h-1.5 bg-gray-600 rounded-full"></div></div><img src={item.contentDetails.poster} alt={item.contentDetails.title} className="w-12 h-16 object-cover rounded-lg bg-gray-900 shadow-sm" /><div className="flex-1 min-w-0"><p className="font-bold text-white text-base truncate mb-1">{item.contentDetails.title}</p><input type="text" placeholder="نص مميز (اختياري)" value={item.bannerNote || ''} onChange={(e) => handleBannerNoteChange(item.contentId, e.target.value)} className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-xs w-full text-gray-300 focus:outline-none focus:border-[#00A7F8] transition-colors"/></div><button onClick={() => handleUnpin(item.contentId)} className="text-red-400 hover:text-red-300 p-2 bg-red-500/10 rounded-lg hover:bg-red-500/20 transition-colors"><CloseIcon className="w-5 h-5" /></button></li>))}</ul>) : (<div className="text-center py-20 text-gray-500 border-2 border-dashed border-gray-700 rounded-3xl flex flex-col items-center justify-center gap-2"><span className="text-4xl opacity-30">📌</span>لا يوجد محتوى مثبت في هذه الصفحة.</div>)}</div> <div className="bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 shadow-xl h-fit"><h3 className="font-bold text-[#00A7F8] mb-4 text-lg">إضافة محتوى للمثبت</h3><input type="text" placeholder="ابحث لإضافة..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 mb-4 text-white focus:outline-none focus:ring-2 focus:ring-[#00A7F8] placeholder-gray-600"/><div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">{availableContent.slice(0, 20).map((c:any) => (<div key={c.id} className="flex items-center gap-3 p-3 hover:bg-gray-800 rounded-xl transition-colors border border-transparent hover:border-gray-700 cursor-pointer group"><img src={c.poster} alt={c.title} className="w-10 h-14 object-cover rounded-lg bg-gray-900 shadow-sm" /><div className="flex-1 min-w-0"><p className="text-sm font-bold truncate text-white group-hover:text-[#00A7F8] transition-colors">{c.title}</p><p className="text-xs text-gray-500 font-mono">{c.releaseYear}</p></div><button onClick={() => handlePin(c.id)} className="bg-[#00A7F8]/10 text-[#00A7F8] hover:bg-[#00A7F8] hover:text-black font-bold text-xl w-8 h-8 rounded-lg flex items-center justify-center transition-all">+</button></div>))}</div></div> </div> ); };
-const Top10ManagerTab: React.FC<any> = ({ allContent, pinnedState, setPinnedItems }) => { const [selectedPage, setSelectedPage] = useState<PageKey>('home'); const [searchTerm, setSearchTerm] = useState(''); const [localPinnedItems, setLocalPinnedItems] = useState<PinnedItem[]>([]); const [draggedItem, setDraggedItem] = useState<PinnedItem | null>(null); const [dragOverItem, setDraggedOverItem] = useState<PinnedItem | null>(null); useEffect(() => { setLocalPinnedItems(pinnedState[selectedPage] || []); }, [pinnedState, selectedPage]); const isDirty = JSON.stringify(localPinnedItems) !== JSON.stringify(pinnedState[selectedPage] || []); const pinnedContentDetails = useMemo(() => localPinnedItems.map(pin => { const content = allContent.find((c:any) => c.id === pin.contentId); return content ? { ...pin, contentDetails: content } : null; }).filter((item): item is { contentDetails: Content } & PinnedItem => item !== null), [localPinnedItems, allContent]); const availableContent = useMemo(() => { const pinnedIds = new Set(localPinnedItems.map(p => p.contentId)); let filtered = allContent.filter((c:any) => !pinnedIds.has(c.id)); if (selectedPage === 'movies') filtered = filtered.filter((c:any) => c.type === ContentType.Movie); else if (selectedPage === 'series') filtered = filtered.filter((c:any) => c.type === ContentType.Series); else if (selectedPage === 'kids') filtered = filtered.filter((c:any) => c.categories.includes('افلام أنميشن') || c.visibility === 'kids' || c.genres.includes('أطفال')); else if (selectedPage === 'ramadan') filtered = filtered.filter((c:any) => c.categories.includes('رمضان')); else if (selectedPage === 'soon') filtered = filtered.filter((c:any) => c.categories.includes('قريباً')); return filtered.filter((c:any) => (c.title || '').toLowerCase().includes(searchTerm.toLowerCase())); }, [allContent, localPinnedItems, searchTerm, selectedPage]); const handlePin = (contentId: string) => { if (pinnedContentDetails.length >= 10) { alert('يمكنك إضافة 10 عناصر كحد أقصى للتوب 10.'); return; } setLocalPinnedItems([...localPinnedItems, { contentId, bannerNote: '' }]); }; const handleUnpin = (contentId: string) => { setLocalPinnedItems(localPinnedItems.filter(p => p.contentId !== contentId)); }; const onDragStart = (e: React.DragEvent<HTMLLIElement>, item: PinnedItem) => { setDraggedItem(item); e.dataTransfer.effectAllowed = 'move'; }; const onDragOver = (e: React.DragEvent<HTMLLIElement>, item: PinnedItem) => { e.preventDefault(); if (draggedItem?.contentId !== item.contentId) { setDraggedOverItem(item); } }; const onDrop = () => { if (!draggedItem || !dragOverItem) return; const currentItems = [...localPinnedItems]; const fromIndex = currentItems.findIndex(p => p.contentId === draggedItem.contentId); const toIndex = currentItems.findIndex(p => p.contentId === dragOverItem.contentId); if (fromIndex === -1 || toIndex === -1) return; const updatedItems = [...currentItems]; const [movedItem] = updatedItems.splice(fromIndex, 1); updatedItems.splice(toIndex, 0, movedItem); setLocalPinnedItems(updatedItems); setDraggedItem(null); setDraggedOverItem(null); }; const onDragEnd = () => { setDraggedItem(null); setDraggedOverItem(null); }; const pageLabels: Record<string, string> = { home: 'الصفحة الرئيسية', movies: 'صفحة الأفلام', series: 'صفحة المسلسلات', ramadan: 'صفحة رمضان', soon: 'صفحة قريباً', kids: 'صفحة الأطفال' }; return ( <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"> <div className="lg:col-span-3 bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 mb-2 shadow-lg"><h3 className="text-gray-400 mb-4 text-sm font-bold uppercase tracking-wider">اختر الصفحة للتحكم في (Top 10 List):</h3><div className="flex flex-wrap gap-3">{(Object.keys(pageLabels) as PageKey[]).map(key => (<button key={key} onClick={() => setSelectedPage(key)} className={`px-6 py-3 rounded-xl text-sm font-bold transition-all border ${selectedPage === key ? 'bg-[#FFD700]/20 border-[#FFD700] text-[#FFD700] shadow-[0_0_15px_rgba(245,215,0,0.2)]' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500'}`}>{pageLabels[key]}</button>))}</div></div> <div className="lg:col-span-2 bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 shadow-xl"><div className="flex justify-between items-center mb-6"><div><h3 className="text-xl font-bold text-[#FFD700]">قائمة التوب 10 في: {pageLabels[selectedPage]}</h3><p className="text-sm text-gray-400 mt-1">يتحكم هذا في قائمة أفضل 10 أعمال.</p></div><button onClick={() => setPinnedItems(selectedPage, localPinnedItems)} disabled={!isDirty} className="bg-gradient-to-r from-[#FFD700] to-[#F59E0B] text-black font-bold py-2 px-6 rounded-xl hover:shadow-[0_0_15px_rgba(255,215,0,0.4)] transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none">حفظ التغييرات</button></div>{pinnedContentDetails.length > 0 ? (<ul onDrop={onDrop} onDragLeave={() => setDraggedOverItem(null)} className="space-y-4">{pinnedContentDetails.map((item, index) => (<li key={item.contentId} draggable onDragStart={(e) => onDragStart(e, item)} onDragOver={(e) => onDragOver(e, item)} onDragEnd={onDragEnd} className={`flex items-center gap-4 p-4 rounded-xl transition-all duration-200 cursor-grab border ${draggedItem?.contentId === item.contentId ? 'opacity-50' : ''} ${dragOverItem?.contentId === item.contentId ? 'bg-gray-700 border-[#FFD700]' : 'bg-gray-800/50 border-gray-700'}`}><div className="flex flex-col items-center justify-center w-8 text-gray-600 cursor-grab"><div className="rank-font font-black text-xl text-[#FFD700]">#{index + 1}</div></div><img src={item.contentDetails.poster} alt={item.contentDetails.title} className="w-12 h-16 object-cover rounded-lg bg-gray-900 shadow-sm" /><div className="flex-1 min-w-0"><p className="font-bold text-white text-base truncate mb-1">{item.contentDetails.title}</p></div><button onClick={() => handleUnpin(item.contentId)} className="text-red-400 hover:text-red-300 p-2 bg-red-500/10 rounded-lg hover:bg-red-500/20 transition-colors"><CloseIcon className="w-5 h-5" /></button></li>))}</ul>) : (<div className="text-center py-20 text-gray-500 border-2 border-dashed border-gray-700 rounded-3xl flex flex-col items-center justify-center gap-2"><span className="text-4xl opacity-30">🏆</span>لا يوجد محتوى في قائمة التوب 10 لهذه الصفحة.</div>)}</div> <div className="bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 shadow-xl h-fit"><h3 className="font-bold text-[#FFD700] mb-4 text-lg">إضافة محتوى للتوب 10</h3><input type="text" placeholder="ابحث لإضافة..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 mb-4 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700] placeholder-gray-600"/><div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">{availableContent.slice(0, 20).map((c:any) => (<div key={c.id} className="flex items-center gap-3 p-3 hover:bg-gray-800 rounded-xl transition-colors border border-transparent hover:border-gray-700 cursor-pointer group"><img src={c.poster} alt={c.title} className="w-10 h-14 object-cover rounded-lg bg-gray-900 shadow-sm" /><div className="flex-1 min-w-0"><p className="text-sm font-bold truncate text-white group-hover:text-[#FFD700] transition-colors">{c.title}</p><p className="text-xs text-gray-500 font-mono">{c.releaseYear}</p></div><button onClick={() => handlePin(c.id)} className="bg-[#FFD700]/10 text-[#FFD700] hover:bg-[#FFD700] hover:text-black font-bold text-xl w-8 h-8 rounded-lg flex items-center justify-center transition-all">+</button></div>))}</div></div> </div> ); };
+
+const PinnedContentManagementTab: React.FC<any> = ({ allContent, pinnedState, setPinnedItems }) => { 
+  const [selectedPage, setSelectedPage] = useState<PageKey>('home'); 
+  const [searchTerm, setSearchTerm] = useState(''); 
+  const [localPinnedItems, setLocalPinnedItems] = useState<PinnedItem[]>([]); 
+  const [draggedItem, setDraggedItem] = useState<PinnedItem | null>(null); 
+  const [dragOverItem, setDraggedOverItem] = useState<PinnedItem | null>(null); 
+
+  useEffect(() => { 
+    setLocalPinnedItems(pinnedState[selectedPage] || []); 
+  }, [pinnedState, selectedPage]); 
+
+  const isDirty = JSON.stringify(localPinnedItems) !== JSON.stringify(pinnedState[selectedPage] || []); 
+  
+  const pinnedContentDetails = useMemo(() => localPinnedItems.map(pin => { 
+    const content = allContent.find((c:any) => c.id === pin.contentId); 
+    return content ? { ...pin, contentDetails: content } : null; 
+  }).filter((item): item is { contentDetails: Content } & PinnedItem => item !== null), [localPinnedItems, allContent]); 
+
+  const availableContent = useMemo(() => { 
+    const pinnedIds = new Set(localPinnedItems.map(p => p.contentId)); 
+    let filtered = allContent.filter((c:any) => !pinnedIds.has(c.id)); 
+    if (selectedPage === 'movies') filtered = filtered.filter((c:any) => c.type === ContentType.Movie); 
+    else if (selectedPage === 'series') filtered = filtered.filter((c:any) => c.type === ContentType.Series); 
+    else if (selectedPage === 'kids') filtered = filtered.filter((c:any) => c.categories.includes('افلام أنميشن') || c.visibility === 'kids' || c.genres.includes('أطفال')); 
+    else if (selectedPage === 'ramadan') filtered = filtered.filter((c:any) => c.categories.includes('رمضان')); 
+    else if (selectedPage === 'soon') filtered = filtered.filter((c:any) => c.categories.includes('قريباً')); 
+    return filtered.filter((c:any) => (c.title || '').toLowerCase().includes(searchTerm.toLowerCase())); 
+  }, [allContent, localPinnedItems, searchTerm, selectedPage]); 
+
+  const handlePin = (contentId: string) => { 
+    if (pinnedContentDetails.length >= 10) { alert('يمكنك تثبيت 10 عناصر كحد أقصى.'); return; } 
+    setLocalPinnedItems([...localPinnedItems, { contentId, bannerNote: '' }]); 
+  }; 
+
+  const handleUnpin = (contentId: string) => { setLocalPinnedItems(localPinnedItems.filter(p => p.contentId !== contentId)); }; 
+  const handleBannerNoteChange = (contentId: string, note: string) => { setLocalPinnedItems(localPinnedItems.map(p => p.contentId === contentId ? { ...p, bannerNote: note } : p)); }; 
+  
+  const onDragStart = (e: React.DragEvent<HTMLLIElement>, item: PinnedItem) => { setDraggedItem(item); e.dataTransfer.effectAllowed = 'move'; }; 
+  const onDragOver = (e: React.DragEvent<HTMLLIElement>, item: PinnedItem) => { e.preventDefault(); if (draggedItem?.contentId !== item.contentId) { setDraggedOverItem(item); } }; 
+  const onDrop = () => { if (!draggedItem || !dragOverItem) return; const currentItems = [...localPinnedItems]; const fromIndex = currentItems.findIndex(p => p.contentId === draggedItem.contentId); const toIndex = currentItems.findIndex(p => p.contentId === dragOverItem.contentId); if (fromIndex === -1 || toIndex === -1) return; const updatedItems = [...currentItems]; const [movedItem] = updatedItems.splice(fromIndex, 1); updatedItems.splice(toIndex, 0, movedItem); setLocalPinnedItems(updatedItems); setDraggedItem(null); setDraggedOverItem(null); }; 
+  const onDragEnd = () => { setDraggedItem(null); setDraggedOverItem(null); }; 
+  
+  const pageLabels: Record<string, string> = { home: 'الرئيسية', movies: 'الأفلام', series: 'المسلسلات', ramadan: 'رمضان', soon: 'قريباً', kids: 'الأطفال' }; 
+  
+  return ( 
+    <div className="animate-fade-in-up space-y-6"> 
+        <div className="bg-[#1f2937] p-6 rounded-3xl border border-gray-700/50 shadow-xl overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-[#00A7F8]/5 rounded-bl-full pointer-events-none"></div>
+            <h3 className="text-gray-400 mb-6 text-xs font-black uppercase tracking-widest flex items-center gap-2 relative z-10">
+                <span className="w-1.5 h-4 bg-[#00A7F8] rounded-full shadow-[0_0_10px_#00A7F8]"></span>
+                تخصيص الواجهة (Hero): {pageLabels[selectedPage]}
+            </h3>
+            <div className="flex flex-wrap gap-2 md:gap-3 relative z-10">
+                {(Object.keys(pageLabels) as PageKey[]).map(key => (
+                    <button key={key} onClick={() => setSelectedPage(key)} className={`px-5 py-2.5 rounded-2xl text-xs font-black transition-all border ${selectedPage === key ? 'bg-[#00A7F8]/20 border-[#00A7F8] text-[#00A7F8] shadow-[0_0_20px_rgba(0,167,248,0.15)] scale-105' : 'bg-[#0f1014] border-gray-800 text-gray-500 hover:text-white hover:border-gray-600'}`}>{pageLabels[key]}</button>
+                ))}
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8"> 
+            <div className="lg:col-span-8 bg-[#1f2937] p-8 rounded-[2.5rem] border border-gray-700/50 shadow-2xl relative overflow-hidden">
+                <div className="flex justify-between items-center mb-10 relative z-10">
+                    <div>
+                        <h3 className="text-2xl font-black text-white flex items-center gap-3">
+                             <span className="text-[#00A7F8] drop-shadow-[0_0_10px_rgba(0,167,248,0.5)]"><StarIcon className="w-8 h-8" /></span>
+                             سلايدر المحتوى المميز
+                        </h3>
+                        <p className="text-xs text-gray-500 font-bold mt-1">قم بسحب العناصر لترتيب ظهورها في السلايدر العلوي</p>
+                    </div>
+                    <button onClick={() => setPinnedItems(selectedPage, localPinnedItems)} disabled={!isDirty} className="bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-black py-3 px-10 rounded-2xl hover:shadow-[0_0_30px_rgba(0,167,248,0.4)] transition-all transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:grayscale shadow-xl">حفظ الترتيب</button>
+                </div>
+
+                {pinnedContentDetails.length > 0 ? (
+                    <ul onDrop={onDrop} onDragLeave={() => setDraggedOverItem(null)} className="space-y-4 relative z-10">
+                        {pinnedContentDetails.map((item, index) => (
+                            <li key={item.contentId} draggable onDragStart={(e) => onDragStart(e, item)} onDragOver={(e) => onDragOver(e, item)} onDragEnd={onDragEnd} className={`flex items-center gap-6 p-4 rounded-2xl transition-all duration-500 border cursor-grab active:cursor-grabbing group ${draggedItem?.contentId === item.contentId ? 'opacity-20 scale-95' : 'hover:border-[#00A7F8]/30 shadow-lg'} ${dragOverItem?.contentId === item.contentId ? 'bg-gray-700 border-[#00A7F8] translate-x-3' : 'bg-[#0f1014] border-gray-800'}`}>
+                                <div className="flex flex-col items-center justify-center w-12 shrink-0 bg-black/40 rounded-xl py-3 border border-white/5">
+                                    <span className="text-xl font-black text-[#00A7F8] drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">0{index + 1}</span>
+                                </div>
+                                <div className="w-16 h-24 shrink-0 rounded-xl overflow-hidden bg-gray-900 border border-white/5 shadow-2xl relative">
+                                    <img src={item.contentDetails.poster} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <p className="font-black text-white text-lg md:text-xl truncate group-hover:text-[#00A7F8] transition-colors">{item.contentDetails.title}</p>
+                                        <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[9px] font-black text-gray-500 uppercase tracking-tighter">{item.contentDetails.type}</span>
+                                    </div>
+                                    <div className="relative group/input">
+                                        <input type="text" placeholder="نص مميز يظهر فوق العنوان (مثال: حصرياً)" value={item.bannerNote || ''} onChange={(e) => handleBannerNoteChange(item.contentId, e.target.value)} className="bg-[#0f1014] border border-gray-800 rounded-xl px-4 py-2.5 text-xs w-full text-gray-400 focus:outline-none focus:border-[#00A7F8] transition-all group-hover/input:border-gray-700"/>
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 opacity-20 group-hover/input:opacity-50 transition-opacity">✏️</div>
+                                    </div>
+                                </div>
+                                <button onClick={() => handleUnpin(item.contentId)} className="p-4 text-red-500/30 hover:text-red-500 hover:bg-red-500/10 rounded-2xl transition-all active:scale-90"><TrashIcon/></button>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <div className="text-center py-32 text-gray-500 border-2 border-dashed border-gray-700 rounded-[3rem] flex flex-col items-center justify-center gap-4 bg-black/20 animate-pulse">
+                        <span className="text-7xl opacity-10">🎬</span>
+                        <div className="space-y-1">
+                            <p className="text-xl font-black text-gray-400">السلايدر فارغ حالياً</p>
+                            <p className="text-sm opacity-60">اختر الأعمال من القائمة الجانبية لتثبيتها هنا</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <div className="lg:col-span-4 space-y-6">
+                <div className="bg-[#1f2937] p-8 rounded-[2.5rem] border border-gray-700/50 shadow-2xl h-fit sticky top-24">
+                    <h3 className="font-black text-white mb-6 flex items-center gap-3">
+                        <span className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl font-black shadow-inner">+</span>
+                        إضافة للسلايدر
+                    </h3>
+                    <div className="relative mb-6">
+                        <input type="text" placeholder="ابحث في المكتبة..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#0a0a0a] border border-gray-800 rounded-[1.25rem] px-12 py-4 text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#00A7F8] focus:border-[#00A7F8] placeholder-gray-700 transition-all shadow-inner"/>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50">
+                            <SearchIcon className="w-5 h-5 text-gray-400" />
+                        </span>
+                    </div>
+                    <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+                        {availableContent.length === 0 ? (
+                            <div className="py-10 text-center opacity-30 text-xs font-bold">لا يوجد نتائج متاحة</div>
+                        ) : (
+                            availableContent.slice(0, 20).map((c:any) => (
+                                <div key={c.id} className="flex items-center gap-4 p-3.5 bg-[#0f1014] hover:bg-[#161b22] rounded-2xl border border-transparent hover:border-[#00A7F8]/30 cursor-pointer group transition-all duration-300">
+                                    <div className="w-12 h-16 shrink-0 rounded-xl overflow-hidden bg-gray-900 border border-white/5 shadow-lg relative">
+                                        <img src={c.poster} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-black truncate text-white group-hover:text-[#00A7F8] transition-colors">{c.title}</p>
+                                        <div className="flex items-center gap-2 mt-1.5">
+                                            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">{c.type === 'movie' ? 'FILM' : 'TV'}</span>
+                                            <span className="w-1 h-1 bg-gray-800 rounded-full"></span>
+                                            <span className="text-[10px] font-black text-gray-600 font-mono">{c.releaseYear}</span>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => handlePin(c.id)} className="bg-[#00A7F8]/10 text-[#00A7F8] hover:bg-[#00A7F8] hover:text-black font-black text-xl w-10 h-10 rounded-2xl flex items-center justify-center transition-all active:scale-90 shadow-sm border border-[#00A7F8]/10">+</button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div> 
+    </div>
+  ); 
+};
+
+const Top10ManagerTab: React.FC<any> = ({ allContent, pinnedState, setPinnedItems }) => { 
+  const [selectedPage, setSelectedPage] = useState<PageKey>('home'); 
+  const [searchTerm, setSearchTerm] = useState(''); 
+  const [localPinnedItems, setLocalPinnedItems] = useState<PinnedItem[]>([]); 
+  const [draggedItem, setDraggedItem] = useState<PinnedItem | null>(null); 
+  const [dragOverItem, setDraggedOverItem] = useState<PinnedItem | null>(null); 
+
+  useEffect(() => { 
+    setLocalPinnedItems(pinnedState[selectedPage] || []); 
+  }, [pinnedState, selectedPage]); 
+
+  const isDirty = JSON.stringify(localPinnedItems) !== JSON.stringify(pinnedState[selectedPage] || []); 
+  
+  const pinnedContentDetails = useMemo(() => localPinnedItems.map(pin => { 
+    const content = allContent.find((c:any) => c.id === pin.contentId); 
+    return content ? { ...pin, contentDetails: content } : null; 
+  }).filter((item): item is { contentDetails: Content } & PinnedItem => item !== null), [localPinnedItems, allContent]); 
+
+  const availableContent = useMemo(() => { 
+    const pinnedIds = new Set(localPinnedItems.map(p => p.contentId)); 
+    let filtered = allContent.filter((c:any) => !pinnedIds.has(c.id)); 
+    if (selectedPage === 'movies') filtered = filtered.filter((c:any) => c.type === ContentType.Movie); 
+    else if (selectedPage === 'series') filtered = filtered.filter((c:any) => c.type === ContentType.Series); 
+    else if (selectedPage === 'kids') filtered = filtered.filter((c:any) => c.categories.includes('افلام أنميشن') || c.visibility === 'kids' || c.genres.includes('أطفال')); 
+    else if (selectedPage === 'ramadan') filtered = filtered.filter((c:any) => c.categories.includes('رمضان')); 
+    else if (selectedPage === 'soon') filtered = filtered.filter((c:any) => c.categories.includes('قريباً')); 
+    return filtered.filter((c:any) => (c.title || '').toLowerCase().includes(searchTerm.toLowerCase())); 
+  }, [allContent, localPinnedItems, searchTerm, selectedPage]); 
+
+  const handlePin = (contentId: string) => { 
+    if (pinnedContentDetails.length >= 10) { alert('يمكنك إضافة 10 عناصر كحد أقصى للتوب 10.'); return; } 
+    setLocalPinnedItems([...localPinnedItems, { contentId, bannerNote: '' }]); 
+  }; 
+
+  const handleUnpin = (contentId: string) => { setLocalPinnedItems(localPinnedItems.filter(p => p.contentId !== contentId)); }; 
+  
+  const onDragStart = (e: React.DragEvent<HTMLLIElement>, item: PinnedItem) => { setDraggedItem(item); e.dataTransfer.effectAllowed = 'move'; }; 
+  const onDragOver = (e: React.DragEvent<HTMLLIElement>, item: PinnedItem) => { e.preventDefault(); if (draggedItem?.contentId !== item.contentId) { setDraggedOverItem(item); } }; 
+  const onDrop = () => { if (!draggedItem || !dragOverItem) return; const currentItems = [...localPinnedItems]; const fromIndex = currentItems.findIndex(p => p.contentId === draggedItem.contentId); const toIndex = currentItems.findIndex(p => p.contentId === dragOverItem.contentId); if (fromIndex === -1 || toIndex === -1) return; const updatedItems = [...currentItems]; const [movedItem] = updatedItems.splice(fromIndex, 1); updatedItems.splice(toIndex, 0, movedItem); setLocalPinnedItems(updatedItems); setDraggedItem(null); setDraggedOverItem(null); }; 
+  const onDragEnd = () => { setDraggedItem(null); setDraggedOverItem(null); }; 
+  
+  const pageLabels: Record<string, string> = { home: 'الرئيسية', movies: 'الأفلام', series: 'المسلسلات', ramadan: 'رمضان', soon: 'قريباً', kids: 'الأطفال' }; 
+  
+  return ( 
+    <div className="animate-fade-in-up space-y-6"> 
+        {/* Navigation / Header */}
+        <div className="bg-[#1f2937] p-6 rounded-3xl border border-gray-700/50 shadow-xl overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-[#FFD700]/5 rounded-bl-full pointer-events-none"></div>
+            <h3 className="text-gray-400 mb-6 text-xs font-black uppercase tracking-widest flex items-center gap-2 relative z-10">
+                <span className="w-1.5 h-4 bg-[#FFD700] rounded-full shadow-[0_0_10px_#FFD700]"></span>
+                تعديل قائمة التوب 10: {pageLabels[selectedPage]}
+            </h3>
+            <div className="flex flex-wrap gap-2 md:gap-3 relative z-10">
+                {(Object.keys(pageLabels) as PageKey[]).map(key => (
+                    <button 
+                        key={key} 
+                        onClick={() => setSelectedPage(key)} 
+                        className={`px-5 py-2.5 rounded-2xl text-xs font-black transition-all border ${selectedPage === key ? 'bg-[#FFD700]/20 border-[#FFD700] text-[#FFD700] shadow-[0_0_20px_rgba(255,215,0,0.15)] scale-105' : 'bg-[#0f1014] border-gray-800 text-gray-500 hover:text-white hover:border-gray-600'}`}
+                    >
+                        {pageLabels[key]}
+                    </button>
+                ))}
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8"> 
+            {/* Main Rankings Area */}
+            <div className="lg:col-span-8 bg-[#1f2937] p-8 rounded-[2.5rem] border border-gray-700/50 shadow-2xl relative overflow-hidden">
+                <div className="flex justify-between items-center mb-10">
+                    <div>
+                        <h3 className="text-2xl font-black text-white flex items-center gap-3">
+                            <span className="text-[#FFD700] drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]"><TrophyIcon className="w-8 h-8" /></span>
+                            ترتيب الأفضل 10
+                        </h3>
+                        <p className="text-xs text-gray-500 font-bold mt-1">اسحب العنصر من علامة الترتيب لتغيير موضعه</p>
+                    </div>
+                    <button 
+                        onClick={() => setPinnedItems(selectedPage, localPinnedItems)} 
+                        disabled={!isDirty} 
+                        className="bg-gradient-to-r from-[#FFD700] to-[#F59E0B] text-black font-black py-3 px-10 rounded-2xl hover:shadow-[0_0_30px_rgba(255,215,0,0.4)] transition-all transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:grayscale disabled:transform-none shadow-xl"
+                    >
+                        حفظ القائمة
+                    </button>
+                </div>
+
+                {pinnedContentDetails.length > 0 ? (
+                    <ul onDrop={onDrop} onDragLeave={() => setDraggedOverItem(null)} className="space-y-4">
+                        {pinnedContentDetails.map((item, index) => (
+                            <li 
+                                key={item.contentId} 
+                                draggable 
+                                onDragStart={(e) => onDragStart(e, item)} 
+                                onDragOver={(e) => onDragOver(e, item)} 
+                                onDragEnd={onDragEnd} 
+                                className={`flex items-center gap-6 p-4 rounded-2xl transition-all duration-500 border cursor-grab active:cursor-grabbing group ${draggedItem?.contentId === item.contentId ? 'opacity-20 scale-95' : 'hover:border-[#FFD700]/30 shadow-lg'} ${dragOverItem?.contentId === item.contentId ? 'bg-gray-700 border-[#FFD700] translate-x-3' : 'bg-[#0f1014] border-gray-800'}`}
+                            >
+                                <div className="flex flex-col items-center justify-center w-14 shrink-0 bg-black/40 rounded-xl py-3 border border-white/5">
+                                    <span className="rank-font font-black text-2xl text-[#FFD700] drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">#{index + 1}</span>
+                                </div>
+                                <div className="w-16 h-24 shrink-0 rounded-xl overflow-hidden bg-gray-900 border border-white/5 shadow-2xl relative">
+                                    <img src={item.contentDetails.poster} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-black text-white text-lg md:text-xl truncate group-hover:text-[#FFD700] transition-colors">{item.contentDetails.title}</p>
+                                    <div className="flex items-center gap-3 mt-2">
+                                        <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-black text-gray-400 uppercase tracking-tighter">{item.contentDetails.type}</span>
+                                        <span className="text-[11px] font-black text-gray-500 font-mono">{item.contentDetails.releaseYear}</span>
+                                        <span className="text-[11px] text-yellow-500 font-black">★ {item.contentDetails.rating.toFixed(1)}</span>
+                                    </div>
+                                </div>
+                                <button onClick={() => handleUnpin(item.contentId)} className="p-4 text-red-500/30 hover:text-red-500 hover:bg-red-500/10 rounded-2xl transition-all active:scale-90"><TrashIcon/></button>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <div className="text-center py-32 text-gray-500 border-2 border-dashed border-gray-700 rounded-[3rem] flex flex-col items-center justify-center gap-4 bg-black/20 animate-pulse">
+                        <span className="text-7xl opacity-10">🏆</span>
+                        <div className="space-y-1">
+                            <p className="text-xl font-black text-gray-400">قائمة التوب 10 خالية</p>
+                            <p className="text-sm opacity-60">اختر الأعمال من القائمة الجانبية لإضافتها هنا</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Sidebar Search/Add Area */}
+            <div className="lg:col-span-4 space-y-6">
+                <div className="bg-[#1f2937] p-8 rounded-[2.5rem] border border-gray-700/50 shadow-2xl h-fit sticky top-24">
+                    <h3 className="font-black text-white mb-6 flex items-center gap-3">
+                        <span className="w-10 h-10 rounded-2xl bg-[#FFD700]/10 text-[#FFD700] flex items-center justify-center text-xl font-black shadow-inner">+</span>
+                        إضافة للقائمة
+                    </h3>
+                    <div className="relative mb-6">
+                        <input 
+                            type="text" 
+                            placeholder="ابحث لإضافة عمل..." 
+                            value={searchTerm} 
+                            onChange={(e) => setSearchTerm(e.target.value)} 
+                            className="w-full bg-[#0a0a0a] border border-gray-800 rounded-[1.25rem] px-12 py-4 text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#FFD700] focus:border-[#FFD700] placeholder-gray-700 transition-all shadow-inner"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50">
+                            <SearchIcon className="w-5 h-5 text-gray-400" />
+                        </span>
+                    </div>
+                    <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+                        {availableContent.length === 0 ? (
+                            <div className="py-10 text-center opacity-30 text-xs font-bold">لا يوجد نتائج متاحة</div>
+                        ) : (
+                            availableContent.slice(0, 20).map((c:any) => (
+                                <div key={c.id} className="flex items-center gap-4 p-3.5 bg-[#0f1014] hover:bg-[#161b22] rounded-2xl border border-transparent hover:border-[#FFD700]/30 cursor-pointer group transition-all duration-300">
+                                    <div className="w-12 h-16 shrink-0 rounded-xl overflow-hidden bg-gray-900 border border-white/5 shadow-lg relative">
+                                        <img src={c.poster} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-black truncate text-white group-hover:text-[#FFD700] transition-colors">{c.title}</p>
+                                        <div className="flex items-center gap-2 mt-1.5">
+                                            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">{c.type === 'movie' ? 'FILM' : 'TV'}</span>
+                                            <span className="w-1 h-1 bg-gray-800 rounded-full"></span>
+                                            <span className="text-[10px] font-black text-gray-600 font-mono">{c.releaseYear}</span>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => handlePin(c.id)} 
+                                        className="bg-[#FFD700]/10 text-[#FFD700] hover:bg-[#FFD700] hover:text-black font-black text-xl w-10 h-10 rounded-2xl flex items-center justify-center transition-all active:scale-90 shadow-sm border border-[#FFD700]/10"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div> 
+    </div>
+  ); 
+};
+
 const AdsManagementTab: React.FC<any> = ({ ads, onNew, onEdit, onRequestDelete, onUpdateAd }) => { return ( <div> <div className="flex justify-between items-center mb-8 bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 shadow-lg"> <h3 className="text-xl font-bold text-white">إدارة الإعلانات</h3> <button onClick={onNew} className="bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-bold py-3 px-6 rounded-xl hover:shadow-[0_0_15px_rgba(0,167,248,0.4)] transition-all transform hover:scale-105">إضافة إعلان جديد</button> </div> <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> {ads.map((ad:any) => ( <div key={ad.id} className="bg-[#1f2937] border border-gray-700/50 p-6 rounded-2xl flex flex-col justify-between shadow-lg hover:border-[#00A7F8]/30 transition-all"> <div> <div className="flex justify-between items-start mb-4"> <h4 className="font-bold text-white text-lg">{ad.title}</h4> <div className="flex gap-2"> <span className={`px-2 py-1 rounded-md text-[10px] border font-bold uppercase tracking-wider ${ad.targetDevice === 'mobile' ? 'bg-blue-500/10 text-blue-400' : ad.targetDevice === 'desktop' ? 'bg-purple-500/10 text-purple-400' : 'bg-gray-700 text-gray-400 border-gray-600'}`}>{ad.targetDevice === 'mobile' ? 'موبايل' : ad.targetDevice === 'desktop' ? 'كمبيوتر' : 'الكل'}</span> <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${ad.status === 'active' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>{ad.status === 'active' ? 'نشط' : 'معطل'}</span> </div> </div> <p className="text-xs text-gray-400 mb-3 font-mono bg-gray-900/50 p-2 rounded border border-gray-700">{adPlacementLabels[ad.placement as keyof typeof adPlacementLabels]}</p> <div className="bg-gray-900 p-3 rounded-lg text-xs text-gray-500 font-mono truncate mb-6 border border-gray-800">{ad.code}</div> </div> <div className="flex justify-end gap-3 pt-4 border-t border-gray-700/50 items-center"> <ToggleSwitch checked={ad.status === 'active'} onChange={(c) => onUpdateAd({...ad, status: c ? 'active' : 'disabled'})} className="mr-auto scale-90" /> <button onClick={() => onEdit(ad)} className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors">تعديل</button> <button onClick={() => onRequestDelete(ad.id, ad.title)} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2 rounded-lg text-xs font-bold transition-colors">حذف</button> </div> </div> ))} {ads.length === 0 && ( <div className="col-span-full text-center py-20 text-gray-500 border-2 border-dashed border-gray-700 rounded-3xl flex flex-col items-center justify-center gap-2"><span className="text-4xl opacity-30">📢</span>لا توجد إعلانات.</div> )} </div> </div> ); }
 const ThemesTab: React.FC<any> = ({ siteSettings, onSetSiteSettings }) => { const changeTheme = (theme: ThemeType) => { onSetSiteSettings({ ...siteSettings, activeTheme: theme }); }; return ( <div className="space-y-6 max-w-5xl mx-auto animate-fade-in-up"> <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 space-y-8 shadow-xl"> <h3 className="text-xl font-bold text-[#00A7F8] mb-4 border-b border-gray-700 pb-4">إعدادات المظهر (Themes)</h3> <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> <div onClick={() => changeTheme('default')} className={`p-5 border rounded-2xl cursor-pointer transition-all hover:scale-[1.02] ${siteSettings.activeTheme === 'default' ? 'border-[#00A7F8] bg-[#00A7F8]/5 shadow-[0_0_20px_rgba(0,167,248,0.1)]' : 'border-gray-700 bg-gray-800 hover:border-gray-500'}`}><div className="h-24 bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] rounded-xl mb-4 shadow-lg"></div><h4 className="font-bold text-white text-lg">الافتراضي (السايبر)</h4><p className="text-xs text-gray-400 mt-2 leading-relaxed">الثيم الأساسي باللون الأزرق والأخضر.</p>{siteSettings.activeTheme === 'default' && <div className="mt-3 text-[#00A7F8] text-xs font-bold bg-[#00A7F8]/10 px-2 py-1 rounded w-fit">✓ مفعل</div>}</div> <div onClick={() => changeTheme('netflix-red')} className={`p-5 border rounded-2xl cursor-pointer transition-all hover:scale-[1.02] ${siteSettings.activeTheme === 'netflix-red' ? 'border-[#E50914] bg-[#E50914]/5 shadow-[0_0_20px_rgba(229,9,20,0.1)]' : 'border-gray-700 bg-gray-800 hover:border-gray-500'}`}><div className="h-24 bg-[#141414] rounded-xl mb-4 shadow-lg flex items-center justify-center border-b-4 border-[#E50914]"><span className="text-[#E50914] text-3xl font-black tracking-tighter">N</span></div><h4 className="font-bold text-white text-lg">الأحمر الداكن (Netflix)</h4><p className="text-xs text-gray-400 mt-2 leading-relaxed">تطميم سينمائي باللون الأسود والأحمر.</p>{siteSettings.activeTheme === 'netflix-red' && <div className="mt-3 text-[#E50914] text-xs font-bold bg-[#E50914]/10 px-2 py-1 rounded w-fit">✓ مفعل</div>}</div> <div onClick={() => changeTheme('cosmic-teal')} className={`p-5 border rounded-2xl cursor-pointer transition-all hover:scale-[1.02] ${siteSettings.activeTheme === 'cosmic-teal' ? 'border-[#35F18B] bg-[#35F18B]/5 shadow-[0_0_20px_rgba(53,241,139,0.1)]' : 'border-gray-700 bg-gray-800 hover:border-gray-500'}`}><div className="h-24 bg-gradient-to-br from-[#35F18B] to-[#2596be] rounded-xl mb-4 shadow-lg flex items-center justify-center text-3xl relative overflow-hidden"><div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1534796636912-3b95ab3ab5986?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80')] opacity-50 bg-cover"></div><span className="relative z-10">✨</span></div><h4 className="font-bold text-white text-lg">الكوني (Cosmic Teal)</h4><p className="text-xs text-gray-400 mt-2 leading-relaxed">تصميم عصري بألوان الأخضر الزاهي.</p>{siteSettings.activeTheme === 'cosmic-teal' && <div className="mt-3 text-[#35F18B] text-xs font-bold bg-[#35F18B]/10 px-2 py-1 rounded w-fit">✓ مفعل</div>}</div> <div onClick={() => changeTheme('ramadan')} className={`p-5 border rounded-2xl cursor-pointer transition-all hover:scale-[1.02] ${siteSettings.activeTheme === 'ramadan' ? 'border-amber-500 bg-amber-500/5 shadow-[0_0_20px_rgba(245,158,11,0.1)]' : 'border-gray-700 bg-gray-800 hover:border-gray-500'}`}><div className="h-24 bg-gradient-to-br from-[#D4AF37] to-[#F59E0B] rounded-xl mb-4 shadow-lg flex items-center justify-center text-3xl">🌙</div><h4 className="font-bold text-white text-lg">رمضان الذهبي</h4><p className="text-xs text-gray-400 mt-2 leading-relaxed">ألوان ذهبية دافئة للأجواء الرمضانية.</p>{siteSettings.activeTheme === 'ramadan' && <div className="mt-3 text-amber-500 text-xs font-bold bg-amber-500/10 px-2 py-1 rounded w-fit">✓ مفعل</div>}</div> <div onClick={() => changeTheme('eid')} className={`p-5 border rounded-2xl cursor-pointer transition-all hover:scale-[1.02] ${siteSettings.activeTheme === 'eid' ? 'border-purple-500 bg-purple-500/5 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'border-gray-700 bg-gray-800 hover:border-gray-500'}`}><div className="h-24 bg-gradient-to-br from-[#6A0DAD] to-[#C0C0C0] rounded-xl mb-4 shadow-lg flex items-center justify-center text-3xl">🎉</div><h4 className="font-bold text-white text-lg">العيد (بنفسجي)</h4><p className="text-xs text-gray-400 mt-2 leading-relaxed">ألوان احتفالية مبهجة للمناسبات.</p>{siteSettings.activeTheme === 'eid' && <div className="mt-3 text-purple-500 text-xs font-bold bg-purple-500/10 px-2 py-1 rounded w-fit">✓ مفعل</div>}</div> <div onClick={() => changeTheme('ios')} className={`p-5 border rounded-2xl cursor-pointer transition-all hover:scale-[1.02] ${siteSettings.activeTheme === 'ios' ? 'border-[#00C6FF] bg-[#00C6FF]/5 shadow-[0_0_20px_rgba(0,198,255,0.1)]' : 'border-gray-700 bg-gray-800 hover:border-gray-500'}`}><div className="h-24 bg-gradient-to-r from-[#00C6FF] to-[#0072FF] rounded-xl mb-4 shadow-lg relative overflow-hidden"><div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div></div><h4 className="font-bold text-white text-lg">iOS Glass</h4><p className="text-xs text-gray-400 mt-2 leading-relaxed">تصميم زجاجي عصري مع تدرجات سماوية.</p>{siteSettings.activeTheme === 'ios' && <div className="mt-3 text-[#00C6FF] text-xs font-bold bg-[#00C6FF]/10 px-2 py-1 rounded w-fit">✓ مفعل</div>}</div> <div onClick={() => changeTheme('night-city')} className={`p-5 border rounded-2xl cursor-pointer transition-all hover:scale-[1.02] ${siteSettings.activeTheme === 'night-city' ? 'border-[#FF00FF] bg-[#FF00FF]/5 shadow-[0_0_20px_rgba(255,0,255,0.1)]' : 'border-gray-800 bg-gray-800 hover:border-gray-500'}`}><div className="h-24 bg-black rounded-xl mb-4 shadow-[0_0_15px_#FF00FF] relative border border-[#00FFFF]"><div className="absolute inset-0 bg-gradient-to-r from-[#FF00FF]/30 to-[#00FFFF]/30"></div></div><h4 className="font-bold text-white text-lg">Night City</h4><p className="text-xs text-gray-400 mt-2 leading-relaxed">ألوان نيون حيوية ومظهر مستقبلي.</p>{siteSettings.activeTheme === 'night-city' && <div className="mt-3 text-[#FF00FF] text-xs font-bold bg-[#FF00FF]/10 px-2 py-1 rounded w-fit">✓ مفعل</div>}</div> <div onClick={() => changeTheme('nature')} className={`p-5 border rounded-2xl cursor-pointer transition-all hover:scale-[1.02] ${siteSettings.activeTheme === 'nature' ? 'border-[#8FBC8F] bg-[#8FBC8F]/5 shadow-[0_0_20px_rgba(143,188,143,0.1)]' : 'border-gray-800 bg-gray-800 hover:border-gray-500'}`}><div className="h-24 bg-gradient-to-br from-[#2F4F4F] to-[#8FBC8F] rounded-xl mb-4 shadow-lg"></div><h4 className="font-bold text-white text-lg">Nature</h4><p className="text-xs text-gray-400 mt-2 leading-relaxed">ألوان طبيعية هادئة مستوحاة من الغابات.</p>{siteSettings.activeTheme === 'nature' && <div className="mt-3 text-[#8FBC8F] text-xs font-bold bg-[#8FBC8F]/10 px-2 py-1 rounded w-fit">✓ مفعل</div>}</div> </div> </div> </div> ); }
 

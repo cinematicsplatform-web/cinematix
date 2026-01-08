@@ -43,7 +43,7 @@ const VkSearchModal: React.FC<VkSearchModalProps> = ({ isOpen, onClose, onSelect
     const [results, setResults] = useState<VkVideo[]>([]);
     const [error, setError] = useState('');
 
-    // ✅ المفتاح الخاص بك (تم دمجه بنجاح)
+    // المفتاح الخاص بك
     const ACCESS_TOKEN = 'vk1.a.66KYDO3VwYyIcenaHbEltGtK_QHzTVjfDAoRGF5QEF6GuFxyxgtDpTn5ErvyIWJ4mRJvRKqsE6PCNDrwJozZMnfduB9UHhZuWkEHkM6AMLw8LnYzWzXfaD2b-9rmhfwGATutEfgdyD4MVZ5ORR9al9pwOk5p4gGX4GE-lRkrVk6P29KbqWXyQOjMNFOtUjCGRHftl4JDvnkUsOOMr9DVaA';
     const VK_API_VERSION = '5.131';
 
@@ -56,16 +56,11 @@ const VkSearchModal: React.FC<VkSearchModalProps> = ({ isOpen, onClose, onSelect
 
     // دالة تجيب رابط التحميل المباشر فقط (480 أو 720)
     const getDownloadLink = (video: VkVideo): string => {
-        if (!video.files) return ''; // لو مفيش ملفات، رجع فاضي (متكتبش رابط المشاهدة)
-
-        // الأولوية لـ 480p
+        if (!video.files) return ''; 
         if (video.files.mp4_480) return video.files.mp4_480;
-        // لو مش موجود، هات 720p
         if (video.files.mp4_720) return video.files.mp4_720;
-        // لو مش موجود، هات 360p
         if (video.files.mp4_360) return video.files.mp4_360;
-
-        return ''; // لو مفيش أي رابط مباشر، رجع فاضي
+        return ''; 
     };
 
     const handleSearch = async (e?: React.FormEvent) => {
@@ -76,51 +71,75 @@ const VkSearchModal: React.FC<VkSearchModalProps> = ({ isOpen, onClose, onSelect
         setError('');
         setResults([]);
 
-        try {
-            // Using AllOrigins as a proxy to bypass CORS
-            const apiUrl = `https://api.vk.com/method/video.search?q=${encodeURIComponent(query)}&count=20&extended=1&sort=2&access_token=${ACCESS_TOKEN}&v=${VK_API_VERSION}`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
+        const apiUrl = `https://api.vk.com/method/video.search?q=${encodeURIComponent(query)}&count=20&extended=1&sort=2&access_token=${ACCESS_TOKEN}&v=${VK_API_VERSION}`;
+        
+        // نظام وكلاء (Proxies) متعدد لضمان النجاح وتخطي حظر الـ CORS
+        const proxies = [
+            `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`,
+            `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(apiUrl)}`
+        ];
 
-            const res = await fetch(proxyUrl);
-            const wrapper = await res.json();
-            
-            if (!wrapper.contents) throw new Error('فشل الاتصال بالخادم الوسيط');
-            
-            const data = JSON.parse(wrapper.contents);
+        let data = null;
+        let success = false;
 
-            if (data.error) {
-                console.error('VK Error:', data.error);
-                throw new Error(data.error.error_msg || 'حدث خطأ في بحث VK');
+        for (const proxy of proxies) {
+            if (success) break;
+            try {
+                const res = await fetch(proxy);
+                if (!res.ok) continue;
+
+                if (proxy.includes('allorigins')) {
+                    const wrapper = await res.json();
+                    if (wrapper.contents) {
+                        data = JSON.parse(wrapper.contents);
+                    }
+                } else if (proxy.includes('codetabs')) {
+                    const text = await res.text();
+                    data = JSON.parse(text);
+                } else {
+                    data = await res.json();
+                }
+                
+                if (data && (data.response || data.error)) {
+                    success = true;
+                }
+            } catch (err) {
+                console.warn(`Proxy failed: ${proxy}`, err);
+                // ننتقل للوكيل التالي
             }
+        }
 
-            setResults(data.response.items || []);
-            if (!data.response.items || data.response.items.length === 0) {
+        if (!success || !data) {
+            setError('حدث خطأ في الاتصال بالخادم. يرجى التأكد من اتصال الإنترنت أو المحاولة لاحقاً.');
+            setLoading(false);
+            return;
+        }
+
+        if (data.error) {
+            console.error('VK API Error:', data.error);
+            setError(data.error.error_msg || 'حدث خطأ في بحث VK');
+        } else {
+            const items = data.response.items || [];
+            setResults(items);
+            if (items.length === 0) {
                 setError('لم يتم العثور على فيديوهات بهذا الاسم.');
             }
-        } catch (err: any) {
-            console.error(err);
-            setError('حدث خطأ أثناء البحث. تأكد من اتصال الإنترنت.');
-        } finally {
-            setLoading(false);
         }
+        setLoading(false);
     };
 
     const handleSelect = (video: VkVideo) => {
-        // VK Player URL usually comes as "player" field
         let embedUrl = video.player;
-        
-        // Ensure it's embeddable
         if (!embedUrl) {
              embedUrl = `https://vk.com/video_ext.php?oid=${video.owner_id}&id=${video.id}&hash=&hd=2`;
         }
-
-        // جلب رابط التحميل المباشر فقط
         const directDownloadUrl = getDownloadLink(video);
 
         onSelect({
             title: video.title,
             embedUrl: embedUrl,
-            downloadUrl: directDownloadUrl // هيكون فاضي لو مفيش رابط تحميل، ومش هيكرر رابط المشاهدة
+            downloadUrl: directDownloadUrl 
         });
         onClose();
     };
@@ -128,7 +147,7 @@ const VkSearchModal: React.FC<VkSearchModalProps> = ({ isOpen, onClose, onSelect
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[600] flex items-center justify-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[600] flex items-center justify-center p-4" onClick={onClose}>
             <div className="bg-[#0b1116] border border-gray-800 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,1)] w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 
                 {/* Header */}

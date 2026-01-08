@@ -3,6 +3,7 @@ import { getReleaseSchedules, saveReleaseSchedule, deleteReleaseSchedule, markSc
 import type { ReleaseSchedule, ReleaseSource, Content, ReleasePriority, ReleaseStatus } from '../../types';
 import { PlusIcon } from '../icons/PlusIcon';
 import { CloseIcon } from '../icons/CloseIcon';
+import { SearchIcon } from '../icons/SearchIcon';
 import DeleteConfirmationModal from '../DeleteConfirmationModal';
 import ToggleSwitch from '../ToggleSwitch';
 
@@ -17,12 +18,6 @@ const RadarIcon = (props: any) => (
 const ExternalLinkIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-    </svg>
-);
-
-const HistoryIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
     </svg>
 );
 
@@ -68,14 +63,13 @@ interface ContentRadarTabProps {
 const ContentRadarTab: React.FC<ContentRadarTabProps> = ({ addToast, onRequestDelete, onEditContent, allPublishedContent }) => {
     const [schedules, setSchedules] = useState<ReleaseSchedule[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    // NEW: View management instead of modal
     const [viewMode, setViewMode] = useState<'list' | 'editor'>('list');
     const [editingSchedule, setEditingSchedule] = useState<ReleaseSchedule | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
 
-    const today = new Date().getDay();
     const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const today = new Date().getDay();
 
     useEffect(() => {
         fetchSchedules();
@@ -96,11 +90,6 @@ const ContentRadarTab: React.FC<ContentRadarTabProps> = ({ addToast, onRequestDe
     const handleOpenEdit = (schedule: ReleaseSchedule | null) => {
         setEditingSchedule(schedule);
         setViewMode('editor');
-    };
-
-    const handleCloseEditor = () => {
-        setViewMode('list');
-        setEditingSchedule(null);
     };
 
     const handleMarkAsDone = async (id: string) => {
@@ -134,152 +123,90 @@ const ContentRadarTab: React.FC<ContentRadarTabProps> = ({ addToast, onRequestDe
     const airingToday = useMemo(() => filteredSchedules.filter(s => s.daysOfWeek.includes(today) && s.isActive), [filteredSchedules, today]);
     const others = useMemo(() => filteredSchedules.filter(s => !s.daysOfWeek.includes(today) || !s.isActive), [filteredSchedules, today]);
 
-    const stats = useMemo(() => {
-        const now = new Date();
-        const todayStr = now.toDateString();
-        
-        const dueItems = airingToday.filter(s => {
-            const lastAddedDate = s.lastAddedAt ? new Date(s.lastAddedAt) : null;
-            const alreadyPublished = lastAddedDate && lastAddedDate.toDateString() === todayStr;
-            if (alreadyPublished) return false;
-
-            const [h, m] = s.time.split(':').map(Number);
-            const sched = new Date();
-            sched.setHours(h, m, 0, 0);
-            return now >= sched;
-        });
-
-        return {
-            total: schedules.length,
-            active: schedules.filter(s => s.isActive).length,
-            todayCount: airingToday.length,
-            dueCount: dueItems.length,
-            completedToday: airingToday.filter(s => s.lastAddedAt && new Date(s.lastAddedAt).toDateString() === new Date().toDateString()).length
-        };
-    }, [schedules, airingToday]);
-
-    // RENDER EDITOR VIEW
     if (viewMode === 'editor') {
         return (
             <ScheduleEditorView 
                 schedule={editingSchedule} 
-                onClose={handleCloseEditor} 
+                onClose={() => setViewMode('list')} 
                 onSave={async (s) => {
                     await saveReleaseSchedule(s);
                     addToast('تم حفظ بيانات الرادار!', 'success');
-                    handleCloseEditor();
+                    setViewMode('list');
                     fetchSchedules();
                 }} 
             />
         );
     }
 
-    // RENDER LIST VIEW
     return (
         <div className="space-y-8 animate-fade-in-up" dir="rtl">
-            {/* Header / Stats Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-[#1a2230] p-6 rounded-3xl border border-gray-800 shadow-xl flex items-center justify-between group hover:border-[#00A7F8]/50 transition-all">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">إجمالي الرادار</p>
-                        <p className="text-3xl font-black text-white">{stats.total}</p>
-                    </div>
-                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400"><RadarIcon className="w-6 h-6" /></div>
-                </div>
-                <div className="bg-[#1a2230] p-6 rounded-3xl border border-gray-800 shadow-xl flex items-center justify-between group hover:border-red-500/50 transition-all">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">حان موعدها (Due)</p>
-                        <p className="text-3xl font-black text-red-500">{stats.dueCount}</p>
-                    </div>
-                    <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500 animate-pulse">📡</div>
-                </div>
-                <div className="bg-[#1a2230] p-6 rounded-3xl border border-gray-800 shadow-xl flex items-center justify-between group hover:border-purple-500/50 transition-all">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">تم نشره اليوم</p>
-                        <p className="text-3xl font-black text-purple-400">{stats.completedToday}</p>
-                    </div>
-                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400">✓</div>
-                </div>
-                <div className="bg-[#1a2230] p-6 rounded-3xl border border-gray-800 shadow-xl flex items-center justify-between group hover:border-yellow-500/50 transition-all">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">غير نشط</p>
-                        <p className="text-3xl font-black text-yellow-500">{stats.total - stats.active}</p>
-                    </div>
-                    <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-yellow-500">⏸</div>
-                </div>
-            </div>
-
-            {/* Toolbar Area */}
-            <div className="flex flex-col lg:flex-row justify-between items-stretch gap-4 bg-[#1f2937] p-6 rounded-3xl border border-gray-700/50 shadow-2xl relative overflow-hidden">
-                <div className="flex-1 flex flex-col md:flex-row gap-4 items-center">
-                    <div className="relative w-full md:w-80">
+            {/* Header / Filter Toolbar */}
+            <div className="flex flex-col lg:flex-row justify-between items-center gap-6 bg-[#1f2937] p-8 rounded-[2.5rem] border border-gray-700/50 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-bl-full pointer-events-none"></div>
+                <div className="flex flex-col md:flex-row gap-6 items-center w-full">
+                    <div className="relative w-full md:w-96 flex items-center">
                         <input 
                             type="text" 
-                            placeholder="ابحث في الرادار..." 
+                            placeholder="ابحث في رادار البث..." 
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full bg-[#0f1014] border border-gray-700 rounded-2xl px-12 py-3 focus:border-[#00A7F8] focus:ring-1 focus:ring-[#00A7F8] outline-none text-white transition-all text-sm"
+                            className="w-full bg-[#0f1014] border border-gray-700 rounded-2xl px-12 py-4 focus:border-[#00A7F8] focus:ring-1 focus:ring-[#00A7F8] outline-none text-white transition-all text-sm shadow-inner"
                         />
-                        <div className="absolute right-4 top-3 text-gray-500">🔍</div>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 opacity-50 flex items-center justify-center">
+                            <SearchIcon className="w-5 h-5" />
+                        </div>
                     </div>
                     <div className="flex bg-[#0f1014] p-1 rounded-xl border border-gray-700 w-full md:w-auto">
-                        <button onClick={() => setFilterStatus('all')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all ${filterStatus === 'all' ? 'bg-gray-800 text-white shadow' : 'text-gray-500'}`}>الكل</button>
-                        <button onClick={() => setFilterStatus('active')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all ${filterStatus === 'active' ? 'bg-green-600 text-white shadow' : 'text-gray-500'}`}>النشط</button>
-                        <button onClick={() => setFilterStatus('inactive')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all ${filterStatus === 'inactive' ? 'bg-red-600 text-white shadow' : 'text-gray-500'}`}>متوقف</button>
+                        <button onClick={() => setFilterStatus('all')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-xs font-black transition-all ${filterStatus === 'all' ? 'bg-gray-800 text-white shadow' : 'text-gray-500'}`}>الكل</button>
+                        <button onClick={() => setFilterStatus('active')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-xs font-black transition-all ${filterStatus === 'active' ? 'bg-green-600 text-white shadow' : 'text-gray-500'}`}>النشط</button>
+                        <button onClick={() => setFilterStatus('inactive')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-xs font-black transition-all ${filterStatus === 'inactive' ? 'bg-red-600 text-white shadow' : 'text-gray-500'}`}>المتوقف</button>
                     </div>
                 </div>
                 <button 
                     onClick={() => handleOpenEdit(null)}
-                    className="bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-black px-10 py-3 rounded-2xl hover:shadow-[0_0_30px_rgba(0,167,248,0.4)] transition-all transform hover:scale-105 active:scale-95"
+                    className="w-full lg:w-auto bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-black px-12 py-4 rounded-[1.5rem] hover:shadow-[0_0_40px_rgba(0,167,248,0.4)] transition-all transform hover:scale-105 active:scale-95 whitespace-nowrap shadow-xl"
                 >
-                    + إضافة مسلسل للرادار
+                    + إضافة للمجدولة
                 </button>
             </div>
 
-            {/* Main Content Sections */}
-            <div className="space-y-12">
-                {/* Airing Today */}
-                <section>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="w-2 h-8 bg-green-500 rounded-full shadow-[0_0_15px_rgba(34,197,94,0.5)]"></div>
-                        <h4 className="text-2xl font-black text-white">إصدارات اليوم ({airingToday.length})</h4>
-                    </div>
-
-                    {isLoading ? (
-                        <div className="py-20 text-center text-gray-500 animate-pulse">جاري مسح الرادار...</div>
-                    ) : airingToday.length === 0 ? (
-                        <div className="bg-[#0f1014] p-12 rounded-[2.5rem] border border-gray-800 text-center opacity-30">
-                             <p className="text-xl font-bold">لا توجد إصدارات مجدولة لهذا اليوم.</p>
+            {/* Layout: Main List + Sidebar */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Main List (8 cols) */}
+                <div className="lg:col-span-8 space-y-12">
+                    <section>
+                        <div className="flex items-center gap-3 mb-8">
+                            <div className="w-2 h-8 bg-green-500 rounded-full shadow-[0_0_15px_rgba(34,197,94,0.5)]"></div>
+                            <h4 className="text-2xl font-black text-white">إصدارات اليوم ({airingToday.length})</h4>
                         </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {airingToday.map(item => (
-                                <RadarCard 
-                                    key={item.id} 
-                                    item={item} 
-                                    dayLabels={item.daysOfWeek.map(d => dayNames[d])} 
-                                    onMarkDone={() => handleMarkAsDone(item.id)}
-                                    onEdit={() => handleOpenEdit(item)}
-                                    onDelete={() => onRequestDelete(item.id, item.seriesName)}
-                                    onJump={() => handleJumpToContent(item.seriesName)}
-                                    isToday={true}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </section>
+                        {airingToday.length === 0 ? (
+                            <div className="bg-[#1f2937]/30 p-16 rounded-[3rem] border border-dashed border-gray-800 text-center opacity-40">
+                                <p className="text-lg font-bold">لا توجد إصدارات منشطة اليوم</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {airingToday.map(item => (
+                                    <RadarCard 
+                                        key={item.id} 
+                                        item={item} 
+                                        dayLabels={item.daysOfWeek.map(d => dayNames[d])} 
+                                        onMarkDone={() => handleMarkAsDone(item.id)}
+                                        onEdit={() => handleOpenEdit(item)}
+                                        onDelete={() => onRequestDelete(item.id, item.seriesName)}
+                                        onJump={() => handleJumpToContent(item.seriesName)}
+                                        isToday={true}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </section>
 
-                {/* Weekly Queue */}
-                <section>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="w-2 h-8 bg-blue-500 rounded-full shadow-[0_0_15px_rgba(0,167,248,0.5)]"></div>
-                        <h4 className="text-2xl font-black text-white">قائمة الأسبوع (بقية الإصدارات)</h4>
-                    </div>
-                    
-                    {others.length === 0 ? (
-                        <div className="text-center py-10 text-gray-600 font-bold">لا توجد أعمال أخرى مطابقة للفلتر.</div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    <section>
+                        <div className="flex items-center gap-3 mb-8">
+                            <div className="w-2 h-8 bg-blue-500 rounded-full shadow-[0_0_15px_rgba(0,167,248,0.5)]"></div>
+                            <h4 className="text-2xl font-black text-white">بقية أيام الأسبوع</h4>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             {others.map(item => (
                                 <RadarCard 
                                     key={item.id} 
@@ -293,14 +220,52 @@ const ContentRadarTab: React.FC<ContentRadarTabProps> = ({ addToast, onRequestDe
                                 />
                             ))}
                         </div>
-                    )}
-                </section>
+                    </section>
+                </div>
+
+                {/* Library Sidebar (4 cols) */}
+                <div className="lg:col-span-4 sticky top-24 space-y-6">
+                    <div className="bg-[#1f2937] p-8 rounded-[2.5rem] border border-gray-700/50 shadow-2xl h-fit">
+                        <h3 className="font-black text-white mb-6 flex items-center gap-3">
+                            <span className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl font-black shadow-inner">📡</span>
+                            المكتبة السريعة
+                        </h3>
+                        <p className="text-xs text-gray-500 mb-6 leading-relaxed">ابحث عن المسلسلات المنشورة حالياً في مكتبتك لفتح صفحة تعديل الحلقات مباشرة.</p>
+                        <div className="relative mb-6 flex items-center">
+                            <input 
+                                type="text" 
+                                placeholder="ابحث في المنشور..." 
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full bg-[#0a0a0a] border border-gray-800 rounded-[1.25rem] px-12 py-4 text-white text-sm focus:outline-none focus:border-[#00A7F8] placeholder-gray-700 transition-all shadow-inner"
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50 flex items-center justify-center">
+                                <SearchIcon className="w-5 h-5 text-gray-400" />
+                            </span>
+                        </div>
+                        <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1 custom-scrollbar">
+                            {allPublishedContent.filter(c => c.type === 'series').slice(0, 10).map((c:any) => (
+                                <div key={c.id} onClick={() => onEditContent(c)} className="flex items-center gap-4 p-3.5 bg-[#0f1014] hover:bg-[#161b22] rounded-2xl border border-transparent hover:border-[#00A7F8]/30 cursor-pointer group transition-all duration-300">
+                                    <div className="w-12 h-16 shrink-0 rounded-xl overflow-hidden bg-gray-900 border border-white/5 shadow-lg relative">
+                                        <img src={c.poster} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-black truncate text-white group-hover:text-[#00A7F8] transition-colors">{c.title}</p>
+                                        <div className="flex items-center gap-2 mt-1.5">
+                                            <span className="text-[9px] font-black text-gray-600 font-mono">{c.releaseYear}</span>
+                                            <span className="w-1 h-1 bg-gray-800 rounded-full"></span>
+                                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">TV SERIES</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
 };
 
-// --- RADAR CARD COMPONENT (IMPROVED FOR FULL POSTER) ---
 const RadarCard: React.FC<{
     item: ReleaseSchedule; 
     dayLabels: string[]; 
@@ -314,120 +279,62 @@ const RadarCard: React.FC<{
     const lastAddedDate = item.lastAddedAt ? new Date(item.lastAddedAt) : null;
     const isPublishedToday = lastAddedDate && lastAddedDate.toDateString() === new Date().toDateString();
 
-    const [timeLeft, setTimeLeft] = useState<string>('');
-
-    useEffect(() => {
-        if (!isToday || isPublishedToday) return;
-
-        const updateTimer = () => {
-            const now = new Date();
-            const [hours, minutes] = item.time.split(':').map(Number);
-            const target = new Date();
-            target.setHours(hours, minutes, 0);
-
-            if (now > target) {
-                setTimeLeft('حان الموعد!');
-            } else {
-                const diff = target.getTime() - now.getTime();
-                const h = Math.floor(diff / (1000 * 60 * 60));
-                const m = Math.floor((diff / (1000 * 60)) % 60);
-                setTimeLeft(`يصدر خلال ${h}س و ${m}د`);
-            }
-        };
-
-        updateTimer();
-        const interval = setInterval(updateTimer, 60000);
-        return () => clearInterval(interval);
-    }, [isToday, isPublishedToday, item.time]);
-
-    const borderGlow = item.priority === 'hot' ? 'border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.2)]' : isToday ? 'border-green-600/30' : 'border-gray-800';
+    const borderGlow = item.priority === 'hot' ? 'border-red-600 shadow-[0_0_30px_rgba(220,38,38,0.2)]' : isToday ? 'border-green-600/30 shadow-lg' : 'border-gray-800';
 
     return (
-        <div className={`group relative bg-[#1a2230] border rounded-[2rem] overflow-hidden transition-all duration-500 hover:shadow-2xl flex flex-col ${borderGlow}`}>
-            {/* Visual Header - CHANGED aspect ratio for full poster look */}
-            <div className="aspect-[16/14] relative overflow-hidden bg-black">
-                <img 
-                    src={item.poster} 
-                    className="w-full h-full object-cover object-top opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700" 
-                    alt="" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1a2230] via-[#1a2230]/10 to-transparent"></div>
+        <div className={`group relative bg-[#1a2230] border rounded-[2.5rem] overflow-hidden transition-all duration-500 hover:shadow-2xl flex flex-col ${borderGlow}`}>
+            <div className="aspect-[16/10] relative overflow-hidden bg-black">
+                <img src={item.poster} className="w-full h-full object-cover object-top opacity-50 group-hover:opacity-70 group-hover:scale-105 transition-all duration-700" alt="" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1a2230] via-[#1a2230]/40 to-transparent"></div>
                 
-                {/* Status & Priority */}
                 <div className="absolute top-4 inset-x-4 flex justify-between items-start z-20">
                     <div className="flex flex-col gap-2">
                          <PriorityBadge priority={item.priority} />
-                         <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-[8px] font-black text-white border border-white/10 uppercase tracking-widest">
+                         <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-xl text-[8px] font-black text-white border border-white/10">
                             <StatusLabel status={item.status} />
                          </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={onEdit} className="w-9 h-9 flex items-center justify-center rounded-xl bg-black/40 backdrop-blur-md text-white border border-white/10 hover:bg-[#00A7F8] hover:text-black transition-all shadow-lg">✎</button>
-                        <button onClick={onDelete} className="w-9 h-9 flex items-center justify-center rounded-xl bg-black/40 backdrop-blur-md text-white border border-white/10 hover:bg-red-600 transition-all shadow-lg">✕</button>
+                        <button onClick={onEdit} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-black/40 backdrop-blur-md text-white border border-white/10 hover:bg-[#00A7F8] hover:text-black transition-all shadow-lg">✎</button>
+                        <button onClick={onDelete} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-black/40 backdrop-blur-md text-white border border-white/10 hover:bg-red-600 transition-all shadow-lg">✕</button>
                     </div>
                 </div>
 
-                {/* Main Info Overlay */}
-                <div className="absolute bottom-4 right-4 left-4 text-right">
+                <div className="absolute bottom-4 right-6 left-6 text-right">
                     <h5 className="text-2xl font-black text-white drop-shadow-lg leading-tight mb-2 truncate">{item.seriesName}</h5>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                        {dayLabels.map((day, idx) => (
-                            <span key={idx} className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase ${isToday && dayLabels.length === 1 ? 'bg-green-500 text-black shadow-[0_0_10px_rgba(34,197,94,0.4)]' : 'bg-gray-800 text-gray-400'}`}>
-                                {day}
-                            </span>
-                        ))}
-                    </div>
-                    <div className="flex items-center gap-2">
-                         <span className="bg-[#00A7F8] text-black text-[10px] px-3 py-1 rounded-lg font-black shadow-lg" dir="rtl">{item.time}</span>
-                         {isToday && !isPublishedToday && (
-                             <span className="bg-green-500/20 text-green-400 text-[10px] px-3 py-1 rounded-lg font-black border border-green-500/30 flex items-center gap-1">
-                                <TimerIcon />
-                                {timeLeft}
-                             </span>
-                         )}
+                    <div className="flex items-center gap-3">
+                         <span className="bg-[#00A7F8] text-black text-xs px-4 py-1.5 rounded-xl font-black shadow-lg" dir="rtl">{item.time}</span>
+                         <div className="flex flex-wrap gap-1">
+                            {dayLabels.map((day, idx) => (
+                                <span key={idx} className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase ${isToday ? 'bg-green-500 text-black' : 'bg-gray-800 text-gray-400'}`}>{day}</span>
+                            ))}
+                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Content Area */}
             <div className="p-6 flex-1 flex flex-col gap-6">
-                {/* Sources Pill Area */}
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">المصادر (Sources)</span>
-                        <span className="text-[10px] text-gray-600 font-bold">رقم الحلقة القادمة: {item.nextEpisodeNumber || '-'}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                        {item.sources.map((src, i) => (
-                            <a key={i} href={src.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-[#0f1014] rounded-2xl text-[11px] font-bold text-gray-300 hover:bg-[#161b22] border border-gray-800 transition-all group/link hover:border-[#00A7F8]/30">
-                                <span className="truncate max-w-[80px]">{src.name}</span>
-                                <ExternalLinkIcon />
-                            </a>
-                        ))}
-                    </div>
+                <div className="grid grid-cols-2 gap-2">
+                    {item.sources.slice(0, 2).map((src, i) => (
+                        <a key={i} href={src.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3.5 bg-[#0f1014] rounded-2xl text-[10px] font-black text-gray-400 hover:bg-[#161b22] border border-gray-800 transition-all group/link hover:border-[#00A7F8]/30">
+                            <span className="truncate max-w-[80px]">{src.name}</span>
+                            <ExternalLinkIcon />
+                        </a>
+                    ))}
                 </div>
 
-                {/* Footer Actions */}
                 <div className="mt-auto pt-6 border-t border-gray-800/50 flex items-center justify-between">
-                    <button 
-                        onClick={onJump}
-                        className="text-xs font-black text-[#00A7F8] hover:text-[#00FFB0] transition-colors flex items-center gap-1.5 group/jump"
-                    >
-                        <span>فتح في المكتبة</span>
+                    <button onClick={onJump} className="text-xs font-black text-[#00A7F8] hover:text-[#00FFB0] transition-colors flex items-center gap-1.5 group/jump">
+                        <span>إدارة الحلقات</span>
                         <span className="transition-transform group-hover/jump:-translate-x-1">🔗</span>
                     </button>
 
                     <button 
                         onClick={onMarkDone}
                         disabled={isPublishedToday}
-                        className={`px-6 py-2.5 rounded-2xl font-black text-xs transition-all shadow-xl flex items-center gap-2 active:scale-95 ${isPublishedToday ? 'bg-green-600/10 text-green-400 border border-green-500/20 cursor-default' : 'bg-white text-black hover:bg-[#00FFB0]'}`}
+                        className={`px-8 py-3 rounded-2xl font-black text-xs transition-all shadow-xl flex items-center gap-2 active:scale-95 ${isPublishedToday ? 'bg-green-600/10 text-green-400 border border-green-500/20 cursor-default shadow-none' : 'bg-white text-black hover:bg-[#00FFB0]'}`}
                     >
-                        {isPublishedToday ? (
-                            <>
-                                <span className="text-lg">✓</span>
-                                <span>تم النشر اليوم</span>
-                            </>
-                        ) : 'تحديد كمكتمل'}
+                        {isPublishedToday ? '✓ تم النشر اليوم' : 'تحديد كمكتمل'}
                     </button>
                 </div>
             </div>
@@ -435,7 +342,6 @@ const RadarCard: React.FC<{
     );
 };
 
-// --- SCHEDULE EDITOR VIEW (MODAL CONTENT AS FULL PAGE) ---
 const ScheduleEditorView: React.FC<{ 
     schedule: ReleaseSchedule | null; 
     onClose: () => void; 
@@ -447,18 +353,9 @@ const ScheduleEditorView: React.FC<{
     const [isSearching, setIsSearching] = useState(false);
 
     const [formData, setFormData] = useState<ReleaseSchedule>(schedule || {
-        id: '',
-        seriesName: '',
-        poster: '',
-        daysOfWeek: [1],
-        time: '21:00',
-        isActive: true,
-        lastAddedAt: null,
-        sources: [{ name: 'EGYBEST', url: '' }, { name: 'WE CIMA', url: '' }],
-        priority: 'medium',
-        status: 'ongoing',
-        nextEpisodeNumber: 1,
-        internalNotes: ''
+        id: '', seriesName: '', poster: '', daysOfWeek: [1], time: '21:00', isActive: true,
+        lastAddedAt: null, sources: [{ name: 'EGYBEST', url: '' }, { name: 'WE CIMA', url: '' }],
+        priority: 'medium', status: 'ongoing', nextEpisodeNumber: 1, internalNotes: ''
     });
 
     useEffect(() => {
@@ -472,19 +369,11 @@ const ScheduleEditorView: React.FC<{
     const filteredSuggestions = useMemo(() => {
         if (!searchQuery.trim()) return [];
         const query = searchQuery.toLowerCase();
-        return allContent.filter(c => 
-            c.title.toLowerCase().includes(query) || 
-            (c.slug && c.slug.toLowerCase().includes(query))
-        ).slice(0, 5);
+        return allContent.filter(c => c.title.toLowerCase().includes(query)).slice(0, 5);
     }, [allContent, searchQuery]);
 
     const handleSelectContent = (content: Content) => {
-        setFormData({
-            ...formData,
-            seriesId: content.id,
-            seriesName: content.title,
-            poster: content.poster
-        });
+        setFormData({ ...formData, seriesId: content.id, seriesName: content.title, poster: content.poster });
         setSearchQuery('');
         setIsSearching(false);
     };
@@ -494,9 +383,7 @@ const ScheduleEditorView: React.FC<{
     const toggleDay = (dayIndex: number) => {
         setFormData(prev => {
             const currentDays = prev.daysOfWeek || [];
-            const newDays = currentDays.includes(dayIndex)
-                ? currentDays.filter(d => d !== dayIndex)
-                : [...currentDays, dayIndex];
+            const newDays = currentDays.includes(dayIndex) ? currentDays.filter(d => d !== dayIndex) : [...currentDays, dayIndex];
             return { ...prev, daysOfWeek: newDays.sort((a,b) => a - b) };
         });
     };
@@ -507,194 +394,121 @@ const ScheduleEditorView: React.FC<{
         setFormData({ ...formData, sources: updated });
     };
 
-    const addSource = () => {
-        setFormData({ ...formData, sources: [...formData.sources, { name: 'New Source', url: '' }] });
-    };
-
-    const removeSource = (idx: number) => {
-        setFormData({ ...formData, sources: formData.sources.filter((_, i) => i !== idx) });
-    };
-
-    const inputClass = "w-full bg-[#0f1014] border border-gray-700 rounded-2xl px-4 py-3 text-white focus:border-[#00A7F8] outline-none transition-all text-sm";
+    const inputClass = "w-full bg-[#0f1014] border border-gray-700 rounded-2xl px-4 py-3 text-white focus:border-[#00A7F8] outline-none transition-all text-sm shadow-inner";
     const labelClass = "block text-[10px] font-black text-gray-500 uppercase tracking-[0.15em] mb-2 pr-1";
 
     return (
         <div className="space-y-10 animate-fade-in" dir="rtl">
-            {/* Page Header */}
-            <div className="flex justify-between items-center bg-[#1a2230] p-8 rounded-3xl border border-gray-800 shadow-xl">
-                <div className="flex items-center gap-4">
-                    <button onClick={onClose} className="p-3 bg-gray-800 text-gray-400 hover:text-white rounded-2xl transition-all border border-gray-700">
-                        <BackIcon />
-                    </button>
+            <div className="flex justify-between items-center bg-[#1a2230] p-8 rounded-[2.5rem] border border-gray-800 shadow-xl">
+                <div className="flex items-center gap-6">
+                    <button onClick={onClose} className="p-4 bg-gray-800 text-gray-400 hover:text-white rounded-[1.25rem] transition-all border border-gray-700 shadow-lg group"><BackIcon /></button>
                     <div>
-                        <h3 className="text-2xl font-black text-white">{isNew ? 'إضافة رادار بث جديد' : 'تعديل بيانات الرادار'}</h3>
-                        <p className="text-xs text-gray-500 font-bold">أنت الآن تقوم بـ {isNew ? 'إنشاء مدخل جديد' : `تحديث بيانات ${formData.seriesName}`}</p>
+                        <h3 className="text-3xl font-black text-white">{isNew ? 'إضافة رادار جديد' : 'تحديث بيانات الرادار'}</h3>
+                        <p className="text-xs text-gray-500 font-bold mt-1">قم بتخصيص مواعيد النشر والمصادر بدقة.</p>
                     </div>
                 </div>
-                <div className="flex gap-3">
-                    <button onClick={onClose} className="px-8 py-3 bg-gray-800 text-gray-300 font-black rounded-2xl hover:bg-gray-700 transition-colors border border-gray-700">إلغاء</button>
+                <div className="flex gap-4">
+                    <button onClick={onClose} className="px-10 py-3.5 bg-gray-800 text-gray-300 font-black rounded-2xl hover:bg-gray-700 transition-all border border-gray-700 shadow-lg">إلغاء</button>
                     <button 
                         onClick={() => onSave(formData)} 
-                        className="bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-black px-12 py-3 rounded-2xl shadow-2xl transform active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                        className="bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-black px-14 py-3.5 rounded-2xl shadow-2xl transform active:scale-95 transition-all disabled:opacity-50"
                         disabled={!formData.seriesName || formData.daysOfWeek.length === 0}
                     >
-                        حفظ ونشر
+                        حفظ الرادار
                     </button>
                 </div>
             </div>
 
-            {/* Editor Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                
-                {/* Poster Sidebar */}
-                <div className="lg:col-span-4 space-y-6">
-                     <div className="bg-[#1a2230] p-6 rounded-[3rem] border border-gray-800 shadow-2xl">
-                         <div className="aspect-[2/3] rounded-[2.5rem] overflow-hidden bg-black border-2 border-dashed border-gray-700 relative group mb-6">
+                <div className="lg:col-span-4">
+                     <div className="bg-[#1a2230] p-8 rounded-[3rem] border border-gray-700/50 shadow-2xl sticky top-24">
+                         <div className="aspect-[2/3] rounded-[2rem] overflow-hidden bg-[#0a0a0a] border-2 border-dashed border-gray-700 relative group mb-8 shadow-inner">
                             {formData.poster ? (
                                 <img src={formData.poster} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt=""/>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-xs text-gray-600 text-center px-8 gap-4">
-                                    <RadarIcon className="w-12 h-12 opacity-20" />
-                                    <span>اختر مسلسلاً لعرض البوستر هنا</span>
-                                </div>
+                                <div className="h-full flex flex-col items-center justify-center text-xs text-gray-600 text-center px-8 gap-6 opacity-20"><RadarIcon className="w-16 h-16" /><span>معاينة البوستر</span></div>
                             )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none"></div>
                          </div>
-                         <div>
-                            <label className={labelClass}>رابط البوستر المخصص</label>
-                            <input value={formData.poster} onChange={e => setFormData({...formData, poster: e.target.value})} className={inputClass + " font-mono text-[10px] text-blue-400/70"} placeholder="https://..."/>
+                         <div className="space-y-4">
+                            <label className={labelClass}>رابط البوستر المباشر</label>
+                            <input value={formData.poster} onChange={e => setFormData({...formData, poster: e.target.value})} className={inputClass + " font-mono text-[10px] text-blue-400"} placeholder="https://..."/>
                          </div>
                      </div>
                 </div>
 
-                {/* Form Content */}
-                <div className="lg:col-span-8 space-y-8">
-                    
-                    {/* Database Search */}
-                    <div className="bg-[#1a2230] p-8 rounded-[3rem] border border-gray-800 shadow-xl space-y-6">
-                        <div className="relative">
-                            <label className={labelClass}>🔍 الربط مع قاعدة البيانات</label>
-                            <input 
-                                type="text"
-                                value={searchQuery} 
-                                onChange={e => { setSearchQuery(e.target.value); setIsSearching(true); }} 
-                                onFocus={() => setIsSearching(true)}
-                                className={inputClass + " border-blue-500/20 focus:border-[#00A7F8] bg-[#0f1014] shadow-inner"} 
-                                placeholder="اكتب اسم المسلسل للربط التلقائي..."
-                            />
-                            
+                <div className="lg:col-span-8 space-y-8 pb-20">
+                    <div className="bg-[#1a2230] p-10 rounded-[3rem] border border-gray-700/50 shadow-2xl space-y-10">
+                        <div className="relative flex flex-col">
+                            <label className={labelClass}>البحث السريع في المكتبة</label>
+                            <div className="relative flex items-center">
+                                <input 
+                                    type="text" value={searchQuery} 
+                                    onChange={e => { setSearchQuery(e.target.value); setIsSearching(true); }} 
+                                    className={inputClass + " border-blue-500/20 focus:border-[#00A7F8] bg-[#0f1014] text-lg px-12"} 
+                                    placeholder="اكتب اسم المسلسل للربط التلقائي..."
+                                />
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#00A7F8] opacity-60 flex items-center justify-center">
+                                    <SearchIcon className="w-6 h-6" />
+                                </div>
+                            </div>
                             {isSearching && filteredSuggestions.length > 0 && (
-                                <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
+                                <div className="absolute top-full left-0 right-0 z-50 mt-3 bg-[#1f2937] border border-gray-700 rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden animate-fade-in-up">
                                     {filteredSuggestions.map(content => (
-                                        <button 
-                                            key={content.id}
-                                            type="button"
-                                            onClick={() => handleSelectContent(content)}
-                                            className="w-full flex items-center gap-4 p-4 hover:bg-gray-800 transition-colors border-b border-gray-800 last:border-0"
-                                        >
-                                            <img src={content.poster} className="w-12 h-16 object-cover rounded-lg shadow-md" alt="" />
-                                            <div className="flex flex-col text-right">
-                                                <span className="font-bold text-white">{content.title}</span>
-                                                <span className="text-[10px] text-gray-500 font-mono">ID: {content.id}</span>
-                                            </div>
+                                        <button key={content.id} type="button" onClick={() => handleSelectContent(content)} className="w-full flex items-center gap-4 p-5 hover:bg-white/5 transition-all border-b border-gray-800 last:border-0">
+                                            <img src={content.poster} className="w-10 h-14 object-cover rounded-lg shadow-lg" alt="" />
+                                            <div className="flex flex-col text-right"><span className="font-black text-white">{content.title}</span><span className="text-[10px] text-gray-500 font-mono uppercase">ID: {content.id}</span></div>
                                         </button>
                                     ))}
                                 </div>
                             )}
                         </div>
 
-                        {/* Basic Info Row */}
-                        <div className="bg-[#1a2230] p-8 rounded-[3rem] border border-gray-800 shadow-xl space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div>
-                                    <label className={labelClass}>اسم المسلسل (للربط)</label>
-                                    <input value={formData.seriesName} onChange={e => setFormData({...formData, seriesName: e.target.value})} className={inputClass} placeholder="مثال: المؤسس عثمان"/>
-                                </div>
-                                <div>
-                                    <label className={labelClass}>رقم الحلقة القادمة</label>
-                                    <input type="number" value={formData.nextEpisodeNumber || ''} onChange={e => setFormData({...formData, nextEpisodeNumber: parseInt(e.target.value)})} className={inputClass} placeholder="25"/>
-                                </div>
-                            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                            <div><label className={labelClass}>اسم المسلسل (للتنبيهات)</label><input value={formData.seriesName} onChange={e => setFormData({...formData, seriesName: e.target.value})} className={inputClass} placeholder="اسم العمل الظاهر"/></div>
+                            <div><label className={labelClass}>رقم الحلقة التالية</label><input type="number" value={formData.nextEpisodeNumber || ''} onChange={e => setFormData({...formData, nextEpisodeNumber: parseInt(e.target.value)})} className={inputClass} placeholder="مثال: 12"/></div>
+                        </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div>
-                                    <label className={labelClass}>وقت العرض (بتوقيت مكة)</label>
-                                    <input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className={inputClass}/>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className={labelClass}>الأولوية (Priority)</label>
-                                        <select value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value as any})} className={inputClass}>
-                                            <option value="low">عادي (Low)</option>
-                                            <option value="medium">متوسط (Medium)</option>
-                                            <option value="high">مرتفع (High)</option>
-                                            <option value="hot">تريند (HOT 🔥)</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className={labelClass}>الحالة (Status)</label>
-                                        <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className={inputClass}>
-                                            <option value="ongoing">مستمر</option>
-                                            <option value="hiatus">متوقف مؤقتاً</option>
-                                            <option value="finished">منتهي</option>
-                                            <option value="upcoming">قريباً</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Days of week */}
-                            <div>
-                                <label className={labelClass}>أيام الصدور (Days of Week)</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {dayNames.map((name, idx) => (
-                                        <button 
-                                            key={idx}
-                                            type="button"
-                                            onClick={() => toggleDay(idx)}
-                                            className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all border ${formData.daysOfWeek.includes(idx) ? 'bg-[#00A7F8] text-black border-transparent shadow-[0_0_15px_rgba(0,167,248,0.3)]' : 'bg-[#0f1014] text-gray-500 border-gray-800 hover:border-gray-600'}`}
-                                        >
-                                            {name}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="pt-4 flex items-center justify-between border-t border-gray-800">
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-bold text-white">تفعيل الرادار</span>
-                                    <span className="text-[10px] text-gray-500">سيتم إظهار تنبيهات لهذا المسلسل في اللوحة عند موعد صدوره.</span>
-                                </div>
-                                <ToggleSwitch checked={formData.isActive} onChange={(val) => setFormData({...formData, isActive: val})} />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                            <div><label className={labelClass}>وقت البث المجدول</label><input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className={inputClass + " text-lg font-black text-[#00A7F8]"}/></div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className={labelClass}>الأولوية</label><select value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value as any})} className={inputClass}><option value="low">عادي</option><option value="medium">متوسط</option><option value="high">مرتفع</option><option value="hot">تريند 🔥</option></select></div>
+                                <div><label className={labelClass}>الحالة</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className={inputClass}><option value="ongoing">مستمر</option><option value="hiatus">متوقف</option><option value="finished">منتهي</option><option value="upcoming">قريباً</option></select></div>
                             </div>
                         </div>
 
-                        {/* Sources Management */}
-                        <div className="bg-[#1a2230] p-8 rounded-[3rem] border border-gray-800 shadow-xl space-y-6">
-                            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
-                                <h4 className="text-lg font-black text-white">مصادر البحث (Search Sources)</h4>
-                                <button type="button" onClick={addSource} className="text-xs font-black text-[#00A7F8] hover:underline flex items-center gap-1">
-                                    <PlusIcon className="w-4 h-4"/> إضافة مصدر
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {formData.sources.map((src, i) => (
-                                    <div key={i} className="bg-[#0f1014] p-4 rounded-2xl border border-gray-800 space-y-3 group relative">
-                                        <button onClick={() => removeSource(i)} className="absolute -top-2 -left-2 w-6 h-6 bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                                            <CloseIcon className="w-3 h-3 text-white"/>
-                                        </button>
-                                        <input value={src.name} onChange={e => handleSourceChange(i, 'name', e.target.value)} className={inputClass + " h-9"} placeholder="اسم المصدر..."/>
-                                        <input value={src.url} onChange={e => handleSourceChange(i, 'url', e.target.value)} className={inputClass + " h-9 text-[10px] font-mono"} placeholder="رابط البحث المباشر..."/>
-                                    </div>
+                        <div>
+                            <label className={labelClass}>أيام الصدور الأسبوعية</label>
+                            <div className="flex flex-wrap gap-2">
+                                {dayNames.map((name, idx) => (
+                                    <button key={idx} type="button" onClick={() => toggleDay(idx)} className={`px-6 py-3 rounded-2xl text-xs font-black transition-all border ${formData.daysOfWeek.includes(idx) ? 'bg-[#00A7F8] text-black border-transparent shadow-[0_0_20px_rgba(0,167,248,0.4)]' : 'bg-[#0f1014] text-gray-500 border-gray-800 hover:border-gray-600'}`}>{name}</button>
                                 ))}
                             </div>
                         </div>
 
-                        {/* Internal Notes */}
-                        <div className="bg-[#1a2230] p-8 rounded-[3rem] border border-gray-800 shadow-xl">
-                             <label className={labelClass}>ملاحظات داخلية للمشرفين</label>
-                             <textarea value={formData.internalNotes || ''} onChange={e => setFormData({...formData, internalNotes: e.target.value})} className={inputClass + " h-32 resize-none"} placeholder="أي تفاصيل أخرى تساعد المشرفين..."/>
+                        <div className="pt-8 border-t border-gray-800 space-y-6">
+                            <h4 className="text-sm font-black text-gray-300 uppercase tracking-widest flex items-center gap-2">🔗 مصادر المراقبة (Sources)</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {formData.sources.map((src, i) => (
+                                    <div key={i} className="bg-[#0f1014] p-5 rounded-3xl border border-gray-800 space-y-3 group/src relative shadow-inner">
+                                        <button type="button" onClick={() => setFormData({...formData, sources: formData.sources.filter((_,si)=>si!==i)})} className="absolute -top-2 -left-2 w-7 h-7 bg-red-600 rounded-xl flex items-center justify-center opacity-0 group-hover/src:opacity-100 transition-all shadow-lg">✕</button>
+                                        <div>
+                                            <label className={labelClass}>اسم المصدر</label>
+                                            <input value={src.name} onChange={e => handleSourceChange(i, 'name', e.target.value)} className={inputClass} placeholder="مثال: EGYBEST"/>
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>رابط المراقبة</label>
+                                            <input value={src.url} onChange={e => handleSourceChange(i, 'url', e.target.value)} className={inputClass + " font-mono text-[10px] text-blue-400"} placeholder="https://..."/>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <button type="button" onClick={() => setFormData({...formData, sources: [...formData.sources, { name: '', url: '' }]})} className="w-full py-4 border-2 border-dashed border-gray-800 rounded-3xl text-gray-500 font-bold hover:border-[#00A7F8] hover:text-[#00A7F8] transition-all">+ إضافة مصدر مراقبة</button>
+                        </div>
+
+                        <div className="pt-8 border-t border-gray-800">
+                            <label className={labelClass}>ملاحظات داخلية (خاصة بك)</label>
+                            <textarea value={formData.internalNotes} onChange={e => setFormData({...formData, internalNotes: e.target.value})} className={inputClass + " h-24 resize-none"} placeholder="اكتب أي ملاحظات هنا..."/>
                         </div>
                     </div>
                 </div>

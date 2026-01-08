@@ -136,7 +136,7 @@ const FOCUS_RING = "focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[
 
 const inputClass = `w-full ${INPUT_BG} border ${BORDER_COLOR} rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none ${FOCUS_RING} transition-all duration-300 text-sm shadow-sm`;
 const labelClass = "block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wide";
-const sectionBoxClass = "bg-[#0f1014] p-8 rounded-2xl border border-gray-800 shadow-xl";
+const sectionBoxClass = "bg-[#0f1014] p-4 md:p-8 rounded-2xl border border-gray-800 shadow-xl";
 
 // --- HELPERS ---
 const getRowValue = (row: any, ...candidates: string[]) => {
@@ -212,11 +212,11 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
     };
 
     return (
-        <div className="mt-6 flex flex-col items-center gap-12 rounded-3xl border border-gray-800 bg-[#080a0f] p-8 md:flex-row md:items-start shadow-2xl">
+        <div className="mt-6 flex flex-col items-center gap-12 rounded-3xl border border-gray-800 bg-[#080a0f] p-4 md:p-8 md:flex-row md:items-start shadow-2xl">
             <div className="relative mx-auto flex-shrink-0 md:mx-0">
                 <div 
                     ref={containerRef}
-                    className="relative overflow-hidden rounded-[3rem] border-[10px] border-[#1f2127] bg-black shadow-2xl ring-1 ring-white/10 select-none touch-none"
+                    className="relative overflow-hidden rounded-[3rem] border-[10px] border-[#1f2127] bg-black shadow-2xl ring-1 ring-white/10 select-none touch-none scale-90 md:scale-100 origin-top"
                     style={{ width: '300px', height: '620px', cursor: isPanning ? 'grabbing' : 'grab' }} 
                     onPointerDown={handlePointerDown}
                     onPointerMove={handlePointerMove}
@@ -431,16 +431,16 @@ const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ isOpen, onClose, 
 
     return (
         <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm" onClick={onClose}>
-            <div className="flex h-[85vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-gray-800 bg-[#0f1014] shadow-2xl" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between border-b border-gray-800 bg-[#161b22] px-6 py-4">
-                    <h3 className="flex items-center gap-3 text-xl font-bold text-white">
-                        <PhotoIcon className="w-6 h-6 text-[var(--color-accent)]"/>
+            <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-gray-800 bg-[#0f1014] shadow-2xl" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between border-b border-gray-800 bg-[#161b22] px-4 md:px-6 py-4">
+                    <h3 className="flex items-center gap-3 text-lg md:text-xl font-bold text-white">
+                        <PhotoIcon className="w-5 h-5 md:w-6 md:h-6 text-[var(--color-accent)]"/>
                         معرض الصور 
-                        <span className="rounded bg-[var(--color-accent)]/10 px-2 py-0.5 text-xs text-[var(--color-accent)] border border-[var(--color-accent)]/20">
+                        <span className="hidden sm:inline rounded bg-[var(--color-accent)]/10 px-2 py-0.5 text-xs text-[var(--color-accent)] border border-[var(--color-accent)]/20">
                             {activeTab === 'posters' ? 'بوسترات' : activeTab === 'logos' ? 'شعارات' : 'خلفيات'}
                         </span>
                     </h3>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 md:gap-3">
                         <select 
                             value={filterLang} 
                             onChange={(e) => setFilterLang(e.target.value)}
@@ -457,13 +457,13 @@ const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ isOpen, onClose, 
                     </div>
                 </div>
 
-                <div className="custom-scrollbar flex-1 overflow-y-auto bg-[#0a0a0a] p-6">
+                <div className="custom-scrollbar flex-1 overflow-y-auto bg-[#0a0a0a] p-4 md:p-6">
                     {loading ? (
                         <div className="flex h-full items-center justify-center text-gray-500">جاري تحميل الصور...</div>
                     ) : displayedImages.length === 0 ? (
                         <div className="flex h-full items-center justify-center text-gray-500">لا توجد صور مطابقة للفلتر المحدد.</div>
                     ) : (
-                        <div className={`grid gap-6 ${activeTab === 'posters' ? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3'}`}>
+                        <div className={`grid gap-4 md:gap-6 ${activeTab === 'posters' ? 'grid-cols-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3'}`}>
                             {displayedImages.map((img: any, idx: number) => (
                                 <div key={idx} onClick={() => { onSelect(`https://image.tmdb.org/t/p/original${img.file_path}`); onClose(); }} className="group relative cursor-pointer overflow-hidden rounded-xl border border-gray-800 bg-gray-900 transition-all hover:border-[var(--color-accent)] hover:shadow-lg hover:shadow-[var(--color-accent)]/10">
                                     <img 
@@ -568,7 +568,7 @@ const TitleGalleryModal: React.FC<TitleGalleryModalProps> = ({ isOpen, onClose, 
                 <div className="flex items-center justify-between border-b border-gray-800 bg-[#161b22] px-6 py-4">
                     <h3 className="flex items-center gap-3 text-xl font-bold text-white">
                         <LanguageIcon className="w-6 h-6 text-[var(--color-accent)]"/>
-                        عناوين بديلة (Alternative Titles)
+                        عناوين بديلة
                     </h3>
                     <button onClick={onClose} className="rounded-lg bg-gray-800 p-2 text-gray-400 transition-colors hover:bg-red-500 hover:text-white">
                         <CloseIcon className="h-5 w-5" />
@@ -665,10 +665,10 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
     return (
         <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={onClose}>
             <div className={`w-full max-w-3xl overflow-hidden rounded-2xl border border-gray-800 bg-[#0f1014] text-white shadow-2xl animate-fade-in-up`} onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between border-b border-gray-800 bg-[#161b22] px-6 py-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-800 bg-[#161b22] px-4 md:px-6 py-4 gap-4">
                     <h3 className="flex items-center gap-2 text-lg font-bold text-white">
                          <ServerIcon className="w-5 h-5 text-[var(--color-accent)]"/>
-                         إدارة السيرفرات: <span className="text-[var(--color-accent)]">{episode.title}</span>
+                         إدارة السيرفرات: <span className="text-[var(--color-accent)] text-sm">{episode.title}</span>
                     </h3>
                     <div className="flex flex-wrap items-center gap-2">
                         <button onClick={onOpenVk} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-4 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
@@ -676,22 +676,22 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                         </button>
                         <button onClick={onOpenDailymotion} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
                             <span className="w-4 h-4 flex items-center justify-center font-black">d</span>
-                            <span>Dailymotion</span>
+                            <span>Daily</span>
                         </button>
                         <button onClick={onOpenSearch} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
                             <SearchIcon className="w-4 h-4"/>
                             <span>Uqload</span>
                         </button>
-                        <button onClick={onClose} className="ml-2 text-gray-400 hover:text-white"><CloseIcon className="w-5 h-5"/></button>
+                        <button onClick={onClose} className="mr-auto md:ml-2 md:mr-0 text-gray-400 hover:text-white"><CloseIcon className="w-5 h-5"/></button>
                     </div>
                 </div>
                 
-                <div className="custom-scrollbar max-h-[60vh] overflow-y-auto p-6 space-y-4 bg-[#0a0a0a]">
+                <div className="custom-scrollbar max-h-[60vh] overflow-y-auto p-4 md:p-6 space-y-4 bg-[#0a0a0a]">
                     {servers.map((server, index) => (
-                          <div key={index} className="relative group/s rounded-xl border border-gray-800 bg-[#161b22] p-5 space-y-4 hover:border-gray-700 transition-colors">
+                          <div key={index} className="relative group/s rounded-xl border border-gray-800 bg-[#161b22] p-4 md:p-5 space-y-4 hover:border-gray-700 transition-colors">
                             <button 
                                 onClick={() => handleRemoveServer(index)}
-                                className="absolute -top-2 -left-2 z-20 rounded-full bg-red-600 p-1.5 text-white opacity-0 shadow-lg transition-opacity group-hover/s:opacity-100"
+                                className="absolute -top-2 -left-2 z-20 rounded-full bg-red-600 p-1.5 text-white opacity-100 md:opacity-0 shadow-lg transition-opacity md:group-hover/s:opacity-100"
                                 title="حذف السيرفر"
                             >
                                 <CloseIcon className="h-3 w-3" />
@@ -715,7 +715,7 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                             
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div>
-                                    <label className="mb-1 block text-[10px] font-bold text-gray-500 uppercase">رابط المشاهدة (Watch URL)</label>
+                                    <label className="mb-1 block text-[10px] font-bold text-gray-500 uppercase">رابط المشاهدة (Watch)</label>
                                     <input 
                                         value={server.url} 
                                         onChange={(e) => handleServerChange(index, 'url', e.target.value)} 
@@ -724,7 +724,7 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                                     />
                                 </div>
                                 <div>
-                                    <label className="mb-1 block text-[10px] font-bold text-gray-500 uppercase">رابط التحميل (Download URL)</label>
+                                    <label className="mb-1 block text-[10px] font-bold text-gray-500 uppercase">رابط التحميل (Download)</label>
                                     <input 
                                         value={server.downloadUrl} 
                                         onChange={(e) => handleServerChange(index, 'downloadUrl', e.target.value)} 
@@ -745,7 +745,7 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                         <span>إضافة سيرفر جديد</span>
                     </button>
                 </div>
-                <div className="flex justify-end gap-3 border-t border-gray-800 bg-[#161b22] p-6">
+                <div className="flex justify-end gap-3 border-t border-gray-800 bg-[#161b22] p-4 md:p-6">
                     <button type="button" onClick={onClose} className="rounded-lg bg-gray-700 px-6 py-2 text-sm font-bold text-white transition-colors hover:bg-gray-600">إلغاء</button>
                     <button type="button" onClick={handleSaveServers} className="rounded-lg bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] px-8 py-2 text-sm font-bold text-black shadow-lg transition-all hover:scale-105 hover:shadow-[0_0_20px_var(--shadow-color)]">حفظ التغييرات</button>
                 </div>
@@ -799,6 +799,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [isTitleModalOpen, setIsTitleModalOpen] = useState(false);
 
     const globalFileInputRef = useRef<HTMLInputElement>(null);
+    const movieExcelInputRef = useRef<HTMLInputElement>(null);
     
     const [deleteSeasonState, setDeleteSeasonState] = useState<{
         isOpen: boolean;
@@ -1570,7 +1571,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             return { ...prev, categories: newCats };
         });
     };
-    
+     
     const handleGenreChange = (genre: Genre) => {
         setFormData(prev => {
             const currentGenres = prev.genres || [];
@@ -1644,6 +1645,63 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const requestDeleteSeason = (seasonId: number, seasonTitle: string) => { setDeleteSeasonState({ isOpen: true, seasonId, title: seasonTitle }); };
     const executeDeleteSeason = () => { if (deleteSeasonState.seasonId) setFormData(prev => ({ ...prev, seasons: (prev.seasons || []).filter(s => s.id !== deleteSeasonState.seasonId) })); setDeleteSeasonState(prev => ({ ...prev, isOpen: false })); };
     
+    const handleMovieExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const workbook = XLSX.read(bstr, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const rows = XLSX.utils.sheet_to_json<any>(worksheet);
+
+                if (rows.length === 0) {
+                    addToast("لم يتم العثور على بيانات في الملف.", "info");
+                    return;
+                }
+
+                const updatedServers: Server[] = [];
+                const row = rows[0]; // Take only the first row for standalone movie servers
+
+                if (enableAutoLinks) {
+                    const idToUse = formData.tmdbId || formData.id;
+                    const vipUrl = `https://vidsrc.vip/embed/movie/${idToUse}`;
+                    updatedServers.push({ id: 99991, name: 'Cinematix VIP', url: vipUrl, downloadUrl: vipUrl, isActive: true });
+                }
+
+                for (let i = 1; i <= 8; i++) {
+                    const watchUrl = getRowValue(row, `سيرفر مشاهدة ${i}`, `Watch Server ${i}`, `سيرفر ${i}`);
+                    const downloadUrl = getRowValue(row, `سيرفر تحميل ${i}`, `Download Server ${i}`, `تحميل ${i}`);
+
+                    if ((watchUrl && String(watchUrl).trim() !== '') || (downloadUrl && String(downloadUrl).trim() !== '')) {
+                        updatedServers.push({
+                            id: Date.now() + i + Math.random(),
+                            name: getRowValue(row, `اسم سيرفر ${i}`, `Server Name ${i}`) || `سيرفر ${i}`,
+                            url: String(watchUrl || '').trim(),
+                            downloadUrl: String(downloadUrl || '').trim(),
+                            isActive: true
+                        });
+                    }
+                }
+
+                if (updatedServers.length > 0) {
+                    setFormData(prev => ({ ...prev, servers: updatedServers }));
+                    addToast(`تم استيراد ${updatedServers.length} سيرفر للفيلم بنجاح!`, "success");
+                } else {
+                    addToast("لم يتم العثور على روابط سيرفرات في الصف الأول من الملف.", "info");
+                }
+            } catch (err) {
+                console.error(err);
+                addToast('حدث خطأ أثناء استيراد ملف الفيلم.', "error");
+            }
+            if (movieExcelInputRef.current) movieExcelInputRef.current.value = '';
+        };
+        reader.readAsBinaryString(file);
+    };
+
     const handleSeasonExcelImport = async (e: React.ChangeEvent<HTMLInputElement>, seasonId: number, seasonNumber: number) => { 
         const file = e.target.files?.[0];
         if (!file) return;
@@ -1693,7 +1751,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 if ((watchUrl && String(watchUrl).trim() !== '') || (downloadUrl && String(downloadUrl).trim() !== '')) {
                                     epServers.push({
                                         id: Date.now() + i + Math.random(),
-                                        name: `سيرفر ${i}`,
+                                        name: getRowValue(row, `اسم سيرفر ${i}`, `Server Name ${i}`) || `سيرفر ${i}`,
                                         url: String(watchUrl || '').trim(),
                                         downloadUrl: String(downloadUrl || '').trim(),
                                         isActive: true
@@ -1841,7 +1899,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         if ((watchUrl && String(watchUrl).trim() !== '') || (downloadUrl && String(downloadUrl).trim() !== '')) {
                             epServers.push({
                                 id: Date.now() + i + Math.random(),
-                                name: `سيرفر ${i}`,
+                                name: getRowValue(row, `اسم سيرفر ${i}`, `Server Name ${i}`) || `سيرفر ${i}`,
                                 url: String(watchUrl || '').trim(),
                                 downloadUrl: String(downloadUrl || '').trim(),
                                 isActive: true
@@ -1908,7 +1966,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         <span className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">📱</span>
                         معاينة الجوال (Mobile View)
                     </h3>
-                    <div className="relative w-[320px] h-[650px] bg-black border-[10px] border-[#1f2127] rounded-[3rem] shadow-2xl overflow-hidden ring-1 ring-white/10">
+                    <div className="relative w-[300px] md:w-[320px] h-[600px] md:h-[650px] bg-black border-[8px] md:border-[10px] border-[#1f2127] rounded-[2.5rem] md:rounded-[3rem] shadow-2xl overflow-hidden ring-1 ring-white/10 scale-95 md:scale-100">
                         {/* Mock Header */}
                         <div className="absolute top-0 left-0 right-0 h-14 bg-gradient-to-b from-black/80 to-transparent z-40 px-6 flex items-center">
                             <div className="w-6 h-6 rounded-full bg-white/10"></div>
@@ -1917,7 +1975,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         {/* Detail Mockup Layout */}
                         <div className="h-full bg-[#141b29] overflow-y-auto no-scrollbar scroll-smooth flex flex-col">
                             {/* Hero Part */}
-                            <div className="relative h-[480px] w-full flex-shrink-0">
+                            <div className="relative h-[400px] md:h-[480px] w-full flex-shrink-0">
                                 <img 
                                     src={formData.mobileBackdropUrl || formData.backdrop || 'https://placehold.co/1080x1920/101010/101010/png'} 
                                     className={`absolute inset-0 h-full w-full object-cover ${cropClass} object-top transition-none`} 
@@ -1933,9 +1991,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     )}
                                     <div className="mb-3">
                                         {formData.isLogoEnabled && formData.logoUrl ? (
-                                            <img src={formData.logoUrl} className="max-w-[160px] max-h-[100px] object-contain drop-shadow-2xl mx-auto" alt="" />
+                                            <img src={formData.logoUrl} className="max-w-[140px] md:max-w-[160px] max-h-[80px] md:max-h-[100px] object-contain drop-shadow-2xl mx-auto" alt="" />
                                         ) : (
-                                            <h1 className="text-2xl font-black drop-shadow-lg leading-tight">{formData.title || 'العنوان'}</h1>
+                                            <h1 className="text-xl md:text-2xl font-black drop-shadow-lg leading-tight">{formData.title || 'العنوان'}</h1>
                                         )}
                                     </div>
                                     <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] text-gray-200 mb-4 font-bold">
@@ -2107,8 +2165,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 </div>
             </aside>
 
-            <main className="flex-1 flex flex-col min-w-0 bg-[#090b10] relative">
-                <header className="h-20 border-b border-gray-800 bg-[#0f1014]/90 backdrop-blur-md flex items-center justify-between px-6 md:px-10 z-10 sticky top-0">
+            <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#090b10] relative">
+                <header className="h-20 border-b border-gray-800 bg-[#0f1014]/90 backdrop-blur-md flex items-center justify-between px-4 md:px-10 z-10 sticky top-0 shrink-0">
                     <div className="flex items-center gap-4">
                         <button 
                             type="button" 
@@ -2140,13 +2198,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     </div>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar pb-32">
+                <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar pb-10">
                     <div className="max-w-6xl mx-auto space-y-10">
                         
+                        {/* ... (Previous content for general, categories, media, servers remain same but inside responsive grid) */}
                         {activeTab === 'general' && (
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in-up">
-                                {/* LINK BOX (TMDB SECTION) */}
-                                <div className="lg:col-span-12 rounded-2xl border border-blue-500/10 bg-gradient-to-r from-blue-900/10 to-transparent p-6 relative overflow-hidden">
+                                {/* TMDB BOX */}
+                                <div className="lg:col-span-12 rounded-2xl border border-blue-500/10 bg-gradient-to-r from-blue-900/10 to-transparent p-4 md:p-6 relative overflow-hidden">
                                     <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                                         <CloudArrowDownIcon className="w-40 h-40"/>
                                     </div>
@@ -2155,13 +2214,13 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                              <CloudArrowDownIcon className="w-5 h-5"/> جلب بيانات تلقائي (TMDB)
                                          </h3>
 
-                                         <div className="flex flex-wrap items-center gap-4">
-                                            <div className="flex rounded-lg bg-[#0f1014] p-1 border border-gray-700">
+                                         <div className="flex flex-col md:flex-row flex-wrap items-stretch md:items-center gap-4">
+                                            <div className="flex rounded-lg bg-[#0f1014] p-1 border border-gray-700 self-start">
                                                 <button type="button" onClick={() => setTmdbSearchMode('name')} className={`px-4 py-1.5 rounded text-xs font-bold transition-all ${tmdbSearchMode === 'name' ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>بحث بالاسم</button>
                                                 <button type="button" onClick={() => setTmdbSearchMode('id')} className={`px-4 py-1.5 rounded text-xs font-bold transition-all ${tmdbSearchMode === 'id' ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>بحث بالـ ID</button>
                                             </div>
                                             
-                                            <div className="flex-1 min-w-[300px] flex gap-2">
+                                            <div className="flex-1 w-full md:w-auto flex gap-2">
                                                  {tmdbSearchMode === 'name' ? (
                                                     <div className="relative flex-1">
                                                         <input 
@@ -2183,9 +2242,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             </div>
                                             
                                             {isEpisodic && !isNewContent && (
-                                                <button type="button" onClick={handleComprehensiveUpdate} disabled={updateLoading} className="flex items-center gap-2 bg-green-600/20 text-green-400 border border-green-600/30 px-4 py-2 rounded-lg hover:bg-green-600 hover:text-white transition-all">
-                                                    <RefreshIcon className={`w-4 h-4 ${updateLoading ? 'animate-spin' : ''}`}/> تحديث شامل
-                                                </button>
+                                                <button type="button" onClick={handleComprehensiveUpdate} disabled={updateLoading} className="flex items-center justify-center gap-2 bg-green-600/20 text-green-400 border border-green-600/30 px-4 py-2 rounded-lg hover:bg-green-600 hover:text-white transition-all w-full md:w-auto justify-center"><RefreshIcon className="w-4 h-4"/> تحديث شامل</button>
                                             )}
                                          </div>
 
@@ -2214,56 +2271,27 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     </div>
                                 </div>
 
-                                {/* Row 1: Basic Details (75%) + Content Type (25%) */}
                                 <div className={`${sectionBoxClass} lg:col-span-9 h-full flex flex-col`}>
-                                    <h4 className="text-sm font-bold text-[#00A7F8] mb-6 uppercase border-b border-gray-800 pb-2">البيانات الأساسية (Content Box)</h4>
+                                    <h4 className="text-sm font-bold text-[#00A7F8] mb-6 uppercase border-b border-gray-800 pb-2">البيانات الأساسية</h4>
                                     <div className="space-y-6 flex-1">
                                         <div>
                                             <label className={labelClass}>عنوان العمل</label>
                                             <div className="flex items-stretch gap-2">
-                                                <input 
-                                                    type="text" 
-                                                    name="title" 
-                                                    value={formData.title} 
-                                                    onChange={handleChange} 
-                                                    className={`${inputClass} flex-1`} 
-                                                    placeholder="اسم الفيلم أو المسلسل" 
-                                                />
-                                                <button 
-                                                    type="button" 
-                                                    onClick={openTitleGallery} 
-                                                    className="flex items-center justify-center rounded-lg bg-gray-800 px-4 text-white shadow-md transition-all hover:bg-gray-700 hover:text-[var(--color-accent)] border border-gray-700" 
-                                                    title="اختر عنواناً بدلاً من TMDB"
-                                                >
-                                                    <LanguageIcon className="w-5 h-5"/>
-                                                </button>
+                                                <input type="text" name="title" value={formData.title} onChange={handleChange} className={`${inputClass} flex-1`} placeholder="اسم الفيلم أو المسلسل" />
+                                                <button type="button" onClick={openTitleGallery} className="flex items-center justify-center rounded-lg bg-gray-800 px-4 text-white shadow-md transition-all hover:bg-gray-700 hover:text-[var(--color-accent)] border border-gray-700" title="اختر عنواناً بدلاً من TMDB"><LanguageIcon className="w-5 h-5"/></button>
                                             </div>
                                         </div>
-                                        {/* NEW: Text Label field added right here as requested */}
                                         <div>
                                             <label className={labelClass}>النص الوصفي (يظهر على البوستر)</label>
-                                            <input 
-                                                type="text" 
-                                                name="bannerNote" 
-                                                value={formData.bannerNote || ''} 
-                                                onChange={handleChange} 
-                                                className={inputClass} 
-                                                placeholder="مثال: مترجم، مدبلج، حصري..." 
-                                            />
+                                            <input type="text" name="bannerNote" value={formData.bannerNote || ''} onChange={handleChange} className={inputClass} placeholder="مثال: مترجم، مدبلج، حصري..." />
                                         </div>
                                         <div>
                                             <label className={labelClass}>الوصف (القصة)</label>
                                             <textarea name="description" value={formData.description} onChange={handleChange} rows={5} className={inputClass + " resize-none h-40"} placeholder="اكتب ملخص القصة..." />
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className={labelClass}>سنة الإنتاج</label>
-                                                <input type="number" name="releaseYear" value={formData.releaseYear} onChange={handleChange} className={inputClass} />
-                                            </div>
-                                            <div>
-                                                <label className={labelClass}>التقييم (10/x)</label>
-                                                <input type="number" step="0.1" name="rating" value={formData.rating} onChange={handleChange} className={inputClass + " text-yellow-400 font-bold"} />
-                                            </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div><label className={labelClass}>سنة الإنتاج</label><input type="number" name="releaseYear" value={formData.releaseYear} onChange={handleChange} className={inputClass} /></div>
+                                            <div><label className={labelClass}>التقييم (10/x)</label><input type="number" step="0.1" name="rating" value={formData.rating} onChange={handleChange} className={inputClass + " text-yellow-400 font-bold"} /></div>
                                         </div>
                                     </div>
                                 </div>
@@ -2280,11 +2308,10 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     </div>
                                 </div>
 
-                                {/* Row 2: Additional Details (75%) + Audience (25%) */}
                                 <div className={`${sectionBoxClass} lg:col-span-9 h-full flex flex-col`}>
                                     <h4 className="text-sm font-bold text-gray-500 mb-6 uppercase border-b border-gray-800 pb-2">تفاصيل إضافية</h4>
                                     <div className="space-y-6 flex-1">
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                             <div><label className={labelClass}>المخرج</label><input type="text" name="director" value={formData.director || ''} onChange={handleChange} className={inputClass} /></div>
                                             <div><label className={labelClass}>الكاتب</label><input type="text" name="writer" value={formData.writer || ''} onChange={handleChange} className={inputClass} /></div>
                                             <div><label className={labelClass}>التصنيف العمري</label><input type="text" name="ageRating" value={formData.ageRating} onChange={handleChange} className={inputClass} placeholder="+13" /></div>
@@ -2317,14 +2344,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-800 pt-4">
-                                            <div>
-                                                <label className={labelClass}>Slug (الرابط)</label>
-                                                <input type="text" name="slug" value={formData.slug || ''} onChange={handleChange} className={inputClass + " font-mono text-xs text-blue-400"} />
-                                            </div>
-                                            <div>
-                                                <label className={labelClass}>كود (TMDB ID)</label>
-                                                <input type="text" name="tmdbId" value={formData.tmdbId || ''} onChange={handleChange} className={inputClass + " font-mono text-[var(--color-accent)]"} />
-                                            </div>
+                                            <div><label className={labelClass}>Slug (الرابط)</label><input type="text" name="slug" value={formData.slug || ''} onChange={handleChange} className={inputClass + " font-mono text-xs text-blue-400"} /></div>
+                                            <div><label className={labelClass}>كود (TMDB ID)</label><input type="text" name="tmdbId" value={formData.tmdbId || ''} onChange={handleChange} className={inputClass + " font-mono text-[var(--color-accent)]"} /></div>
                                         </div>
                                     </div>
                                 </div>
@@ -2353,32 +2374,27 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         <div className="flex flex-wrap gap-3">
                                             {filteredCategories.map((cat: Category) => (
                                                 <button key={cat} type="button" onClick={() => handleCategoryChange(cat)} className={`flex items-center gap-2 rounded-full border px-5 py-2 text-xs font-bold transition-all duration-300 ${formData.categories.includes(cat) ? 'scale-105 border-transparent bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-lg shadow-[var(--color-accent)]/20' : `${INPUT_BG} border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white`}`}>
-                                                    {cat}
-                                                    {formData.categories.includes(cat) && <CheckSmallIcon />}
+                                                    {cat} {formData.categories.includes(cat) && <CheckSmallIcon />}
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
-                                    
                                     <div>
                                         <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">تصنيفات البحث</h3>
                                         <div className="flex flex-wrap gap-3">
                                             {SEARCH_CATEGORIES.map((cat) => (
                                                 <button key={cat} type="button" onClick={() => handleCategoryChange(cat as Category)} className={`flex items-center gap-2 rounded-full border px-5 py-2 text-xs font-bold transition-all duration-300 ${formData.categories.includes(cat as Category) ? 'scale-105 border-purple-500/50 bg-purple-500/10 text-purple-300 shadow-lg shadow-purple-500/10' : `${INPUT_BG} border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white`}`}>
-                                                    {cat}
-                                                    {formData.categories.includes(cat as Category) && <CheckSmallIcon />}
+                                                    {cat} {formData.categories.includes(cat as Category) && <CheckSmallIcon />}
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
-                                    
                                     <div>
-                                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">النوع الفني (Genres)</h3>
+                                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">النوع الفني</h3>
                                         <div className="flex flex-wrap gap-2">
                                             {genres.map((g: Genre) => (
                                                 <button key={g} type="button" onClick={() => handleGenreChange(g)} className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-bold transition-all duration-200 ${formData.genres.includes(g) ? 'bg-white text-black border-white' : `${INPUT_BG} border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white`}`}>
-                                                    {g}
-                                                    {formData.genres.includes(g) && <CheckSmallIcon />}
+                                                    {g} {formData.genres.includes(g) && <CheckSmallIcon />}
                                                 </button>
                                             ))}
                                         </div>
@@ -2389,26 +2405,18 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
                         {activeTab === 'media' && (
                             <div className="flex flex-col gap-8 animate-fade-in-up">
-                                {/* MAIN PHOTOS SECTION - FULL WIDTH */}
                                 <div className={`w-full space-y-6 ${sectionBoxClass}`}>
                                     <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2"><PhotoIcon className="w-5 h-5 text-[var(--color-accent)]"/> الصور الأساسية</h3>
-                                    
                                     {renderImageInput("البوستر العمودي (Poster)", formData.poster, (val) => setFormData(prev => ({...prev, poster: val})), 'poster', "https://...", "w-20 h-28")}
                                     {renderImageInput("خلفية عريضة (Backdrop)", formData.backdrop, (val) => setFormData(prev => ({...prev, backdrop: val})), 'backdrop', "https://...", "w-32 h-20")}
-                                    
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                          {renderImageInput("بوستر عريض (Horizontal)", formData.horizontalPoster, (val) => setFormData(prev => ({...prev, horizontalPoster: val})), 'backdrop', "https://...", "w-24 h-14")}
                                          {renderImageInput("توب 10 (Top 10)", formData.top10Poster, (val) => setFormData(prev => ({...prev, top10Poster: val})), 'poster', "https://...", "w-16 h-20")}
                                     </div>
-                                    
                                     <div className="border-t border-gray-800 pt-6 mt-6">
                                         <div className="flex items-center justify-between mb-4">
                                             <label className={labelClass}>اللوجو (شعار شفاف)</label>
-                                            <ToggleSwitch 
-                                                checked={formData.isLogoEnabled || false} 
-                                                onChange={(val) => setFormData(prev => ({...prev, isLogoEnabled: val}))} 
-                                                label={formData.isLogoEnabled ? "مفعل" : "معطل"}
-                                            />
+                                            <ToggleSwitch checked={formData.isLogoEnabled || false} onChange={(val) => setFormData(prev => ({...prev, isLogoEnabled: val}))} label={formData.isLogoEnabled ? "مفعل" : "معطل"}/>
                                         </div>
                                         {renderImageInput("", formData.logoUrl, (val) => setFormData(prev => ({...prev, logoUrl: val})), 'logo', "https://...", "hidden")}
                                         {formData.logoUrl && (
@@ -2417,49 +2425,27 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             </div>
                                         )}
                                     </div>
-
                                     <div>
                                          <label className={labelClass}>رابط التريلر (YouTube)</label>
                                          <div className="flex items-center gap-2">
                                             <div className="flex-1 relative">
                                                 <input type="text" value={formData.trailerUrl || ''} onChange={(e) => setFormData(prev => ({...prev, trailerUrl: e.target.value}))} className={inputClass} placeholder="https://youtube.com/..." />
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setYouTubeSearchState({ isOpen: true, targetId: 'main' })}
-                                                    className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 text-[10px] font-black hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
-                                                >
-                                                    <YouTubeIcon className="w-4 h-4" />
-                                                </button>
+                                                <button type="button" onClick={() => setYouTubeSearchState({ isOpen: true, targetId: 'main' })} className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 text-[10px] font-black hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"><YouTubeIcon className="w-4 h-4" /></button>
                                             </div>
                                             {formData.trailerUrl && <a href={formData.trailerUrl} target="_blank" className="p-3 bg-red-600 rounded-lg text-white hover:bg-red-500"><PlayIcon className="w-5 h-5"/></a>}
                                          </div>
                                     </div>
                                 </div>
-
-                                {/* MOBILE CUSTOMIZATION SECTION - FULL WIDTH BELOW MAIN PHOTOS */}
                                 <div className={`w-full ${sectionBoxClass}`}>
                                     <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">📱 تخصيص الجوال</h3>
                                     {renderImageInput("صورة الخلفية للموبايل", formData.mobileBackdropUrl, (val) => setFormData(prev => ({...prev, mobileBackdropUrl: val})), 'poster', "https://...", "hidden")}
-                                    
                                     <div className="mt-6">
                                         <div className="flex justify-between items-center mb-4">
                                             <span className="text-xs font-bold text-gray-400 uppercase">تفعيل القص التلقائي</span>
-                                            <ToggleSwitch 
-                                                checked={formData.enableMobileCrop || false} 
-                                                onChange={(val) => setFormData(prev => ({...prev, enableMobileCrop: val}))} 
-                                                label={formData.enableMobileCrop ? "مفعل" : "معطل"}
-                                            />
+                                            <ToggleSwitch checked={formData.enableMobileCrop || false} onChange={(val) => setFormData(prev => ({...prev, enableMobileCrop: val}))} label={formData.enableMobileCrop ? "مفعل" : "معطل"}/>
                                         </div>
-                                        
                                         {formData.enableMobileCrop && (
-                                            <MobileSimulator 
-                                                imageUrl={formData.mobileBackdropUrl || formData.backdrop || ''}
-                                                posX={formData.mobileCropPositionX ?? 50}
-                                                posY={formData.mobileCropPositionY ?? 50}
-                                                contentData={formData}
-                                                onUpdateX={(v) => setFormData(prev => ({...prev, mobileCropPositionX: v}))}
-                                                onUpdateY={(v) => setFormData(prev => ({...prev, mobileCropPositionY: v}))}
-                                            />
+                                            <MobileSimulator imageUrl={formData.mobileBackdropUrl || formData.backdrop || ''} posX={formData.mobileCropPositionX ?? 50} posY={formData.mobileCropPositionY ?? 50} contentData={formData} onUpdateX={(v) => setFormData(prev => ({...prev, mobileCropPositionX: v}))} onUpdateY={(v) => setFormData(prev => ({...prev, mobileCropPositionY: v}))}/>
                                         )}
                                     </div>
                                 </div>
@@ -2468,30 +2454,20 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
                         {activeTab === 'seasons' && isEpisodic && (
                             <div className="animate-fade-in-up space-y-6">
-                                <div className="flex items-center justify-between bg-[#0f1014] p-4 rounded-xl border border-gray-800">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between bg-[#0f1014] p-4 rounded-xl border border-gray-800 gap-4">
                                     <h3 className="text-lg font-bold text-white flex items-center gap-2"><LayersIcon className="w-6 h-6 text-[var(--color-accent)]"/> قائمة المواسم</h3>
-                                    <div className="flex items-center gap-2">
-                                        <button 
-                                            type="button" 
-                                            onClick={handleComprehensiveUpdate} 
-                                            className="flex items-center gap-2 px-4 py-2 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg text-sm font-bold hover:bg-blue-600 hover:text-white transition-all"
-                                        >
-                                            <RefreshIcon className="w-4 h-4"/> تحديث كافة المواسم
-                                        </button>
-                                        <button type="button" onClick={() => globalFileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 bg-[#161b22] border border-gray-700 text-gray-300 rounded-lg text-sm font-bold hover:bg-gray-800 hover:text-white">
-                                            <ExcelIcon className="w-4 h-4"/> استيراد Excel
-                                        </button>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <button type="button" onClick={handleComprehensiveUpdate} className="flex items-center gap-2 px-4 py-2 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg text-sm font-bold hover:bg-blue-600 hover:text-white transition-all w-full md:w-auto justify-center"><RefreshIcon className="w-4 h-4"/> تحديث كافة المواسم</button>
+                                        <button type="button" onClick={() => globalFileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 bg-[#161b22] border border-gray-700 text-gray-300 rounded-lg text-sm font-bold hover:bg-gray-800 hover:text-white w-full md:w-auto justify-center"><ExcelIcon className="w-4 h-4"/> استيراد Excel</button>
                                         <input type="file" className="hidden" ref={globalFileInputRef} accept=".xlsx" onChange={handleBulkSeriesImport}/>
-                                        <button type="button" onClick={handleAddSeason} className="flex items-center gap-2 px-4 py-2 bg-[var(--color-accent)] text-black rounded-lg text-sm font-bold hover:bg-white transition-colors">
-                                            <PlusIcon className="w-4 h-4"/> إضافة موسم
-                                        </button>
+                                        <button type="button" onClick={handleAddSeason} className="flex items-center gap-2 px-4 py-2 bg-[var(--color-accent)] text-black rounded-lg text-sm font-bold hover:bg-white transition-colors w-full md:w-auto justify-center"><PlusIcon className="w-4 h-4"/> إضافة موسم</button>
                                     </div>
                                 </div>
                                 
                                 <div className="space-y-4">
                                     {formData.seasons?.map((season) => (
                                         <div key={season.id} className="bg-[#0f1014] border border-gray-800 rounded-xl overflow-hidden transition-all hover:border-gray-700">
-                                            <div className="flex items-center justify-between p-4 bg-[#161b22] cursor-pointer" onClick={() => toggleSeason(season.id)}>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-[#161b22] cursor-pointer gap-4" onClick={() => toggleSeason(season.id)}>
                                                 <div className="flex items-center gap-4">
                                                     <div className={`transition-transform duration-300 ${expandedSeasons.has(season.id) ? 'rotate-180' : ''}`}><ChevronDownIcon className="w-5 h-5 text-gray-500"/></div>
                                                     <div>
@@ -2502,52 +2478,27 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                         <div className="text-[10px] text-gray-500 mt-1">ID: {season.id}</div>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={(e) => { e.stopPropagation(); handleUpdateSpecificSeasonFromTMDB(season.id, season.seasonNumber); }} 
-                                                        className="flex items-center gap-1 p-2 hover:bg-blue-900/30 text-blue-400 rounded text-xs font-bold"
-                                                        title="تحديث هذا الموسم فقط"
-                                                    >
-                                                        <RefreshIcon className="w-3 h-3"/> تحديث
-                                                    </button>
+                                                <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); handleUpdateSpecificSeasonFromTMDB(season.id, season.seasonNumber); }} className="flex items-center gap-1 p-2 hover:bg-blue-900/30 text-blue-400 rounded text-xs font-bold" title="تحديث هذا الموسم فقط"><RefreshIcon className="w-3 h-3"/> تحديث</button>
                                                     <input onClick={e => e.stopPropagation()} type="file" id={`excel-${season.id}`} className="hidden" accept=".xlsx" onChange={(e) => handleSeasonExcelImport(e, season.id, season.seasonNumber)}/>
                                                     <label htmlFor={`excel-${season.id}`} className="p-2 hover:bg-green-900/30 text-green-600 rounded cursor-pointer" title="استيراد حلقات"><ExcelIcon className="w-4 h-4"/></label>
                                                     <button type="button" onClick={(e) => {e.stopPropagation(); handleAddEpisode(season.id)}} className="p-2 hover:bg-gray-800 text-blue-400 rounded" title="إضافة حلقة"><PlusIcon className="w-4 h-4"/></button>
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={(e) => { e.stopPropagation(); requestDeleteSeason(season.id, season.title || `الموسم ${season.seasonNumber}`); }} 
-                                                        className="p-2 hover:bg-red-900/30 text-red-500 rounded"
-                                                        title="حذف الموسم"
-                                                    >
-                                                        <TrashIcon className="w-4 h-4" />
-                                                    </button>
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); requestDeleteSeason(season.id, season.title || `الموسم ${season.seasonNumber}`); }} className="p-2 hover:bg-red-900/30 text-red-500 rounded" title="حذف الموسم"><TrashIcon className="w-4 h-4" /></button>
                                                 </div>
                                             </div>
 
                                             {expandedSeasons.has(season.id) && (
-                                                <div className="p-6 border-t border-gray-800 bg-[#0a0a0a]">
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 p-6 bg-[#13161c] rounded-2xl border border-gray-800/50">
+                                                <div className="p-4 md:p-6 border-t border-gray-800 bg-[#0a0a0a]">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 p-4 md:p-6 bg-[#13161c] rounded-2xl border border-gray-800/50">
                                                         <div className="col-span-full mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
                                                             <h4 className="text-sm font-bold text-blue-400">بيانات الموسم {season.seasonNumber}</h4>
-                                                            {formData.seasons?.length === 1 && (
-                                                                <span className="text-[10px] font-black bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20">تزامن تلقائي مفعل للموسم الفردي</span>
-                                                            )}
+                                                            {formData.seasons?.length === 1 && (<span className="text-[10px] font-black bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20">تزامن تلقائي مفعل للموسم الفردي</span>)}
                                                         </div>
                                                         
                                                         {formData.seasons?.length === 1 ? (
                                                             <div className="col-span-full p-8 bg-black/20 rounded-2xl border border-dashed border-gray-800 text-center animate-fade-in">
-                                                                <p className="text-gray-400 text-sm font-bold">
-                                                                    يتم مزامنة صور وميديا هذا الموسم تلقائياً مع بيانات العمل الأساسية.
-                                                                </p>
-                                                                <button 
-                                                                    type="button"
-                                                                    onClick={() => setActiveTab('media')}
-                                                                    className="mt-4 text-[var(--color-accent)] text-xs font-black hover:underline flex items-center justify-center gap-2 mx-auto"
-                                                                >
-                                                                    <PhotoIcon className="w-4 h-4" />
-                                                                    انتقل لقسم "الصور والميديا" للتعديل
-                                                                </button>
+                                                                <p className="text-gray-400 text-sm font-bold">يتم مزامنة صور وميديا هذا الموسم تلقائياً مع بيانات العمل الأساسية.</p>
+                                                                <button type="button" onClick={() => setActiveTab('media')} className="mt-4 text-[var(--color-accent)] text-xs font-black hover:underline flex items-center justify-center gap-2 mx-auto"><PhotoIcon className="w-4 h-4" /> انتقل لقسم "الصور والميديا" للتعديل</button>
                                                             </div>
                                                         ) : (
                                                             <>
@@ -2556,66 +2507,22 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                 {renderImageInput("بوستر عريض (Wide)", season.horizontalPoster, (val) => handleUpdateSeason(season.id, 'horizontalPoster', val), 'backdrop', "Horizontal Poster URL")}
                                                                 {renderImageInput("شعار الموسم (Logo)", season.logoUrl, (val) => handleUpdateSeason(season.id, 'logoUrl', val), 'logo', "Logo URL")}
                                                                 {renderImageInput("صورة الموبايل (Mobile)", season.mobileImageUrl, (val) => handleUpdateSeason(season.id, 'mobileImageUrl', val), 'poster', "Mobile Image URL")}
-                                                                
                                                                 <div className="space-y-4">
                                                                     <div>
                                                                         <label className={labelClass}>رابط التريلر (Trailer Link)</label>
                                                                         <div className="flex gap-2">
                                                                             <div className="flex-1 relative">
-                                                                                <input 
-                                                                                    value={season.trailerUrl || ''} 
-                                                                                    onChange={(e) => handleUpdateSeason(season.id, 'trailerUrl', e.target.value)} 
-                                                                                    className={inputClass} 
-                                                                                    placeholder="YouTube Trailer URL" 
-                                                                                />
-                                                                                <button 
-                                                                                    type="button"
-                                                                                    onClick={() => setYouTubeSearchState({ isOpen: true, targetId: season.id })}
-                                                                                    className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
-                                                                                >
-                                                                                    <YouTubeIcon className="w-4 h-4" />
-                                                                                </button>
+                                                                                <input value={season.trailerUrl || ''} onChange={(e) => handleUpdateSeason(season.id, 'trailerUrl', e.target.value)} className={inputClass} placeholder="YouTube Trailer URL" />
+                                                                                <button type="button" onClick={() => setYouTubeSearchState({ isOpen: true, targetId: season.id })} className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"><YouTubeIcon className="w-4 h-4" /></button>
                                                                             </div>
                                                                         </div>
                                                                     </div>
-                                                                    <div>
-                                                                        <label className={labelClass}>سنة إنتاج الموسم</label>
-                                                                        <input 
-                                                                            type="number" 
-                                                                            value={season.releaseYear || ''} 
-                                                                            onChange={e => handleUpdateSeason(season.id, 'releaseYear', parseInt(e.target.value))} 
-                                                                            className={inputClass}
-                                                                            placeholder="مثال: 2024"
-                                                                        />
-                                                                    </div>
+                                                                    <div><label className={labelClass}>سنة إنتاج الموسم</label><input type="number" value={season.releaseYear || ''} onChange={e => handleUpdateSeason(season.id, 'releaseYear', parseInt(e.target.value))} className={inputClass} placeholder="مثال: 2024"/></div>
                                                                 </div>
-
-                                                                <div className="col-span-full">
-                                                                    <label className={labelClass}>قصة الموسم</label>
-                                                                    <textarea value={season.description || ''} onChange={(e) => handleUpdateSeason(season.id, 'description', e.target.value)} className={inputClass} rows={2}/>
-                                                                </div>
-                                                                
+                                                                <div className="col-span-full"><label className={labelClass}>قصة الموسم</label><textarea value={season.description || ''} onChange={(e) => handleUpdateSeason(season.id, 'description', e.target.value)} className={inputClass} rows={2}/></div>
                                                                 <div className="col-span-full mt-4 p-4 border-t border-gray-800">
-                                                                    <div className="flex justify-between items-center mb-4">
-                                                                        <label className={labelClass}>تخصيص الموبايل لهذا الموسم</label>
-                                                                        <ToggleSwitch 
-                                                                            checked={season.enableMobileCrop || false} 
-                                                                            onChange={(val) => handleUpdateSeason(season.id, 'enableMobileCrop', val)} 
-                                                                            label={season.enableMobileCrop ? "مفعل" : "معطل"}
-                                                                        />
-                                                                    </div>
-                                                                    {season.enableMobileCrop && (
-                                                                        <div className="mt-2">
-                                                                            <MobileSimulator 
-                                                                                imageUrl={season.mobileImageUrl || season.backdrop || formData.backdrop || ''} 
-                                                                                posX={season.mobileCropPositionX ?? 50} 
-                                                                                posY={season.mobileCropPositionY ?? 50} 
-                                                                                contentData={{...formData, ...season, id: formData.id} as Content}
-                                                                                onUpdateX={(v) => handleUpdateSeason(season.id, 'mobileCropPositionX', v)} 
-                                                                                onUpdateY={(v) => handleUpdateSeason(season.id, 'mobileCropPositionY', v)} 
-                                                                            />
-                                                                        </div>
-                                                                    )}
+                                                                    <div className="flex justify-between items-center mb-4"><label className={labelClass}>تخصيص الموبايل لهذا الموسم</label><ToggleSwitch checked={season.enableMobileCrop || false} onChange={(val) => handleUpdateSeason(season.id, 'enableMobileCrop', val)} label={season.enableMobileCrop ? "مفعل" : "معطل"}/></div>
+                                                                    {season.enableMobileCrop && (<div className="mt-2"><MobileSimulator imageUrl={season.mobileImageUrl || season.backdrop || formData.backdrop || ''} posX={season.mobileCropPositionX ?? 50} posY={season.mobileCropPositionY ?? 50} contentData={{...formData, ...season, id: formData.id} as Content} onUpdateX={(v) => handleUpdateSeason(season.id, 'mobileCropPositionX', v)} onUpdateY={(v) => handleUpdateSeason(season.id, 'mobileCropPositionY', v)} /></div>)}
                                                                 </div>
                                                             </>
                                                         )}
@@ -2624,48 +2531,55 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     <div className="space-y-3">
                                                         <h4 className="text-xs font-bold text-gray-500 mb-2 px-2 uppercase tracking-widest">قائمة الحلقات</h4>
                                                         {season.episodes.map((ep, idx) => (
-                                                            <div key={ep.id} className="flex flex-col gap-4 p-5 rounded-2xl border border-gray-800 bg-[#161b22] hover:border-gray-700 transition-all group">
-                                                                <div className="flex items-start gap-4">
-                                                                    <div className="w-32 h-20 bg-black rounded-xl overflow-hidden border border-gray-800 flex-shrink-0 relative group/thumb">
-                                                                        {ep.thumbnail ? <img src={ep.thumbnail} className="w-full h-full object-cover transition-transform group-hover/thumb:scale-110" alt=""/> : <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-600">No Image</div>}
-                                                                        <button type="button" onClick={() => openGallery('backdrop', (url) => handleUpdateEpisode(season.id, ep.id, 'thumbnail', url))} className="absolute inset-0 bg-black/60 hidden group-hover/thumb:flex items-center justify-center text-white"><PhotoIcon className="w-5 h-5"/></button>
-                                                                    </div>
-                                                                    <div className="flex-1 space-y-3">
-                                                                        <div className="flex items-center gap-3">
-                                                                            <span className="bg-black text-gray-500 font-mono text-xs px-2 py-1 rounded-md border border-gray-800">#{idx+1}</span>
-                                                                            <input value={ep.title} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'title', e.target.value)} className="bg-transparent border-b border-gray-700 text-sm font-bold text-white focus:border-[var(--color-accent)] focus:outline-none w-48 transition-colors"/>
-                                                                            <input value={ep.duration} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'duration', e.target.value)} className="bg-transparent border-b border-gray-700 text-xs text-gray-400 w-16 text-center" placeholder="00:00"/>
-                                                                            <label className="flex items-center gap-2 cursor-pointer ml-auto bg-gray-800/50 px-3 py-1 rounded-lg border border-gray-700">
+                                                            <div key={ep.id} className="flex flex-col md:flex-row gap-4 p-4 md:p-5 rounded-2xl border border-gray-800 bg-[#161b22] hover:border-gray-700 transition-all group">
+                                                                {/* EPISODE IMAGE (Stacked on mobile, side on desktop) */}
+                                                                <div className="w-full md:w-32 h-40 md:h-24 bg-black rounded-xl overflow-hidden border border-gray-800 flex-shrink-0 relative group/thumb">
+                                                                    {ep.thumbnail ? <img src={ep.thumbnail} className="w-full h-full object-cover transition-transform group-hover/thumb:scale-110" alt=""/> : <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-600">No Image</div>}
+                                                                    <button type="button" onClick={() => openGallery('backdrop', (url) => handleUpdateEpisode(season.id, ep.id, 'thumbnail', url))} className="absolute inset-0 bg-black/60 hidden group-hover/thumb:flex items-center justify-center text-white"><PhotoIcon className="w-5 h-5"/></button>
+                                                                </div>
+                                                                
+                                                                <div className="flex-1 space-y-4 md:space-y-3 w-full">
+                                                                    {/* TOP ROW: Number + Title */}
+                                                                    <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
+                                                                        <div className="flex items-center gap-2 w-full md:w-auto">
+                                                                            <span className="bg-black text-gray-500 font-mono text-xs px-2 py-1 rounded-md border border-gray-800 shrink-0">#{idx+1}</span>
+                                                                            <input value={ep.title} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'title', e.target.value)} className="bg-transparent border-b border-gray-700 text-sm font-bold text-white focus:border-[var(--color-accent)] focus:outline-none flex-1 md:w-48 transition-colors"/>
+                                                                        </div>
+                                                                        
+                                                                        {/* MIDDLE ROW ON MOBILE: Duration + Checkbox */}
+                                                                        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+                                                                            <input value={ep.duration} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'duration', e.target.value)} className="bg-transparent border-b border-gray-700 text-xs text-gray-400 w-20 text-center" placeholder="00:00"/>
+                                                                            <label className="flex items-center gap-2 cursor-pointer bg-gray-800/50 px-3 py-1 rounded-lg border border-gray-700">
                                                                                 <input type="checkbox" checked={ep.isLastEpisode} onChange={e => handleUpdateEpisode(season.id, ep.id, 'isLastEpisode', e.target.checked)} className="accent-red-500 h-4 w-4"/>
-                                                                                {ep.isLastEpisode && <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider">الحلقة الأخيرة</span>}
-                                                                                {!ep.isLastEpisode && <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">الحلقة الأخيرة؟</span>}
+                                                                                {ep.isLastEpisode && <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider whitespace-nowrap">الحلقة الأخيرة</span>}
+                                                                                {!ep.isLastEpisode && <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider whitespace-nowrap">الأخيرة؟</span>}
                                                                             </label>
                                                                         </div>
-                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                            <div>
-                                                                                <label className="text-[9px] font-bold text-gray-600 mb-1 block uppercase">رابط صورة الحلقة (Thumbnail URL)</label>
-                                                                                <input value={ep.thumbnail || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'thumbnail', e.target.value)} className="w-full bg-black/30 border border-gray-800 rounded-lg px-3 py-1.5 text-[10px] text-gray-400 focus:border-[var(--color-accent)] focus:outline-none dir-ltr" placeholder="Episode direct image link..."/>
-                                                                            </div>
-                                                                            <div>
-                                                                                <label className="text-[9px] font-bold text-gray-400 mb-1 block uppercase">وسام مخصص (Custom Badge)</label>
-                                                                                <input value={ep.badgeText || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'badgeText', e.target.value)} className="w-full bg-black/30 border border-gray-800 rounded-lg px-3 py-1.5 text-[10px] text-amber-400 focus:border-amber-500 focus:outline-none" placeholder="مثال: مؤجل، 15 مايو..."/>
-                                                                            </div>
+                                                                    </div>
+
+                                                                    {/* IMAGE LINK & BADGE */}
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                        <div>
+                                                                            <label className="text-[9px] font-bold text-gray-600 mb-1 block uppercase">رابط صورة الحلقة</label>
+                                                                            <input value={ep.thumbnail || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'thumbnail', e.target.value)} className="w-full bg-black/30 border border-gray-800 rounded-lg px-3 py-2 text-[10px] text-gray-400 focus:border-[var(--color-accent)] focus:outline-none dir-ltr" placeholder="Link..."/>
                                                                         </div>
-                                                                        <input value={ep.description || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'description', e.target.value)} className="w-full bg-transparent text-xs text-gray-500 focus:outline-none placeholder:text-gray-700" placeholder="اكتب وصفاً مختصراً لهذه الحلقة..."/>
+                                                                        <div>
+                                                                            <label className="text-[9px] font-bold text-gray-400 mb-1 block uppercase">وسام مخصص</label>
+                                                                            <input value={ep.badgeText || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'badgeText', e.target.value)} className="w-full bg-black/30 border border-gray-800 rounded-lg px-3 py-2 text-[10px] text-amber-400 focus:border-amber-500 focus:outline-none" placeholder="مثال: مؤجل..."/>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="flex flex-col gap-2">
-                                                                        <button type="button" onClick={() => setEditingServersForEpisode(ep)} className={`px-4 py-2 text-[10px] font-black rounded-lg flex items-center gap-2 shadow-sm transition-all ${ep.servers?.length ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-gray-800 text-gray-500 hover:bg-gray-700'}`}>
-                                                                            <ServerIcon className="w-3.5 h-3.5"/> سيرفرات ({ep.servers?.length || 0})
-                                                                        </button>
-                                                                        <button 
-                                                                            type="button" 
-                                                                            onClick={() => requestDeleteEpisode(season.id, ep.id, ep.title || '')} 
-                                                                            className="p-2 text-red-500 bg-red-500/10 hover:bg-red-500 hover:text-white rounded-xl transition-all self-end border border-red-500/20 shadow-sm" 
-                                                                            title="حذف الحلقة"
-                                                                        >
-                                                                            <TrashIcon className="w-5 h-5"/>
-                                                                        </button>
-                                                                    </div>
+                                                                    
+                                                                    <input value={ep.description || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'description', e.target.value)} className="w-full bg-transparent text-xs text-gray-500 focus:outline-none placeholder:text-gray-700" placeholder="اكتب وصفاً مختصراً لهذه الحلقة..."/>
+                                                                </div>
+
+                                                                {/* ACTIONS: Full width buttons on mobile */}
+                                                                <div className="flex flex-row md:flex-col gap-2 mt-2 md:mt-0 border-t border-gray-800 md:border-0 pt-4 md:pt-0">
+                                                                    <button type="button" onClick={() => setEditingServersForEpisode(ep)} className={`flex-1 md:flex-none px-4 py-3 md:py-2 text-xs md:text-[10px] font-black rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all ${ep.servers?.length ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-gray-800 text-gray-500 hover:bg-gray-700'}`}>
+                                                                        <ServerIcon className="w-4 h-4 md:w-3.5 md:h-3.5"/> سيرفرات ({ep.servers?.length || 0})
+                                                                    </button>
+                                                                    <button type="button" onClick={() => requestDeleteEpisode(season.id, ep.id, ep.title || '')} className="p-3 md:p-2 text-red-500 bg-red-500/10 hover:bg-red-500 hover:text-white rounded-xl transition-all border border-red-500/20 shadow-sm" title="حذف الحلقة">
+                                                                        <TrashIcon className="w-5 h-5"/>
+                                                                    </button>
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -2679,21 +2593,34 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         )}
 
                         {activeTab === 'servers' && isStandalone && (
-                             <div className={`${sectionBoxClass} animate-fade-in-up flex flex-col items-center justify-center py-20 text-center`}>
-                                 <ServerIcon className="w-16 h-16 text-gray-700 mb-4"/>
-                                 <h3 className="text-xl font-bold text-white mb-2">سيرفرات المشاهدة</h3>
-                                 <p className="text-gray-500 text-sm mb-6 max-w-md">أضف روابط المشاهدة والتحميل لهذا الفيلم. يمكنك إضافة عدة سيرفرات لضمان التوفر.</p>
-                                 <div className="flex flex-col items-center gap-4">
-                                     <button type="button" onClick={() => setIsManagingMovieServers(true)} className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all transform hover:scale-105">
-                                         إدارة السيرفرات ({formData.servers?.length || 0})
-                                     </button>
-                                     <button 
-                                        type="button" 
-                                        onClick={() => handleDeleteSection('servers')}
-                                        className="text-red-500 text-xs font-bold hover:underline"
-                                     >
-                                         حذف هذا القسم
-                                     </button>
+                             <div className={`${sectionBoxClass} animate-fade-in-up flex flex-col items-center justify-center py-20 text-center gap-8`}>
+                                 <div className="flex flex-col items-center">
+                                    <ServerIcon className="w-16 h-16 text-gray-700 mb-4"/>
+                                    <h3 className="text-xl font-bold text-white mb-2">سيرفرات المشاهدة والتحميل</h3>
+                                    <p className="text-gray-500 text-sm mb-6 max-w-md">أضف روابط المشاهدة والتحميل لهذا الفيلم. يمكنك إضافة عدة سيرفرات لضمان التوفر أو الاستيراد من ملف Excel.</p>
+                                 </div>
+
+                                 <div className="flex flex-wrap items-center justify-center gap-4 w-full">
+                                      <button type="button" onClick={() => setIsManagingMovieServers(true)} className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl shadow-lg shadow-blue-600/20 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3">
+                                          <ServerIcon className="w-5 h-5" />
+                                          إدارة السيرفرات يدوياً ({formData.servers?.length || 0})
+                                      </button>
+
+                                      <div className="h-10 w-px bg-gray-800 hidden md:block"></div>
+
+                                      <button 
+                                          type="button" 
+                                          onClick={() => movieExcelInputRef.current?.click()}
+                                          className="px-10 py-4 bg-green-600/20 border border-green-500/30 text-green-400 font-black rounded-2xl hover:bg-green-600 hover:text-white transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3"
+                                      >
+                                          <ExcelIcon className="w-5 h-5" />
+                                          استيراد سيرفرات من Excel
+                                      </button>
+                                      <input type="file" className="hidden" ref={movieExcelInputRef} accept=".xlsx" onChange={handleMovieExcelImport}/>
+                                 </div>
+
+                                 <div className="pt-8 border-t border-gray-800 w-full max-w-xs mx-auto">
+                                      <button type="button" onClick={() => handleDeleteSection('servers')} className="text-red-500/60 text-xs font-bold hover:text-red-500 hover:underline transition-all">حذف كافة روابط السيرفرات</button>
                                  </div>
                              </div>
                         )}
@@ -2703,28 +2630,12 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     </div>
                 </div>
 
-                <footer className="h-20 border-t border-gray-800 bg-[#0f1014]/95 backdrop-blur-xl flex items-center justify-between px-4 md:px-10 z-50 sticky bottom-0 w-full shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
-                     <button 
-                        type="button" 
-                        onClick={onClose} 
-                        disabled={isSubmitting}
-                        className="flex-none px-8 py-3 rounded-xl text-sm font-bold text-gray-400 bg-gray-800/50 border border-gray-700 hover:bg-gray-800 hover:text-white transition-all shadow-sm disabled:opacity-50"
-                     >
-                        إلغاء
-                     </button>
-                     <button 
-                        type="button" 
-                        onClick={handleSubmit} 
-                        disabled={isSubmitting}
-                        className={`flex-none px-8 py-3 rounded-xl text-sm font-black bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-lg shadow-[var(--color-accent)]/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
-                     >
-                        {isSubmitting ? (
-                            <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                            <CheckSmallIcon className="w-4 h-4" />
-                        )}
+                <footer className="h-20 border-t border-gray-800 bg-[#0f1014]/95 backdrop-blur-xl flex items-center justify-between px-4 md:px-10 z-50 sticky bottom-0 w-full shadow-[0_-5px_20px_rgba(0,0,0,0.5)] shrink-0">
+                      <button type="button" onClick={onClose} disabled={isSubmitting} className="flex-none px-8 py-3 rounded-xl text-sm font-bold text-gray-400 bg-gray-800/50 border border-gray-700 hover:bg-gray-800 hover:text-white transition-all shadow-sm disabled:opacity-50">إلغاء</button>
+                      <button type="button" onClick={handleSubmit} disabled={isSubmitting} className={`flex-none px-8 py-3 rounded-xl text-sm font-black bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-lg shadow-[var(--color-accent)]/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                        {isSubmitting ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : <CheckSmallIcon className="w-4 h-4" />}
                         <span>{isSubmitting ? 'جاري الحفظ...' : 'حفظ ونشر المحتوى'}</span>
-                     </button>
+                      </button>
                 </footer>
             </main>
 
@@ -2753,7 +2664,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     isOpen={isDailymotionModalOpen} 
                     onClose={() => setIsDailymotionModalOpen(false)} 
                     onSelect={(res) => { 
-                        const newServer: Server = { id: Date.now(), name: 'Dailymotion', url: res.embedUrl, downloadUrl: res.embedUrl, isActive: true };
+                        const newServer: Server = { id: Date.now(), name: 'Dailymotion', url: res.embedUrl, downloadUrl: '', isActive: true };
                         if (editingServersForEpisode) { 
                             handleUpdateEpisodeServers([...(editingServersForEpisode.servers || []), newServer]); 
                         } else if (isManagingMovieServers) { 
