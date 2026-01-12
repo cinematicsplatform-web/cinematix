@@ -68,8 +68,30 @@ const TvSidebar: React.FC<TvSidebarProps> = ({
                 ? 'bg-[#E50914]'
                 : 'bg-[#00A7F8]';
 
+  // Dynamic Sidebar Container Theme Background
+  const sidebarContainerBg = isRamadanTheme 
+    ? 'bg-[#0a0a0a]/95' 
+    : isEidTheme 
+        ? 'bg-[#1a0b2e]/95' 
+        : isCosmicTealTheme
+            ? 'bg-[#0b1116]/95'
+            : isNetflixRedTheme
+                ? 'bg-[#141414]/95'
+                : 'bg-[#141b29]/95';
+
+  // Dynamic Sidebar Border Color
+  const sidebarBorderClass = isRamadanTheme 
+    ? 'border-[#FFD700]/20' 
+    : isEidTheme 
+        ? 'border-purple-500/20' 
+        : isCosmicTealTheme
+            ? 'border-[#35F18B]/20'
+            : isNetflixRedTheme
+                ? 'border-[#E50914]/20'
+                : 'border-white/10';
+
   return (
-    <div className="fixed top-0 right-0 bottom-0 w-20 bg-black/80 backdrop-blur-2xl border-l border-white/10 z-[1000] flex flex-col items-center py-10 gap-8 animate-fade-in">
+    <div className={`fixed top-0 right-0 bottom-0 w-20 ${sidebarContainerBg} backdrop-blur-2xl border-l ${sidebarBorderClass} z-[1000] flex flex-col items-center py-10 gap-8 animate-fade-in`}>
       {/* Platform Logo Placeholder removed per request */}
 
       <nav className="flex flex-col gap-6 w-full items-center">
