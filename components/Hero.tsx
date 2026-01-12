@@ -313,7 +313,7 @@ const Hero: React.FC<HeroProps> = ({
                     >
                         <div className="absolute inset-0 w-full h-full">
                             {shouldShowVideo && (
-                                <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in-up pointer-events-auto"> 
+                                <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in-up pointer-events-none"> 
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
                                         <iframe 
                                             ref={activeIframeRef}

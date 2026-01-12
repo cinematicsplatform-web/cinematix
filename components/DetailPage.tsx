@@ -389,6 +389,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const handleEpisodeSelect = (episode: Episode, seasonNum?: number, episodeIndex?: number) => {
       const sNum = seasonNum ?? currentSeason?.seasonNumber ?? 1;
       const eNum = episodeIndex || currentSeason?.episodes.findIndex(e => e.id === episode.id) + 1;
+      // FIX: Changed handleSelectContent to onSelectContent as it's the correct prop name
       onSelectContent(content, sNum, eNum);
   };
 
@@ -403,7 +404,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
         onClick={() => onPersonClick(name)}
         className="cursor-pointer group flex flex-col"
       >
-        <div className="w-full aspect-square rounded-xl bg-[#1f2937]/80 border border-white/5 overflow-hidden mb-2 transition-all duration-300 group-hover:scale-105 group-hover:border-[var(--color-accent)] relative flex flex-col justify-end">
+        <div className="w-full aspect-square rounded-xl bg-[#1f2937]/80 border border-white/5 overflow-hidden mb-2 transition-all duration-300 group-hover:scale-105 group-hover:border-[var(--color-accent)] relative flex flex-col justify-end shadow-2xl">
           {personProfile?.image ? (
             <img 
               src={personProfile.image} 
@@ -487,7 +488,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
             )}
             
             {showVideo && !videoEnded && heroEmbedUrl && !isMobile && isLoaded && (
-                <div key={`season-ad-container-${selectedSeasonId}`} className="absolute inset-0 w-full h-full overflow-hidden animate-fade-in pointer-events-auto">
+                <div key={`season-ad-container-${selectedSeasonId}`} className="absolute inset-0 w-full h-full overflow-hidden animate-fade-in pointer-events-none">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
                         <iframe 
                             ref={iframeRef} 
@@ -990,7 +991,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
       {isDownloadErrorOpen && createPortal(
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setIsDownloadErrorOpen(false)}>
-                    <div className="bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                    <div className="bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl w-full max-sm overflow-hidden animate-fade-in-up" onClick={e => e.stopPropagation()}>
                         <div className="p-6 text-center">
                             <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20 shadow-inner">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
