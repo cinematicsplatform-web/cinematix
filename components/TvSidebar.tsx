@@ -91,7 +91,7 @@ const TvSidebar: React.FC<TvSidebarProps> = ({
                 : 'border-white/10';
 
   return (
-    <div className={`fixed top-0 right-0 bottom-0 w-20 ${sidebarContainerBg} backdrop-blur-2xl border-l ${sidebarBorderClass} z-[1000] flex flex-col items-center py-10 gap-8 animate-fade-in`}>
+    <div className={`fixed top-0 right-0 bottom-0 w-20 ${sidebarContainerBg} backdrop-blur-2xl border-l ${sidebarBorderClass} z-[1000] flex flex-col items-center justify-center gap-8 animate-fade-in`}>
       {/* Platform Logo Placeholder removed per request */}
 
       <nav className="flex flex-col gap-6 w-full items-center">
@@ -121,8 +121,8 @@ const TvSidebar: React.FC<TvSidebarProps> = ({
                 <Icon className={`w-7 h-7 transition-all duration-300 ${isActive ? 'drop-shadow-[0_0_8px_currentColor]' : 'opacity-70 group-hover:opacity-100'}`} />
               )}
               
-              {/* Tooltip Label */}
-              <div className="absolute left-full mr-4 px-3 py-1 bg-black/90 text-white text-[10px] font-black rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap z-[1001]">
+              {/* Tooltip Label - Hidden (display: none) to remove "black dot" appearance while keeping code intact */}
+              <div className="hidden absolute left-full mr-4 px-3 py-1 bg-black/90 text-white text-[10px] font-black rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap z-[1001]">
                 {item.label}
               </div>
             </button>
