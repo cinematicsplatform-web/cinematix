@@ -24,6 +24,7 @@ interface DetailPageProps {
   ads: Ad[];
   adsEnabled: boolean;
   allContent: Content[];
+  // Fix: Removed duplicate declaration of onSelectContent
   onSelectContent: (content: Content, seasonNum?: number, episodeNum?: number) => void;
   onPersonClick: (name: string) => void; 
   isLoggedIn: boolean;
@@ -787,32 +788,35 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
                                 <div className="relative mt-6 flex flex-col items-center gap-2 animate-fade-in-up">
                                         <div className="flex w-full justify-center">
-                                            <button 
-                                                onClick={handleDownload}
-                                                className={`
-                                                    inline-flex items-center justify-center gap-3
-                                                    font-bold 
-                                                    py-3 px-8 md:py-4 md:px-12
-                                                    rounded-full
-                                                    text-base md:text-lg
-                                                    transform transition-all duration-200
-                                                    active:scale-95
-                                                    shadow-lg hover:shadow-2xl
-                                                    ${isRamadanTheme 
-                                                        ? "bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)]" 
-                                                        : isEidTheme 
-                                                            ? "bg-gradient-to-r from-purple-800 to-purple-500 text-white shadow-[0_0_15px_rgba(106,13,173,0.4)]" 
-                                                            : isCosmicTealTheme 
-                                                                ? "bg-gradient-to-r from-[#35F18B] to-[#2596be] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)]" 
-                                                                : isNetflixRedTheme 
-                                                                    ? "bg-[#E50914] text-white" 
-                                                                    : "bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-[0_0_15px_var(--shadow-color)]"
-                                                    }
-                                                `}
-                                            >
-                                                <DownloadIcon className="h-5 w-5 fill-current md:h-6 md:w-6" />
-                                                <span>تحميل الآن</span>
-                                            </button>
+                                            {/* Conditionally show download button ONLY if at least one server has a downloadUrl */}
+                                            {activeServers.some(s => s.downloadUrl && s.downloadUrl.trim().length > 0) && (
+                                                <button 
+                                                    onClick={handleDownload}
+                                                    className={`
+                                                        inline-flex items-center justify-center gap-3
+                                                        font-bold 
+                                                        py-3 px-8 md:py-4 md:px-12
+                                                        rounded-full
+                                                        text-base md:text-lg
+                                                        transform transition-all duration-200
+                                                        active:scale-95
+                                                        shadow-lg hover:shadow-2xl
+                                                        ${isRamadanTheme 
+                                                            ? "bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)]" 
+                                                            : isEidTheme 
+                                                                ? "bg-gradient-to-r from-purple-800 to-purple-500 text-white shadow-[0_0_15px_rgba(106,13,173,0.4)]" 
+                                                                : isCosmicTealTheme 
+                                                                    ? "bg-gradient-to-r from-[#35F18B] to-[#2596be] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)]" 
+                                                                    : isNetflixRedTheme 
+                                                                        ? "bg-[#E50914] text-white" 
+                                                                        : "bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-[0_0_15px_var(--shadow-color)]"
+                                                        }
+                                                    `}
+                                                >
+                                                    <DownloadIcon className="h-5 w-5 fill-current md:h-6 md:w-6" />
+                                                    <span>تحميل الآن</span>
+                                                </button>
+                                            )}
                                         </div>
 
                                         <div className="flex w-full justify-start">

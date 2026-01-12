@@ -617,12 +617,9 @@ interface ServerManagementModalProps {
     episode: Episode;
     onClose: () => void;
     onSave: (servers: Server[]) => void;
-    onOpenSearch: () => void;
-    onOpenDailymotion: () => void;
-    onOpenVk: () => void;
 }
 
-const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, onClose, onSave, onOpenSearch, onOpenDailymotion, onOpenVk }) => {
+const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, onClose, onSave }) => {
     const [servers, setServers] = useState<Server[]>(() => {
         const existing = [...(episode.servers || [])];
         if (existing.length === 0) {
@@ -630,6 +627,10 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
         }
         return existing;
     });
+
+    const [isUqloadModalOpen, setIsUqloadModalOpen] = useState(false);
+    const [isDailymotionModalOpen, setIsDailymotionModalOpen] = useState(false);
+    const [isVkModalOpen, setIsVkModalOpen] = useState(false);
 
     const handleServerChange = (index: number, field: keyof Server, value: string | boolean) => {
         const updatedServers = [...servers];
@@ -671,14 +672,14 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                          إدارة السيرفرات: <span className="text-[var(--color-accent)] text-sm">{episode.title}</span>
                     </h3>
                     <div className="flex flex-wrap items-center gap-2">
-                        <button onClick={onOpenVk} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-4 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
+                        <button onClick={() => setIsVkModalOpen(true)} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-4 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
                              <span>VK</span>
                         </button>
-                        <button onClick={onOpenDailymotion} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
+                        <button onClick={() => setIsDailymotionModalOpen(true)} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
                             <span className="w-4 h-4 flex items-center justify-center font-black">d</span>
                             <span>Daily</span>
                         </button>
-                        <button onClick={onOpenSearch} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
+                        <button onClick={() => setIsUqloadModalOpen(true)} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
                             <SearchIcon className="w-4 h-4"/>
                             <span>Uqload</span>
                         </button>
@@ -750,6 +751,38 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                     <button type="button" onClick={handleSaveServers} className="rounded-lg bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] px-8 py-2 text-sm font-bold text-black shadow-lg transition-all hover:scale-105 hover:shadow-[0_0_20px_var(--shadow-color)]">حفظ التغييرات</button>
                 </div>
             </div>
+
+            {/* Internal Search Modals for immediate local adding */}
+            {isUqloadModalOpen && (
+                <UqloadSearchModal 
+                    isOpen={isUqloadModalOpen} 
+                    onClose={() => setIsUqloadModalOpen(false)} 
+                    onSelect={(res) => { 
+                        const newServer: Server = { id: Date.now(), name: 'Uqload', url: res.embedUrl, downloadUrl: res.downloadUrl, isActive: true };
+                        setServers(prev => [...prev, newServer]);
+                    }} 
+                />
+            )}
+            {isDailymotionModalOpen && (
+                <DailymotionSearchModal 
+                    isOpen={isDailymotionModalOpen} 
+                    onClose={() => setIsDailymotionModalOpen(false)} 
+                    onSelect={(res) => { 
+                        const newServer: Server = { id: Date.now(), name: 'Dailymotion', url: res.embedUrl, downloadUrl: '', isActive: true };
+                        setServers(prev => [...prev, newServer]);
+                    }} 
+                />
+            )}
+            {isVkModalOpen && (
+                <VkSearchModal 
+                    isOpen={isVkModalOpen}
+                    onClose={() => setIsVkModalOpen(false)} 
+                    onSelect={(res) => {
+                        const newServer: Server = { id: Date.now(), name: 'VK Video', url: res.embedUrl, downloadUrl: res.downloadUrl, isActive: true };
+                        setServers(prev => [...prev, newServer]);
+                    }}
+                />
+            )}
         </div>
     );
 };
@@ -813,10 +846,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         episodeId: number | null;
         title: string;
     }>({ isOpen: false, seasonId: null, episodeId: null, title: '' });
-
-    const [isUqloadModalOpen, setIsUqloadModalOpen] = useState(false);
-    const [isDailymotionModalOpen, setIsDailymotionModalOpen] = useState(false);
-    const [isVkModalOpen, setIsVkModalOpen] = useState(false);
 
     const [tmdbIdInput, setTmdbIdInput] = useState(content?.id && !isNaN(Number(content.id)) ? content.id : '');
     const [fetchLoading, setFetchLoading] = useState(false);
@@ -1134,26 +1163,26 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     const sData = await sRes.json();
                     
                     const mappedEpisodes: Episode[] = sData.episodes?.map((ep: any) => {
-                          let epDuration = '';
-                          if (ep.runtime) {
-                             if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
-                             else epDuration = `${ep.runtime}:00`;
-                          }
-                          
-                          const fixedTitle = `الحلقة ${ep.episode_number}`;
-                          const isGenericTitle = !ep.name || ep.name.match(/^Episode \d+$/i) || ep.name.match(/^الحلقة \d+$/i);
-                          let finalDescription = ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${sData.season_number}.`;
-                          if (!isGenericTitle && ep.name) finalDescription = `${ep.name} : ${ep.overview || ''}`;
+                        let epDuration = '';
+                        if (ep.runtime) {
+                            if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
+                            else epDuration = `${ep.runtime}:00`;
+                        }
+                        
+                        const fixedTitle = `الحلقة ${ep.episode_number}`;
+                        const isGenericTitle = !ep.name || ep.name.match(/^Episode \d+$/i) || ep.name.match(/^الحلقة \d+$/i);
+                        let finalDescription = ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${sData.season_number}.`;
+                        if (!isGenericTitle && ep.name) finalDescription = `${ep.name} : ${ep.overview || ''}`;
 
-                          return {
-                             id: Date.now() + ep.episode_number + Math.random(),
-                             title: fixedTitle,
-                             description: finalDescription,
-                             thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : backdrop, 
-                             duration: epDuration,
-                             progress: 0,
-                             servers: generateEpisodeServers(String(idToUse), sData.season_number, ep.episode_number)
-                          };
+                        return {
+                            id: Date.now() + ep.episode_number + Math.random(),
+                            title: fixedTitle,
+                            description: finalDescription,
+                            thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : backdrop, 
+                            duration: epDuration,
+                            progress: 0,
+                            servers: generateEpisodeServers(String(idToUse), sData.season_number, ep.episode_number)
+                        };
                     }) || [];
 
                     currentSeasons.push({
@@ -1184,8 +1213,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             const newMappedEpisodes: Episode[] = newEpisodesData.map((ep: any) => {
                                 let epDuration = '';
                                 if (ep.runtime) {
-                                     if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
-                                     else epDuration = `${ep.runtime}:00`;
+                                    if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
+                                    else epDuration = `${ep.runtime}:00`;
                                 }
 
                                 const fixedTitle = `الحلقة ${ep.episode_number}`;
@@ -1254,8 +1283,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     ).map((ep: any) => {
                         let epDuration = '';
                         if (ep.runtime) {
-                             if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
-                             else epDuration = `${ep.runtime}:00`;
+                            if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
+                            else epDuration = `${ep.runtime}:00`;
                         }
                         return {
                             id: Date.now() + ep.episode_number + Math.random(),
@@ -1390,11 +1419,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
             let ageRating = '';
             if (isStandalone) {
-                 const usRelease = details.release_dates?.results?.find((r: any) => r.iso_3166_1 === 'US');
-                 if (usRelease) ageRating = usRelease.release_dates[0]?.certification || '';
+                const usRelease = details.release_dates?.results?.find((r: any) => r.iso_3166_1 === 'US');
+                if (usRelease) ageRating = usRelease.release_dates[0]?.certification || '';
             } else {
-                 const usRating = details.content_ratings?.results?.find((r: any) => r.iso_3166_1 === 'US');
-                 if (usRating) ageRating = usRating.rating || '';
+                const usRating = details.content_ratings?.results?.find((r: any) => r.iso_3166_1 === 'US');
+                if (usRating) ageRating = usRating.rating || '';
             }
 
             const mappedGenres: Genre[] = details.genres?.map((g: any) => {
@@ -1421,7 +1450,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             }) || [];
 
             if (mappedGenres.includes('أطفال') && !autoCategory.includes('أنميشن')) {
-                 autoCategory = 'افلام أنميشن';
+                autoCategory = 'افلام أنميشن';
             }
 
             const castNames: string[] = [];
@@ -1429,14 +1458,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             let writerName = '';
 
             if (details.credits) {
-                 for (const p of (details.credits.cast || []).slice(0, 10)) {
+                for (const p of (details.credits.cast || []).slice(0, 10)) {
                     castNames.push(p.name);
-                 }
-                 const director = (details.credits.crew || []).find((c: any) => c.job === 'Director');
-                 if (director) directorName = director.name;
-                 
-                 const writer = (details.credits.crew || []).find((c: any) => c.job === 'Writer' || c.job === 'Screenplay' || c.job === 'Story');
-                 if (writer) writerName = writer.name;
+                }
+                const director = (details.credits.crew || []).find((c: any) => c.job === 'Director');
+                if (director) directorName = director.name;
+                
+                const writer = (details.credits.crew || []).find((c: any) => c.job === 'Writer' || c.job === 'Screenplay' || c.job === 'Story');
+                if (writer) writerName = writer.name;
             }
 
             let newSeasons: Season[] = [];
@@ -1450,8 +1479,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     const mappedEpisodes: Episode[] = ds.episodes?.map((ep: any) => {
                         let epDuration = '';
                         if (ep.runtime) {
-                             if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
-                             else epDuration = `${ep.runtime}:00`;
+                            if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
+                            else epDuration = `${ep.runtime}:00`;
                         }
 
                         const fixedTitle = `الحلقة ${ep.episode_number}`;
@@ -1586,7 +1615,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         e.preventDefault();
         if (isSubmitting) return; 
 
-        if (!formData.title) { addToast('الرجاء تعبئة حقول العنوان.', "info"); return; }
+        if (!formData.title) { addToast('الرجاء كتابة اسم العمل.', "info"); return; }
         if (formData.categories.length === 0) { addToast('الرجاء اختيار تصنيف واحد على الأقل.', "info"); return; }
         
         const backdrop = formData.backdrop;
@@ -2201,7 +2230,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar pb-10">
                     <div className="max-w-6xl mx-auto space-y-10">
                         
-                        {/* ... (Previous content for general, categories, media, servers remain same but inside responsive grid) */}
                         {activeTab === 'general' && (
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in-up">
                                 {/* TMDB BOX */}
@@ -2641,54 +2669,10 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
             {galleryState.isOpen && <ImageGalleryModal isOpen={galleryState.isOpen} onClose={() => setGalleryState(prev => ({ ...prev, isOpen: false }))} tmdbId={formData.tmdbId || formData.id} type={formData.type} targetField={galleryState.imageType} onSelect={(url) => galleryState.imageType === 'logo' ? setFormData(prev => ({...prev, logoUrl: url, isLogoEnabled: true})) : galleryState.onSelect(url)} />}
             {isTitleModalOpen && <TitleGalleryModal isOpen={isTitleModalOpen} onClose={() => setIsTitleModalOpen(false)} tmdbId={formData.tmdbId || formData.id || ''} type={formData.type} onSelect={(title) => setFormData(prev => ({...prev, title}))} />}
-            {editingServersForEpisode && <ServerManagementModal episode={editingServersForEpisode} onClose={() => setEditingServersForEpisode(null)} onSave={handleUpdateEpisodeServers} onOpenSearch={() => setIsUqloadModalOpen(true)} onOpenDailymotion={() => setIsDailymotionModalOpen(true)} onOpenVk={() => setIsVkModalOpen(true)} />}
-            {isManagingMovieServers && <ServerManagementModal episode={{id: 0, title: 'الفيلم', progress: 0, servers: formData.servers || []}} onClose={() => setIsManagingMovieServers(false)} onSave={handleUpdateMovieServers} onOpenSearch={() => setIsUqloadModalOpen(true)} onOpenDailymotion={() => setIsDailymotionModalOpen(true)} onOpenVk={() => setIsVkModalOpen(true)} />}
+            {editingServersForEpisode && <ServerManagementModal episode={editingServersForEpisode} onClose={() => setEditingServersForEpisode(null)} onSave={handleUpdateEpisodeServers} />}
+            {isManagingMovieServers && <ServerManagementModal episode={{id: 0, title: 'الفيلم', progress: 0, servers: formData.servers || []}} onClose={() => setIsManagingMovieServers(false)} onSave={handleUpdateMovieServers} />}
             <DeleteConfirmationModal isOpen={deleteSeasonState.isOpen} onClose={() => setDeleteSeasonState({ isOpen: false, seasonId: null, title: '' })} onConfirm={executeDeleteSeason} title="حذف الموسم" message={`هل أنت متأكد من حذف ${deleteSeasonState.title}؟`} />
             <DeleteConfirmationModal isOpen={deleteEpisodeState.isOpen} onClose={() => setDeleteEpisodeState({ isOpen: false, seasonId: null, episodeId: null, title: '' })} onConfirm={executeDeleteEpisode} title="حذف الحلقة" message={`هل أنت متأكد من حذف ${deleteEpisodeState.title}؟`} />
-            {isUqloadModalOpen && (
-                <UqloadSearchModal 
-                    isOpen={isUqloadModalOpen} 
-                    onClose={() => setIsUqloadModalOpen(false)} 
-                    onSelect={(res) => { 
-                        const newServer: Server = { id: Date.now(), name: 'Uqload', url: res.embedUrl, downloadUrl: res.downloadUrl, isActive: true };
-                        if (editingServersForEpisode) { 
-                            handleUpdateEpisodeServers([...(editingServersForEpisode.servers || []), newServer]); 
-                        } else if (isManagingMovieServers) { 
-                            handleUpdateMovieServers([...(formData.servers || []), newServer]); 
-                        } 
-                    }} 
-                />
-            )}
-            {isDailymotionModalOpen && (
-                <DailymotionSearchModal 
-                    isOpen={isDailymotionModalOpen} 
-                    onClose={() => setIsDailymotionModalOpen(false)} 
-                    onSelect={(res) => { 
-                        const newServer: Server = { id: Date.now(), name: 'Dailymotion', url: res.embedUrl, downloadUrl: '', isActive: true };
-                        if (editingServersForEpisode) { 
-                            handleUpdateEpisodeServers([...(editingServersForEpisode.servers || []), newServer]); 
-                        } else if (isManagingMovieServers) { 
-                            handleUpdateMovieServers([...(formData.servers || []), newServer]); 
-                        } 
-                        addToast(`تم إضافة فيديو: ${res.title}`, 'success');
-                    }} 
-                />
-            )}
-            {isVkModalOpen && (
-                <VkSearchModal 
-                    isOpen={isVkModalOpen}
-                    onClose={() => setIsVkModalOpen(false)} 
-                    onSelect={(res) => {
-                        const newServer: Server = { id: Date.now(), name: 'VK Video', url: res.embedUrl, downloadUrl: res.downloadUrl, isActive: true };
-                        if (editingServersForEpisode) { 
-                            handleUpdateEpisodeServers([...(editingServersForEpisode.servers || []), newServer]); 
-                        } else if (isManagingMovieServers) { 
-                            handleUpdateMovieServers([...(formData.servers || []), newServer]); 
-                        } 
-                        addToast(`تم إضافة فيديو VK: ${res.title}`, 'success');
-                    }}
-                />
-            )}
             {youTubeSearchState.isOpen && (
                 <YouTubeSearchModal 
                     isOpen={youTubeSearchState.isOpen}

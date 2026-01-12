@@ -270,32 +270,35 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
                 <div className="mt-5 relative flex flex-col items-center gap-2 animate-fade-in-up">
                     <div className="flex justify-center w-full">
-                        <button 
-                            onClick={handleDownload}
-                            className={`
-                                inline-flex items-center justify-center gap-3
-                                font-bold 
-                                py-3 px-8 md:py-4 md:px-12
-                                rounded-full
-                                text-base md:text-lg
-                                transform transition-all duration-200
-                                active:scale-95
-                                shadow-lg hover:shadow-2xl
-                                ${isRamadanTheme 
-                                    ? "bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)]" 
-                                    : isEidTheme 
-                                        ? "bg-gradient-to-r from-purple-800 to-purple-500 text-white shadow-[0_0_15px_rgba(106,13,173,0.4)]" 
-                                        : isCosmicTealTheme 
-                                            ? "bg-gradient-to-r from-[#35F18B] to-[#2596be] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)]" 
-                                            : isNetflixRedTheme 
-                                                ? "bg-[#E50914] text-white" 
-                                                : "bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-[0_0_15px_var(--shadow-color)]"
-                                }
-                            `}
-                        >
-                            <DownloadIcon className="h-5 w-5 md:w-6 md:h-6 fill-current" />
-                            <span>تحميل الآن</span>
-                        </button>
+                        {/* Conditionally show download button ONLY if at least one server has a downloadUrl */}
+                        {selectedEpisode?.servers.some(s => s.downloadUrl && s.downloadUrl.trim().length > 0) && (
+                            <button 
+                                onClick={handleDownload}
+                                className={`
+                                    inline-flex items-center justify-center gap-3
+                                    font-bold 
+                                    py-3 px-8 md:py-4 md:px-12
+                                    rounded-full
+                                    text-base md:text-lg
+                                    transform transition-all duration-200
+                                    active:scale-95
+                                    shadow-lg hover:shadow-2xl
+                                    ${isRamadanTheme 
+                                        ? "bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)]" 
+                                        : isEidTheme 
+                                            ? "bg-gradient-to-r from-purple-800 to-purple-500 text-white shadow-[0_0_15px_rgba(106,13,173,0.4)]" 
+                                            : isCosmicTealTheme 
+                                                ? "bg-gradient-to-r from-[#35F18B] to-[#2596be] text-black shadow-[0_0_15px_rgba(53,241,139,0.4)]" 
+                                                : isNetflixRedTheme 
+                                                    ? "bg-[#E50914] text-white" 
+                                                    : "bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-[0_0_15px_var(--shadow-color)]"
+                                    }
+                                `}
+                            >
+                                <DownloadIcon className="h-5 w-5 md:w-6 md:h-6 fill-current" />
+                                <span>تحميل الآن</span>
+                            </button>
+                        )}
                     </div>
 
                     <div className="w-full flex justify-center md:justify-start">
@@ -324,24 +327,24 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                                         <span className="text-white font-black text-sm md:text-base">{currentSeason?.releaseYear || content.releaseYear}</span>
                                     </div>
                                     
-                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 flex-1 min-w-[120px]">
+                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 p-4 flex-1 min-w-[120px]">
                                         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">مدة الحلقة</span>
                                         <span className="text-white font-black text-sm md:text-base" dir="ltr">{selectedEpisode?.duration || '45m+'}</span>
                                     </div>
 
-                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 flex-1 min-w-[120px]">
+                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 p-4 flex-1 min-w-[120px]">
                                         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">التصنيف</span>
                                         <div className="w-fit border border-gray-600 rounded px-1.5 py-0.5 text-[10px] font-black text-gray-200">
                                             {content.ageRating}
                                         </div>
                                     </div>
 
-                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 flex-1 min-w-[120px]">
+                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 p-4 flex-1 min-w-[120px]">
                                         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">الحلقة</span>
                                         <span className="text-white font-black text-sm md:text-base">{episodeNumber}</span>
                                     </div>
 
-                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 flex-1 min-w-[120px]">
+                                    <div className="p-4 flex flex-col items-center md:items-start gap-1 p-4 flex-1 min-w-[120px]">
                                         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">التقييم</span>
                                         <div className="flex items-center gap-1.5 text-yellow-500">
                                             <StarIcon className="w-3 h-3" />
