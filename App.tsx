@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -43,6 +42,7 @@ import AppPage from './pages/AppPage';
 import PeoplePage from './pages/PeoplePage';
 import PersonProfilePage from './pages/PersonProfilePage';
 import DownloadPage from './pages/DownloadPage';
+import TvSidebar from './components/TvSidebar';
 
 const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} {...props}>
@@ -190,6 +190,8 @@ const App: React.FC = () => {
   const [allStories, setAllStories] = useState<Story[]>([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   
+  const [isTv, setIsTv] = useState(false);
+
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
       let settings = initialSiteSettings;
       try {
@@ -213,6 +215,16 @@ const App: React.FC = () => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+  }, []);
+
+  useEffect(() => {
+    const detectTv = () => {
+        const userAgent = navigator.userAgent;
+        // Updated detection to include URL param for easier testing
+        const isSmartTV = /SmartTV|Tizen|WebOS|AppleTV|HbbTV|Roku|NetCast|BRAVIA/i.test(userAgent) || window.location.search.includes('tv=true');
+        setIsTv(isSmartTV);
+    };
+    detectTv();
   }, []);
 
   useEffect(() => {
@@ -745,14 +757,14 @@ const App: React.FC = () => {
 
   const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'welcome', 'notifications', 'appDownload', 'people', 'personProfile', 'about', 'privacy', 'copyright', 'download', 'category'];
   const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
-  const showGlobalFooter = (!fullScreenViews.includes(view) || view === 'search') && !siteSettings.is_maintenance_mode_enabled;
-  const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view);
+  const showGlobalFooter = (!fullScreenViews.includes(view) || view === 'search') && !siteSettings.is_maintenance_mode_enabled && !isTv;
+  const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view) && !isTv;
   const footerClass = (mobileCleanViews.includes(view) || view === 'search') ? 'hidden md:block' : '';
   const bottomAdClass = mobileCleanViews.includes(view) ? 'hidden md:block' : 'fixed bottom-0 left-0 w-full z-[1000] bg-black/80';
   const socialBarClass = mobileCleanViews.includes(view) ? 'hidden md:block' : 'fixed z-[90] bottom-20 left-4 right-4 md:bottom-4 md:left-4 md:right-auto md:w-auto pointer-events-auto';
 
   return (
-    <div className={`min-h-screen text-white font-['Cairo'] ${view === 'detail' || view === 'watch' ? '' : 'pb-16 md:pb-0'}`}>
+    <div className={`min-h-screen text-white font-['Cairo'] ${view === 'detail' || view === 'watch' ? '' : 'pb-16 md:pb-0'} ${isTv ? 'pr-20' : ''}`}>
         <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
             {toasts.map(toast => (
                 <div key={toast.id} className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-fade-in-up transition-all duration-300 ${toast.type === 'success' ? 'bg-green-600 text-white' : toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'}`}>
@@ -762,8 +774,11 @@ const App: React.FC = () => {
             ))}
         </div>
         {siteSettings.adsEnabled && <AdZone position="global_head" />}
-        {view !== 'login' && view !== 'register' && view !== 'onboarding' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && view !== 'welcome' && view !== 'notifications' && view !== 'appDownload' && view !== 'people' && view !== 'personProfile' && view !== 'about' && view !== 'privacy' && view !== 'copyright' && view !== 'download' && !siteSettings.is_maintenance_mode_enabled && (
+        {view !== 'login' && view !== 'register' && view !== 'onboarding' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && view !== 'welcome' && view !== 'notifications' && view !== 'appDownload' && view !== 'people' && view !== 'personProfile' && view !== 'about' && view !== 'privacy' && view !== 'copyright' && view !== 'download' && !siteSettings.is_maintenance_mode_enabled && !isTv && (
             <Header onSetView={handleSetView} currentUser={currentUser} activeProfile={activeProfile} onLogout={handleLogout} allContent={allContent} onSelectContent={handleSelectContent} currentView={view} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} returnView={returnView} isKidProfile={activeProfile?.isKid} onOpenSearch={() => handleSetView('search')} unreadNotificationsCount={unreadNotificationsCount} />
+        )}
+        {isTv && (
+            <TvSidebar onSetView={handleSetView} currentView={view} activeProfile={activeProfile} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} />
         )}
         <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className={socialBarClass} />
         <AdPlacement ads={ads} placement="global-sticky-footer" isEnabled={siteSettings.adsEnabled} className={bottomAdClass} />
