@@ -61,15 +61,7 @@ const DownloadPage: React.FC<DownloadPageProps> = ({
             noIndex={true}
         />
 
-        {/* Cinematic Backdrop */}
-        <div className="absolute top-0 left-0 w-full h-[85vh] z-0">
-            <img 
-                src={currentSeason?.backdrop || content.backdrop} 
-                alt="" 
-                className="w-full h-full object-cover opacity-20 blur-xl scale-110 md:object-top"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-body)] via-transparent to-[var(--bg-body)]"></div>
-        </div>
+        {/* Backdrop removed to satisfy request for solid background */}
 
         <div className="relative z-10 max-w-5xl mx-auto px-4 pt-8 md:pt-16">
             

@@ -42,10 +42,15 @@ const app = firebase.app();
 // Initialize Firestore
 const firestoreInstance = app.firestore();
 
+/**
+ * معالجة تحذير "overriding the original host":
+ * تم إزالة experimentalAutoDetectLongPolling لأنه المسبب الرئيسي للتحذير في البيئات الحديثة
+ * إلا إذا كان هناك حاجة ماسة له (مثل العمل خلف بروكـسي مقيد جداً).
+ */
 try {
   firestoreInstance.settings({
-    experimentalAutoDetectLongPolling: true,
     ignoreUndefinedProperties: true,
+    // تم إزالة الخاصية التي تسبب التحذير لضمان استقرار الاتصال الافتراضي
   });
 } catch (e: any) {
   if (!e.message.includes('already been initialized')) {
@@ -56,11 +61,17 @@ try {
 export const db = firestoreInstance;
 export const storage = app.storage();
 
+/**
+ * معالجة تحذير "enableMultiTabIndexedDbPersistence() will be deprecated":
+ * في مكتبة compat، نستخدم enablePersistence ولكن نلتقط الخطأ لمنع تكرار التحذير
+ */
 if (typeof window !== 'undefined') {
+    // تفعيل التخزين المتعدد التبويبات بطريقة آمنة
     db.enablePersistence({ synchronizeTabs: true })
       .catch((err) => {
           if (err.code === 'failed-precondition') {
-              console.warn("[Cinematix] Persistence failed: Multiple tabs open.");
+              // قد يكون هناك تبويب آخر مفتوح بالفعل، لا حاجة لإظهار خطأ للمستخدم
+              console.debug("[Cinematix] Persistence already active in another tab.");
           } else if (err.code === 'unimplemented') {
               console.warn("[Cinematix] Persistence failed: Browser not supported.");
           }

@@ -6,27 +6,65 @@
     <script>
       (function() {
         try {
+          // 1. إدارة الثيمات
           var t = localStorage.getItem('cinematix_active_theme');
           var r = localStorage.getItem('cinematix_theme_ramadan');
           if (!t && r === 'true') t = 'ramadan';
           if (t && t !== 'default') {
             document.documentElement.classList.add('theme-' + t);
           }
+
+          // وظيفة للتحقق مما إذا كان النسخ مسموحاً حالياً
+          function isSelectionAllowed() {
+            return document.documentElement.classList.contains('allow-selection');
+          }
+
+          // 2. نظام حماية المحتوى الشامل (مع استثناء صفحات تسجيل الدخول)
+          // تعطيل القائمة اليمنى (Right Click)
+          document.addEventListener('contextmenu', function(e) {
+            if (isSelectionAllowed()) return;
+            e.preventDefault();
+          }, false);
+
+          // تعطيل النسخ والقص
+          document.addEventListener('copy', function(e) {
+            if (isSelectionAllowed()) return;
+            e.preventDefault();
+          }, false);
+          document.addEventListener('cut', function(e) {
+            if (isSelectionAllowed()) return;
+            e.preventDefault();
+          }, false);
+
+          // تعطيل سحب الصور والنصوص
+          document.addEventListener('dragstart', function(e) {
+            if (isSelectionAllowed()) return;
+            e.preventDefault();
+          }, false);
+
+          // تعطيل تحديد النص برمجياً (للمتصفحات القديمة)
+          document.onselectstart = function() { 
+            return isSelectionAllowed(); 
+          };
+
         } catch (e) {}
       })();
     </script>
     <meta name="google-site-verification" content="EXH46Rn7mAAL5WJwovaVgk4ZYk82r0gINqGVdfFgeqM" />
     
-    <!-- --- SEO Critical: Allow Indexing --- -->
-    <meta name="robots" content="index, follow" />
+    <!-- --- SEO Critical: Allow Indexing with Text-Only Snippets --- -->
+    <meta name="robots" content="index, follow, max-image-preview:none" />
+    <meta name="googlebot" content="index, follow, max-image-preview:none" />
 
-    <!-- --- PWA Setup & Favicons --- -->
+    <!-- --- PWA Setup & Favicons (Crucial for Google SERP Icon) --- -->
     <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
-    <link rel="shortcut icon" href="/android-chrome-192x192.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" href="/android-chrome-192x192.png" />
-    <link rel="apple-touch-icon-precomposed" href="/android-chrome-192x192.png" />
 
     <!-- Mobile Viewport -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -239,7 +277,7 @@
         align-items: center;
         justify-content: center;
         transition: opacity 0.5s ease-in-out;
-        gap: 24px;
+        gap: 32px;
       }
       #preloader.preloader-hidden {
         opacity: 0;
@@ -247,7 +285,7 @@
       }
       
       .preloader-logo {
-        font-size: 48px;
+        font-size: 56px;
         font-weight: 900;
         font-family: 'Lalezar', sans-serif;
         letter-spacing: 1px;
@@ -255,7 +293,9 @@
         display: flex;
         align-items: baseline;
         gap: 2px;
+        /* تمت إزالة الأنيميشن لجعل الشعار ثابتاً */
       }
+
       .preloader-logo .accent {
         background: linear-gradient(to left, var(--color-primary-from), var(--color-primary-to));
         -webkit-background-clip: text;
@@ -266,22 +306,22 @@
 
       .dots-container {
         display: flex;
-        gap: 16px;
-        margin-top: 8px;
+        gap: 12px;
       }
       .dot {
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
         border-radius: 50%;
-        background: linear-gradient(to left, var(--color-primary-from), var(--color-primary-to));
-        animation: pulse-dot 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+        background: linear-gradient(to bottom, var(--color-primary-from), var(--color-primary-to));
+        animation: jump 0.8s ease-in-out infinite;
+        box-shadow: 0 4px 10px var(--shadow-color);
       }
-      .dot:nth-child(2) { animation-delay: 0.2s; }
-      .dot:nth-child(3) { animation-delay: 0.4s; }
+      .dot:nth-child(2) { animation-delay: 0.15s; }
+      .dot:nth-child(3) { animation-delay: 0.3s; }
       
-      @keyframes pulse-dot {
-        0%, 100% { transform: scale(0.7); opacity: 0.7; }
-        50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 10px var(--shadow-color); }
+      @keyframes jump {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-20px); }
       }
     </style>
 <link rel="stylesheet" href="/index.css">

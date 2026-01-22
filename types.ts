@@ -38,7 +38,7 @@ export const genres = [
 
 export type Genre = typeof genres[number];
 
-export type View = 'home' | 'movies' | 'series' | 'programs' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'watch' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance' | 'search' | 'welcome' | 'onboarding' | 'notifications' | 'appDownload' | 'people' | 'personProfile' | 'download';
+export type View = 'home' | 'movies' | 'series' | 'programs' | 'kids' | 'ramadan' | 'soon' | 'detail' | 'watch' | 'admin' | 'login' | 'register' | 'profileSelector' | 'accountSettings' | 'privacy' | 'copyright' | 'about' | 'myList' | 'category' | 'profileHub' | 'maintenance' | 'search' | 'welcome' | 'onboarding' | 'notifications' | 'appDownload' | 'people' | 'personProfile' | 'download' | 'adGate' | 'contentRequest';
 
 export type LoginError = 'none' | 'userNotFound' | 'wrongPassword';
 
@@ -59,7 +59,7 @@ export interface Episode {
   progress: number; 
   servers: Server[];
   isLastEpisode?: boolean;
-  badgeText?: string; // NEW: Custom manual label for the episode thumbnail
+  badgeText?: string; 
 }
 
 export interface Season {
@@ -75,7 +75,8 @@ export interface Season {
   releaseYear?: number; 
   description?: string; 
   cast?: string[]; 
-  adLink?: string; // NEW: Advertisement link for the season
+  adLink?: string; 
+  isUpcoming?: boolean; // NEW: Individual season upcoming status
   
   mobileImageUrl?: string; 
   useCustomMobileImage?: boolean; 
@@ -87,7 +88,7 @@ export interface Season {
 
 export interface Content {
   id: string;
-  tmdbId?: string; // FIX: Added missing tmdbId property
+  tmdbId?: string; 
   title: string;
   description: string;
   type: ContentType;
@@ -120,6 +121,7 @@ export interface Content {
   mobileCropPositionX?: number; 
   mobileCropPositionY?: number; 
   slug?: string; 
+  isUpcoming?: boolean; // NEW: Main content upcoming status (useful for movies)
 }
 
 export interface Person {
@@ -294,6 +296,7 @@ export const triggerTargetLabels: Record<TriggerTarget, string> = {
     'navigation': 'القوائم (Navigation Links)'
 };
 
+// Fix: Removed duplicate 'export' keyword on line 299
 export const triggerSelectors: Record<TriggerTarget, string> = {
     'all': 'body',
     'watch-now': '.target-watch-btn',
@@ -361,6 +364,7 @@ export interface SiteSettings {
     socialLinks: SocialLinks;
     countdownDate: string;
     adsEnabled: boolean;
+    isAdsGateEnabled: boolean; 
     privacyPolicy: string;
     copyrightPolicy: string; 
     isCountdownVisible: boolean;
@@ -434,7 +438,6 @@ export interface HomeSection {
   updatedAt?: string;
 }
 
-// --- NEW: Content Radar Types ---
 export interface ReleaseSource {
   name: string;
   url: string;
@@ -455,7 +458,7 @@ export interface ReleaseSchedule {
   lastAddedAt: string | null;
   priority: ReleasePriority; 
   status: ReleaseStatus; 
-  releaseYear?: number; // ADDED
+  releaseYear?: number; 
   nextEpisodeNumber?: number; 
   internalNotes?: string; 
 }

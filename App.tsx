@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -43,10 +44,12 @@ import PeoplePage from './pages/PeoplePage';
 import PersonProfilePage from './pages/PersonProfilePage';
 import DownloadPage from './pages/DownloadPage';
 import TvSidebar from './components/TvSidebar';
+import AdGatePage from './components/AdGatePage';
+import ContentRequestPage from './pages/ContentRequestPage';
 
 const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0118 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
   </svg>
 );
 
@@ -86,7 +89,9 @@ const VIEW_PATHS: Record<string, View> = {
     '/notifications': 'notifications',
     '/app-download': 'appDownload',
     '/people': 'people',
-    '/person': 'personProfile'
+    '/person': 'personProfile',
+    '/ad-gate': 'adGate',
+    '/request': 'contentRequest'
 };
 
 const REVERSE_VIEW_PATHS: Record<string, string> = {
@@ -117,7 +122,9 @@ const REVERSE_VIEW_PATHS: Record<string, string> = {
     'appDownload': '/app-download',
     'people': '/people',
     'personProfile': '/person',
-    'download': '/download'
+    'download': '/download',
+    'adGate': '/ad-gate',
+    'contentRequest': '/request'
 };
 
 const safeHistoryPush = (path: string) => {
@@ -181,6 +188,8 @@ const App: React.FC = () => {
   const [detailParams, setDetailParams] = useState<{ seasonNumber: number } | null>(null);
   const [downloadParams, setDownloadParams] = useState<{ season?: number, episode?: number } | null>(null);
   
+  const [adGateTarget, setAdGateTarget] = useState<{ view: View; content: Content; params?: any } | null>(null);
+
   const [authPrefillEmail, setAuthPrefillEmail] = useState('');
 
   const [allContent, setAllContent] = useState<Content[]>([]);
@@ -195,7 +204,7 @@ const App: React.FC = () => {
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
       let settings = initialSiteSettings;
       try {
-          const savedRamadan = localStorage.getItem('cinematix_theme_ramadan');
+          const savedRamadan = localStorage.getItem('cinematix_active_theme');
           const savedTheme = localStorage.getItem('cinematix_active_theme');
           if (savedTheme) settings = { ...settings, activeTheme: savedTheme as any };
           else if (savedRamadan !== null) settings = { ...settings, isRamadanModeEnabled: savedRamadan === 'true', activeTheme: savedRamadan === 'true' ? 'ramadan' : 'default' };
@@ -220,7 +229,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const detectTv = () => {
         const userAgent = navigator.userAgent;
-        // Updated detection to include URL param for easier testing
         const isSmartTV = /SmartTV|Tizen|WebOS|AppleTV|HbbTV|Roku|NetCast|BRAVIA/i.test(userAgent) || window.location.search.includes('tv=true');
         setIsTv(isSmartTV);
     };
@@ -229,7 +237,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
       if (activeProfile?.isKid) {
-          const allowedKidsViews: View[] = ['kids', 'detail', 'watch', 'profileSelector', 'accountSettings', 'profileHub', 'myList', 'maintenance', 'search', 'download'];
+          const allowedKidsViews: View[] = ['kids', 'detail', 'watch', 'profileSelector', 'accountSettings', 'profileHub', 'myList', 'maintenance', 'search', 'download', 'adGate', 'contentRequest'];
           if (!allowedKidsViews.includes(view)) {
               setView('kids');
               safeHistoryReplace('/kids');
@@ -237,7 +245,6 @@ const App: React.FC = () => {
       }
   }, [activeProfile, view]);
 
-  // FIX: Popunder logic now uses createRange logic for execution
   useEffect(() => {
       if (!siteSettings.adsEnabled) return;
       const handleSmartPopunder = (e: MouseEvent) => {
@@ -287,7 +294,7 @@ const App: React.FC = () => {
   useLayoutEffect(() => {
       const prevView = prevViewRef.current;
       
-      if (view === 'detail' || view === 'watch' || view === 'personProfile' || view === 'download') {
+      if (view === 'detail' || view === 'watch' || view === 'personProfile' || view === 'download' || view === 'adGate') {
           window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
       } 
       else {
@@ -300,7 +307,12 @@ const App: React.FC = () => {
               prevView === 'category' || 
               prevView === 'search' ||
               prevView === 'login' ||
-              prevView === 'register'
+              prevView === 'register' ||
+              prevView === 'adGate' ||
+              prevView === 'contentRequest' ||
+              prevView === 'about' ||
+              prevView === 'privacy' ||
+              prevView === 'copyright'
           )) {
               window.scrollTo({ top: savedPosition, left: 0, behavior: 'instant' as any });
           } else {
@@ -392,7 +404,7 @@ const App: React.FC = () => {
               setSelectedPersonName(path.split('/person/')[1]);
           }
 
-          if ((newView === 'detail' || newView === 'watch' || newView === 'personProfile' || newView === 'download') && allContent.length > 0) {
+          if ((newView === 'detail' || newView === 'watch' || newView === 'personProfile' || newView === 'download' || newView === 'adGate') && allContent.length > 0) {
               resolveContentFromUrl(window.location.pathname, allContent);
           }
       };
@@ -404,6 +416,13 @@ const App: React.FC = () => {
       const root = document.documentElement;
       root.classList.remove('theme-ramadan', 'theme-ios', 'theme-night-city', 'theme-nature', 'theme-eid', 'theme-cosmic-teal', 'theme-netflix-red');
       
+      // منطق السماح بتحديد النصوص والنسخ في صفحات تسجيل الدخول والتسجيل ولوحة التحكم
+      if (view === 'login' || view === 'register' || view === 'admin') {
+          root.classList.add('allow-selection');
+      } else {
+          root.classList.remove('allow-selection');
+      }
+
       if (view === 'admin') return;
       
       let active = siteSettings.activeTheme;
@@ -456,10 +475,30 @@ const App: React.FC = () => {
             setTimeout(() => { if (preloader) preloader.style.display = 'none'; }, 500);
         }
       };
+      
+      const startTime = Date.now();
+      const MAX_LOADER_TIME = 3000; 
+
       const isHomePage = window.location.pathname === '/';
-      if (!isHomePage) { hideLoader(); fetchData(); return; }
-      const safetyTimer = setTimeout(() => { hideLoader(); }, 3000);
-      fetchData().finally(() => { clearTimeout(safetyTimer); hideLoader(); });
+      
+      if (!isHomePage) { 
+          hideLoader(); 
+          fetchData(); 
+          return; 
+      }
+
+      fetchData().finally(() => { 
+          const elapsedTime = Date.now() - startTime;
+          const remainingTime = Math.max(0, MAX_LOADER_TIME - elapsedTime);
+          
+          setTimeout(() => {
+              hideLoader();
+          }, remainingTime > 0 ? 300 : 0);
+      });
+
+      const safetyTimer = setTimeout(() => { hideLoader(); }, MAX_LOADER_TIME);
+      
+      return () => clearTimeout(safetyTimer);
   }, [fetchData]);
   
   useEffect(() => {
@@ -516,7 +555,7 @@ const App: React.FC = () => {
 
   const handleSetView = (newView: View, category?: string, params?: any) => {
       scrollPositions.current[view] = window.scrollY;
-      const subViews: View[] = ['detail', 'watch', 'personProfile', 'download', 'category', 'search', 'login', 'register', 'welcome'];
+      const subViews: View[] = ['detail', 'watch', 'personProfile', 'download', 'category', 'search', 'login', 'register', 'welcome', 'adGate', 'contentRequest', 'about', 'privacy', 'copyright'];
       if (subViews.includes(newView) && !subViews.includes(view)) setReturnView(view);
       if (newView === 'login' && params?.email) setAuthPrefillEmail(params.email);
       else if (newView === 'login' && !params?.email) setAuthPrefillEmail('');
@@ -559,29 +598,71 @@ const App: React.FC = () => {
   const handleSelectContent = (content: Content, seasonNumber?: number, episodeNumber?: number) => {
       if (isSearchOpen) setIsSearchOpen(false);
       scrollPositions.current[view] = window.scrollY;
-      if (view !== 'detail') setReturnView(view);
-      setSelectedContent(content);
+      if (view !== 'detail' && view !== 'adGate') setReturnView(view);
+      
       const slug = content.slug || content.id;
       const isEpisodic = content.type === ContentType.Series || content.type === ContentType.Program;
+
       if (isEpisodic) {
+          if (episodeNumber) {
+              if (siteSettings.isAdsGateEnabled) {
+                  // Intercept episode selection for series to show Ad Gate
+                  setSelectedContent(content);
+                  setAdGateTarget({ view: 'watch', content, params: { season: seasonNumber || 1, episode: episodeNumber } });
+                  handleSetView('adGate');
+              } else {
+                  // Bypass Ad Gate
+                  setSelectedContent(content);
+                  setWatchParams({ season: seasonNumber || 1, episode: episodeNumber });
+                  setDetailParams(null);
+                  setView('watch');
+                  safeHistoryPush(`/watch/${slug}/الموسم${seasonNumber || 1}/الحلقة${episodeNumber}`);
+              }
+              return;
+          }
+
+          // Normal detail page logic for series cards (Landing Page)
+          setSelectedContent(content);
           let targetSeason = seasonNumber;
           if (!targetSeason && content.seasons && content.seasons.length > 0) targetSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0].seasonNumber;
           if (!targetSeason) targetSeason = 1; 
-          if (episodeNumber) {
-              setWatchParams({ season: targetSeason, episode: episodeNumber });
-              setDetailParams(null);
-              setView('watch');
-              safeHistoryPush(`/watch/${slug}/الموسم${targetSeason}/الحلقة${episodeNumber}`);
-          } else {
-              setDetailParams({ seasonNumber: targetSeason });
-              setView('detail');
-              safeHistoryPush(`/${content.type}/${slug}/الموسم${targetSeason}`);
-          }
+          
+          setDetailParams({ seasonNumber: targetSeason });
+          setView('detail');
+          safeHistoryPush(`/${content.type}/${slug}/الموسم${targetSeason}`);
       } else { 
-          setDetailParams(null); 
-          setView('detail'); 
-          safeHistoryPush(`/watch/movie/${slug}`); 
+          if (siteSettings.isAdsGateEnabled) {
+              // Intercept movie selection for Ad Gate
+              setSelectedContent(content);
+              setAdGateTarget({ view: 'detail', content });
+              handleSetView('adGate');
+          } else {
+              // Bypass Ad Gate for Movies
+              setSelectedContent(content);
+              setDetailParams(null);
+              setView('detail');
+              safeHistoryPush(`/watch/movie/${slug}`);
+          }
       }
+  };
+
+  const handleAdGateDone = () => {
+      if (!adGateTarget) return;
+      const { view: targetView, content, params } = adGateTarget;
+      setSelectedContent(content);
+      if (targetView === 'watch' && params) {
+          setWatchParams(params);
+          setDetailParams(null);
+          setView('watch');
+          const slug = content.slug || content.id;
+          safeHistoryPush(`/watch/${slug}/الموسم${params.season}/الحلقة${params.episode}`);
+      } else {
+          setDetailParams(null);
+          setView('detail');
+          const slug = content.slug || content.id;
+          safeHistoryPush(`/watch/movie/${slug}`);
+      }
+      setAdGateTarget(null);
   };
 
   const handlePersonClick = (name: string) => {
@@ -727,6 +808,8 @@ const App: React.FC = () => {
           case 'appDownload': return <AppPage onSetView={handleSetView} appConfig={siteSettings.appConfig} returnView={returnView} />;
           case 'people': return <PeoplePage allContent={allContent} onPersonClick={handlePersonClick} onSetView={handleSetView} />;
           case 'personProfile': return <PersonProfilePage name={selectedPersonName} allContent={allContent} people={people} onSelectContent={handleSelectContent} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} returnView={returnView} />;
+          case 'adGate': return <AdGatePage content={adGateTarget?.content || ({} as Content)} targetView={adGateTarget?.view || 'home'} onDone={handleAdGateDone} onCancel={() => handleSetView(returnView || 'home')} ads={ads} adsEnabled={siteSettings.adsEnabled} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
+          case 'contentRequest': return <ContentRequestPage onSetView={handleSetView} currentUser={currentUser} addToast={addToast} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
           case 'detail':
                return (
                    <DetailPage key={window.location.pathname} locationPath={window.location.pathname} content={selectedContent || ({} as Content)} people={people} initialSeasonNumber={detailParams?.seasonNumber} ads={ads} adsEnabled={siteSettings.adsEnabled} allContent={allContent} onSelectContent={handleSelectContent} onPersonClick={handlePersonClick} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
@@ -743,19 +826,19 @@ const App: React.FC = () => {
            case 'register': if (isAuthLoading) return <LoadingSpinner />; return <CreateAccountPage onSetView={handleSetView} onRegister={handleRegister} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} />;
            case 'profileSelector': if (isAuthLoading) return <LoadingSpinner />; return currentUser ? <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
            case 'myList': if (isAuthLoading) return <LoadingSpinner />; return activeProfile ? <MyListPage allContent={allContent} activeProfile={activeProfile} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
-           case 'category': return <CategoryPage categoryTitle={selectedCategory} allContent={allContent} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} ads={ads} adsEnabled={siteSettings.adsEnabled} onRequestOpen={() => setIsRequestModalOpen(true)} />;
+           case 'category': return <CategoryPage categoryTitle={selectedCategory} allContent={allContent} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} ads={ads} adsEnabled={siteSettings.adsEnabled} onRequestOpen={() => handleSetView('contentRequest')} />;
            case 'admin': if (isAuthLoading) return <LoadingSpinner />; return isAdmin ? <AdminPanel allUsers={allUsers} allAds={ads} pinnedItems={pinnedItems} top10Items={top10Items} stories={allStories} siteSettings={siteSettings} onSetSiteSettings={handleUpdateSiteSettings} onSetPinnedItems={handleUpdatePinnedItems} onSetTop10Items={handleUpdateTop10Items} onSetView={handleSetView} onUpdateAd={handleUpdateAd} onDeleteAd={handleDeleteAd} onAddAd={handleAddAd} onAddAdmin={handleAddAdmin} onDeleteUser={handleDeleteUser} onContentChanged={fetchData} addToast={addToast} /> : <HomePage allContent={allContent} pinnedContent={[]} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} activeProfile={activeProfile} isLoading={isContentLoading} />;
            case 'accountSettings': if (isAuthLoading) return <LoadingSpinner />; return currentUser ? <AccountSettingsPage user={currentUser} onUpdateProfile={async (p) => { const updatedProfiles = currentUser.profiles.map(prof => prof.id === p.id ? p : prof); if (!currentUser.profiles.find(prof => prof.id === p.id)) updatedProfiles.push(p); const updatedUser = { ...currentUser, profiles: updatedProfiles }; setCurrentUser(updatedUser); if (activeProfile?.id === p.id) setActiveProfile(p); await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); addToast('تم تحديث الملف الشخصي', 'success'); }} onDeleteProfile={async (pid) => { const updatedProfiles = currentUser.profiles.filter(p => p.id !== pid); setCurrentUser({ ...currentUser, profiles: updatedProfiles }); await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); if (activeProfile?.id === pid) setActiveProfile(null); addToast('تم حذف الملف الشخصي', 'success'); }} onUpdatePassword={async (oldP, newP) => { try { const msg = firebase.auth.EmailAuthProvider.credential(currentUser.email, oldP); await auth.currentUser?.reauthenticateWithCredential(msg); await auth.currentUser?.updatePassword(newP); addToast('تم تغيير كلمة المرور', 'success'); return true; } catch (e) { addToast('كلمة المرور القديمة غير صحيحة', 'error'); return false; } }} onDeleteAccount={async () => { await deleteUserFromFirestore(currentUser.id); await auth.currentUser?.delete(); handleSetView('home'); addToast('تم حذف الحساب', 'info'); }} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
            case 'profileHub': if (isAuthLoading) return <LoadingSpinner />; return (currentUser && activeProfile) ? <ProfileHubPage user={currentUser} activeProfile={activeProfile} onSetView={handleSetView} onLogout={handleLogout} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
-           case 'privacy': return <PrivacyPolicyPage content={siteSettings.privacyPolicy} onSetView={handleSetView} returnView={returnView} />;
-           case 'copyright': return <CopyrightPage content={siteSettings.copyrightPolicy} onSetView={handleSetView} returnView={returnView} />;
-           case 'about': return <AboutPage onSetView={handleSetView} returnView={returnView} />;
+           case 'privacy': return <PrivacyPolicyPage content={siteSettings.privacyPolicy} onSetView={handleSetView} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
+           case 'copyright': return <CopyrightPage content={siteSettings.copyrightPolicy} onSetView={handleSetView} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
+           case 'about': return <AboutPage onSetView={handleSetView} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
            case 'search': return <SearchPage allContent={allContent} onSelectContent={handleSelectContent} onSetView={handleSetView} />;
           default: return <HomePage allContent={allContent} pinnedContent={[]} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} activeProfile={activeProfile} isLoading={isContentLoading} />;
       }
   };
 
-  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'welcome', 'notifications', 'appDownload', 'people', 'personProfile', 'about', 'privacy', 'copyright', 'download', 'category'];
+  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'welcome', 'notifications', 'appDownload', 'people', 'personProfile', 'about', 'privacy', 'copyright', 'download', 'category', 'adGate', 'contentRequest'];
   const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
   const showGlobalFooter = (!fullScreenViews.includes(view) || view === 'search') && !siteSettings.is_maintenance_mode_enabled && !isTv;
   const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view) && !isTv;
@@ -774,7 +857,7 @@ const App: React.FC = () => {
             ))}
         </div>
         {siteSettings.adsEnabled && <AdZone position="global_head" />}
-        {view !== 'login' && view !== 'register' && view !== 'onboarding' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && view !== 'welcome' && view !== 'notifications' && view !== 'appDownload' && view !== 'people' && view !== 'personProfile' && view !== 'about' && view !== 'privacy' && view !== 'copyright' && view !== 'download' && !siteSettings.is_maintenance_mode_enabled && !isTv && (
+        {view !== 'login' && view !== 'register' && view !== 'onboarding' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && view !== 'welcome' && view !== 'notifications' && view !== 'appDownload' && view !== 'people' && view !== 'personProfile' && view !== 'about' && view !== 'privacy' && view !== 'copyright' && view !== 'download' && view !== 'adGate' && view !== 'contentRequest' && !siteSettings.is_maintenance_mode_enabled && !isTv && (
             <Header onSetView={handleSetView} currentUser={currentUser} activeProfile={activeProfile} onLogout={handleLogout} allContent={allContent} onSelectContent={handleSelectContent} currentView={view} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} returnView={returnView} isKidProfile={activeProfile?.isKid} onOpenSearch={() => handleSetView('search')} unreadNotificationsCount={unreadNotificationsCount} />
         )}
         {isTv && (
@@ -785,11 +868,10 @@ const App: React.FC = () => {
         {renderView()}
         {showGlobalFooter && (
             <>
-                <Footer socialLinks={siteSettings.socialLinks} onSetView={handleSetView} isRamadanFooter={siteSettings.activeTheme === 'ramadan'} onRequestOpen={() => setIsRequestModalOpen(false)} className={footerClass} />
+                <Footer socialLinks={siteSettings.socialLinks} onSetView={handleSetView} isRamadanFooter={siteSettings.activeTheme === 'ramadan'} className={footerClass} />
                 {showBottomNav && ( <> <BottomNavigation currentView={view} onSetView={handleSetView} activeProfile={activeProfile} isLoggedIn={!!currentUser} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} /> <PWAInstallPrompt /> </> )}
             </>
         )}
-        <RequestContentModal isOpen={isRequestModalOpen} onClose={() => setIsRequestModalOpen(false)} currentUser={currentUser} addToast={addToast} />
     </div>
   );
 };
