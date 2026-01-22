@@ -190,7 +190,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
             />
 
             {/* Background images hidden to satisfy plain background request */}
-            <div className="absolute top-0 left-0 w-full h-[85vh] z-0 pointer-events-none overflow-hidden bg-[var(--bg-body)]">
+            <div className="absolute top-0 left-0 w-full h-[83vh] z-0 pointer-events-none overflow-hidden bg-[var(--bg-body)]">
                 <img 
                     src={selectedEpisode?.thumbnail || currentSeason?.backdrop || content.backdrop} 
                     alt="" 

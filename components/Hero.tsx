@@ -18,6 +18,8 @@ interface HeroProps {
   isNetflixRedTheme?: boolean;
   hideDescription?: boolean;
   disableVideo?: boolean; // Prop to disable background video playback
+  // Fix: Added missing isLoading property to HeroProps
+  isLoading?: boolean;
 }
 
 const Hero: React.FC<HeroProps> = ({ 
@@ -32,7 +34,9 @@ const Hero: React.FC<HeroProps> = ({
     isCosmicTealTheme,
     isNetflixRedTheme,
     hideDescription = false,
-    disableVideo = false
+    disableVideo = false,
+    // Fix: Destructure isLoading from props
+    isLoading
 }) => {
     const [unboundedIndex, setUnboundedIndex] = useState(0);
     const [isDirectJump, setIsDirectJump] = useState(false);
@@ -255,6 +259,27 @@ const Hero: React.FC<HeroProps> = ({
         setIsMuted(prev => !prev);
     };
 
+    // Fix: Implement loading skeleton state when isLoading is true
+    if (isLoading) {
+        const containerBgColor = isRamadanTheme ? 'bg-[#1a1000]' : isEidTheme ? 'bg-[#1a0b2e]' : isCosmicTealTheme ? 'bg-[#0b1116]' : isNetflixRedTheme ? 'bg-[#141414]' : 'bg-black';
+        return (
+            <div className={`relative min-h-[500px] h-[83vh] sm:h-[83vh] md:h-[90vh] lg:h-[90vh] w-full overflow-hidden ${containerBgColor}`}>
+                <div className="absolute inset-0 bg-[#161b22] skeleton-shimmer"></div>
+                <div className="absolute inset-0 z-20 bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/60 via-40% to-transparent"></div>
+                <div className="absolute bottom-0 left-0 w-full px-4 md:px-12 pb-4 md:pb-32 z-30">
+                    <div className="max-w-3xl flex flex-col items-center md:items-start text-center md:text-right space-y-4">
+                        <div className="w-64 md:w-96 h-12 md:h-20 bg-gray-800/40 rounded-xl skeleton-shimmer border border-white/5"></div>
+                        <div className="w-48 h-6 bg-gray-800/40 rounded skeleton-shimmer border border-white/5"></div>
+                        <div className="space-y-2 w-full">
+                             <div className="w-full h-4 bg-gray-800/40 rounded skeleton-shimmer border border-white/5"></div>
+                             <div className="w-3/4 h-4 bg-gray-800/40 rounded skeleton-shimmer border border-white/5"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (!contents || contents.length === 0) return null;
 
     const containerBgColor = isRamadanTheme ? 'bg-[#1a1000]' : isEidTheme ? 'bg-[#1a0b2e]' : isCosmicTealTheme ? 'bg-[#0b1116]' : isNetflixRedTheme ? 'bg-[#141414]' : 'bg-black';    
@@ -262,7 +287,7 @@ const Hero: React.FC<HeroProps> = ({
     return (
         <div 
             ref={containerRef}
-            className={`relative min-h-[500px] h-[85vh] sm:h-[85vh] md:h-[90vh] lg:h-[90vh] w-full overflow-hidden group ${containerBgColor}`}
+            className={`relative min-h-[500px] h-[83vh] sm:h-[83vh] md:h-[90vh] lg:h-[90vh] w-full overflow-hidden group ${containerBgColor}`}
             onMouseDown={(e) => { if(e.button === 0) handleStart(e.clientX, e.clientY); }}
             onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
             onMouseUp={handleEnd}

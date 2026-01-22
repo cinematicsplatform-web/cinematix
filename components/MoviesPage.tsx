@@ -51,13 +51,10 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
         return pinnedContent;
     }
     const sortedMovies = [...allMovies].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    // Updated to slice 5 items to enable slider behavior like Home Page
     return sortedMovies.slice(0, 5);
   }, [pinnedContent, allMovies]);
 
-  // Determine if Hero is present to enforce "no ads" rule for this page
   const heroIsPresent = heroContent.length > 0;
-  // EFFECTIVE ADS DISABLED ON THIS PAGE AS PER INSTRUCTIONS
   const pageAdsEnabled = adsEnabled && !heroIsPresent;
 
   const carousels = useMemo(() => {
@@ -72,8 +69,6 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
     const indianMovies = limit(allMovies.filter(c => c.categories.includes('افلام هندية')));
     const animationMovies = limit(allMovies.filter(c => c.categories.includes('افلام أنميشن')));
 
-    // Top 10 Pinned (Exclusive Ranking)
-    // Use top10Content if available, otherwise fallback to pinnedContent
     const top10Source = (top10Content && top10Content.length > 0) ? top10Content : pinnedContent;
 
     const pinnedMoviesCarousel = { 
@@ -84,14 +79,13 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
     };
 
     const definedCarousels = [
-      // Conditionally include Top 10
       siteSettings?.showTop10Movies ? pinnedMoviesCarousel : null,
       { id: 'm1', title: 'أحدث الإضافات', contents: recentMovies, isNew: true, categoryKey: 'new-movies' },
       { id: 'm2', title: 'أفلام عربية', contents: arabicMovies, isNew: false, categoryKey: 'افلام عربية' },
       { id: 'm3', title: 'أفلام تركية', contents: turkishMovies, isNew: false, categoryKey: 'افلام تركية' },
       { id: 'm4', title: 'أفلام أجنبية', contents: foreignMovies, isNew: false, categoryKey: 'افلام اجنبية' },
       { id: 'm5', title: 'أفلام هندية', contents: indianMovies, isNew: false, categoryKey: 'افلام هندية' },
-      { id: 'm6', title: 'افلام أنميشن', contents: animationMovies, isNew: false, categoryKey: 'افلام أنميشن' },
+      { id: 'm6', title: 'أفلام أنميشن', contents: animationMovies, isNew: false, categoryKey: 'افلام أنميشن' },
     ]
     .filter(Boolean)
     .filter(carousel => (carousel as any).contents.length > 0);
@@ -103,65 +97,51 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
       onNavigate('category', categoryKey);
   };
 
-  const [showEmptyMessage, setShowEmptyMessage] = useState(false);
-  
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    if (!isLoading && allMovies.length === 0) {
-        timer = setTimeout(() => {
-            setShowEmptyMessage(true);
-        }, 750); 
-    } else {
-        setShowEmptyMessage(false);
-    }
-    return () => clearTimeout(timer);
-  }, [isLoading, allMovies.length]);
-
-  if (isLoading) {
+  if (isLoading && allMovies.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
+      <div className="min-h-screen bg-[var(--bg-body)]">
+        <Hero contents={[] as Content[]} onWatchNow={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
+        <main className="pb-24 pt-0 z-30 relative bg-[var(--bg-body)]">
+            {/* LOADING SEPARATOR LINE */}
+            <div className={`w-full h-px mb-6 animate-pulse ${isRamadanTheme ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent' : isNetflixRedTheme ? 'bg-gradient-to-r from-transparent via-[#E50914]/50 to-transparent' : 'bg-gradient-to-r from-transparent via-white/20 to-transparent'}`}></div>
+            
+            <div className="space-y-4">
+                <ContentCarousel isLoading={true} title="جاري التحميل" contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} />
+                <ContentCarousel isLoading={true} title="جاري التحميل" contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} />
+                <ContentCarousel isLoading={true} title="جاري التحميل" contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} />
+            </div>
+        </main>
       </div>
     );
   }
 
   if (allMovies.length === 0) {
-    if (!showEmptyMessage) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-                <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
-            </div>
-        );
-    }
     return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500 animate-fade-in-up">لا يوجد أفلام لعرضها حالياً.</div>
   }
 
   return (
-    <div className="relative min-h-screen bg-[var(--bg-body)]">
-        
+    <div className="min-h-screen bg-[var(--bg-body)]">
         <SEO 
             title="أفلام" 
-            description="مكتبة ضخمة من الأفلام العربية والأجنبية والتركية والهندية بجودة عالية."
+            description="مكتبة ضخمة من الأفلام العربية والأجنبية والتركية والأندية بجودة عالية."
             type="website"
         />
 
-        <div className="relative z-10">
-            <Hero 
-                contents={heroContent} 
-                onWatchNow={onSelectContent} 
-                isLoggedIn={isLoggedIn} 
-                myList={myList} 
-                onToggleMyList={onToggleMyList} 
-                autoSlideInterval={5000}
-                isRamadanTheme={isRamadanTheme}
-                isEidTheme={isEidTheme}
-                isCosmicTealTheme={isCosmicTealTheme}
-                isNetflixRedTheme={isNetflixRedTheme}
-                disableVideo={heroIsPresent} // Modification: Disable background video "ads" in Hero
-            />
-        </div>
+        <Hero 
+            contents={heroContent} 
+            onWatchNow={onSelectContent} 
+            isLoggedIn={isLoggedIn} 
+            myList={myList} 
+            onToggleMyList={onToggleMyList} 
+            autoSlideInterval={5000}
+            isRamadanTheme={isRamadanTheme}
+            isEidTheme={isEidTheme}
+            isCosmicTealTheme={isCosmicTealTheme}
+            isNetflixRedTheme={isNetflixRedTheme}
+            disableVideo={heroIsPresent}
+        />
 
-        <main className="relative z-30 pb-24 bg-[var(--bg-body)]">
+        <main className="pb-24 z-30 relative bg-[var(--bg-body)]">
             <div className={`w-full h-px mt-0 mb-2 md:my-4 
                 ${isRamadanTheme 
                     ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent opacity-80' 
@@ -176,7 +156,6 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
 
             <div className="flex flex-col lg:flex-row gap-6 px-0 md:px-0">
                 <div className="flex-1 w-full">
-                    {/* Modification: ads are absolutely not permitted to play on the movies page when Hero is present */}
                     {pageAdsEnabled && <AdZone position="page_movies_top" />}
                     <AdPlacement ads={ads} placement="listing-top" isEnabled={pageAdsEnabled} />
                     <AdPlacement ads={ads} placement="movies-page" isEnabled={pageAdsEnabled} />

@@ -54,13 +54,10 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
     const sortedSeries = [...allSeries].sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    // Ensure 5 items specifically for slider behavior like Kids Page
     return sortedSeries.slice(0, 5);
   }, [pinnedContent, allSeries]);
 
-  // Determine if Hero is present to enforce "no ads" rule for this page
   const heroIsPresent = heroContent.length > 0;
-  // EFFECTIVE ADS DISABLED ON THIS PAGE AS PER INSTRUCTIONS
   const pageAdsEnabled = adsEnabled && !heroIsPresent;
 
   const carousels = useMemo(() => {
@@ -75,7 +72,6 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
 
     const ramadanSeriesContent = limit(allSeries.filter(c => c.categories.includes('رمضان') || c.categories.includes('مسلسلات رمضان')));
 
-    // Top 10 Logic (Using top10Content prop if available)
     const top10Source = (top10Content && top10Content.length > 0) ? top10Content : pinnedContent;
 
     const pinnedSeriesCarousel = { 
@@ -89,7 +85,7 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
         <div className="flex items-center gap-3">
              <div className={`w-1.5 h-6 md:h-8 rounded-full shadow-[0_0_10px_rgba(0,167,248,0.6)] ${isRamadanTheme ? 'bg-[#FFD700] shadow-[0_0_15px_rgba(255,215,0,0.6)]' : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'}`}></div>
              <div className="flex items-center gap-2">
-                 <span>رمضان 2026</span>
+                 <span>رمضان معانا</span>
                  <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f31c/512.webp" alt="moon" className="w-6 h-6 md:w-8 md:h-8" />
              </div>
         </div>
@@ -115,70 +111,51 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
       onNavigate('category', categoryKey);
   };
 
-  const [showEmptyMessage, setShowEmptyMessage] = useState(false);
-  
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    if (!isLoading && allSeries.length === 0) {
-        timer = setTimeout(() => {
-            setShowEmptyMessage(true);
-        }, 750); 
-    } else {
-        setShowEmptyMessage(false);
-    }
-    return () => clearTimeout(timer);
-  }, [isLoading, allSeries.length]);
-
-  if (isLoading) {
+  if (isLoading && allSeries.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
+      <div className="min-h-screen bg-[var(--bg-body)]">
+        < Hero contents={[] as Content[]} onWatchNow={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
+        <main className="pb-24 pt-0 z-30 relative bg-[var(--bg-body)]">
+            {/* LOADING SEPARATOR LINE */}
+            <div className={`w-full h-px mb-6 animate-pulse ${isRamadanTheme ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent' : 'bg-gradient-to-r from-transparent via-white/20 to-transparent'}`}></div>
+            
+            <div className="space-y-4">
+                <ContentCarousel isLoading={true} title="جاري التحميل" contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} />
+                <ContentCarousel isLoading={true} title="جاري التحميل" contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} />
+                <ContentCarousel isLoading={true} title="جاري التحميل" contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} />
+            </div>
+        </main>
       </div>
     );
   }
 
   if (allSeries.length === 0) {
-    if (!showEmptyMessage) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-                <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
-            </div>
-        );
-    }
     return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500 animate-fade-in-up">لا يوجد مسلسلات لعرضها حالياً.</div>
   }
 
   return (
-    // CRITICAL FIX: Clean Container Structure - Absolutely NO overflow-x-hidden here to allow sticky/drag gestures
-    <div 
-        className="relative min-h-screen bg-[var(--bg-body)] text-white"
-        style={{ touchAction: 'pan-y' }} // Keeping this for iframe scroll safety
-    >
-        
+    <div className="min-h-screen bg-[var(--bg-body)] text-white">
         <SEO 
             title="مسلسلات" 
             description="تصفح أحدث المسلسلات العربية والتركية والأجنبية بجودة عالية على سينماتيكس."
             type="website"
         />
 
-        {/* Hero Wrapper - z-10 */}
-        <div className="relative z-10">
-            <Hero 
-                contents={heroContent} 
-                onWatchNow={onSelectContent} 
-                isLoggedIn={isLoggedIn} 
-                myList={myList} 
-                onToggleMyList={onToggleMyList} 
-                autoSlideInterval={5000}
-                isRamadanTheme={isRamadanTheme}
-                isEidTheme={isEidTheme}
-                isCosmicTealTheme={isCosmicTealTheme}
-                isNetflixRedTheme={isNetflixRedTheme}
-                disableVideo={heroIsPresent} // Modification: Disable background video previews in Hero
-            />
-        </div>
+        < Hero 
+            contents={heroContent} 
+            onWatchNow={onSelectContent} 
+            isLoggedIn={isLoggedIn} 
+            myList={myList} 
+            onToggleMyList={onToggleMyList} 
+            autoSlideInterval={5000}
+            isRamadanTheme={isRamadanTheme}
+            isEidTheme={isEidTheme}
+            isCosmicTealTheme={isCosmicTealTheme}
+            isNetflixRedTheme={isNetflixRedTheme}
+            disableVideo={heroIsPresent}
+        />
 
-        <main className="relative z-30 pb-24 bg-[var(--bg-body)]">
+        <main className="pb-24 z-30 relative bg-[var(--bg-body)]">
             <div className={`w-full h-px mt-0 mb-2 md:my-4 
                 ${isRamadanTheme 
                     ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent opacity-80' 
@@ -191,9 +168,8 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
                                 : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'
                 }`}></div>
 
-            <div className="flex flex-col lg:flex-row gap-6 px-0 md:px-0">
+            <div className="flex flex-col lg:flex-row gap-6">
                 <div className="flex-1 w-full">
-                    {/* Modification: ads are absolutely not permitted to play on the series page when Hero is present */}
                     {pageAdsEnabled && <AdZone position="page_series_top" />}
                     <AdPlacement ads={ads} placement="listing-top" isEnabled={pageAdsEnabled} />
                     <AdPlacement ads={ads} placement="series-page" isEnabled={pageAdsEnabled} />

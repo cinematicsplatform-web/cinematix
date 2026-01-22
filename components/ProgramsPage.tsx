@@ -93,7 +93,11 @@ const ProgramsPage: React.FC<ProgramsPageProps> = ({
   if (isLoading && relevantContent.length === 0) {
     return (
       <div className="relative min-h-screen bg-[var(--bg-body)] pt-24">
-          <div className="p-8 space-y-8">
+          {/* LOADING SEPARATOR LINE */}
+          <div className="w-full h-px mb-8 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+          
+          <div className="p-8 space-y-8 z-30 relative">
+              <ContentCarousel title="Loading..." contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} />
               <ContentCarousel title="Loading..." contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} />
           </div>
       </div>

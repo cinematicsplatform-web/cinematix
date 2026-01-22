@@ -93,109 +93,122 @@ const LoginModal: React.FC<LoginModalProps> = ({ onSetView, onLogin, isRamadanTh
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center p-4 pt-24 relative bg-cover bg-center bg-no-repeat"
+      className="min-h-screen flex items-center justify-center p-4 md:p-10 relative bg-cover bg-center bg-no-repeat transition-all duration-700"
       style={{
         backgroundImage: `url('https://shahid.mbc.net/mediaObject/436ea116-cdae-4007-ace6-3c755df16856?width=1920&type=avif&q=80')`
       }}
     >
       <SEO title="تسجيل الدخول - سينماتيكس" noIndex={true} />
-      <div className="absolute inset-0 bg-black/50 z-0"></div>
+      {/* Deep overlay inspired by global platforms */}
+      <div className="absolute inset-0 bg-black/60 md:bg-black/50 z-0"></div>
       
-      <button 
-          onClick={() => onSetView(authReturnView || 'home')} 
-          className="absolute top-6 right-6 md:top-8 md:right-8 p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white transition-all z-50 border border-white/10 shadow-lg group"
-          title="رجوع"
-      >
-           <ChevronRightIcon className="w-6 h-6 transform rotate-180 group-hover:-translate-x-1 transition-transform" />
-      </button>
+      {/* Elegant Back Button */}
+      <div className="absolute top-6 right-6 md:top-10 md:right-10 z-[100]">
+          <button 
+              onClick={() => onSetView(authReturnView || 'home')} 
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 hover:bg-white/10 backdrop-blur-xl text-white transition-all border border-white/10 shadow-xl group font-bold"
+              title="رجوع"
+          >
+               <ChevronRightIcon className="w-5 h-5 transform rotate-180 group-hover:-translate-x-1 transition-transform" />
+               <span className="hidden sm:inline">رجوع</span>
+          </button>
+      </div>
 
-      <div className="bg-black/80 backdrop-blur-md border border-gray-700 rounded-2xl shadow-2xl w-full max-w-md text-white animate-fade-in-up relative z-10">
-        <div className="p-8 md:p-12">
-            <h1 className="text-3xl font-extrabold mb-4 text-center">
-                <span className="text-white">سينما</span><span className="gradient-text font-['Lalezar'] tracking-wide">تيكس</span>
-            </h1>
-            <p className="text-gray-400 text-center mb-8">سجل الدخول للمتابعة من حيث توقفت</p>
+      <div className="w-full max-w-[450px] z-10">
+        <div className="bg-black/75 md:bg-black/80 backdrop-blur-2xl border border-white/10 rounded-[32px] md:rounded-[24px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] overflow-hidden animate-fade-in-up">
+            <div className="p-8 md:p-14">
+                <div className="mb-10 text-center">
+                    <h1 className="text-3xl md:text-5xl font-black mb-3">
+                        <span className="text-white">تسجيل</span><span className="gradient-text font-['Lalezar'] tracking-wide"> الدخول</span>
+                    </h1>
+                    <p className="text-gray-400 text-sm md:text-base font-bold">استعد لرحلة ترفيهية بلا حدود</p>
+                </div>
 
-            {error !== 'none' && (
-                <div className="bg-red-900/20 border border-red-500/30 text-red-400 text-center p-3 rounded-lg mb-6 space-y-3 animate-fade-in-up">
-                    <p>{getErrorMessage()}</p>
-                    <button onClick={() => onSetView('register')} className="bg-red-500/50 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg text-sm">
-                        إنشاء حساب جديد
-                    </button>
-                </div>
-            )}
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">البريد الإلكتروني</label>
-                    <input 
-                        type="email"
-                        id="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="user@cinematix.com"
-                        disabled={isLoading || isSuccess}
-                        className={`w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed ${error !== 'none' ? errorGlowClass : ''}`}
-                        required
-                    />
-                </div>
-                 <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">كلمة المرور</label>
-                    <div className="relative">
-                        <input 
-                            type={showPassword ? "text" : "password"}
-                            id="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="********"
-                            disabled={isLoading || isSuccess}
-                            className={`w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 pl-12 focus:outline-none focus:ring-2 focus:ring-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed ${error !== 'none' ? errorGlowClass : ''}`}
-                            required
-                        />
-                        <button 
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                        >
-                            {showPassword ? <EyeSlashIcon /> : <EyeIcon />}
+                {error !== 'none' && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-center p-4 rounded-2xl mb-8 space-y-4 animate-fade-in">
+                        <p className="text-sm font-bold">{getErrorMessage()}</p>
+                        <button onClick={() => onSetView('register')} className="w-full bg-red-500 text-white font-black py-2.5 rounded-xl text-sm transition-all hover:brightness-110 shadow-lg">
+                            إنشاء حساب جديد
                         </button>
                     </div>
-                </div>
+                )}
                 
-                 <button 
-                    type="submit" 
-                    disabled={isLoading || isSuccess}
-                    className={`w-full font-bold py-3 rounded-lg transition-all duration-300 transform flex items-center justify-center gap-2
-                        ${isSuccess 
-                            ? 'bg-green-500 text-white scale-105 cursor-default shadow-[0_0_20px_rgba(34,197,94,0.5)]' 
-                            : isLoading 
-                                ? 'bg-gray-600 text-gray-300 cursor-not-allowed opacity-80' 
-                                : 'btn-primary hover:scale-105'
-                        }
-                    `}
-                >
-                    {isLoading ? (
-                        <>
-                            <SpinnerIcon />
-                            <span>جاري الدخول...</span>
-                        </>
-                    ) : isSuccess ? (
-                        <>
-                            <CheckIcon className="w-6 h-6 text-black" />
-                            <span>تم بنجاح</span>
-                        </>
-                    ) : (
-                        'تسجيل الدخول'
-                    )}
-                </button>
-            </form>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-2">
+                        <label htmlFor="email" className="block text-xs font-black text-gray-500 uppercase tracking-widest mr-2">البريد الإلكتروني</label>
+                        <input 
+                            type="email"
+                            id="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="user@cinematix.watch"
+                            disabled={isLoading || isSuccess}
+                            className={`w-full bg-white/5 border border-gray-700/50 rounded-2xl px-6 py-4 focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-lg placeholder-gray-600 ${error !== 'none' ? errorGlowClass : ''}`}
+                            required
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label htmlFor="password" className="block text-xs font-black text-gray-500 uppercase tracking-widest mr-2">كلمة المرور</label>
+                        <div className="relative">
+                            <input 
+                                type={showPassword ? "text" : "password"}
+                                id="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="••••••••"
+                                disabled={isLoading || isSuccess}
+                                className={`w-full bg-white/5 border border-gray-700/50 rounded-2xl px-6 py-4 pl-14 focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-lg placeholder-gray-600 ${error !== 'none' ? errorGlowClass : ''}`}
+                                required
+                            />
+                            <button 
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                            >
+                                {showPassword ? <EyeSlashIcon /> : <EyeIcon />}
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="pt-4">
+                        <button 
+                            type="submit" 
+                            disabled={isLoading || isSuccess}
+                            className={`w-full font-black py-4 md:py-5 rounded-2xl transition-all duration-500 transform flex items-center justify-center gap-3 text-xl shadow-[0_20px_40px_-12px_rgba(0,0,0,0.5)]
+                                ${isSuccess 
+                                    ? 'bg-green-600 text-white scale-[1.02] cursor-default shadow-green-900/40' 
+                                    : isLoading 
+                                        ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700' 
+                                        : 'btn-primary hover:scale-[1.02] active:scale-[0.98]'
+                                }
+                            `}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <SpinnerIcon />
+                                    <span>جاري التحقق...</span>
+                                </>
+                            ) : isSuccess ? (
+                                <>
+                                    <CheckIcon className="w-6 h-6 text-white" />
+                                    <span>تم الدخول بنجاح</span>
+                                </>
+                            ) : (
+                                'تسجيل الدخول'
+                            )}
+                        </button>
+                    </div>
+                </form>
 
-            <p className="text-center text-gray-500 text-sm mt-6">
-                ليس لديك حساب؟ <a href="#" onClick={(e) => {e.preventDefault(); !isLoading && onSetView('register')}} className={`font-medium hover:underline transition-colors ${linkColorClass} ${isLoading ? 'pointer-events-none opacity-50' : ''}`}>أنشئ حساباً</a>
-            </p>
-            <p className="text-center text-gray-500 text-sm mt-2">
-                أو <a href="#" onClick={(e) => { e.preventDefault(); !isLoading && onSetView('home'); }} className={`font-medium text-gray-300 hover:underline ${isLoading ? 'pointer-events-none opacity-50' : ''}`}>تصفح كزائر</a>
-            </p>
+                <div className="mt-12 space-y-4 text-center">
+                    <p className="text-gray-500 text-sm font-bold">
+                        جديد في سينماتيكس؟ <a href="#" onClick={(e) => {e.preventDefault(); !isLoading && onSetView('register')}} className={`font-black hover:underline transition-colors ${linkColorClass} ${isLoading ? 'pointer-events-none opacity-50' : ''}`}>أنشئ حساباً الآن</a>
+                    </p>
+                    <p className="text-gray-600 text-xs font-bold pt-4 border-t border-white/5">
+                        <a href="#" onClick={(e) => { e.preventDefault(); !isLoading && onSetView('home'); }} className={`hover:text-white transition-colors ${isLoading ? 'pointer-events-none opacity-50' : ''}`}>التصفح كزائر</a>
+                    </p>
+                </div>
+            </div>
         </div>
       </div>
     </div>

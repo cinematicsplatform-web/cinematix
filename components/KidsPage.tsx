@@ -9,7 +9,7 @@ import AdZone from './AdZone';
 interface KidsPageProps {
   allContent: Content[];
   pinnedContent: Content[];
-  top10Content?: Content[]; // Added prop
+  top10Content?: Content[]; 
   onSelectContent: (content: Content) => void;
   isLoggedIn: boolean;
   myList?: string[];
@@ -27,7 +27,7 @@ interface KidsPageProps {
 const KidsPage: React.FC<KidsPageProps> = ({ 
   allContent, 
   pinnedContent,
-  top10Content, // Destructure prop
+  top10Content,
   onSelectContent, 
   isLoggedIn, 
   myList, 
@@ -46,16 +46,13 @@ const KidsPage: React.FC<KidsPageProps> = ({
     allContent.filter(c => c.categories.includes('افلام أنميشن') || c.visibility === 'kids')
   , [allContent]);
   
-  // 🎯 Master Hero Logic: Ensure 5 items for Infinite Loop
   const heroContent = useMemo(() => {
     if (pinnedContent && pinnedContent.length > 0) {
         return pinnedContent;
     }
-    // Fallback: Latest 5 animation content to enable slider behavior
     const sortedContent = [...animationContent].sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    // Slice 5 items to enable slider behavior
     return sortedContent.slice(0, 5);
   }, [animationContent, pinnedContent]);
 
@@ -68,7 +65,6 @@ const KidsPage: React.FC<KidsPageProps> = ({
 
     const allAnimationMovies = limit(animationContent.filter(c => c.categories.includes('افلام أنميشن')));
 
-    // Top 10 Logic
     const top10Source = (top10Content && top10Content.length > 0) ? top10Content : [];
     
     const top10Carousel = { 
@@ -91,65 +87,49 @@ const KidsPage: React.FC<KidsPageProps> = ({
       onNavigate('category', categoryKey);
   };
 
-  const [showEmptyMessage, setShowEmptyMessage] = useState(false);
-  
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    if (!isLoading && animationContent.length === 0) {
-        timer = setTimeout(() => {
-            setShowEmptyMessage(true);
-        }, 750); 
-    } else {
-        setShowEmptyMessage(false);
-    }
-    return () => clearTimeout(timer);
-  }, [isLoading, animationContent.length]);
-
-  if (isLoading) {
+  if (isLoading && animationContent.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
+      <div className="min-h-screen bg-[var(--bg-body)]">
+        <Hero contents={[] as Content[]} onWatchNow={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
+        <main className="pb-24 pt-0 z-30 relative bg-[var(--bg-body)]">
+            {/* LOADING SEPARATOR LINE */}
+            <div className={`w-full h-px mb-6 animate-pulse ${isCosmicTealTheme ? 'bg-gradient-to-r from-transparent via-[#35F18B]/50 to-transparent' : 'bg-gradient-to-r from-transparent via-white/20 to-transparent'}`}></div>
+            
+            <div className="space-y-4">
+                <ContentCarousel isLoading={true} title="جاري التحميل" contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} />
+                <ContentCarousel isLoading={true} title="جاري التحميل" contents={[]} onSelectContent={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} />
+            </div>
+        </main>
       </div>
     );
   }
 
   if (animationContent.length === 0) {
-    if (!showEmptyMessage) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-[var(--bg-body)]">
-                <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isEidTheme ? 'border-purple-500' : isCosmicTealTheme ? 'border-[#35F18B]' : isNetflixRedTheme ? 'border-[#E50914]' : 'border-[#00A7F8]'}`}></div>
-            </div>
-        );
-    }
     return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500 animate-fade-in-up">لا يوجد محتوى أطفال حالياً.</div>
   }
 
   return (
-    // CRITICAL FIX: Clean Container Structure - Absolutely NO overflow-x-hidden here to allow sticky/drag gestures
-    <div className="relative min-h-screen bg-[var(--bg-body)] text-white"> 
-
+    <div className="min-h-screen bg-[var(--bg-body)] text-white"> 
       <SEO 
         title="أطفال و أنمي" 
         description="عالم من المرح والتعليم، أفلام كرتون ومسلسلات أنميشن للأطفال."
         type="website"
       />
 
-      <div className="relative z-10">
-        <Hero 
-            contents={heroContent} 
-            onWatchNow={onSelectContent}
-            isLoggedIn={isLoggedIn}
-            myList={myList}
-            onToggleMyList={onToggleMyList}
-            autoSlideInterval={5000} 
-            isRamadanTheme={isRamadanTheme}
-            isEidTheme={isEidTheme}
-            isCosmicTealTheme={isCosmicTealTheme}
-            isNetflixRedTheme={isNetflixRedTheme}
-        />
-      </div>
+      <Hero 
+          contents={heroContent} 
+          onWatchNow={onSelectContent}
+          isLoggedIn={isLoggedIn}
+          myList={myList}
+          onToggleMyList={onToggleMyList}
+          autoSlideInterval={5000} 
+          isRamadanTheme={isRamadanTheme}
+          isEidTheme={isEidTheme}
+          isCosmicTealTheme={isCosmicTealTheme}
+          isNetflixRedTheme={isNetflixRedTheme}
+      />
 
-      <main className="relative z-30 pb-24 bg-[var(--bg-body)]">
+      <main className="pb-24 z-30 relative bg-[var(--bg-body)]">
         <div className={`w-full h-px mt-0 mb-2 md:my-4 
             ${isRamadanTheme 
                 ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent opacity-80' 
@@ -163,7 +143,6 @@ const KidsPage: React.FC<KidsPageProps> = ({
             }`}></div>
         
         {adsEnabled && <AdZone position="page_kids_top" />}
-
         <AdPlacement ads={ads} placement="kids-top" isEnabled={adsEnabled} />
 
         {carousels.map((carousel) => {

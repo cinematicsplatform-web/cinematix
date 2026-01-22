@@ -36,7 +36,7 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
-    const [gender, setGender] = useState<'male' | 'female'>('male'); // New state for gender
+    const [gender, setGender] = useState<'male' | 'female'>('male');
     const [error, setError] = useState('');
     const [errorType, setErrorType] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -66,7 +66,6 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
         setIsLoading(false);
 
         if (errCode) {
-            // Standardize checks for various Firebase error string representations
             if (errCode === 'auth/email-already-in-use' || String(errCode).includes('email-already-in-use')) {
                 setErrorType('email-in-use');
                 setError('هذا البريد الإلكتروني مسجل بالفعل.');
@@ -91,118 +90,154 @@ const CreateAccountPage: React.FC<CreateAccountPageProps> = ({ onSetView, onRegi
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center p-4 pt-24 relative bg-cover bg-center bg-no-repeat"
+      className="min-h-screen flex items-center justify-center p-4 md:p-10 relative bg-cover bg-center bg-no-repeat transition-all duration-700"
       style={{
         backgroundImage: `url('https://shahid.mbc.net/mediaObject/436ea116-cdae-4007-ace6-3c755df16856?width=1920&type=avif&q=80')`
       }}
     >
       <SEO title="إنشاء حساب - سينماتيكس" noIndex={true} />
-      <div className="absolute inset-0 bg-black/50 z-0"></div>
+      <div className="absolute inset-0 bg-black/60 md:bg-black/50 z-0"></div>
         
-      <button 
-          onClick={() => onSetView(authReturnView || 'home')}
-          className="absolute top-6 right-6 md:top-8 md:right-8 p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white transition-all z-50 border border-white/10 shadow-lg group"
-          title="رجوع"
-      >
-          <ChevronRightIcon className="w-6 h-6 transform rotate-180 group-hover:-translate-x-1 transition-transform" />
-      </button>
+      {/* Elegant Back Button */}
+      <div className="absolute top-6 right-6 md:top-10 md:right-10 z-[100]">
+          <button 
+              onClick={() => onSetView(authReturnView || 'home')}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 hover:bg-white/10 backdrop-blur-xl text-white transition-all border border-white/10 shadow-xl group font-bold"
+              title="رجوع"
+          >
+              <ChevronRightIcon className="w-5 h-5 transform rotate-180 group-hover:-translate-x-1 transition-transform" />
+              <span className="hidden sm:inline">رجوع</span>
+          </button>
+      </div>
 
-      <div className="bg-black/80 backdrop-blur-md border border-gray-700 rounded-2xl shadow-xl w-full max-w-md text-white animate-fade-in-up relative z-10">
-        <div className="p-8 md:p-12">
-            <h1 className="text-3xl font-extrabold mb-4 text-center">
-                <span className="text-white">أنشئ حساباً في سينما</span><span className="gradient-text font-['Lalezar'] tracking-wide">تيكس</span>
-            </h1>
-            <p className="text-gray-400 text-center mb-8">انضم إلينا للاستمتاع بآلاف الساعات من الترفيه.</p>
-            
-            {error && (
-                <div className="bg-red-900/20 border border-red-500/30 text-red-400 text-center p-4 rounded-xl mb-6 space-y-3 animate-fade-in-up">
-                    <p className="font-bold">{error}</p>
-                    {errorType === 'email-in-use' && (
+      <div className="w-full max-w-[550px] z-10">
+        <div className="bg-black/75 md:bg-black/80 backdrop-blur-2xl border border-white/10 rounded-[32px] md:rounded-[24px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] overflow-hidden animate-fade-in-up">
+            <div className="p-8 md:p-14">
+                <div className="mb-10 text-center">
+                    <h1 className="text-3xl md:text-5xl font-black mb-3">
+                        <span className="text-white">إنشاء</span><span className="gradient-text font-['Lalezar'] tracking-wide"> حساب جديد</span>
+                    </h1>
+                    <p className="text-gray-400 text-sm md:text-base font-bold">انضم لملايين المشاهدين حول العالم</p>
+                </div>
+                
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-center p-5 rounded-2xl mb-8 space-y-4 animate-fade-in">
+                        <p className="font-black text-sm">{error}</p>
+                        {errorType === 'email-in-use' && (
+                            <button 
+                                type="button"
+                                onClick={() => onSetView('login', undefined, { email })} 
+                                className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-xl text-sm transition-all transform active:scale-95 shadow-lg"
+                            >
+                                تسجيل الدخول بدلاً من ذلك
+                            </button>
+                        )}
+                    </div>
+                )}
+                
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1 space-y-2">
+                             <label className="block text-[10px] font-black text-gray-500 uppercase mr-2">الاسم الأول</label>
+                             <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="مثال: أحمد" className="w-full bg-white/5 border border-gray-700/50 rounded-2xl px-5 py-3.5 focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] text-white placeholder-gray-700" />
+                        </div>
+                        <div className="flex-1 space-y-2">
+                             <label className="block text-[10px] font-black text-gray-500 uppercase mr-2">الاسم الأخير</label>
+                             <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="اختياري" className="w-full bg-white/5 border border-gray-700/50 rounded-2xl px-5 py-3.5 focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] text-white placeholder-gray-700" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="block text-[10px] font-black text-gray-500 uppercase mr-2">الجنس</label>
+                        <div className="flex gap-4">
+                            <button 
+                                type="button"
+                                onClick={() => setGender('male')}
+                                className={`flex-1 py-3.5 rounded-2xl border-2 font-black transition-all duration-300 text-sm ${gender === 'male' ? `${accentBorder} ${accentBg} text-white shadow-lg` : 'border-gray-800 bg-black/20 text-gray-500 hover:border-gray-700'}`}
+                            >
+                                ذكر
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={() => setGender('female')}
+                                className={`flex-1 py-3.5 rounded-2xl border-2 font-black transition-all duration-300 text-sm ${gender === 'female' ? `${accentBorder} ${accentBg} text-white shadow-lg` : 'border-gray-800 bg-black/20 text-gray-500 hover:border-gray-700'}`}
+                            >
+                                أنثى
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="block text-[10px] font-black text-gray-500 uppercase mr-2">البريد الإلكتروني</label>
+                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@domain.com" className="w-full bg-white/5 border border-gray-700/50 rounded-2xl px-6 py-3.5 focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] text-white placeholder-gray-700 dir-ltr" required />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black text-gray-500 uppercase mr-2">كلمة المرور</label>
+                            <div className="relative">
+                                <input 
+                                    type={showPassword ? "text" : "password"} 
+                                    value={password} 
+                                    onChange={e => setPassword(e.target.value)} 
+                                    placeholder="••••••••" 
+                                    className="w-full bg-white/5 border border-gray-700/50 rounded-2xl px-5 py-3.5 pl-12 focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] text-white placeholder-gray-700" 
+                                    required 
+                                />
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                                >
+                                    {showPassword ? <EyeSlashIcon /> : <EyeIcon />}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black text-gray-500 uppercase mr-2">تأكيد المرور</label>
+                            <div className="relative">
+                                <input 
+                                    type={showConfirmPassword ? "text" : "password"} 
+                                    value={confirmPassword} 
+                                    onChange={e => setConfirmPassword(e.target.value)} 
+                                    placeholder="••••••••" 
+                                    className="w-full bg-white/5 border border-gray-700/50 rounded-2xl px-5 py-3.5 pl-12 focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] text-white placeholder-gray-700" 
+                                    required 
+                                />
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                                >
+                                    {showConfirmPassword ? <EyeSlashIcon /> : <EyeIcon />}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="pt-6">
                         <button 
-                            type="button"
-                            onClick={() => onSetView('login', undefined, { email })} 
-                            className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-4 rounded-lg text-sm transition-all transform active:scale-95"
+                            type="submit" 
+                            disabled={isLoading}
+                            className="w-full btn-primary font-black py-4 md:py-5 rounded-2xl transition-all duration-500 transform hover:scale-[1.02] active:scale-[0.98] text-xl shadow-[0_20px_40px_-12px_rgba(0,0,0,0.5)] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            تسجيل الدخول بدلاً من ذلك
+                            {isLoading ? (
+                                <div className="flex items-center justify-center gap-3">
+                                    <div className="w-5 h-5 border-3 border-black/20 border-t-black rounded-full animate-spin"></div>
+                                    <span>جاري الإنشاء...</span>
+                                </div>
+                            ) : 'إنشاء الحساب الآن'}
                         </button>
-                    )}
-                </div>
-            )}
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="flex gap-4">
-                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="الاسم الأول (اختياري)" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent" />
-                    <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="الاسم الأخير (اختياري)" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent" />
-                </div>
+                    </div>
+                </form>
 
-                {/* Gender Selection Row */}
-                <div className="flex gap-4 mb-2">
-                    <button 
-                        type="button"
-                        onClick={() => setGender('male')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-all duration-300 ${gender === 'male' ? `${accentBorder} ${accentBg} ring-1 ring-inset ${accentBorder}` : 'border-gray-600 bg-gray-800/30 text-gray-400'}`}
-                    >
-                        <span className="font-bold text-sm">ذكر</span>
-                    </button>
-                    <button 
-                        type="button"
-                        onClick={() => setGender('female')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-all duration-300 ${gender === 'female' ? `${accentBorder} ${accentBg} ring-1 ring-inset ${accentBorder}` : 'border-gray-600 bg-gray-800/30 text-gray-400'}`}
-                    >
-                        <span className="font-bold text-sm">أنثى</span>
-                    </button>
+                <div className="mt-12 text-center">
+                    <p className="text-gray-500 text-sm font-bold">
+                        لديك حساب بالفعل؟ <a href="#" onClick={(e) => {e.preventDefault(); onSetView('login')}} className={`font-black hover:underline transition-colors ${linkColorClass}`}>سجل الدخول</a>
+                    </p>
                 </div>
-
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="البريد الإلكتروني" className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent" required />
-                
-                <div className="relative">
-                    <input 
-                        type={showPassword ? "text" : "password"} 
-                        value={password} 
-                        onChange={e => setPassword(e.target.value)} 
-                        placeholder="كلمة المرور" 
-                        className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 pl-12 focus:outline-none focus:ring-2 focus:ring-accent" 
-                        required 
-                    />
-                    <button 
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                    >
-                        {showPassword ? <EyeSlashIcon /> : <EyeIcon />}
-                    </button>
-                </div>
-
-                <div className="relative">
-                    <input 
-                        type={showConfirmPassword ? "text" : "password"} 
-                        value={confirmPassword} 
-                        onChange={e => setConfirmPassword(e.target.value)} 
-                        placeholder="تأكيد كلمة المرور" 
-                        className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-4 py-3 pl-12 focus:outline-none focus:ring-2 focus:ring-accent" 
-                        required 
-                    />
-                    <button 
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                    >
-                        {showConfirmPassword ? <EyeSlashIcon /> : <EyeIcon />}
-                    </button>
-                </div>
-                
-                <button 
-                    type="submit" 
-                    disabled={isLoading}
-                    className="w-full btn-primary font-bold py-3 rounded-lg transition-all duration-300 transform hover:scale-105 !mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {isLoading ? 'جاري التحميل...' : 'إنشاء حساب'}
-                </button>
-            </form>
-
-            <p className="text-center text-gray-500 text-sm mt-6">
-                لديك حساب بالفعل؟ <a href="#" onClick={(e) => {e.preventDefault(); onSetView('login')}} className={`font-medium hover:underline transition-colors ${linkColorClass}`}>سجل الدخول</a>
-            </p>
+            </div>
         </div>
       </div>
     </div>

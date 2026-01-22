@@ -465,7 +465,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
         url={canonicalPath}
       />
 
-      <div ref={heroRef} className="relative h-[85vh] md:h-[90vh] lg:h-[90vh] w-full group z-[45]">
+      <div ref={heroRef} className="relative h-[83vh] md:h-[90vh] lg:h-[90vh] w-full group z-[45]">
         <div className="absolute inset-0 bg-black overflow-hidden">
             {isLoaded ? (
                 <div key={`season-backdrop-${selectedSeasonId}`} className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}>
@@ -747,7 +747,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                           <div className="h-4 w-1/2 rounded bg-gray-700/40"></div>
                                           <div className="space-y-2">
                                               <div className="h-2 w-full rounded bg-gray-700/40"></div>
-                                              <div className="h-2 w-5/6 rounded bg-gray-700/40"></div>
+                                              <div className="h-2 5/6 rounded bg-gray-700/40"></div>
                                           </div>
                                       </div>
                                   </div>
@@ -770,7 +770,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                </div>
                            ) : (
                                <>
-                                <div className="mb-8 w-full">
+                                {/* تم تعديل هذه الحاوية لإخفائها تماماً في وضع الموبايل باستخدام hidden md:block */}
+                                <div className="hidden md:block mb-8 w-full">
                                         <div className="custom-scrollbar flex items-center gap-3 overflow-x-auto pb-3 no-scrollbar">
                                             <span className="ml-2 whitespace-nowrap text-sm font-black text-gray-400">سيرفر المشاهدة:</span>
                                             {activeServers.length > 0 ? activeServers.map((server, idx) => (
@@ -857,8 +858,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
               <div className="w-full animate-fade-in-up">
                   <div className="px-4 py-8 md:px-8">
                     <div className="flex w-full flex-col gap-12">
-                        <div className="grid grid-cols-1 gap-10 md:grid-cols-12">
-                            <div className="order-1 space-y-10 md:col-span-8">
+                        <div className="flex flex-col gap-10">
+                            <div className="order-1 space-y-10 w-full">
                                 {isLoaded ? (
                                     <>
                                         <div className="text-right">
@@ -899,7 +900,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 )}
                             </div>
 
-                            <div className="order-2 w-full md:col-span-4 md:mt-2">
+                            <div className="order-2 w-full">
                                 {isLoaded ? (
                                     <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-xl">
                                         <div className="flex flex-col divide-y divide-white/10">

@@ -17,7 +17,7 @@ interface SeasonMeta {
 interface SEOProps {
   title?: string;
   description?: string;
-  keywords?: string; // New: Support for dynamic meta keywords
+  keywords?: string; 
   seasons?: SeasonMeta[];
   currentEpisode?: EpisodeMeta; 
   seasonNumber?: number; 
@@ -27,7 +27,7 @@ interface SEOProps {
   banner?: string;
   image?: string;
   url?: string; 
-  noIndex?: boolean; // New: Flag to prevent indexing
+  noIndex?: boolean; 
 }
 
 const SEO: React.FC<SEOProps> = ({ 
@@ -53,10 +53,7 @@ const SEO: React.FC<SEOProps> = ({
   
   const generateFullTitle = () => {
     if (!title) return "سينماتيكس | Cinematix - مشاهدة أفلام ومسلسلات اون لاين";
-
     let displayTitle = title;
-    
-    // Check if the title already includes our standard branding suffix or is a specialized smart title
     if (displayTitle.includes('|')) return displayTitle;
 
     const moviePrefix = "فيلم ";
@@ -71,13 +68,8 @@ const SEO: React.FC<SEOProps> = ({
     const sNum = seasonNumber || currentEpisode?.season_number;
     const eNum = episodeNumber || currentEpisode?.episode_number;
 
-    if (sNum) {
-      displayTitle += ` - الموسم ${sNum}`;
-    }
-
-    if (eNum) {
-      displayTitle += ` الحلقة ${eNum}`;
-    }
+    if (sNum) displayTitle += ` - الموسم ${sNum}`;
+    if (eNum) displayTitle += ` الحلقة ${eNum}`;
 
     return `${displayTitle} | ${siteName}`;
   };
@@ -97,46 +89,28 @@ const SEO: React.FC<SEOProps> = ({
 
   const finalDescription = generateDescription();
   const seoImage = image || banner || poster || "/android-chrome-512x512.png";
-  const absoluteImageUrl = seoImage.startsWith('http') 
-    ? seoImage 
-    : `${domain}${seoImage}`;
+  const absoluteImageUrl = seoImage.startsWith('http') ? seoImage : `${domain}${seoImage}`;
 
   const generateSchema = () => {
+    // تم إزالة خاصية "image" من الـ Schema لضمان عدم ظهور بوستر العمل في نتائج بحث جوجل (Google SERP)
+    // مع الحفاظ على مظهر نصي نظيف للموقع.
     if (type === 'movie') {
       return {
         "@context": "https://schema.org",
         "@type": "Movie",
         "name": title,
         "description": finalDescription,
-        "image": absoluteImageUrl,
         "url": canonicalUrl
       };
     }
-
     if (type === 'series') {
-      const seriesId = title ? encodeURIComponent(title.toLowerCase().replace(/\s+/g, '-')) : 'series';
-      
       return {
         "@context": "https://schema.org",
         "@type": "TVSeries",
         "name": title,
-        "description": description,
-        "image": absoluteImageUrl,
-        "containsSeason": seasons.map(season => ({
-          "@type": "TVSeason",
-          "seasonNumber": season.season_number,
-          "name": `الموسم ${season.season_number}`,
-          "episode": season.episodes.map(ep => ({
-            "@type": "TVEpisode",
-            "episodeNumber": ep.episode_number,
-            "name": ep.name || `الحلقة ${ep.episode_number}`,
-            "description": ep.overview || `الحلقة ${ep.episode_number} من الموسم ${season.season_number}`,
-            "url": `${domain}/مشاهدة/${seriesId}/الموسم/${season.season_number}/الحلقة/${ep.episode_number}`
-          }))
-        }))
+        "description": description
       };
     }
-
     return {
       "@context": "https://schema.org",
       "@type": "WebSite",
@@ -146,8 +120,6 @@ const SEO: React.FC<SEOProps> = ({
     };
   };
 
-  const schemaData = generateSchema();
-
   return (
     <Helmet>
       <html lang="ar" dir="rtl" />
@@ -156,15 +128,18 @@ const SEO: React.FC<SEOProps> = ({
       {keywords && <meta name="keywords" content={keywords} />}
       <link rel="canonical" href={canonicalUrl} />
       
-      {/* NO INDEX for private pages */}
-      {noIndex && <meta name="robots" content="noindex, nofollow" />}
+      {/* تقييد ظهور الصور في مقتطفات جوجل (SERP Snippets) لعرض نتائج نصية فقط */}
+      <meta name="robots" content={noIndex ? "noindex, nofollow" : "index, follow, max-image-preview:none"} />
+      <meta name="googlebot" content="index, follow, max-image-preview:none" />
       
-      {/* Open Graph / Facebook */}
+      {/* Open Graph / Facebook - الصور تظهر هنا بشكل طبيعي عند المشاركة */}
       <meta property="og:type" content={type === 'series' ? 'video.tv_show' : type === 'movie' ? 'video.movie' : 'website'} />
       <meta property="og:url" content={canonicalUrl} />
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={finalDescription} />
       <meta property="og:image" content={absoluteImageUrl} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
       <meta property="og:site_name" content="سينماتيكس | Cinematix" />
       <meta property="og:locale" content="ar_AR" />
 
@@ -174,10 +149,10 @@ const SEO: React.FC<SEOProps> = ({
       <meta name="twitter:description" content={finalDescription} />
       <meta name="twitter:image" content={absoluteImageUrl} />
 
-      {/* JSON-LD Structured Data */}
+      {/* Structured Data */}
       {!noIndex && (
         <script type="application/ld+json">
-          {JSON.stringify(schemaData)}
+          {JSON.stringify(generateSchema())}
         </script>
       )}
     </Helmet>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { FacebookIcon } from './FacebookIcon';
 import { InstagramIcon } from './InstagramIcon';
@@ -9,18 +10,17 @@ interface FooterProps {
   socialLinks: SocialLinks;
   onSetView: (view: View) => void;
   isRamadanFooter?: boolean;
-  onRequestOpen?: () => void; // New Handler for Request Modal 
-  className?: string; // New Prop for custom classes
+  className?: string; 
 }
 
-const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter, onRequestOpen, className = '' }) => {
+const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter, className = '' }) => {
   const footerLinks: {name: string, action: () => void}[] = [
       { name: 'حولنا', action: () => onSetView('about') },
       { name: 'اتصل بنا', action: () => { window.location.href = socialLinks.contactUs } },
       { name: 'سياسة الخصوصية', action: () => onSetView('privacy') },
       { name: 'حقوق الملكية', action: () => onSetView('copyright') },
       { name: 'تطبيق الموبايل', action: () => onSetView('appDownload') },
-      ...(onRequestOpen ? [{ name: 'طلبات المحتوى', action: onRequestOpen }] : []),
+      { name: 'طلبات المحتوى', action: () => onSetView('contentRequest') },
   ];
   
   const baseClasses = isRamadanFooter
@@ -39,7 +39,7 @@ const Footer: React.FC<FooterProps> = ({ socialLinks, onSetView, isRamadanFooter
             <h1 className="text-3xl font-extrabold mb-4 cursor-pointer" onClick={() => onSetView('home')}>
               <span className="text-white">سينما</span><span className="gradient-text font-['Lalezar'] tracking-wide">تيكس</span>
             </h1>
-            <p className="text-sm max-w-sm opacity-90">منصتكم الأولى للترفيه العربي والتركي. شاهدوا أحدث الأفلام والمسلسلات بجودة عالية في أي وقت ومن أي مكان.</p>
+            <p className="text-sm max-w-sm opacity-90">منصتكم الأولى للترفيه العربي والتركي والأجنبي. شاهدوا أحدث الأفلام والمسلسلات بجودة عالية في أي وقت ومن أي مكان.</p>
           </div>
           <div>
             <h3 className="text-white font-bold text-lg mb-4">روابط سريعة</h3>

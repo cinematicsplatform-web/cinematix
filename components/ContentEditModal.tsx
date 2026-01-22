@@ -170,7 +170,6 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
     const imgStyle: React.CSSProperties = { 
         '--mob-x': `${posX}%`, 
         '--mob-y': `${posY}%`,
-        // We add object-position directly here to ensure "live" feel and bypass any CSS lag/restriction
         objectPosition: `${posX}% ${posY}%`
     } as React.CSSProperties;
     
@@ -193,12 +192,10 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
         const deltaX = e.clientX - startPosRef.current.x;
         const deltaY = e.clientY - startPosRef.current.y;
 
-        // Panning sensitivity adjustment
         const sensitivity = 0.5;
         let newX = startPercentageRef.current.x - (deltaX / rect.width) * 100 * sensitivity;
         let newY = startPercentageRef.current.y - (deltaY / rect.height) * 100 * sensitivity;
 
-        // Clamp values 0-100
         newX = Math.max(0, Math.min(100, Math.round(newX)));
         newY = Math.max(0, Math.min(100, Math.round(newY)));
 
@@ -224,7 +221,6 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                 >
                     {children ? children : (
                         <div className="h-full bg-[#141b29] overflow-y-auto no-scrollbar scroll-smooth flex flex-col pointer-events-none">
-                            {/* Hero Part Replica */}
                             <div className="relative h-[440px] w-full flex-shrink-0">
                                 <img 
                                     src={imageUrl || 'https://placehold.co/1080x1920/101010/101010/png'} 
@@ -265,8 +261,6 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                                         <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center font-bold text-lg">+</div>
                                     </div>
                                 </div>
-
-                                {/* Interactive Crosshair Indicator */}
                                 <div 
                                     className="absolute z-50 w-8 h-8 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-50"
                                     style={{ left: `${posX}%`, top: `${posY}%` }}
@@ -278,15 +272,11 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Tab Bar Mockup */}
                             <div className="sticky top-0 z-30 bg-[#141b29]/95 backdrop-blur-md border-b border-white/5 flex gap-4 px-4 h-12 items-center flex-shrink-0">
                                 <div className="text-[10px] font-black border-b-2 border-[var(--color-accent)] py-3 text-white">الحلقات</div>
                                 <div className="text-[10px] font-black text-gray-500 py-3">التفاصيل</div>
                                 <div className="text-[10px] font-black text-gray-500 py-3">أعمال مشابهة</div>
                             </div>
-
-                            {/* Info Section */}
                             <div className="p-4 space-y-4 flex-1">
                                 <p className="text-[11px] text-gray-400 leading-relaxed text-justify line-clamp-4">
                                     {contentData.description || 'قصة العمل تظهر هنا...'}
@@ -523,19 +513,16 @@ const TitleGalleryModal: React.FC<TitleGalleryModalProps> = ({ isOpen, onClose, 
         try {
             const endpointType = (type === ContentType.Movie || type === ContentType.Play || type === ContentType.Concert) ? 'movie' : 'tv';
             
-            // 1. Fetch Main Info for Original Name/Title
             const infoRes = await fetch(`https://api.themoviedb.org/3/${endpointType}/${tmdbId}?api_key=${API_KEY}&language=ar-SA`);
             const info = await infoRes.json();
             
             const results: any[] = [];
             
-            // Add primary titles
             if (info.title) results.push({ title: info.title, iso_3166_1: 'Primary (AR)', type: 'Main' });
             if (info.name) results.push({ title: info.name, iso_3166_1: 'Primary (AR)', type: 'Main' });
             if (info.original_title && info.original_title !== info.title) results.push({ title: info.original_title, iso_3166_1: info.original_language?.toUpperCase() || 'Original', type: 'Original' });
             if (info.original_name && info.original_name !== info.name) results.push({ title: info.original_name, iso_3166_1: info.original_language?.toUpperCase() || 'Original', type: 'Original' });
 
-            // 2. Fetch Alternative Titles
             const altRes = await fetch(`https://api.themoviedb.org/3/${endpointType}/${tmdbId}/alternative_titles?api_key=${API_KEY}`);
             const altData = await altRes.json();
             
@@ -752,7 +739,6 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
                 </div>
             </div>
 
-            {/* Internal Search Modals for immediate local adding */}
             {isUqloadModalOpen && (
                 <UqloadSearchModal 
                     isOpen={isUqloadModalOpen} 
@@ -808,6 +794,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         mobileCropPositionX: 50, mobileCropPositionY: 50, 
         slug: '',
         director: '', writer: '',
+        isUpcoming: false,
         ...content,
     });
 
@@ -876,7 +863,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         setTmdbIdInput(content?.id && !isNaN(Number(content.id)) ? content.id : '');
     }, [content]);
 
-    // NEW EFFECT: Synchronize single season media from content management automatically
     useEffect(() => {
         if (isEpisodic && formData.seasons?.length === 1) {
             setFormData(prev => {
@@ -893,10 +879,10 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     mobileCropPositionY: prev.mobileCropPositionY,
                     trailerUrl: prev.trailerUrl,
                     description: prev.description,
-                    releaseYear: prev.releaseYear
+                    releaseYear: prev.releaseYear,
+                    isUpcoming: prev.isUpcoming // Sync upcoming status for single season series
                 };
                 
-                // Compare carefully to avoid state infinite loop
                 const isChanged = 
                     season.poster !== updatedSeason.poster ||
                     season.backdrop !== updatedSeason.backdrop ||
@@ -908,7 +894,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     season.mobileCropPositionY !== updatedSeason.mobileCropPositionY ||
                     season.trailerUrl !== updatedSeason.trailerUrl ||
                     season.description !== updatedSeason.description ||
-                    season.releaseYear !== updatedSeason.releaseYear;
+                    season.releaseYear !== updatedSeason.releaseYear ||
+                    season.isUpcoming !== updatedSeason.isUpcoming;
 
                 if (!isChanged) return prev;
 
@@ -931,7 +918,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         formData.mobileCropPositionY,
         formData.trailerUrl,
         formData.description,
-        formData.releaseYear
+        formData.releaseYear,
+        formData.isUpcoming
     ]);
 
     const openGallery = (type: 'poster' | 'backdrop' | 'logo', callback: (url: string) => void) => {
@@ -952,7 +940,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         setIsTitleModalOpen(true);
     };
 
-    // --- DELETE SECTION HANDLER ---
     const handleDeleteSection = (tabId: string) => {
         if (!confirm(`هل أنت متأكد من حذف (تصفير) بيانات قسم "${tabId}" بالكامل؟`)) return;
         
@@ -968,6 +955,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     updated.writer = '';
                     updated.cast = [];
                     updated.bannerNote = '';
+                    updated.isUpcoming = false;
                     break;
                 case 'categories':
                     updated.categories = [];
@@ -1006,7 +994,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 logoUrl: '',
                 mobileImageUrl: '',
                 trailerUrl: '',
-                adLink: ''
+                adLink: '',
+                isUpcoming: false
             } : s)
         }));
         addToast('تم تصفير ميديا الموسم بنجاح.', 'info');
@@ -1195,6 +1184,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         backdrop: backdrop,
                         mobileImageUrl: '', 
                         logoUrl: '',
+                        isUpcoming: false,
                         episodes: mappedEpisodes
                     });
                     hasUpdates = true;
@@ -1512,6 +1502,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         backdrop: backdrop,
                         mobileImageUrl: '', 
                         logoUrl: ds.season_number === 1 ? logoUrl : '',
+                        isUpcoming: false,
                         episodes: mappedEpisodes
                     };
                 });
@@ -1539,6 +1530,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 director: directorName || prev.director,
                 writer: writerName || prev.writer,
                 duration: duration || prev.duration,
+                isUpcoming: false,
                 seasons: (currentType === ContentType.Series || currentType === ContentType.Program) ? newSeasons : prev.seasons,
                 servers: isStandalone ? generateMovieServers(String(targetId)) : [],
             }));
@@ -1566,7 +1558,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 setFormData(prev => ({
                     ...prev, 
                     type: value as ContentType, 
-                    seasons: [{ id: Date.now(), seasonNumber: 1, title: 'الموسم 1', episodes: []}]
+                    seasons: [{ id: Date.now(), seasonNumber: 1, title: 'الموسم 1', episodes: [], isUpcoming: false}]
                 }));
                 return;
             }
@@ -1660,7 +1652,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         const newSeasonNumber = (formData.seasons?.length || 0) + 1;
         setFormData(prev => ({
             ...prev,
-            seasons: [...(prev.seasons || []), { id: Date.now(), seasonNumber: newSeasonNumber, title: `الموسم ${newSeasonNumber}`, episodes: [] }]
+            seasons: [...(prev.seasons || []), { id: Date.now(), seasonNumber: newSeasonNumber, title: `الموسم ${newSeasonNumber}`, episodes: [], isUpcoming: false }]
         }));
     };
 
@@ -1693,7 +1685,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 }
 
                 const updatedServers: Server[] = [];
-                const row = rows[0]; // Take only the first row for standalone movie servers
+                const row = rows[0]; 
 
                 if (enableAutoLinks) {
                     const idToUse = formData.tmdbId || formData.id;
@@ -1953,7 +1945,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     title: `الموسم ${sNum}`,
                     episodes: eps,
                     backdrop: formData.backdrop,
-                    poster: formData.poster
+                    poster: formData.poster,
+                    isUpcoming: false
                 }));
 
                 setFormData(prev => ({
@@ -1989,21 +1982,17 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
         return (
             <div className="space-y-12 animate-fade-in">
-                {/* Mobile Preview - High Fidelity Replica */}
                 <div className="flex flex-col items-center gap-6">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <span className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">📱</span>
                         معاينة الجوال (Mobile View)
                     </h3>
                     <div className="relative w-[300px] md:w-[320px] h-[600px] md:h-[650px] bg-black border-[8px] md:border-[10px] border-[#1f2127] rounded-[2.5rem] md:rounded-[3rem] shadow-2xl overflow-hidden ring-1 ring-white/10 scale-95 md:scale-100">
-                        {/* Mock Header */}
                         <div className="absolute top-0 left-0 right-0 h-14 bg-gradient-to-b from-black/80 to-transparent z-40 px-6 flex items-center">
                             <div className="w-6 h-6 rounded-full bg-white/10"></div>
                         </div>
                         
-                        {/* Detail Mockup Layout */}
                         <div className="h-full bg-[#141b29] overflow-y-auto no-scrollbar scroll-smooth flex flex-col">
-                            {/* Hero Part */}
                             <div className="relative h-[400px] md:h-[480px] w-full flex-shrink-0">
                                 <img 
                                     src={formData.mobileBackdropUrl || formData.backdrop || 'https://placehold.co/1080x1920/101010/101010/png'} 
@@ -2045,14 +2034,12 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 </div>
                             </div>
 
-                            {/* Tab Bar Mockup */}
                             <div className="sticky top-0 z-30 bg-[#141b29]/95 backdrop-blur-md border-b border-white/5 flex gap-4 px-4 h-12 items-center flex-shrink-0">
                                 <div className="text-[10px] font-black border-b-2 border-[#00A7F8] py-3 text-white">الحلقات</div>
                                 <div className="text-[10px] font-black text-gray-500 py-3">التفاصيل</div>
                                 <div className="text-[10px] font-black text-gray-500 py-3">أعمال مشابهة</div>
                             </div>
 
-                            {/* Info Section */}
                             <div className="p-4 space-y-4 flex-1">
                                 <p className="text-[11px] text-gray-400 leading-relaxed text-justify line-clamp-4">
                                     {formData.description || 'قصة العمل تظهر هنا...'}
@@ -2070,19 +2057,16 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             </div>
                         </div>
 
-                        {/* Notch */}
                         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#1f2127] rounded-b-2xl z-50"></div>
                     </div>
                 </div>
 
-                {/* Desktop Preview - High Fidelity Replica */}
                 <div className="flex flex-col items-center gap-6">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <span className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">💻</span>
                         معاينة المتصفح (Desktop View)
                     </h3>
                     <div className="w-full max-w-4xl aspect-video bg-[#141b29] rounded-2xl border border-gray-800 shadow-2xl overflow-hidden relative group/desk">
-                        {/* Browser Chrome */}
                         <div className="h-8 bg-[#1f2127] border-b border-gray-800 flex items-center px-4 gap-1.5 z-50 relative">
                             <div className="w-2.5 h-2.5 rounded-full bg-red-500/50"></div>
                             <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/50"></div>
@@ -2092,7 +2076,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
                         <div className="relative h-full w-full">
                             <img src={formData.backdrop || 'https://placehold.co/1920x1080/101010/101010/png'} className="w-full h-full object-cover" alt="" />
-                            {/* PRODUCTION GRADIENTS */}
                             <div className="absolute inset-0 bg-gradient-to-r from-[#141b29] via-[#141b29]/40 to-transparent z-10"></div>
                             <div className="absolute inset-0 bg-gradient-to-t from-[#141b29] via-transparent to-transparent z-10"></div>
                             
@@ -2136,7 +2119,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
     return (
         <div className="flex h-screen w-full bg-[#090b10] text-gray-200 overflow-hidden font-sans selection:bg-[var(--color-accent)] selection:text-black" dir="rtl">
-            {/* Mobile Sidebar Backdrop */}
             <div 
                 className={`fixed inset-0 bg-black/60 z-[90] lg:hidden transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
                 onClick={() => setIsSidebarOpen(false)} 
@@ -2232,7 +2214,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         
                         {activeTab === 'general' && (
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in-up">
-                                {/* TMDB BOX */}
                                 <div className="lg:col-span-12 rounded-2xl border border-blue-500/10 bg-gradient-to-r from-blue-900/10 to-transparent p-4 md:p-6 relative overflow-hidden">
                                     <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                                         <CloudArrowDownIcon className="w-40 h-40"/>
@@ -2325,14 +2306,29 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 </div>
 
                                 <div className={`${sectionBoxClass} lg:col-span-3 h-full flex flex-col`}>
-                                    <h4 className="text-sm font-bold text-gray-500 mb-6 uppercase border-b border-gray-800 pb-2">نوع المحتوى</h4>
-                                    <div className="flex flex-col gap-3 flex-1 justify-center">
-                                        {[ContentType.Movie, ContentType.Series, ContentType.Program, ContentType.Play, ContentType.Concert].map((type) => (
-                                            <button key={type} type="button" onClick={() => setFormData(prev => ({...prev, type: type}))} className={`flex items-center justify-between px-5 py-4 rounded-xl border transition-all ${formData.type === type ? 'bg-[var(--color-accent)]/10 border-[var(--color-accent)] text-[var(--color-accent)] font-bold' : 'bg-[#161b22] border-transparent text-gray-400 hover:border-gray-600'}`}>
-                                                <span className="text-base">{type === ContentType.Movie ? 'فيلم' : type === ContentType.Series ? 'مسلسل' : type === ContentType.Program ? 'برنامج' : type === ContentType.Play ? 'مسرحية' : 'حفلة'}</span>
-                                                {formData.type === type && <CheckSmallIcon className="w-5 h-5"/>}
-                                            </button>
-                                        ))}
+                                    <h4 className="text-sm font-bold text-gray-500 mb-6 uppercase border-b border-gray-800 pb-2">خيارات الحالة</h4>
+                                    <div className="flex flex-col gap-4 flex-1">
+                                        <div className="bg-[#161b22] p-4 rounded-xl border border-gray-700 space-y-4">
+                                            <label className={labelClass}>الحالة (قريباً)</label>
+                                            <ToggleSwitch 
+                                                checked={formData.isUpcoming || false} 
+                                                onChange={(val) => setFormData(prev => ({...prev, isUpcoming: val}))} 
+                                                label={formData.isUpcoming ? "قريباً (Upcoming)" : "متاح الآن"}
+                                            />
+                                            <p className="text-[10px] text-gray-500 leading-relaxed">
+                                                تفعيل هذا الخيار سيظهر العمل في قسم "قريباً" ويمنع الوصول لصفحة التفاصيل (للأفلام أو السلسلة ككل).
+                                            </p>
+                                        </div>
+
+                                        <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 border-b border-gray-800 pb-1">النوع</h4>
+                                        <div className="flex flex-col gap-2">
+                                            {[ContentType.Movie, ContentType.Series, ContentType.Program, ContentType.Play, ContentType.Concert].map((type) => (
+                                                <button key={type} type="button" onClick={() => setFormData(prev => ({...prev, type: type}))} className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${formData.type === type ? 'bg-[var(--color-accent)]/10 border-[var(--color-accent)] text-[var(--color-accent)] font-bold text-sm' : 'bg-[#161b22] border-transparent text-gray-400 hover:border-gray-600 text-sm'}`}>
+                                                    <span>{type === ContentType.Movie ? 'فيلم' : type === ContentType.Series ? 'مسلسل' : type === ContentType.Program ? 'برنامج' : type === ContentType.Play ? 'مسرحية' : 'حفلة'}</span>
+                                                    {formData.type === type && <CheckSmallIcon className="w-4 h-4"/>}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -2465,7 +2461,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     </div>
                                 </div>
                                 <div className={`w-full ${sectionBoxClass}`}>
-                                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">📱 تخصيص الجوال</h3>
+                                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">📱 تخصيص الموبايل</h3>
                                     {renderImageInput("صورة الخلفية للموبايل", formData.mobileBackdropUrl, (val) => setFormData(prev => ({...prev, mobileBackdropUrl: val})), 'poster', "https://...", "hidden")}
                                     <div className="mt-6">
                                         <div className="flex justify-between items-center mb-4">
@@ -2502,6 +2498,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                         <div className="flex items-center gap-2">
                                                             <input onClick={e => e.stopPropagation()} value={season.title} onChange={e => handleUpdateSeason(season.id, 'title', e.target.value)} className="bg-transparent text-lg font-bold text-white border-none focus:ring-0 p-0 w-32"/>
                                                             <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full">{season.episodes.length} حلقة</span>
+                                                            {season.isUpcoming && <span className="text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded-full font-black animate-pulse">قريباً</span>}
                                                         </div>
                                                         <div className="text-[10px] text-gray-500 mt-1">ID: {season.id}</div>
                                                     </div>
@@ -2520,7 +2517,15 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 p-4 md:p-6 bg-[#13161c] rounded-2xl border border-gray-800/50">
                                                         <div className="col-span-full mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
                                                             <h4 className="text-sm font-bold text-blue-400">بيانات الموسم {season.seasonNumber}</h4>
-                                                            {formData.seasons?.length === 1 && (<span className="text-[10px] font-black bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20">تزامن تلقائي مفعل للموسم الفردي</span>)}
+                                                            <div className="flex items-center gap-3">
+                                                                <label className="text-[10px] font-bold text-gray-400 uppercase">موسم قادم (قريباً)</label>
+                                                                <ToggleSwitch 
+                                                                    checked={season.isUpcoming || false} 
+                                                                    onChange={(val) => handleUpdateSeason(season.id, 'isUpcoming', val)} 
+                                                                    label={season.isUpcoming ? "نعم" : "لا"}
+                                                                    className="scale-75 origin-left"
+                                                                />
+                                                            </div>
                                                         </div>
                                                         
                                                         {formData.seasons?.length === 1 ? (
@@ -2560,21 +2565,18 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                         <h4 className="text-xs font-bold text-gray-500 mb-2 px-2 uppercase tracking-widest">قائمة الحلقات</h4>
                                                         {season.episodes.map((ep, idx) => (
                                                             <div key={ep.id} className="flex flex-col md:flex-row gap-4 p-4 md:p-5 rounded-2xl border border-gray-800 bg-[#161b22] hover:border-gray-700 transition-all group">
-                                                                {/* EPISODE IMAGE (Stacked on mobile, side on desktop) */}
                                                                 <div className="w-full md:w-32 h-40 md:h-24 bg-black rounded-xl overflow-hidden border border-gray-800 flex-shrink-0 relative group/thumb">
                                                                     {ep.thumbnail ? <img src={ep.thumbnail} className="w-full h-full object-cover transition-transform group-hover/thumb:scale-110" alt=""/> : <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-600">No Image</div>}
                                                                     <button type="button" onClick={() => openGallery('backdrop', (url) => handleUpdateEpisode(season.id, ep.id, 'thumbnail', url))} className="absolute inset-0 bg-black/60 hidden group-hover/thumb:flex items-center justify-center text-white"><PhotoIcon className="w-5 h-5"/></button>
                                                                 </div>
                                                                 
                                                                 <div className="flex-1 space-y-4 md:space-y-3 w-full">
-                                                                    {/* TOP ROW: Number + Title */}
                                                                     <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
                                                                         <div className="flex items-center gap-2 w-full md:w-auto">
                                                                             <span className="bg-black text-gray-500 font-mono text-xs px-2 py-1 rounded-md border border-gray-800 shrink-0">#{idx+1}</span>
                                                                             <input value={ep.title} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'title', e.target.value)} className="bg-transparent border-b border-gray-700 text-sm font-bold text-white focus:border-[var(--color-accent)] focus:outline-none flex-1 md:w-48 transition-colors"/>
                                                                         </div>
                                                                         
-                                                                        {/* MIDDLE ROW ON MOBILE: Duration + Checkbox */}
                                                                         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
                                                                             <input value={ep.duration} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'duration', e.target.value)} className="bg-transparent border-b border-gray-700 text-xs text-gray-400 w-20 text-center" placeholder="00:00"/>
                                                                             <label className="flex items-center gap-2 cursor-pointer bg-gray-800/50 px-3 py-1 rounded-lg border border-gray-700">
@@ -2585,7 +2587,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                         </div>
                                                                     </div>
 
-                                                                    {/* IMAGE LINK & BADGE */}
                                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                         <div>
                                                                             <label className="text-[9px] font-bold text-gray-600 mb-1 block uppercase">رابط صورة الحلقة</label>
@@ -2600,7 +2601,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                     <input value={ep.description || ''} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'description', e.target.value)} className="w-full bg-transparent text-xs text-gray-500 focus:outline-none placeholder:text-gray-700" placeholder="اكتب وصفاً مختصراً لهذه الحلقة..."/>
                                                                 </div>
 
-                                                                {/* ACTIONS: Full width buttons on mobile */}
                                                                 <div className="flex flex-row md:flex-col gap-2 mt-2 md:mt-0 border-t border-gray-800 md:border-0 pt-4 md:pt-0">
                                                                     <button type="button" onClick={() => setEditingServersForEpisode(ep)} className={`flex-1 md:flex-none px-4 py-3 md:py-2 text-xs md:text-[10px] font-black rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all ${ep.servers?.length ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-gray-800 text-gray-500 hover:bg-gray-700'}`}>
                                                                         <ServerIcon className="w-4 h-4 md:w-3.5 md:h-3.5"/> سيرفرات ({ep.servers?.length || 0})

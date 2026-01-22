@@ -46,14 +46,11 @@ const SoonPage: React.FC<SoonPageProps> = ({
     return { allSoonContent: allSoon, soonAndRamadan, soonOnly };
   }, [allContent]);
   
-  // 🎯 Master Hero Logic: Ensure 5 items for Infinite Loop
   const heroSoonContents = useMemo(() => {
     if (pinnedContent && pinnedContent.length > 0) {
         return pinnedContent;
     }
-    // Fallback: Latest 5 sorted by date
-    const sortedContent = [...allSoonContent].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    // Slice 5 items to enable slider behavior
+    const sortedContent = [...allSoonContent].sort((a, b) => new Date(a.createdAt).getTime() - new Date(a.createdAt).getTime());
     return sortedContent.slice(0, 5);
   }, [pinnedContent, allSoonContent]);
 
@@ -105,31 +102,27 @@ const SoonPage: React.FC<SoonPageProps> = ({
 
 
   return (
-    // CRITICAL FIX: Clean Container Structure - Absolutely NO overflow-x-hidden here to allow sticky/drag gestures
-    <div className="relative min-h-screen bg-[var(--bg-body)]">
-
+    <div className="min-h-screen bg-[var(--bg-body)]">
       <SEO 
         title="قريباً - سينماتيكس" 
         description="تعرف على أحدث الإصدارات القادمة من الأفلام والمسلسلات على سينماتيكس."
         type="website"
       />
 
-      <div className="relative z-10">
-        <Hero 
-            contents={heroSoonContents} 
-            onWatchNow={onSelectContent} 
-            isLoggedIn={isLoggedIn} 
-            myList={myList} 
-            onToggleMyList={onToggleMyList} 
-            autoSlideInterval={5000}
-            isRamadanTheme={isRamadanTheme}
-            isEidTheme={isEidTheme}
-            isCosmicTealTheme={isCosmicTealTheme}
-            isNetflixRedTheme={isNetflixRedTheme}
-        />
-      </div>
+      <Hero 
+          contents={heroSoonContents} 
+          onWatchNow={onSelectContent} 
+          isLoggedIn={isLoggedIn} 
+          myList={myList} 
+          onToggleMyList={onToggleMyList} 
+          autoSlideInterval={5000}
+          isRamadanTheme={isRamadanTheme}
+          isEidTheme={isEidTheme}
+          isCosmicTealTheme={isCosmicTealTheme}
+          isNetflixRedTheme={isNetflixRedTheme}
+      />
       
-      <main className="relative z-30 pb-24 text-right bg-[var(--bg-body)]">
+      <main className="pb-24 text-right bg-[var(--bg-body)]">
         <div className={`w-full h-px mt-0 mb-2 md:my-4 
             ${isRamadanTheme 
                 ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent opacity-80' 

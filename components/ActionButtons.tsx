@@ -15,6 +15,8 @@ interface ActionButtonsProps {
   showMyList?: boolean;
   className?: string;
   content?: Content; // Added to generate URL
+  // Fix: Added isSoonOverride prop to handle coming soon logic explicitly
+  isSoonOverride?: boolean; 
 }
 
 const CalendarIcon = () => (
@@ -47,7 +49,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   isCosmicTealTheme,
   isNetflixRedTheme,
   className = "",
-  content
+  content,
+  isSoonOverride // Destructure the new prop
 }) => {
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -71,7 +74,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       }
   };
 
-  const isSoon = content?.categories?.includes('قريباً');
+  // Fix: use isSoonOverride if provided, otherwise fallback to content category check
+  const isSoon = isSoonOverride ?? content?.categories?.includes('قريباً');
 
   // Explicit styling for the primary button
   let primaryBtnClass = "btn-primary";

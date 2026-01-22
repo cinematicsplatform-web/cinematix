@@ -80,9 +80,9 @@ const AdEditModal: React.FC<AdEditModalProps> = ({ ad, onClose, onSave }) => {
         onClose();
     };
 
-    // Logic for visibility
+    // Logic for visibility - Added 'watch-preroll' to trigger timer settings
     const isPopunder = formData.placement === 'global-popunder';
-    const isActionAd = ['action_download', 'action_next_episode'].includes(formData.placement);
+    const isActionAd = ['action_download', 'action_next_episode', 'watch-preroll'].includes(formData.placement);
 
     return (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={onClose}>
@@ -167,7 +167,7 @@ const AdEditModal: React.FC<AdEditModalProps> = ({ ad, onClose, onSave }) => {
                             </div>
                         </div>
 
-                        {/* TIMER SETTINGS - Only for Action Ads */}
+                        {/* TIMER SETTINGS - Only for Action Ads and Prerolls */}
                         {isActionAd && (
                              <div className="bg-yellow-900/20 p-4 rounded-xl border border-yellow-500/30 animate-fade-in-up">
                                 <label htmlFor="timerDuration" className="block text-sm font-bold text-yellow-400 mb-1">⏱️ مدة الانتظار (ثانية)</label>

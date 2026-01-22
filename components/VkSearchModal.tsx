@@ -43,8 +43,8 @@ const VkSearchModal: React.FC<VkSearchModalProps> = ({ isOpen, onClose, onSelect
     const [results, setResults] = useState<VkVideo[]>([]);
     const [error, setError] = useState('');
 
-    // المفتاح الخاص بك
-    const ACCESS_TOKEN = 'vk1.a.66KYDO3VwYyIcenaHbEltGtK_QHzTVjfDAoRGF5QEF6GuFxyxgtDpTn5ErvyIWJ4mRJvRKqsE6PCNDrwJozZMnfduB9UHhZuWkEHkM6AMLw8LnYzWzXfaD2b-9rmhfwGATutEfgdyD4MVZ5ORR9al9pwOk5p4gGX4GE-lRkrVk6P29KbqWXyQOjMNFOtUjCGRHftl4JDvnkUsOOMr9DVaA';
+    // المفتاح الجديد الخاص بالمستخدم
+    const ACCESS_TOKEN = 'vk1.a.jj5yKnnWwDgvsqG_1AToUF_i62f0Ura3qBwWxbXHf0kB3Lb91OISdT6-i3IToUAtuk2JbEumqEeh0IQ4qX7dOjM51C73pAOwAv1Oltux8Qw97AgfYs3y6Ig7_BuuCkMjD9ddq_e92rTEm2c6PhKF4oBa_GhtuPVJl7mWYpcdAWmqOuFQjto1C1N9HdMy3sL3XMbSzhLmObYkGgjbjCh-VA';
     const VK_API_VERSION = '5.131';
 
     const formatDuration = (seconds: number) => {
