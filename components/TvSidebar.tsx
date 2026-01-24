@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { View, Profile } from '../types';
 import { HomeIcon } from './icons/HomeIcon';
@@ -105,7 +106,7 @@ const TvSidebar: React.FC<TvSidebarProps> = ({
             <button
               key={item.id}
               onClick={() => onSetView(item.view)}
-              className={`relative w-14 h-14 flex items-center justify-center rounded-2xl transition-all duration-300 group ${isActive ? `${activeBgClass} ${activeColorClass}` : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+              className={`relative w-14 h-14 flex items-center justify-center rounded-2xl transition-all duration-300 target-nav-link group ${isActive ? `${activeBgClass} ${activeColorClass}` : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
               title={item.label}
             >
               {/* Active Indicator Bar */}

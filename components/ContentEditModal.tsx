@@ -31,7 +31,7 @@ const PlusIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 const ChevronDownIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
     </svg>
 );
@@ -126,6 +126,12 @@ const LanguageIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const YouTubeIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
         <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
+);
+
+const CalendarIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
     </svg>
 );
 
@@ -786,6 +792,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // حالة الجدولة
+    const [showSchedulingUI, setShowSchedulingUI] = useState(false);
+
     const getDefaultFormData = (): Content => ({
         id: '', tmdbId: '', title: '', description: '', type: ContentType.Movie, poster: '', top10Poster: '', backdrop: '', horizontalPoster: '', mobileBackdropUrl: '',
         rating: 0, ageRating: '', categories: [], genres: [], releaseYear: new Date().getFullYear(), cast: [],
@@ -795,6 +804,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         slug: '',
         director: '', writer: '',
         isUpcoming: false,
+        isScheduled: false,
+        scheduledAt: '',
         ...content,
     });
 
@@ -810,6 +821,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
     const [youTubeSearchState, setYouTubeSearchState] = useState<{ isOpen: boolean; targetId: 'main' | number | null }>({ isOpen: false, targetId: null });
 
+    // Fix: initialized galleryState with default values for imageType and onSelect to resolve 'type' and 'callback' not found errors.
     const [galleryState, setGalleryState] = useState<{
         isOpen: boolean;
         imageType: 'poster' | 'backdrop' | 'logo';
@@ -861,6 +873,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         setFormData(initData);
         setSlugManuallyEdited(!!content?.slug);
         setTmdbIdInput(content?.id && !isNaN(Number(content.id)) ? content.id : '');
+        setShowSchedulingUI(initData.isScheduled || false);
     }, [content]);
 
     useEffect(() => {
@@ -880,7 +893,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     trailerUrl: prev.trailerUrl,
                     description: prev.description,
                     releaseYear: prev.releaseYear,
-                    isUpcoming: prev.isUpcoming // Sync upcoming status for single season series
+                    isUpcoming: prev.isUpcoming 
                 };
                 
                 const isChanged = 
@@ -1603,13 +1616,18 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         });
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent, isScheduled: boolean = false) => {
         e.preventDefault();
         if (isSubmitting) return; 
 
         if (!formData.title) { addToast('الرجاء كتابة اسم العمل.', "info"); return; }
         if (formData.categories.length === 0) { addToast('الرجاء اختيار تصنيف واحد على الأقل.', "info"); return; }
         
+        if (isScheduled && !formData.scheduledAt) {
+            addToast('الرجاء اختيار تاريخ ووقت الجدولة.', "info");
+            return;
+        }
+
         const backdrop = formData.backdrop;
         const mobileBackdrop = formData.mobileBackdropUrl || '';
         
@@ -1628,11 +1646,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             tmdbId: formData.tmdbId || formData.id, 
             createdAt: formData.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            isScheduled: isScheduled,
+            scheduledAt: isScheduled ? formData.scheduledAt : ''
         };
 
         setIsSubmitting(true);
         try {
             await onSave(contentToSave);
+            addToast(isScheduled ? "تم جدولة النشر بنجاح!" : "تم النشر بنجاح!", "success");
         } catch (err) {
             console.error("Submit failed:", err);
             setIsSubmitting(false);
@@ -2176,7 +2197,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 </div>
             </aside>
 
-            <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#090b10] relative">
+            <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#090b10] relative shrink-0">
                 <header className="h-20 border-b border-gray-800 bg-[#0f1014]/90 backdrop-blur-md flex items-center justify-between px-4 md:px-10 z-10 sticky top-0 shrink-0">
                     <div className="flex items-center gap-4">
                         <button 
@@ -2658,12 +2679,69 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     </div>
                 </div>
 
+                {/* Scheduling UI Section - Appears above footer when toggled */}
+                {showSchedulingUI && (
+                    <div className="px-4 md:px-10 py-6 bg-[#1a2230] border-t border-gray-800 animate-fade-in-up">
+                        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20">
+                                    <CalendarIcon className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h4 className="text-white font-bold">تحديد موعد النشر المجدول</h4>
+                                    <p className="text-xs text-gray-500 mt-1">اختر متى تريد أن يظهر هذا المحتوى للجمهور تلقائياً.</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4 w-full md:w-auto">
+                                <input 
+                                    type="datetime-local" 
+                                    value={formData.scheduledAt || ''} 
+                                    onChange={(e) => setFormData(prev => ({...prev, scheduledAt: e.target.value}))}
+                                    className="bg-[#0f1014] border border-amber-500/30 rounded-xl px-4 py-3 text-white focus:border-amber-500 outline-none w-full md:w-64 shadow-lg text-sm"
+                                />
+                                <button 
+                                    onClick={() => {
+                                        setFormData(prev => ({...prev, isScheduled: false, scheduledAt: ''}));
+                                        setShowSchedulingUI(false);
+                                    }}
+                                    className="p-3 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
+                                    title="إلغاء الجدولة"
+                                >
+                                    <TrashIcon className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <footer className="h-20 border-t border-gray-800 bg-[#0f1014]/95 backdrop-blur-xl flex items-center justify-between px-4 md:px-10 z-50 sticky bottom-0 w-full shadow-[0_-5px_20px_rgba(0,0,0,0.5)] shrink-0">
                       <button type="button" onClick={onClose} disabled={isSubmitting} className="flex-none px-8 py-3 rounded-xl text-sm font-bold text-gray-400 bg-gray-800/50 border border-gray-700 hover:bg-gray-800 hover:text-white transition-all shadow-sm disabled:opacity-50">إلغاء</button>
-                      <button type="button" onClick={handleSubmit} disabled={isSubmitting} className={`flex-none px-8 py-3 rounded-xl text-sm font-black bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-lg shadow-[var(--color-accent)]/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
-                        {isSubmitting ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : <CheckSmallIcon className="w-4 h-4" />}
-                        <span>{isSubmitting ? 'جاري الحفظ...' : 'حفظ ونشر المحتوى'}</span>
-                      </button>
+                      
+                      <div className="flex items-center gap-3">
+                          {/* Scheduling Toggle Button */}
+                          <button 
+                            type="button" 
+                            onClick={() => setShowSchedulingUI(!showSchedulingUI)}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all transform active:scale-95 shadow-lg
+                                ${showSchedulingUI 
+                                    ? 'bg-amber-500 text-black shadow-amber-500/20' 
+                                    : 'bg-gray-800 text-amber-500 border border-amber-500/30 hover:bg-amber-500/10'}`}
+                          >
+                            <CalendarIcon className="w-5 h-5" />
+                            <span>{showSchedulingUI ? 'تعديل الجدولة' : 'جدولة النشر'}</span>
+                          </button>
+
+                          {/* Main Save & Publish Button */}
+                          <button 
+                            type="button" 
+                            onClick={(e) => handleSubmit(e, showSchedulingUI)} 
+                            disabled={isSubmitting} 
+                            className={`flex-none px-8 py-3 rounded-xl text-sm font-black bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-lg shadow-[var(--color-accent)]/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          >
+                            {isSubmitting ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : <CheckSmallIcon className="w-4 h-4" />}
+                            <span>{isSubmitting ? 'جاري الحفظ...' : (showSchedulingUI ? 'حفظ وجدولة' : 'حفظ ونشر المحتوى')}</span>
+                          </button>
+                      </div>
                 </footer>
             </main>
 

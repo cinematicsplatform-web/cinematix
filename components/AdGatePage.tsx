@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Content, Ad, View } from '../types';
 import AdPlacement from './AdPlacement';
 import { PlayIcon } from './icons/PlayIcon';
@@ -40,6 +40,10 @@ const AdGatePage: React.FC<AdGatePageProps> = ({
     const [isWatchingAd, setIsWatchingAd] = useState(false);
     const [timeLeft, setTimeLeft] = useState(configuredDuration);
     const [canProceed, setCanProceed] = useState(false);
+    const [isVastAd, setIsVastAd] = useState(false);
+    
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const playerRef = useRef<any>(null);
 
     // تحديث timeLeft إذا تغير الإعلان المكتشف أو إعداداته
     useEffect(() => {
@@ -48,9 +52,91 @@ const AdGatePage: React.FC<AdGatePageProps> = ({
         }
     }, [configuredDuration, isWatchingAd]);
 
+    // تحقق مما إذا كان الإعلان عبارة عن رابط VAST (عادة يبدأ بـ http وينتهي بـ xml أو يتم تعريفه في الحقل code)
+    useEffect(() => {
+        if (activePrerollAd && activePrerollAd.code) {
+            const code = activePrerollAd.code.trim();
+            if (code.startsWith('http') && (code.includes('vast') || code.includes('xml'))) {
+                setIsVastAd(true);
+            } else {
+                setIsVastAd(false);
+            }
+        }
+    }, [activePrerollAd]);
+
+    // تهيئة مشغل VAST عند بدء المشاهدة
+    useEffect(() => {
+        if (isWatchingAd && isVastAd && videoRef.current && activePrerollAd?.code) {
+            const videoElement = videoRef.current;
+            // @ts-ignore
+            const videojs = window.videojs;
+            
+            if (videojs) {
+                // تدمير المشغل القديم إن وجد
+                if (playerRef.current) {
+                    playerRef.current.dispose();
+                }
+
+                const player = videojs(videoElement, {
+                    autoplay: true,
+                    muted: false,
+                    controls: true,
+                    fluid: true
+                });
+                
+                playerRef.current = player;
+
+                const options = {
+                    adTagUrl: activePrerollAd.code.trim(),
+                    showCountdown: true,
+                };
+
+                // تهيئة IMA
+                player.ima(options);
+
+                // الاستماع لأحداث الإعلان
+                player.on('ads-ad-started', () => {
+                    console.log('VAST Ad Started');
+                });
+
+                player.on('ads-all-ads-completed', () => {
+                    console.log('VAST All Ads Completed');
+                    setCanProceed(true);
+                    onDone(); // فتح المحتوى تلقائياً عند انتهاء الإعلان
+                });
+
+                player.on('ads-error', (event: any) => {
+                    console.error('VAST Ad Error:', event);
+                    // في حال الخطأ، نفتح المحتوى لضمان عدم توقف المستخدم
+                    setCanProceed(true);
+                    onDone();
+                });
+
+                // في حال انتهاء الفيديو الأساسي (إذا لم يبدأ الإعلان أو انتهى)
+                player.on('ended', () => {
+                    setCanProceed(true);
+                    onDone();
+                });
+
+                // طلب الإعلانات وبدء التشغيل
+                player.ima.initializeAdDisplayContainer();
+                player.ima.requestAds();
+                player.play();
+            }
+        }
+
+        return () => {
+            if (playerRef.current) {
+                playerRef.current.dispose();
+                playerRef.current = null;
+            }
+        };
+    }, [isWatchingAd, isVastAd, activePrerollAd]);
+
     useEffect(() => {
         let timer: ReturnType<typeof setInterval>;
-        if (isWatchingAd && timeLeft > 0) {
+        // إذا لم يكن إعلان VAST، نستخدم العداد الزمني التقليدي
+        if (isWatchingAd && !isVastAd && timeLeft > 0) {
             timer = setInterval(() => {
                 setTimeLeft(prev => {
                     if (prev <= 1) {
@@ -61,16 +147,15 @@ const AdGatePage: React.FC<AdGatePageProps> = ({
                     return prev - 1;
                 });
             }, 1000);
-        } else if (isWatchingAd && timeLeft === 0) {
+        } else if (isWatchingAd && !isVastAd && timeLeft === 0) {
             setCanProceed(true);
         }
         return () => clearInterval(timer);
-    }, [isWatchingAd, timeLeft]);
+    }, [isWatchingAd, isVastAd, timeLeft]);
 
     const handleWatchAd = () => {
         setIsWatchingAd(true);
-        // في حال كانت المدة 0، نقوم بتفعيل زر المتابعة فوراً
-        if (configuredDuration <= 0) {
+        if (!isVastAd && configuredDuration <= 0) {
             setCanProceed(true);
             setTimeLeft(0);
         }
@@ -129,37 +214,50 @@ const AdGatePage: React.FC<AdGatePageProps> = ({
                     /* واجهة العرض والعداد: مدمجة بالكامل في الصفحة */
                     <div className="w-full space-y-8 animate-fade-in flex flex-col items-center">
                         
-                        {/* منطقة العداد الزمني - تصميم دائري احترافي */}
-                        <div className="flex flex-col items-center justify-center gap-4 mb-4">
-                            <div className="relative w-24 h-24 md:w-28 md:h-28 flex items-center justify-center">
-                                <svg className="absolute w-full h-full -rotate-90 drop-shadow-[0_0_10px_rgba(0,167,248,0.5)]">
-                                    <circle cx="50%" cy="50%" r="44%" stroke="rgba(255,255,255,0.05)" strokeWidth="8" fill="transparent" />
-                                    <circle 
-                                        cx="50%" cy="50%" r="44%" stroke={ringStroke} strokeWidth="8" fill="transparent" 
-                                        strokeDasharray="276"
-                                        strokeDashoffset={276 - (276 * (configuredDuration - timeLeft)) / (configuredDuration || 1)}
-                                        strokeLinecap="round"
-                                        className="transition-all duration-1000 linear"
-                                    />
-                                </svg>
-                                <div className="flex flex-col items-center justify-center">
-                                    <span className="text-3xl md:text-4xl font-black text-white font-mono leading-none">{timeLeft}</span>
-                                    <span className="text-[10px] text-gray-500 font-bold uppercase mt-1">ثانية</span>
+                        {/* منطقة العداد الزمني - تصميم دائري احترافي (يظهر فقط إذا لم يكن VAST أو كإحتياطي) */}
+                        {!isVastAd && (
+                            <div className="flex flex-col items-center justify-center gap-4 mb-4">
+                                <div className="relative w-24 h-24 md:w-28 md:h-28 flex items-center justify-center">
+                                    <svg className="absolute w-full h-full -rotate-90 drop-shadow-[0_0_10px_rgba(0,167,248,0.5)]">
+                                        <circle cx="50%" cy="50%" r="44%" stroke="rgba(255,255,255,0.05)" strokeWidth="8" fill="transparent" />
+                                        <circle 
+                                            cx="50%" cy="50%" r="44%" stroke={ringStroke} strokeWidth="8" fill="transparent" 
+                                            strokeDasharray="276"
+                                            strokeDashoffset={276 - (276 * (configuredDuration - timeLeft)) / (configuredDuration || 1)}
+                                            strokeLinecap="round"
+                                            className="transition-all duration-1000 linear"
+                                        />
+                                    </svg>
+                                    <div className="flex flex-col items-center justify-center">
+                                        <span className="text-3xl md:text-4xl font-black text-white font-mono leading-none">{timeLeft}</span>
+                                        <span className="text-[10px] text-gray-500 font-bold uppercase mt-1">ثانية</span>
+                                    </div>
+                                </div>
+                                
+                                <div className="text-center">
+                                    <h3 className="text-lg md:text-xl font-bold text-white mb-1">يتم الآن عرض الإعلان</h3>
+                                    <p className="text-xs text-gray-500 font-bold">يرجى الانتظار حتى انتهاء العداد لتفعيل المشغل</p>
                                 </div>
                             </div>
-                            
-                            <div className="text-center">
-                                <h3 className="text-lg md:text-xl font-bold text-white mb-1">يتم الآن عرض الإعلان</h3>
-                                <p className="text-xs text-gray-500 font-bold">يرجى الانتظار حتى انتهاء العداد لتفعيل المشغل</p>
-                            </div>
-                        </div>
+                        )}
 
                         {/* مساحة عرض الإعلان */}
                         <div className="w-full bg-[#0a0a0a] rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl relative min-h-[300px] flex items-center justify-center">
                              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none"></div>
-                             <AdPlacement ads={ads} placement="watch-preroll" isEnabled={adsEnabled} className="m-0 relative z-10" />
                              
-                             {!adsEnabled && (
+                             {isVastAd ? (
+                                <div className="w-full h-full relative z-10 vjs-container">
+                                    <video 
+                                        ref={videoRef} 
+                                        className="video-js vjs-default-skin vjs-big-play-centered w-full h-full"
+                                        playsInline
+                                    ></video>
+                                </div>
+                             ) : (
+                                <AdPlacement ads={ads} placement="watch-preroll" isEnabled={adsEnabled} className="m-0 relative z-10" />
+                             )}
+                             
+                             {!adsEnabled && !isVastAd && (
                                 <div className="flex flex-col items-center gap-4 text-center p-12 relative z-10">
                                     <div className="w-12 h-12 border-4 border-white/5 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
                                     <p className="text-gray-600 font-bold italic text-sm">جاري تحضير أفضل جودة بث لك...</p>
@@ -167,7 +265,7 @@ const AdGatePage: React.FC<AdGatePageProps> = ({
                              )}
                         </div>
 
-                        {/* زر المتابعة: يظهر فقط عند انتهاء الوقت */}
+                        {/* زر المتابعة: يظهر فقط عند انتهاء الوقت أو الإعلان */}
                         <div className="h-20 flex items-center justify-center w-full">
                             {canProceed && (
                                 <button 
@@ -182,6 +280,12 @@ const AdGatePage: React.FC<AdGatePageProps> = ({
                     </div>
                 )}
             </div>
+            
+            <style dangerouslySetInnerHTML={{ __html: `
+                .vjs-container { min-height: 350px; }
+                .video-js .vjs-tech { position: relative !important; }
+                .vjs-ad-container { direction: ltr !important; }
+            `}} />
         </div>
     );
 };

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Content, Episode, Server, Ad, View, Person } from '../types';
@@ -234,10 +235,10 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
             <div className="relative z-10 max-w-5xl mx-auto px-4 md:px-0 pt-6 text-center">
                 
                 <div className="w-full mb-6">
-                    <div className="flex items-center justify-center md:justify-start gap-3 overflow-x-auto no-scrollbar pb-3">
+                    <div className="flex items-center justify-start md:justify-start gap-3 overflow-x-auto no-scrollbar pb-3">
                         <span className="text-sm text-gray-400 font-black ml-2 whitespace-nowrap">سيرفر المشاهدة:</span>
                         {isLoaded && activeServers.length > 0 ? activeServers.map((server, idx) => (
-                            <button key={server.id} onClick={() => setSelectedServer(server)} className={`flex-shrink-0 px-8 py-3 rounded-2xl font-black text-sm transition-all border ${selectedServer?.id === server.id ? `${bgAccent} text-black border-transparent shadow-[0_0_20px_var(--shadow-color)] scale-105` : 'bg-gray-800/50 text-gray-300 border-gray-700 hover:bg-gray-800 hover:border-gray-600 hover:border-gray-600'}`}>
+                            <button key={server.id} onClick={() => setSelectedServer(server)} className={`flex-shrink-0 px-8 py-3 rounded-2xl font-black text-sm transition-all border target-server-btn ${selectedServer?.id === server.id ? `${bgAccent} text-black border-transparent shadow-[0_0_20px_var(--shadow-color)] scale-105` : 'bg-gray-800/50 text-gray-300 border-gray-700 hover:bg-gray-800 hover:border-gray-600 hover:border-gray-600'}`}>
                                 سيرفر {idx + 1}
                             </button>
                         )) : (
@@ -248,7 +249,8 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                     </div>
                 </div>
 
-                <div className={`relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black border ${isLoaded ? 'border-white/5' : 'border-gray-800'} z-10 mx-auto`}>
+                {/* Video Container - Optimized for all orientations */}
+                <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black border border-white/5 z-10 mx-auto video-player-wrapper">
                     {isLoaded ? (
                         <VideoPlayer 
                             key={playerKey}
@@ -270,7 +272,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
                 <div className="mt-5 relative flex flex-col items-center gap-2 animate-fade-in-up">
                     <div className="flex justify-center w-full">
-                        {/* Conditionally show download button ONLY if at least one server has a downloadUrl */}
                         {selectedEpisode?.servers.some(s => s.downloadUrl && s.downloadUrl.trim().length > 0) && (
                             <button 
                                 onClick={handleDownload}
@@ -283,6 +284,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                                     transform transition-all duration-200
                                     active:scale-95
                                     shadow-lg hover:shadow-2xl
+                                    target-download-btn
                                     ${isRamadanTheme 
                                         ? "bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)]" 
                                         : isEidTheme 

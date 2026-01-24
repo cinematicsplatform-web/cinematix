@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { createPortal } from 'react-dom';
@@ -24,7 +25,6 @@ interface DetailPageProps {
   ads: Ad[];
   adsEnabled: boolean;
   allContent: Content[];
-  // Fix: Removed duplicate declaration of onSelectContent
   onSelectContent: (content: Content, seasonNum?: number, episodeNum?: number) => void;
   onPersonClick: (name: string) => void; 
   isLoggedIn: boolean;
@@ -389,7 +389,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const handleEpisodeSelect = (episode: Episode, seasonNum?: number, episodeIndex?: number) => {
       const sNum = seasonNum ?? currentSeason?.seasonNumber ?? 1;
       const eNum = episodeIndex || currentSeason?.episodes.findIndex(e => e.id === episode.id) + 1;
-      // FIX: Changed handleSelectContent to onSelectContent as it's the correct prop name
       onSelectContent(content, sNum, eNum);
   };
 
@@ -697,7 +696,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       <div className="relative min-h-[400px] w-full bg-[var(--bg-body)]">
           {activeTab === 'episodes' && !isSoon && (
               <div className="w-full px-4 pt-8 md:px-8 animate-fade-in-up">
-                  {/* Logic Fix: Separate Movie Skeletons from Series Skeletons during Loading */}
                   {isEpisodic ? (
                       <div className="mb-10 grid grid-cols-1 gap-4 pb-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                           {isLoaded ? episodes.map((ep, index) => {
@@ -770,12 +768,11 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                </div>
                            ) : (
                                <>
-                                {/* تم تعديل هذه الحاوية لإخفائها تماماً في وضع الموبايل باستخدام hidden md:block */}
-                                <div className="hidden md:block mb-8 w-full">
-                                        <div className="custom-scrollbar flex items-center gap-3 overflow-x-auto pb-3 no-scrollbar">
+                                <div className="block mb-8 w-full">
+                                        <div className="custom-scrollbar flex items-center justify-start gap-3 overflow-x-auto pb-3 no-scrollbar">
                                             <span className="ml-2 whitespace-nowrap text-sm font-black text-gray-400">سيرفر المشاهدة:</span>
                                             {activeServers.length > 0 ? activeServers.map((server, idx) => (
-                                                <button key={server.id} onClick={() => setSelectedServer(server)} className={`flex-shrink-0 border px-8 py-3 rounded-2xl font-black text-sm transition-all ${selectedServer?.id === server.id ? `scale-105 border-transparent ${bgAccent} text-black shadow-[0_0_20px_var(--shadow-color)]` : 'border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-800'}`}>
+                                                <button key={server.id} onClick={() => setSelectedServer(server)} className={`flex-shrink-0 border px-8 py-3 rounded-2xl font-black text-sm transition-all target-server-btn ${selectedServer?.id === server.id ? `scale-105 border-transparent ${bgAccent} text-black shadow-[0_0_20px_var(--shadow-color)]` : 'border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-800'}`}>
                                                     سيرفر {idx + 1}
                                                 </button>
                                             )) : (
@@ -784,13 +781,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                         </div>
                                 </div>
 
-                                <div className="relative z-10 mx-auto aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl">
+                                {/* Movie Video Container - Rotation Friendly */}
+                                <div className="relative z-10 mx-auto aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl video-player-wrapper">
                                         <VideoPlayer key={playerKey} tmdbId={content.id} type={content.type} manualSrc={selectedServer?.url} poster={displayBackdrop} />
                                 </div>
 
                                 <div className="relative mt-6 flex flex-col items-center gap-2 animate-fade-in-up">
                                         <div className="flex w-full justify-center">
-                                            {/* Conditionally show download button ONLY if at least one server has a downloadUrl */}
                                             {activeServers.some(s => s.downloadUrl && s.downloadUrl.trim().length > 0) && (
                                                 <button 
                                                     onClick={handleDownload}
@@ -803,6 +800,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                                         transform transition-all duration-200
                                                         active:scale-95
                                                         shadow-lg hover:shadow-2xl
+                                                        target-download-btn
                                                         ${isRamadanTheme 
                                                             ? "bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)]" 
                                                             : isEidTheme 
@@ -841,7 +839,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
           {activeTab === 'trailer' && trailerVideoId && (
               <div className="w-full px-4 py-8 md:px-8 animate-fade-in-up">
                   <div className="mx-auto w-full max-w-5xl">
-                      <div className="aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl">
+                      <div className="aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl video-player-wrapper">
                           <iframe 
                               src={modalEmbedUrl} 
                               className="h-full w-full" 
@@ -867,7 +865,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                                 <div className="h-6 w-1.5 rounded-full bg-[var(--color-accent)] md:h-8"></div>
                                                 <span>القصة</span>
                                             </h3>
-                                            {/* Story: text-sm on mobile, text-lg on desktop, forced text-right */}
                                             <p className="leading-loose text-justify text-sm md:text-lg text-gray-300 text-right">{displayDescription}</p>
                                         </div>
                                         
@@ -876,7 +873,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                                 <div className="h-6 w-1.5 rounded-full bg-[var(--color-accent)] md:h-8"></div>
                                                 <span>التصنيف النوعي</span>
                                             </h3>
-                                            {/* Genre: justify-start for Right alignment in RTL */}
                                             <div className="flex flex-wrap gap-2 justify-start">
                                                 {content?.genres?.map((genre, index) => (
                                                     <div key={index} className="rounded-xl border border-gray-700 bg-gray-800/50 px-4 py-2 text-sm font-bold text-gray-300 transition-colors hover:border-gray-500">
@@ -939,7 +935,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     </div>
                   </div>
 
-                  {/* Cast and Crew Integrated inside Details Tab - UPDATED TO FULL WIDTH AND 6 COLS */}
+                  {/* Cast and Crew Integrated inside Details Tab */}
                   {isLoaded && (
                     <div className="relative z-10 px-4 md:px-8 py-12 mt-12 border-t border-white/5 bg-black/20 w-full">
                         <div className="w-full text-right">

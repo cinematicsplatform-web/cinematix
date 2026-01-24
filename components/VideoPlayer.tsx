@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 
 interface VideoPlayerProps {
@@ -186,21 +187,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
           
           <button 
             onClick={() => setActiveServerType('server1')}
-            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold ${activeServerType === 'server1' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold target-server-btn ${activeServerType === 'server1' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
           >
             VidSrc (XYZ)
           </button>
           
           <button 
             onClick={() => setActiveServerType('server2')}
-            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold ${activeServerType === 'server2' ? 'bg-purple-600 text-white shadow-lg' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold target-server-btn ${activeServerType === 'server2' ? 'bg-purple-600 text-white shadow-lg' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
           >
             Cinematix VIP
           </button>
           
            <button 
             onClick={() => setActiveServerType('server3')}
-            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold ${activeServerType === 'server3' ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold target-server-btn ${activeServerType === 'server3' ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
           >
             2Embed (Backup)
           </button>
