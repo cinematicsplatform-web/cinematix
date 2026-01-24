@@ -42,15 +42,9 @@ const app = firebase.app();
 // Initialize Firestore
 const firestoreInstance = app.firestore();
 
-/**
- * معالجة تحذير "overriding the original host":
- * تم إزالة experimentalAutoDetectLongPolling لأنه المسبب الرئيسي للتحذير في البيئات الحديثة
- * إلا إذا كان هناك حاجة ماسة له (مثل العمل خلف بروكـسي مقيد جداً).
- */
 try {
   firestoreInstance.settings({
     ignoreUndefinedProperties: true,
-    // تم إزالة الخاصية التي تسبب التحذير لضمان استقرار الاتصال الافتراضي
   });
 } catch (e: any) {
   if (!e.message.includes('already been initialized')) {
@@ -61,16 +55,10 @@ try {
 export const db = firestoreInstance;
 export const storage = app.storage();
 
-/**
- * معالجة تحذير "enableMultiTabIndexedDbPersistence() will be deprecated":
- * في مكتبة compat، نستخدم enablePersistence ولكن نلتقط الخطأ لمنع تكرار التحذير
- */
 if (typeof window !== 'undefined') {
-    // تفعيل التخزين المتعدد التبويبات بطريقة آمنة
     db.enablePersistence({ synchronizeTabs: true })
       .catch((err) => {
           if (err.code === 'failed-precondition') {
-              // قد يكون هناك تبويب آخر مفتوح بالفعل، لا حاجة لإظهار خطأ للمستخدم
               console.debug("[Cinematix] Persistence already active in another tab.");
           } else if (err.code === 'unimplemented') {
               console.warn("[Cinematix] Persistence failed: Browser not supported.");
@@ -188,7 +176,6 @@ export const updateTop10ContentForPage = async (pageKey: PageKey, items: PinnedI
     }, { merge: true });
 };
 
-// REFINED: Standard Ads fetching with full field mapping
 export const getAds = async (): Promise<Ad[]> => {
     try {
         const querySnapshot = await db.collection("ads").orderBy("updatedAt", "desc").get();
@@ -209,10 +196,8 @@ export const getAds = async (): Promise<Ad[]> => {
     }
 };
 
-// REFINED: Direct Fetch for standalone zones
 export const getAdByPosition = async (position: string): Promise<Ad | null> => {
   try {
-    // Try querying by placement field
     let q = db.collection("ads")
         .where("placement", "==", position)
         .where("status", "==", "active")
@@ -220,7 +205,6 @@ export const getAdByPosition = async (position: string): Promise<Ad | null> => {
     
     let snap = await q.get();
     
-    // Fallback for legacy position field
     if (snap.empty) {
         q = db.collection("ads")
             .where("position", "==", position)
@@ -265,10 +249,28 @@ export const deleteAd = async (adId: string): Promise<void> => {
     await db.collection("ads").doc(adId).delete();
 };
 
-export const getAllContent = async (): Promise<Content[]> => {
+/**
+ * جلب كافة المحتويات مع مراعاة الجدولة.
+ * للمسؤولين: يتم جلب الكل.
+ * للزوار: يتم استبعاد المحتوى الذي موعد نشره في المستقبل.
+ */
+export const getAllContent = async (isAdmin: boolean = false): Promise<Content[]> => {
     try {
         const snapshot = await db.collection('content').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Content));
+        const now = new Date();
+        
+        let contents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Content));
+        
+        if (!isAdmin) {
+            // تصفية المحتوى المجدول للزوار العاديين
+            contents = contents.filter(c => {
+                if (!c.isScheduled || !c.scheduledAt) return true;
+                const scheduleDate = new Date(c.scheduledAt);
+                return now >= scheduleDate;
+            });
+        }
+        
+        return contents;
     } catch (error) {
         return handleFirestoreError(error, 'content', []);
     }

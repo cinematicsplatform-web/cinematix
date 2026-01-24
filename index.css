@@ -10,12 +10,12 @@ body, h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, select, textarea {
     font-weight: 500 !important;
 }
 
-/* Ensure window scroll is not blocked */
+/* Ensure window scroll is not blocked and handle rotation smoothly */
 html, body {
     overflow-y: auto; 
     overflow-x: hidden;
     height: auto;
-    min-height: 100vh;
+    min-height: 100dvh; /* Using dynamic viewport height for better mobile support */
     direction: rtl;
     text-align: right;
     
@@ -279,4 +279,13 @@ a img {
     .episode-card-hover:nth-child(n) { transform-origin: center center; }
     .episode-card-hover:nth-child(5n+1) { transform-origin: right center; }
     .episode-card-hover:nth-child(5n) { transform-origin: left center; }
+}
+
+/* Handle landscape mode for video player containers to prevent "vertical" cutting */
+@media (orientation: landscape) and (max-width: 1024px) {
+    .video-player-wrapper {
+        aspect-ratio: 16/9;
+        width: 100%;
+        max-height: calc(100vh - 80px); /* Allow room for some UI but focus on video */
+    }
 }

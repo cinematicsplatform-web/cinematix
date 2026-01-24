@@ -1,3 +1,4 @@
+
 export const ContentType = {
   Movie: 'movie',
   Series: 'series',
@@ -76,7 +77,7 @@ export interface Season {
   description?: string; 
   cast?: string[]; 
   adLink?: string; 
-  isUpcoming?: boolean; // NEW: Individual season upcoming status
+  isUpcoming?: boolean; 
   
   mobileImageUrl?: string; 
   useCustomMobileImage?: boolean; 
@@ -112,6 +113,8 @@ export interface Content {
   visibility: 'general' | 'adults' | 'kids'; 
   createdAt: string;
   updatedAt?: string;
+  scheduledAt?: string; // موعد النشر المجدول (ISO String)
+  isScheduled?: boolean; // هل العمل مجدول؟
   logoUrl?: string; 
   isLogoEnabled?: boolean; 
   trailerUrl?: string; 
@@ -121,7 +124,7 @@ export interface Content {
   mobileCropPositionX?: number; 
   mobileCropPositionY?: number; 
   slug?: string; 
-  isUpcoming?: boolean; // NEW: Main content upcoming status (useful for movies)
+  isUpcoming?: boolean; 
 }
 
 export interface Person {
@@ -296,7 +299,6 @@ export const triggerTargetLabels: Record<TriggerTarget, string> = {
     'navigation': 'القوائم (Navigation Links)'
 };
 
-// Fix: Removed duplicate 'export' keyword on line 299
 export const triggerSelectors: Record<TriggerTarget, string> = {
     'all': 'body',
     'watch-now': '.target-watch-btn',

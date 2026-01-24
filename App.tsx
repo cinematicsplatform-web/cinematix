@@ -248,11 +248,26 @@ const App: React.FC = () => {
   useEffect(() => {
       if (!siteSettings.adsEnabled) return;
       const handleSmartPopunder = (e: MouseEvent) => {
-          const activePopunders = ads.filter(a => a.placement === 'global-popunder' && (a.status === 'active' || a.isActive === true));
+          // Changed: Support any active ad with a triggerTarget configured
+          const activeTriggerAds = ads.filter(a => 
+              (a.status === 'active' || a.isActive === true) && 
+              a.triggerTarget && 
+              a.triggerTarget !== 'all'
+          );
+
+          // Keep 'all' (global) click logic for global-popunder
+          const globalPopunderAds = ads.filter(a => 
+              (a.status === 'active' || a.isActive === true) && 
+              a.placement === 'global-popunder' && 
+              a.triggerTarget === 'all'
+          );
+
+          const candidateAds = [...activeTriggerAds, ...globalPopunderAds];
+
           const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
           const isMobile = /android|iPad|iPhone|iPod/i.test(userAgent) || window.innerWidth <= 768;
           
-          activePopunders.forEach(ad => {
+          candidateAds.forEach(ad => {
               const targetDevice = ad.targetDevice || 'all';
               if (targetDevice === 'mobile' && !isMobile) return;
               if (targetDevice === 'desktop' && isMobile) return;
@@ -267,18 +282,24 @@ const App: React.FC = () => {
               const targetElement = (e.target as Element).closest(selector);
               
               if (targetElement) {
-                  const div = document.createElement('div');
-                  div.style.display = 'none';
-                  div.className = `smart-popunder-container-${ad.id}`;
-                  try {
-                      const range = document.createRange();
-                      range.selectNode(document.body);
-                      const fragment = range.createContextualFragment(ad.code || ad.scriptCode || '');
-                      div.appendChild(fragment);
-                      document.body.appendChild(div);
+                  // Execute logic
+                  if (ad.type === 'banner' && ad.destinationUrl) {
+                      window.open(ad.destinationUrl, '_blank');
                       localStorage.setItem(`popunder_last_run_${ad.id}`, now.toString());
-                  } catch (err) {
-                      console.error("Popunder Execution Error:", err);
+                  } else {
+                      const div = document.createElement('div');
+                      div.style.display = 'none';
+                      div.className = `smart-popunder-container-${ad.id}`;
+                      try {
+                          const range = document.createRange();
+                          range.selectNode(document.body);
+                          const fragment = range.createContextualFragment(ad.code || ad.scriptCode || '');
+                          div.appendChild(fragment);
+                          document.body.appendChild(div);
+                          localStorage.setItem(`popunder_last_run_${ad.id}`, now.toString());
+                      } catch (err) {
+                          console.error("Popunder Execution Error:", err);
+                      }
                   }
               }
           });
