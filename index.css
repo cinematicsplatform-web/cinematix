@@ -11,20 +11,34 @@ body, h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, select, textarea {
 }
 
 /* Ensure window scroll is not blocked and handle rotation smoothly */
-html, body {
-    overflow-y: auto; 
+html {
+    height: auto !important;
+    min-height: 100%;
     overflow-x: hidden;
-    height: auto;
-    min-height: 100dvh; /* Using dynamic viewport height for better mobile support */
+    overflow-y: auto !important;
     direction: rtl;
     text-align: right;
+}
+
+body {
+    height: auto !important;
+    min-height: 100%;
+    overflow-y: visible !important; 
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    font-family: 'Cairo', sans-serif;
+    background-color: var(--bg-body);
+    color: #fff;
+    transition: background-color 0.5s ease;
+    touch-action: pan-y; /* Explicitly allow vertical scrolling and touch gestures */
     
-    /* --- حماية المحتوى: منع تحديد النصوص --- */
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none; /* منع ظهور قائمة الخيارات في iOS عند الضغط المطول */
+    /* --- تم تفعيل تحديد النصوص والنسخ --- */
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default; /* السماح بظهور قائمة الخيارات في iOS عند الضغط المطول */
 }
 
 /* استثناء الحقول النصية لضمان قدرة المستخدم على الكتابة في البحث أو تسجيل الدخول */
@@ -44,16 +58,16 @@ input, textarea {
     -webkit-touch-callout: default !important;
 }
 
-/* منع سحب الصور */
+/* السماح بسحب الصور ومعاينتها */
 img {
-    -webkit-user-drag: none;
-    -khtml-user-drag: none;
-    -moz-user-drag: none;
-    -o-user-drag: none;
-    pointer-events: none; /* يمنع التفاعل مع الصور تماماً لمنع الحفظ */
+    -webkit-user-drag: auto;
+    -khtml-user-drag: auto;
+    -moz-user-drag: auto;
+    -o-user-drag: auto;
+    pointer-events: auto; /* يسمح بالتفاعل مع الصور تماماً */
 }
 
-/* السماح بالتفاعل مع الصور داخل أزرار التحكم أو الروابط فقط إذا لزم الأمر، لكننا هنا نلتزم بالمنع الشامل */
+/* السماح بالتفاعل مع الصور داخل أزرار التحكم أو الروابط */
 a img {
     pointer-events: auto;
 }

@@ -14,37 +14,37 @@
             document.documentElement.classList.add('theme-' + t);
           }
 
-          // وظيفة للتحقق مما إذا كان النسخ مسموحاً حالياً
+          // تم تعديل الوظيفة للسماح بالتحديد والنسخ دائماً
           function isSelectionAllowed() {
-            return document.documentElement.classList.contains('allow-selection');
+            return true; 
           }
 
-          // 2. نظام حماية المحتوى الشامل (مع استثناء صفحات تسجيل الدخول)
-          // تعطيل القائمة اليمنى (Right Click)
+          // 2. تم فتح نظام حماية المحتوى للسماح بالنسخ والمعاينة
+          // السماح بالقائمة اليمنى (Right Click)
           document.addEventListener('contextmenu', function(e) {
             if (isSelectionAllowed()) return;
-            e.preventDefault();
+            // e.preventDefault(); // تم التعطيل للسماح بالمعاينة
           }, false);
 
-          // تعطيل النسخ والقص
+          // السماح بالنسخ والقص
           document.addEventListener('copy', function(e) {
             if (isSelectionAllowed()) return;
-            e.preventDefault();
+            // e.preventDefault(); // تم التعطيل للسماح بالنسخ
           }, false);
           document.addEventListener('cut', function(e) {
             if (isSelectionAllowed()) return;
-            e.preventDefault();
+            // e.preventDefault(); // تم التعطيل للسماح بالقص
           }, false);
 
-          // تعطيل سحب الصور والنصوص
+          // السماح بسحب الصور والنصوص
           document.addEventListener('dragstart', function(e) {
             if (isSelectionAllowed()) return;
-            e.preventDefault();
+            // e.preventDefault(); // تم التعطيل للسماح بالسحب
           }, false);
 
-          // تعطيل تحديد النص برمجياً (للمتصفحات القديمة)
+          // تم تمكين تحديد النص برمجياً
           document.onselectstart = function() { 
-            return isSelectionAllowed(); 
+            return true; 
           };
 
         } catch (e) {}
@@ -272,7 +272,6 @@
         background-color: var(--bg-body);
         color: #fff;
         transition: background-color 0.5s ease;
-        overscroll-behavior-y: none;
       }
 
       #preloader {
