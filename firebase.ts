@@ -39,12 +39,18 @@ if (!firebase.apps.length) {
 }
 const app = firebase.app();
 
-// Initialize Firestore
+// Initialize Firestore with specific settings to fix connectivity issues
 const firestoreInstance = app.firestore();
 
 try {
   firestoreInstance.settings({
     ignoreUndefinedProperties: true,
+    // FIX: Force long polling to resolve "Could not reach Cloud Firestore backend"
+    // This is critical for environments that block WebSockets or have strict proxy rules.
+    experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: true,
+    // Optimization for better synchronization
+    cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
   });
 } catch (e: any) {
   if (!e.message.includes('already been initialized')) {
@@ -334,6 +340,7 @@ export const requestNotificationPermission = async (userId: string) => {
     }
 };
 
+// تم توحيد الاسم إلى 'requests' بدلاً من 'content_requests' ليتطابق مع الـ Rules
 export const addContentRequest = async (request: Omit<ContentRequest, 'id' | 'createdAt' | 'status'>): Promise<void> => {
     const sanitizedData = {
         ...request,
@@ -341,12 +348,12 @@ export const addContentRequest = async (request: Omit<ContentRequest, 'id' | 'cr
         status: 'pending',
         createdAt: serverTimestamp()
     };
-    await db.collection('content_requests').add(sanitizedData);
+    await db.collection('requests').add(sanitizedData);
 };
 
 export const getContentRequests = async (): Promise<ContentRequest[]> => {
     try {
-        const snapshot = await db.collection('content_requests').orderBy('createdAt', 'desc').get();
+        const snapshot = await db.collection('requests').orderBy('createdAt', 'desc').get();
         return snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
@@ -358,7 +365,7 @@ export const getContentRequests = async (): Promise<ContentRequest[]> => {
 };
 
 export const deleteContentRequest = async (requestId: string): Promise<void> => {
-    await db.collection('content_requests').doc(requestId).delete();
+    await db.collection('requests').doc(requestId).delete();
 };
 
 export const addReport = async (reportData: { 

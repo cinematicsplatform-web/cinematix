@@ -54,7 +54,8 @@ service cloud.firestore {
     // --- Interactive Data ---
     
     // Content Requests (Create: Anyone, Read/Delete: Admin)
-    match /content_requests/{requestId} {
+    // تم توحيد الاسم إلى requests بحروف صغيرة
+    match /requests/{requestId} {
       allow create: if true;
       allow read, delete: if isAdmin();
     }

@@ -377,6 +377,10 @@ export interface SiteSettings {
     showTop10Home: boolean;
     showTop10Movies: boolean;
     showTop10Series: boolean;
+    showTop10Ramadan: boolean;
+    showTop10Kids: boolean;
+    showTop10Articles: boolean;
+    showTop10Users: boolean;
     serviceAccountJson?: string; 
     apkUrl?: string;
     appConfig?: AppConfig;

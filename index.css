@@ -300,6 +300,24 @@ a img {
     .video-player-wrapper {
         aspect-ratio: 16/9;
         width: 100%;
-        max-height: calc(100vh - 80px); /* Allow room for some UI but focus on video */
+        max-height: 100vh; /* Allow room for some UI but focus on video */
     }
+    
+    /* Hide some elements in tiny landscape to maximize video */
+    .video-player-wrapper h2 {
+        display: none;
+    }
+    
+    .video-player-wrapper .h-16 {
+        height: 40px;
+    }
+}
+
+/* Fullscreen API Fixes */
+:fullscreen .video-player-wrapper {
+    width: 100vw;
+    height: 100vh;
+    border: none;
+    border-radius: 0;
+    max-height: none;
 }

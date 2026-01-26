@@ -188,6 +188,10 @@ export const initialSiteSettings: SiteSettings = {
     showTop10Home: true,
     showTop10Movies: true,
     showTop10Series: true,
+    showTop10Ramadan: true,
+    showTop10Kids: true,
+    showTop10Articles: true,
+    showTop10Users: true,
     serviceAccountJson: '', 
     apkUrl: 'https://example.com/cinematix.apk', // Default APK URL
 };

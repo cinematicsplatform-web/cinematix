@@ -56,6 +56,16 @@ const ContentRequestPage: React.FC<ContentRequestPageProps> = ({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // فحص السبام: هل الزائر ده بعت طلب قريب؟
+        const lastRequestTime = localStorage.getItem('lastRequestTime');
+        const cooldownTime = 1000 * 60 * 60; // ساعة واحدة (60 دقيقة)
+
+        if (lastRequestTime && Date.now() - parseInt(lastRequestTime) < cooldownTime) {
+            addToast("⏳ مهلاً! يمكنك إرسال طلب واحد كل ساعة لتجنب الازدحام.", "info");
+            return; // وقف الدالة هنا
+        }
+
         if (!title.trim()) {
             addToast('الرجاء كتابة اسم العمل', 'error');
             return;
@@ -69,6 +79,10 @@ const ContentRequestPage: React.FC<ContentRequestPageProps> = ({
                 notes: notes.trim(),
                 userId: currentUser?.id || null,
             });
+            
+            // بعد نجاح الإرسال، سجل الوقت في التخزين المحلي
+            localStorage.setItem('lastRequestTime', Date.now().toString());
+
             addToast('تم إرسال طلبك بنجاح! سنعمل على توفيره قريباً.', 'success');
             setTitle('');
             setNotes('');
