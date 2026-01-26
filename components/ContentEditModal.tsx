@@ -135,6 +135,12 @@ const CalendarIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+const StackIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+    </svg>
+);
+
 // --- REFINED STYLES ---
 const INPUT_BG = "bg-[#161b22]"; 
 const BORDER_COLOR = "border-gray-700/50";
@@ -778,7 +784,6 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
         </div>
     );
 };
-
 interface ContentEditModalProps {
     content: Content | null;
     onClose: () => void; 
@@ -821,7 +826,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
     const [youTubeSearchState, setYouTubeSearchState] = useState<{ isOpen: boolean; targetId: 'main' | number | null }>({ isOpen: false, targetId: null });
 
-    // Fix: initialized galleryState with default values for imageType and onSelect to resolve 'type' and 'callback' not found errors.
     const [galleryState, setGalleryState] = useState<{
         isOpen: boolean;
         imageType: 'poster' | 'backdrop' | 'logo';
@@ -833,6 +837,15 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const globalFileInputRef = useRef<HTMLInputElement>(null);
     const movieExcelInputRef = useRef<HTMLInputElement>(null);
     
+    // --- NEW BULK ACTION STATES ---
+    const [bulkActionState, setBulkActionState] = useState<{
+        isOpen: boolean;
+        type: 'add' | 'delete';
+        seasonId: number | null;
+        startFrom: number;
+        endTo: number;
+    }>({ isOpen: false, type: 'add', seasonId: null, startFrom: 1, endTo: 10 });
+
     const [deleteSeasonState, setDeleteSeasonState] = useState<{
         isOpen: boolean;
         seasonId: number | null;
@@ -995,24 +1008,77 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         addToast(`تم تصفير بيانات قسم ${tabId} بنجاح.`, 'info');
     };
 
-    const handleClearSeasonMedia = (seasonId: number) => {
-        if (!confirm('هل أنت متأكد من مسح كافة حقول الميديا لهذا الموسم؟')) return;
+    // --- NEW LOGIC: BULK ADD & DELETE ---
+
+    const openBulkActionModal = (seasonId: number, type: 'add' | 'delete') => {
+        setBulkActionState({
+            isOpen: true,
+            type,
+            seasonId,
+            startFrom: 1,
+            endTo: 1
+        });
+    };
+
+    const executeBulkAction = () => {
+        const { type, seasonId, startFrom, endTo } = bulkActionState;
+        if (!seasonId) return;
+        if (endTo < startFrom) {
+            addToast("رقم البداية يجب أن يكون أصغر من أو يساوي رقم النهاية.", "error");
+            return;
+        }
+
         setFormData(prev => ({
             ...prev,
-            seasons: (prev.seasons || []).map(s => s.id === seasonId ? {
-                ...s,
-                poster: '',
-                backdrop: '',
-                horizontalPoster: '',
-                logoUrl: '',
-                mobileImageUrl: '',
-                trailerUrl: '',
-                adLink: '',
-                isUpcoming: false
-            } : s)
+            seasons: (prev.seasons || []).map(season => {
+                if (season.id !== seasonId) return season;
+
+                let updatedEpisodes = [...(season.episodes || [])];
+
+                if (type === 'add') {
+                    // Bulk Add Logic
+                    const newEpisodes: Episode[] = [];
+                    for (let i = startFrom; i <= endTo; i++) {
+                        // Check if episode already exists to avoid duplicates (optional, but good practice)
+                        const exists = updatedEpisodes.some(ep => parseInt(ep.title.replace(/\D/g, '') || '0') === i);
+                        if (!exists) {
+                            newEpisodes.push({
+                                id: Date.now() + i + Math.random(),
+                                title: `الحلقة ${i}`,
+                                duration: '',
+                                description: `شاهد أحداث الحلقة ${i} من الموسم ${season.seasonNumber}.`,
+                                thumbnail: season.backdrop || prev.backdrop || '',
+                                progress: 0,
+                                servers: []
+                            });
+                        }
+                    }
+                    updatedEpisodes = [...updatedEpisodes, ...newEpisodes];
+                } else {
+                    // Bulk Delete Logic
+                    updatedEpisodes = updatedEpisodes.filter(ep => {
+                        const epNum = parseInt(ep.title.replace(/\D/g, '') || '0');
+                        // Keep episode if it is OUTSIDE the range [startFrom, endTo]
+                        return epNum < startFrom || epNum > endTo;
+                    });
+                }
+
+                // Sort episodes by number
+                updatedEpisodes.sort((a, b) => {
+                    const numA = parseInt(a.title.replace(/\D/g, '') || '0');
+                    const numB = parseInt(b.title.replace(/\D/g, '') || '0');
+                    return numA - numB;
+                });
+
+                return { ...season, episodes: updatedEpisodes };
+            })
         }));
-        addToast('تم تصفير ميديا الموسم بنجاح.', 'info');
+
+        addToast(type === 'add' ? `تم إضافة الحلقات من ${startFrom} إلى ${endTo} بنجاح.` : `تم حذف الحلقات من ${startFrom} إلى ${endTo} بنجاح.`, "success");
+        setBulkActionState(prev => ({ ...prev, isOpen: false }));
     };
+
+    // ------------------------------------
 
     const renderImageInput = (
         label: string, 
@@ -2137,7 +2203,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             </div>
         );
     };
-
     return (
         <div className="flex h-screen w-full bg-[#090b10] text-gray-200 overflow-hidden font-sans selection:bg-[var(--color-accent)] selection:text-black" dir="rtl">
             <div 
@@ -2528,6 +2593,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     <button type="button" onClick={(e) => { e.stopPropagation(); handleUpdateSpecificSeasonFromTMDB(season.id, season.seasonNumber); }} className="flex items-center gap-1 p-2 hover:bg-blue-900/30 text-blue-400 rounded text-xs font-bold" title="تحديث هذا الموسم فقط"><RefreshIcon className="w-3 h-3"/> تحديث</button>
                                                     <input onClick={e => e.stopPropagation()} type="file" id={`excel-${season.id}`} className="hidden" accept=".xlsx" onChange={(e) => handleSeasonExcelImport(e, season.id, season.seasonNumber)}/>
                                                     <label htmlFor={`excel-${season.id}`} className="p-2 hover:bg-green-900/30 text-green-600 rounded cursor-pointer" title="استيراد حلقات"><ExcelIcon className="w-4 h-4"/></label>
+                                                    
+                                                    {/* --- NEW BULK ACTION BUTTONS --- */}
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); openBulkActionModal(season.id, 'add'); }} className="p-2 hover:bg-blue-600/10 text-blue-500 rounded font-bold text-[10px] flex items-center gap-1" title="إضافة حلقات متعددة"><StackIcon className="w-4 h-4"/> +</button>
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); openBulkActionModal(season.id, 'delete'); }} className="p-2 hover:bg-red-600/10 text-red-500 rounded font-bold text-[10px] flex items-center gap-1" title="حذف حلقات متعددة"><StackIcon className="w-4 h-4"/> -</button>
+                                                    
                                                     <button type="button" onClick={(e) => {e.stopPropagation(); handleAddEpisode(season.id)}} className="p-2 hover:bg-gray-800 text-blue-400 rounded" title="إضافة حلقة"><PlusIcon className="w-4 h-4"/></button>
                                                     <button type="button" onClick={(e) => { e.stopPropagation(); requestDeleteSeason(season.id, season.title || `الموسم ${season.seasonNumber}`); }} className="p-2 hover:bg-red-900/30 text-red-500 rounded" title="حذف الموسم"><TrashIcon className="w-4 h-4" /></button>
                                                 </div>
@@ -2751,6 +2821,46 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             {isManagingMovieServers && <ServerManagementModal episode={{id: 0, title: 'الفيلم', progress: 0, servers: formData.servers || []}} onClose={() => setIsManagingMovieServers(false)} onSave={handleUpdateMovieServers} />}
             <DeleteConfirmationModal isOpen={deleteSeasonState.isOpen} onClose={() => setDeleteSeasonState({ isOpen: false, seasonId: null, title: '' })} onConfirm={executeDeleteSeason} title="حذف الموسم" message={`هل أنت متأكد من حذف ${deleteSeasonState.title}؟`} />
             <DeleteConfirmationModal isOpen={deleteEpisodeState.isOpen} onClose={() => setDeleteEpisodeState({ isOpen: false, seasonId: null, episodeId: null, title: '' })} onConfirm={executeDeleteEpisode} title="حذف الحلقة" message={`هل أنت متأكد من حذف ${deleteEpisodeState.title}؟`} />
+            
+            {/* NEW: BULK ACTION MODAL */}
+            {bulkActionState.isOpen && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setBulkActionState(prev => ({ ...prev, isOpen: false }))}>
+                    <div className="w-full max-w-md bg-[#0f1014] border border-gray-800 rounded-2xl p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <StackIcon className="w-6 h-6 text-[var(--color-accent)]"/>
+                                {bulkActionState.type === 'add' ? 'إضافة حلقات متعددة' : 'حذف حلقات متعددة'}
+                            </h3>
+                            <button onClick={() => setBulkActionState(prev => ({ ...prev, isOpen: false }))} className="text-gray-400 hover:text-white"><CloseIcon className="w-5 h-5"/></button>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <label className={labelClass}>من الحلقة رقم</label>
+                                    <input type="number" min="1" value={bulkActionState.startFrom} onChange={(e) => setBulkActionState(prev => ({ ...prev, startFrom: parseInt(e.target.value) || 0 }))} className={inputClass} />
+                                </div>
+                                <div className="flex-1">
+                                    <label className={labelClass}>إلى الحلقة رقم</label>
+                                    <input type="number" min="1" value={bulkActionState.endTo} onChange={(e) => setBulkActionState(prev => ({ ...prev, endTo: parseInt(e.target.value) || 0 }))} className={inputClass} />
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-400 bg-gray-900 p-3 rounded border border-gray-800 leading-relaxed">
+                                {bulkActionState.type === 'add' 
+                                    ? `سيتم إضافة حلقات جديدة تبدأ من ${bulkActionState.startFrom} وتنتهي عند ${bulkActionState.endTo}. لن يتم تكرار الحلقات الموجودة بالفعل.`
+                                    : `تحذير: سيتم حذف جميع الحلقات التي تقع أرقامها بين ${bulkActionState.startFrom} و ${bulkActionState.endTo} نهائياً.`
+                                }
+                            </p>
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setBulkActionState(prev => ({ ...prev, isOpen: false }))} className="flex-1 rounded-lg bg-gray-800 py-2.5 text-sm font-bold text-gray-300 hover:bg-gray-700">إلغاء</button>
+                            <button onClick={executeBulkAction} className={`flex-1 rounded-lg py-2.5 text-sm font-bold text-white shadow-lg ${bulkActionState.type === 'add' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-red-600 hover:bg-red-500'}`}>
+                                {bulkActionState.type === 'add' ? 'تأكيد الإضافة' : 'تأكيد الحذف'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {youTubeSearchState.isOpen && (
                 <YouTubeSearchModal 
                     isOpen={youTubeSearchState.isOpen}

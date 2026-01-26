@@ -1,5 +1,8 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { PlayIcon } from './icons/PlayIcon';
+import { SpeakerIcon } from './icons/SpeakerIcon';
+import { ExpandIcon } from './icons/ExpandIcon';
 
 interface VideoPlayerProps {
   poster: string;
@@ -10,65 +13,79 @@ interface VideoPlayerProps {
   episode?: number;   
   ads?: any[];
   adsEnabled?: boolean;
+  title?: string;
+  onClose?: () => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, type, season, episode }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  // إضافة حالة للتحكم في السيرفر المختار (xyz, vip, 2embed)
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, type, season, episode, title, onClose }) => {
+  // Logic states
+  const [isServerLoading, setIsServerLoading] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [activeServerType, setActiveServerType] = useState<string>('server1'); 
   const [activeSource, setActiveSource] = useState<string | undefined>(undefined);
+  const isEpisodic = type === 'series' || type === 'program';
+
+  // Custom UI States
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [isVolumeHovered, setIsVolumeHovered] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [selectedQuality, setSelectedQuality] = useState('تلقائي');
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const qualities = [
+    { id: 'full-hd', label: 'Full HD', sub: 'اشترك للتفعيل', disabled: true },
+    { id: 'high', label: 'جودة عالية', value: '1080p' },
+    { id: 'medium', label: 'جودة متوسطة', value: '720p' },
+    { id: 'low', label: 'جودة منخفضة', value: '480p' },
+    { id: 'auto', label: 'تلقائي', value: 'تلقائي' }
+  ];
 
   useEffect(() => {
     let finalUrl = manualSrc;
     let shouldUseIsolation = false;
 
-    // Reset active source momentarily to trigger reload if source changes
     setActiveSource(undefined);
 
-    // 1. الأولوية للرابط اليدوي
     if (!finalUrl || finalUrl.trim() === '') {
-        // 2. إذا لم يوجد، نستخدم التلقائي
-        // Fallback to Automatic System if no manual URL provided
         if (tmdbId) {
-            // تحديد الرابط بناءً على السيرفر المختار من الأزرار
-            let domain = 'https://vidsrc.xyz/embed'; // الافتراضي (الأكثر استقراراً)
-
+            let domain = 'https://vidsrc.xyz/embed'; 
             if (activeServerType === 'server2') domain = 'https://vidsrc.vip/embed';
             if (activeServerType === 'server3') domain = 'https://www.2embed.cc/embed';
 
             if (activeServerType === 'server3') {
-                 // 2Embed له هيكلية مختلفة قليلاً
                  finalUrl = (type === 'movie' || type === 'video.movie')
                     ? `https://www.2embed.cc/embed/${tmdbId}`
                     : `https://www.2embed.cc/embedtv/${tmdbId}&s=${season || 1}&e=${episode || 1}`;
             } else {
-                // VidSrc (XYZ & VIP)
                 finalUrl = (type === 'movie' || type === 'video.movie')
                     ? `${domain}/movie/${tmdbId}`
                     : `${domain}/tv/${tmdbId}/${season || 1}/${episode || 1}`;
             }
-
             shouldUseIsolation = true;
         }
     }
 
     if (finalUrl && finalUrl.trim() !== '') {
-        setIsLoading(true);
-        
+        setIsServerLoading(true);
         if (shouldUseIsolation) {
-            // تمرير الرابط لصفحة العزل لكسر الحماية
             const encodedUrl = encodeURIComponent(finalUrl);
-            // Slight delay to ensure UI updates
             setTimeout(() => setActiveSource(`/embed.html?url=${encodedUrl}`), 50);
         } else {
-            // اليدوي يعمل مباشرة
             setTimeout(() => setActiveSource(finalUrl), 50);
         }
     } else {
         setActiveSource(undefined);
-        setIsLoading(false);
+        setIsServerLoading(false);
     }
-  }, [manualSrc, tmdbId, type, season, episode, activeServerType]); // أضفنا activeServerType للمراقبة
+  }, [manualSrc, tmdbId, type, season, episode, activeServerType]);
 
   const isDirectVideo = useMemo(() => {
     if (!activeSource) return false;
@@ -77,92 +94,314 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
     return videoExtensions.some(ext => cleanUrl.endsWith(ext));
   }, [activeSource]);
 
-  // --- مكون شاشة التحميل (محسن بـ Tailwind + معالجة الصور) ---
-  const LoadingOverlay = () => (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black transition-opacity duration-500">
-        {/* MODIFIED: Hidden the blurred image container to make it plain */}
-        <div className="absolute inset-0 z-0 hidden">
-            <img 
-                src={poster || 'https://placehold.co/1920x1080/101010/101010/png'} 
-                onError={(e) => { 
-                    const target = e.currentTarget;
-                    const fallback = 'https://placehold.co/1920x1080/000000/000000/png';
-                    if (target.src !== fallback) {
-                        target.src = fallback;
-                    }
-                }}
-                alt="Loading" 
-                className="w-full h-full object-cover opacity-30 blur-md scale-110" 
-            />
-        </div>
-        
-        <div className="absolute inset-0 bg-black/40 z-0"></div>
-        
-        <div className="relative z-10 flex flex-col items-center gap-6">
-             {/* أنيميشن النقاط باستخدام Tailwind مباشرة لضمان الظهور */}
-             <div className="flex gap-2 scale-125">
-                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
-             </div>
-             <p className="text-white font-bold text-lg tracking-wide animate-pulse drop-shadow-lg mt-4">جاري تحميل السيرفر يرجي الانتظار</p>
-        </div>
-    </div>
+  const togglePlay = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    // منع التشغيل/الإيقاف إذا كانت قائمة الجودة مفتوحة
+    if (isSettingsOpen) return; 
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play();
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+      setIsServerLoading(false);
+    }
+  };
+
+  const skip = (seconds: number) => {
+    if (isSettingsOpen) return;
+    if (videoRef.current) {
+      videoRef.current.currentTime += seconds;
+    }
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    if (videoRef.current) {
+      videoRef.current.currentTime = val;
+      setCurrentTime(val);
+    }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setVolume(val);
+    if (videoRef.current) {
+      videoRef.current.volume = val;
+      setIsMuted(val === 0);
+    }
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newMute = !isMuted;
+    setIsMuted(newMute);
+    if (videoRef.current) {
+      videoRef.current.muted = newMute;
+    }
+  };
+
+  const toggleFullscreen = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!containerRef.current) return;
+    
+    try {
+        if (!document.fullscreenElement) {
+            await containerRef.current.requestFullscreen();
+            setIsFullscreen(true);
+        } else {
+            if (document.exitFullscreen) {
+                await document.exitFullscreen();
+            }
+            setIsFullscreen(false);
+        }
+    } catch (err: any) {
+        console.error(`Error toggling fullscreen: ${err.message}`);
+    }
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isSettingsOpen) return;
+    toggleFullscreen(e);
+  };
+
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return "00:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  const handleMouseMove = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => {
+      if (isPlaying && !isSettingsOpen) setShowControls(false);
+    }, 3000);
+  };
+
+  // --- ICONS ---
+  const RewindIcon = () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 md:w-8 md:h-8"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/><text x="12" y="15" fontSize="6" fontWeight="bold" textAnchor="middle" fill="currentColor">10</text></svg>
   );
-
-  // --- حالة عدم وجود سيرفر ---
-  if (!activeSource && !isLoading) {
-    return (
-      <div className="aspect-video w-full bg-black rounded-xl overflow-hidden relative group flex items-center justify-center p-4 border border-gray-800">
-        {/* MODIFIED: Hidden the blurred image container to make it plain */}
-        <div className="absolute inset-0 z-0 hidden">
-            <img 
-                src={poster || 'https://placehold.co/1920x1080/101010/101010/png'} 
-                onError={(e) => { 
-                    const target = e.currentTarget;
-                    const fallback = 'https://placehold.co/1920x1080/000000/000000/png';
-                    if (target.src !== fallback) {
-                        target.src = fallback;
-                    }
-                }}
-                alt="Poster" 
-                className="w-full h-full object-cover opacity-40 blur-md" 
-            />
-        </div>
-        
-        <div className="absolute inset-0 bg-black/50 z-10"></div>
-
-        <div className="relative z-20 bg-black/60 backdrop-blur-md p-6 rounded-2xl border border-gray-800 text-center animate-fade-in-up">
-            <h3 className="text-xl md:text-2xl font-bold text-white">الرجاء اختيار سيرفر للمشاهدة</h3>
-            <p className="text-gray-300 mt-2 text-sm">اختر أحد السيرفرات من القائمة أعلاه لبدء العرض</p>
-        </div>
-      </div>
-    );
-  }
+  const ForwardIcon = () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 md:w-8 md:h-8"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/><text x="12" y="15" fontSize="6" fontWeight="bold" textAnchor="middle" fill="currentColor">10</text></svg>
+  );
+  const SettingsIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 md:w-6 md:h-6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  );
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="aspect-video w-full bg-black rounded-xl overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] relative video-player-wrapper group border border-gray-800">
-        
-        {isLoading && <LoadingOverlay />}
+      <div 
+        ref={containerRef}
+        className="aspect-video w-full bg-black rounded-xl overflow-hidden shadow-2xl relative video-player-wrapper group border border-gray-800"
+        onMouseMove={handleMouseMove}
+        onDoubleClick={handleDoubleClick}
+      >
+        {/* Server Loading Overlay */}
+        {isServerLoading && (
+            <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-black">
+                <div className="flex gap-2 scale-125 mb-4">
+                    <div className="w-3 h-3 bg-[#00cba9] rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    <div className="w-3 h-3 bg-[#00cba9] rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="w-3 h-3 bg-[#00cba9] rounded-full animate-bounce"></div>
+                </div>
+                <p className="text-white font-bold text-lg animate-pulse font-['Cairo']">جاري تحميل السيرفر يرجى الانتظار</p>
+            </div>
+        )}
+
+        {/* Buffering Spinner */}
+        {isBuffering && !isServerLoading && (
+            <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
+                <div className="w-12 h-12 border-4 border-white/20 border-t-[#00cba9] rounded-full animate-spin"></div>
+            </div>
+        )}
 
         {activeSource && (
             <div className="absolute inset-0 z-10">
                 {isDirectVideo ? (
-                    <video
-                        key={activeSource} 
-                        controls
-                        autoPlay
-                        poster={poster}
-                        className="w-full h-full bg-black"
-                        onLoadedData={() => setIsLoading(false)}
-                        onWaiting={() => setIsLoading(true)}
-                        onPlaying={() => setIsLoading(false)}
-                        playsInline
-                    >
-                        <source src={activeSource} type={activeSource.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'} />
-                        عفواً، متصفحك لا يدعم تشغيل الفيديوهات.
-                    </video>
+                    <div className="relative w-full h-full" onClick={togglePlay}>
+                        <video
+                            ref={videoRef}
+                            key={activeSource} 
+                            poster={poster}
+                            className="w-full h-full bg-black object-contain"
+                            onTimeUpdate={handleTimeUpdate}
+                            onLoadedMetadata={handleLoadedMetadata}
+                            onWaiting={() => setIsBuffering(true)}
+                            onPlaying={() => { setIsBuffering(false); setIsPlaying(true); }}
+                            onPlay={() => setIsPlaying(true)}
+                            onPause={() => setIsPlaying(false)}
+                            playsInline
+                        >
+                            <source src={activeSource} type={activeSource.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'} />
+                        </video>
+
+                        {/* --- Custom Overlay UI --- */}
+                        <div className={`absolute inset-0 z-50 flex flex-col justify-between transition-opacity duration-300 pointer-events-none ${showControls || isSettingsOpen ? 'opacity-100' : 'opacity-0'}`} 
+                             style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 25%, rgba(0,0,0,0) 75%, rgba(0,0,0,0.9) 100%)' }}>
+                            
+                            {/* Top Bar - Info */}
+                            <div className="flex items-start justify-between p-4 md:p-6 pointer-events-auto relative h-16 md:h-20">
+                                <div className="w-8 md:w-10"></div> 
+                                <div className="flex flex-col items-center text-center px-4 overflow-hidden">
+                                    <h2 className="text-sm md:text-xl font-black text-white drop-shadow-lg font-['Cairo'] truncate w-full">{title || "اسم العمل"}</h2>
+                                    <span className="text-[10px] md:text-xs text-gray-300 font-bold opacity-80 font-['Cairo']">{isEpisodic ? `الموسم ${season || 1}: الحلقة ${episode || 1}` : ""}</span>
+                                </div>
+                                <div className="w-8 md:w-10"></div> 
+                            </div>
+
+                            {/* Blocking Layer: يظهر عند فتح القوائم لمنع التفاعل مع أجزاء المشغل الأخرى */}
+                            {isSettingsOpen && (
+                                <div 
+                                    className="absolute inset-0 z-[150] bg-black/5 pointer-events-auto cursor-default"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsSettingsOpen(false);
+                                    }}
+                                />
+                            )}
+
+                            {/* Middle Play Button */}
+                            {!isPlaying && !isBuffering && !isSettingsOpen && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="w-16 h-16 md:w-20 md:h-20 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 shadow-2xl">
+                                        <PlayIcon className="w-8 h-8 md:w-10 md:h-10 text-white translate-x-1" />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Bottom Controls Area */}
+                            <div className="p-4 md:p-6 space-y-3 md:space-y-4 pointer-events-auto" onClick={e => e.stopPropagation()} dir="ltr">
+                                {/* Quality Menu */}
+                                {isSettingsOpen && (
+                                    <div className="absolute bottom-16 md:bottom-20 right-4 z-[200] w-56 md:w-64 bg-[#0a0c10]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up pointer-events-auto">
+                                        <div className="bg-white/5 py-3 md:py-4 text-center border-b border-white/10">
+                                            <span className="text-sm md:text-lg font-black text-white font-['Cairo'] tracking-wide">الجودة</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            {qualities.map((q) => (
+                                                <button 
+                                                    key={q.id}
+                                                    disabled={(q as any).disabled}
+                                                    onClick={() => { if(!(q as any).disabled) { setSelectedQuality(q.label); setIsSettingsOpen(false); } }}
+                                                    className={`group relative py-2.5 md:py-3 px-4 md:px-6 text-center border-b border-white/5 last:border-0 transition-all hover:bg-white/5 flex flex-col items-center justify-center
+                                                        ${(q as any).disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+                                                        ${selectedQuality === q.label ? 'text-[#00cba9]' : 'text-white'}
+                                                    `}
+                                                >
+                                                    <div className="flex items-center justify-center gap-3 w-full">
+                                                        <div className="flex flex-col items-center">
+                                                            <span className={`text-sm md:text-base font-bold font-['Cairo'] ${selectedQuality === q.label ? 'text-[#00cba9]' : ''}`}>{q.label}</span>
+                                                            {(q as any).sub && (
+                                                                <span className="text-[8px] md:text-[10px] text-gray-400 font-['Cairo'] mt-0.5">{(q as any).sub}</span>
+                                                            )}
+                                                        </div>
+                                                        {selectedQuality === q.label && (
+                                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#00cba9]">
+                                                                <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Progress Bar */}
+                                <div className="relative h-1 md:h-1.5 flex items-center group/progress cursor-pointer">
+                                    <div className="absolute w-full h-full bg-white/20 rounded-full"></div>
+                                    <div 
+                                        className="absolute h-full bg-[#00cba9] rounded-full flex items-center justify-end"
+                                        style={{ width: `${(currentTime/duration)*100}%` }}
+                                    >
+                                        <div className="w-3 h-3 md:w-3.5 md:h-3.5 bg-white rounded-full shadow-xl border border-gray-400 absolute right-0 translate-x-1/2 scale-100 md:scale-0 md:group-hover/progress:scale-100 transition-transform"></div>
+                                    </div>
+                                    <input 
+                                        type="range" min="0" max={duration || 100} value={currentTime} onChange={handleSeek}
+                                        className="absolute w-full h-full opacity-0 cursor-pointer z-10"
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2">
+                                    {/* Left Group */}
+                                    <div className="flex items-center gap-2 md:gap-6 w-fit md:w-1/3">
+                                        <button onClick={togglePlay} className="text-white hover:scale-110 transition-transform shrink-0">
+                                            {isPlaying ? (
+                                                <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 md:w-10 md:h-10"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                                            ) : (
+                                                <PlayIcon className="w-6 h-6 md:w-10 md:h-10" />
+                                            )}
+                                        </button>
+                                        <div className="flex items-center gap-2 md:gap-4">
+                                            <button onClick={() => skip(-10)} className="text-white hover:text-[#00cba9] transition-colors shrink-0"><RewindIcon /></button>
+                                            <button onClick={() => skip(10)} className="text-white hover:text-[#00cba9] transition-colors shrink-0"><ForwardIcon /></button>
+                                        </div>
+                                        
+                                        <div 
+                                            className="hidden md:flex items-center gap-2 group/volume relative"
+                                            onMouseEnter={() => setIsVolumeHovered(true)}
+                                            onMouseLeave={() => setIsVolumeHovered(false)}
+                                        >
+                                            <button onClick={toggleMute} className="text-white hover:text-[#00cba9] transition-colors z-10">
+                                                <SpeakerIcon isMuted={isMuted} className="w-7 h-7" />
+                                            </button>
+                                            <div className={`flex items-center relative transition-all duration-300 ease-in-out overflow-visible ${isVolumeHovered ? 'w-24 opacity-100 ml-2' : 'w-0 opacity-0 ml-0'}`}>
+                                                <div className="absolute w-full h-1 bg-white/20 rounded-full"></div>
+                                                <div 
+                                                    className="absolute h-1 bg-[#00cba9] rounded-full flex items-center justify-end" 
+                                                    style={{ width: `${volume * 100}%` }}
+                                                >
+                                                    <div className="w-3 h-3 bg-white rounded-full shadow-lg border border-gray-400 translate-x-1/2"></div>
+                                                </div>
+                                                <input 
+                                                    type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolumeChange}
+                                                    className="relative w-full h-4 opacity-0 cursor-pointer z-20" 
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Center Time */}
+                                    <div className="flex-1 flex justify-center items-center">
+                                        <span className="text-[10px] md:text-base font-mono font-bold tracking-tighter opacity-90 text-white drop-shadow whitespace-nowrap" dir="ltr">
+                                            {formatTime(currentTime)} / {formatTime(duration)}
+                                        </span>
+                                    </div>
+
+                                    {/* Right Group */}
+                                    <div className="flex items-center justify-end gap-2 md:gap-6 w-fit md:w-1/3">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(!isSettingsOpen); }}
+                                            className={`text-white hover:text-[#00cba9] transition-all transform shrink-0 ${isSettingsOpen ? 'rotate-90 text-[#00cba9]' : 'rotate-0'}`}
+                                            title="جودة المشاهدة"
+                                        >
+                                            <SettingsIcon />
+                                        </button>
+                                        <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform shrink-0"><ExpandIcon className="w-6 h-6 md:w-7 md:h-7" /></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 ) : (
                     <iframe
                         key={activeSource}
@@ -173,40 +412,50 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         className="w-full h-full border-none" 
                         title="Cinematix Player"
-                        onLoad={() => setIsLoading(false)}
+                        onLoad={() => setIsServerLoading(false)}
                     />
                 )}
             </div>
         )}
       </div>
 
-      {/* أزرار التبديل (تظهر فقط إذا لم يكن هناك رابط يدوي - النظام التلقائي) */}
+      {/* Server Selection Toolbar */}
       {!manualSrc && tmdbId && (
-        <div className="flex flex-wrap gap-2 justify-center bg-gray-900/50 p-3 rounded-lg border border-white/5 animate-fade-in-up">
-          <span className="text-xs text-gray-400 self-center ml-2 font-bold">سيرفرات تلقائية:</span>
-          
-          <button 
-            onClick={() => setActiveServerType('server1')}
-            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold target-server-btn ${activeServerType === 'server1' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-          >
-            VidSrc (XYZ)
-          </button>
-          
-          <button 
-            onClick={() => setActiveServerType('server2')}
-            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold target-server-btn ${activeServerType === 'server2' ? 'bg-purple-600 text-white shadow-lg' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-          >
-            Cinematix VIP
-          </button>
-          
-           <button 
-            onClick={() => setActiveServerType('server3')}
-            className={`px-4 py-1.5 text-xs rounded-full transition-all font-bold target-server-btn ${activeServerType === 'server3' ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-          >
-            2Embed (Backup)
-          </button>
+        <div className="flex flex-wrap gap-2 justify-center bg-gray-900/50 p-3 md:p-4 rounded-2xl border border-white/5 animate-fade-in-up" dir="rtl">
+          <span className="text-[10px] md:text-xs text-gray-400 self-center ml-1 md:ml-2 font-black uppercase tracking-widest font-['Cairo']">سيرفرات تلقائية</span>
+          {[
+              { id: 'server1', label: 'VidSrc (XYZ)', color: 'bg-blue-600' },
+              { id: 'server2', label: 'Cinematix VIP', color: 'bg-purple-600' },
+              { id: 'server3', label: '2Embed (Backup)', color: 'bg-green-600' }
+          ].map(srv => (
+            <button 
+                key={srv.id}
+                onClick={() => setActiveServerType(srv.id)}
+                className={`px-3 py-1.5 md:px-5 md:py-2 text-[10px] md:text-xs rounded-xl transition-all font-black font-['Cairo'] ${activeServerType === srv.id ? `${srv.color} text-white shadow-xl scale-105` : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+            >
+                {srv.label}
+            </button>
+          ))}
         </div>
       )}
+      <style>{`
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #00cba9;
+            box-shadow: 0 0 10px rgba(0,203,169,0.4);
+        }
+        @media (max-width: 768px) {
+            input[type=range]::-webkit-slider-thumb {
+                width: 12px;
+                height: 12px;
+            }
+        }
+      `}</style>
     </div>
   );
 };

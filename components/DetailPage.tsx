@@ -51,6 +51,13 @@ export const UserIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const SortIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M7 4v16M7 20l-4-4M7 20l4-4"/>
+    <path d="M17 20V4M17 4l-4 4M17 4l4 4"/>
+  </svg>
+);
+
 const DetailPage: React.FC<DetailPageProps> = ({
   content,
   people,
@@ -97,6 +104,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isDownloadErrorOpen, setIsDownloadErrorOpen] = useState(false);
   const [isInView, setIsInView] = useState(true);
+  const [isDescending, setIsDescending] = useState(false);
    
   const heroRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -168,6 +176,11 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   const currentSeason = useMemo(() => content?.seasons?.find(s => s.id === selectedSeasonId), [content?.seasons, selectedSeasonId]);
   const episodes = useMemo(() => currentSeason?.episodes || [], [currentSeason]);
+
+  const sortedEpisodes = useMemo(() => {
+    const list = episodes.map((ep, idx) => ({ ...ep, originalNumber: idx + 1 }));
+    return isDescending ? [...list].reverse() : list;
+  }, [episodes, isDescending]);
   
   const displayBackdrop = currentSeason?.backdrop || content?.backdrop || '';
   const displayLogo = currentSeason?.logoUrl || content?.logoUrl || '';
@@ -372,7 +385,17 @@ const DetailPage: React.FC<DetailPageProps> = ({
     return allContent.filter(c => c.id !== content.id && c.categories.some(cat => content.categories.includes(cat))).slice(0, 10);
   }, [content, allContent]);
 
-  const activeTabClass = isRamadanTheme ? 'text-white border-[#FFD700]' : isEidTheme ? 'text-white border-purple-500' : isCosmicTealTheme ? 'text-white border-[#35F18B]' : isNetflixRedTheme ? 'text-white border-[#E50914]' : 'text-white border-[#00A7F8]';
+  // FIXED: Active tab class explicitly includes border color for visibility
+  const activeTabClass = isRamadanTheme 
+    ? 'text-white border-[#FFD700]' 
+    : isEidTheme 
+        ? 'text-white border-purple-500' 
+        : isCosmicTealTheme 
+            ? 'text-white border-[#35F18B]' 
+            : isNetflixRedTheme 
+                ? 'text-white border-[#E50914]' 
+                : 'text-white border-[#00A7F8]';
+                
   const tabHoverClass = 'text-gray-400 border-transparent hover:text-white';
 
   const activeSeasonHighlight = isRamadanTheme ? 'text-[#FFD700]' : isEidTheme ? 'text-purple-400' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]';
@@ -690,6 +713,20 @@ const DetailPage: React.FC<DetailPageProps> = ({
                   <button onClick={() => setActiveTab('details')} className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'details' ? activeTabClass : tabHoverClass}`}>التفاصيل</button>
                   <button onClick={() => setActiveTab('related')} className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'related' ? activeTabClass : tabHoverClass}`}>أعمال مشابهة</button>
               </div>
+
+              {/* Sorting Toggle Icon */}
+              {activeTab === 'episodes' && isEpisodic && (
+                <button 
+                  onClick={() => setIsDescending(!isDescending)}
+                  className={`flex items-center gap-2 p-2 rounded-lg transition-all duration-300 border border-transparent ${isDescending ? 'bg-white/10 text-white border-white/10' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                  title={isDescending ? "ترتيب تنازلي (الأحدث أولاً)" : "ترتيب تصاعدي (الأقدم أولاً)"}
+                >
+                  <span className="text-xs font-bold hidden sm:block">
+                    {isDescending ? 'الأحدث أولاً' : 'الأقدم أولاً'}
+                  </span>
+                  <SortIcon className={`w-6 h-6 ${isDescending ? (isRamadanTheme ? 'text-[#FFD700]' : isNetflixRedTheme ? 'text-[#E50914]' : isCosmicTealTheme ? 'text-[#35F18B]' : 'text-[#00A7F8]') : ''}`} />
+                </button>
+              )}
           </div>
       </div>
 
@@ -698,8 +735,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
               <div className="w-full px-4 pt-8 md:px-8 animate-fade-in-up">
                   {isEpisodic ? (
                       <div className="mb-10 grid grid-cols-1 gap-4 pb-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                          {isLoaded ? episodes.map((ep, index) => {
-                              const eNum = index + 1;
+                          {isLoaded ? sortedEpisodes.map((ep: any, index) => {
+                              const eNum = ep.originalNumber;
                               const sNum = currentSeason?.seasonNumber || 1;
                               const watchUrl = `/watch/${seriesSlug}/${sNum}/${eNum}`;
                               

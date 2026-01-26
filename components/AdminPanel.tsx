@@ -18,6 +18,9 @@ import AppConfigTab from './admin/AppConfigTab';
 import PeopleManagerTab from './admin/PeopleManagerTab';
 import ContentRadarTab from './admin/ContentRadarTab';
 
+// --- PROPER TYPE DEFINITION ---
+type AdminTab = 'dashboard' | 'content' | 'content_radar' | 'top_content' | 'top10' | 'stories' | 'people' | 'users' | 'requests' | 'reports' | 'ads' | 'themes' | 'settings' | 'analytics' | 'notifications' | 'alerts' | 'app_config';
+
 // --- PROFESSIONAL ICONS FOR SIDEBAR ---
 const HomeIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
@@ -88,11 +91,23 @@ const ExitIcon = (props: React.SVGProps<SVGSVGElement>) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
     </svg>
 );
-const TrashIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 0-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 0-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
 );
 const TimerIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+);
+
+const RefreshIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+    </svg>
+);
+
+const RadarIconFixed = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9s2.015-9 4.5-9m0 18c-5.965 0-10.8-4.03-10.8-9S6.035 3 12 3" />
+    </svg>
 );
 
 const getAccessToken = async (serviceAccountJson: string): Promise<string | null> => {
@@ -176,27 +191,22 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     });
 
     const prevRadarCountRef = useRef(0);
-    const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; type: 'content' | 'user' | 'ad' | 'pinned' | 'story' | 'broadcast' | 'report' | 'radar'; id: string; title?: string; meta?: any; }>({ isOpen: false, type: 'content', id: '' });
+    const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; type: 'content' | 'user' | 'ad' | 'pinned' | 'story' | 'broadcast' | 'report' | 'radar' | 'request'; id: string; title?: string; meta?: any; }>({ isOpen: false, type: 'content', id: '' });
 
-    // Persist dismissed alerts
     useEffect(() => {
         localStorage.setItem('cinematix_dismissed_radar_alerts', JSON.stringify(dismissedAlerts));
     }, [dismissedAlerts]);
 
-    // Detect new notifications and play sound
     useEffect(() => {
         if (radarCount > prevRadarCountRef.current) {
-            // iPhone style notification sound
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             audio.play().catch(e => console.debug("Audio play blocked", e));
         }
         prevRadarCountRef.current = radarCount;
     }, [radarCount]);
 
-    // Handle quick disappearance of badge when visiting alerts tab
     useEffect(() => {
         if (activeTab === 'alerts' && radarCount > 0) {
-            // Mark all currently alerting as dismissed if user opens alerts tab
         }
     }, [activeTab, radarCount]);
 
@@ -215,7 +225,6 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
         };
         getContent();
         
-        // --- UPDATED: Fetch radar count with dismiss filter ---
         const refreshRadarBadge = () => {
             getReleaseSchedules().then(schedules => {
                 const now = new Date();
@@ -223,7 +232,6 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 const todayStr = now.toDateString();
                 
                 const pendingToday = schedules.filter(s => {
-                    // Unique ID for this specific publication instance
                     const alertId = `${s.id}_${todayStr}_${s.nextEpisodeNumber || 0}`;
                     if (dismissedAlerts.includes(alertId)) return false;
 
@@ -233,7 +241,6 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                     const isScheduledToday = s.daysOfWeek.includes(today);
                     if (!isScheduledToday || !s.isActive || alreadyPublished) return false;
 
-                    // TIME CHECK: Only alert if the scheduled time has arrived or passed
                     const [h, m] = s.time.split(':').map(Number);
                     const scheduledTime = new Date();
                     scheduledTime.setHours(h, m, 0, 0);
@@ -252,7 +259,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
         };
 
         refreshRadarBadge();
-        const interval = setInterval(refreshRadarBadge, 60000); // Re-check every minute
+        const interval = setInterval(refreshRadarBadge, 60000); 
         return () => clearInterval(interval);
     }, [dismissedAlerts]); 
 
@@ -281,6 +288,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const confirmDeleteBroadcast = (id: string, title: string) => { setDeleteModalState({ isOpen: true, type: 'broadcast', id, title }); };
     const confirmDeleteReport = (id: string, title: string) => { setDeleteModalState({ isOpen: true, type: 'report', id, title }); };
     const confirmDeleteRadar = (id: string, title: string) => { setDeleteModalState({ isOpen: true, type: 'radar', id, title }); };
+    const confirmDeleteRequest = (id: string, title: string) => { setDeleteModalState({ isOpen: true, type: 'request', id, title }); };
     
     const executeDelete = async () => { 
         const { type, id } = deleteModalState; 
@@ -301,6 +309,14 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             } catch (e) { 
                 props.addToast('فشل الحذف', 'error'); 
             }
+        } else if (type === 'request') {
+            try {
+                await deleteContentRequest(id);
+                props.addToast('تم حذف الطلب بنجاح.', 'success');
+                props.onContentChanged(); 
+            } catch (e) {
+                props.addToast('فشل حذف الطلب', 'error');
+            }
         }
         setDeleteModalState(prev => ({ ...prev, isOpen: false })); 
     };
@@ -313,7 +329,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
         switch(activeTab) {
             case 'content': return <ContentManagementTab content={allContent} onEdit={openContentModalForEdit} onNew={openContentModalForNew} onRequestDelete={confirmDeleteContent} isLoading={isLoadingContent} addToast={props.addToast} onBulkSuccess={props.onContentChanged} />;
             case 'users': return <UserManagementTab users={props.allUsers} onAddAdmin={props.onAddAdmin} onRequestDelete={confirmDeleteUser} addToast={props.addToast} />;
-            case 'requests': return <RequestsTab addToast={props.addToast} serviceAccountJson={props.siteSettings.serviceAccountJson} />;
+            case 'requests': return <RequestsTab addToast={props.addToast} serviceAccountJson={props.siteSettings.serviceAccountJson} onRequestDelete={confirmDeleteRequest} />;
             case 'reports': return <ReportsManagementTab addToast={props.addToast} onRequestDelete={confirmDeleteReport} />;
             case 'ads': return <AdsManagementTab ads={props.allAds} onNew={openAdModalForNew} onEdit={openAdModalForEdit} onRequestDelete={confirmDeleteAd} onUpdateAd={props.onUpdateAd} />;
             case 'top_content': return <PinnedContentManagementTab allContent={allContent} pinnedState={props.pinnedItems} setPinnedItems={props.onSetPinnedItems} />;
@@ -322,7 +338,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             case 'settings': return <SiteSettingsTab siteSettings={props.siteSettings} onSetSiteSettings={props.onSetSiteSettings} allContent={allContent} addToast={props.addToast} />;
             case 'notifications': return <NotificationTab addToast={props.addToast} serviceAccountJson={props.siteSettings.serviceAccountJson} allUsers={props.allUsers} onRequestDelete={confirmDeleteBroadcast} />;
             case 'stories': return <ManageStories addToast={props.addToast} />;
-            case 'analytics': return <AnalyticsTab allContent={allContent} allUsers={props.allUsers}/>;
+            case 'analytics': return <AnalyticsTab allContent={allContent} border-gray-700 allUsers={props.allUsers}/>;
             case 'app_config': return <AppConfigTab settings={props.siteSettings} onUpdate={props.onSetSiteSettings} />;
             case 'people': return <PeopleManagerTab addToast={props.addToast} />;
             case 'content_radar': return <ContentRadarTab addToast={props.addToast} onRequestDelete={confirmDeleteRadar} onEditContent={openContentModalForEdit} allPublishedContent={allContent} />;
@@ -390,7 +406,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                     <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-2 text-right">Main Menu</div>
                     {navItems.map(item => (
                         <button 
-                            key={item.id}
+                            key={item.id} 
                             onClick={() => {
                                 setActiveTab(item.id);
                                 setIsSidebarOpen(false);
@@ -473,6 +489,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                     deleteModalState.type === 'broadcast' ? 'سحب الإشعار' : 
                     deleteModalState.type === 'report' ? 'حذف البلاغ' : 
                     deleteModalState.type === 'radar' ? 'حذف تخصيص رادار البحث' : 
+                    deleteModalState.type === 'request' ? 'حذف الطلب' :
                     'حذف'
                 } 
                 message={`هل أنت متأكد من حذف "${deleteModalState.title}"؟ لا يمكن التراجع عن هذا الإجراء.`} 
@@ -583,17 +600,14 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
         const last45Days = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         
-        // Logic Adjustment: Use discover for localized regions even in 'Now Playing' because standard endpoint is often empty
         const dateFilter = isStrict ? yesterday : (mode === 'now_playing' ? last45Days : lastWeek);
         
         let moviesUrl = '';
         let tvUrl = '';
 
-        // Base URLs (Always use discover for type-based specific filtering)
         moviesUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&primary_release_date.gte=${dateFilter}&sort_by=popularity.desc&language=ar-SA&include_adult=false`;
         tvUrl = `https://api.themoviedb.org/3/discover/tv?api_key=${TMDB_API_KEY}&first_air_date.gte=${dateFilter}&sort_by=popularity.desc&language=ar-SA&include_adult=false`;
 
-        // Apply Independent Category Filters
         if (category === 'arabic_movies') moviesUrl += '&with_original_language=ar';
         if (category === 'arabic_series') tvUrl += '&with_original_language=ar';
         if (category === 'turkish_movies') moviesUrl += '&with_original_language=tr';
@@ -614,7 +628,6 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
             let movies = (moviesRes.results || []).map((i: any) => ({ ...i, media_type: 'movie' }));
             let tv = (tvRes.results || []).map((i: any) => ({ ...i, media_type: 'tv' }));
             
-            // Re-apply strict date filtering for "Now Playing" mode to ensure it feels "Live"
             if (isStrict) {
                 movies = movies.filter((m: any) => m.release_date >= yesterday);
                 tv = tv.filter((t: any) => t.first_air_date >= yesterday);
@@ -622,7 +635,6 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
 
             let combined = [...movies, ...tv];
             
-            // Filter by type if specifically requested (for independent view)
             if (category.includes('movies')) combined = movies;
             if (category.includes('series')) combined = tv;
 
@@ -638,7 +650,6 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
         fetchTmdbRadar(radarType, radarMode, strict24h);
     }, [radarType, radarMode, strict24h]);
 
-    // ✅ UPDATED: Exact 8 Independent Category Buttons requested by user
     const categoryButtons = [
         { id: 'all', label: 'الكل', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
         { id: 'arabic_movies', label: 'أفلام عربي', color: 'bg-green-500/10 text-green-400 border-green-500/30' },
@@ -727,7 +738,7 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
                 <div className="px-8 py-7 border-b border-gray-700/50 flex justify-between items-center bg-black/20">
                     <div className="flex items-center gap-4">
                         <div className="p-3.5 bg-red-600/20 text-red-500 rounded-2xl animate-pulse shadow-inner">
-                            <RadarIcon className="w-7 h-7" />
+                            <RadarIconFixed className="w-7 h-7" />
                         </div>
                         <div>
                             <h3 className="font-black text-xl text-white">رصد TMDB الذكي: <span className="text-red-500">{currentCategoryLabel}</span></h3>
@@ -769,7 +780,6 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
                                     <div className="aspect-[2/3] relative overflow-hidden">
                                         <img src={item.poster_path ? `https://image.tmdb.org/t/p/w400${item.poster_path}` : 'https://placehold.co/400x600/101010/white?text=No+Poster'} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="" />
                                         
-                                        {/* Simplified Label (No Nationality word) */}
                                         <div className="absolute top-2 right-2 bg-black/80 backdrop-blur-md px-3 py-1 rounded-lg text-[10px] font-black text-white border border-white/10 shadow-xl z-20 flex items-center gap-1.5 ring-1 ring-white/5">
                                             {getOriginLabel(item)}
                                         </div>
@@ -778,7 +788,6 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
                                             ID: {item.id}
                                         </div>
 
-                                        {/* Bottom Metadata */}
                                         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/80 to-transparent flex flex-col items-start gap-2">
                                             <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${item.media_type === 'movie' ? 'bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)]' : 'bg-purple-600 shadow-[0_0_10px_rgba(147,51,234,0.4)]'}`}>
                                                 {item.media_type === 'movie' ? 'فيلم' : 'مسلسل'}
@@ -802,14 +811,88 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
     );
 }
 
-const ContentManagementTab: React.FC<any> = ({content, onEdit, onNew, onRequestDelete, isLoading, addToast, onBulkSuccess}) => { 
+const ContentManagementTab: React.FC<any> = ({ onEdit, onNew, onRequestDelete, addToast, onBulkSuccess }) => { 
     const [searchTerm, setSearchTerm] = useState(''); 
-    const filteredContent = content.filter((c:any) => (c.title || '').toLowerCase().includes(searchTerm.toLowerCase())); 
+    const [pagedContent, setPagedContent] = useState<Content[]>([]);
+    const [isInternalLoading, setIsInternalLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalContentCount, setTotalContentCount] = useState(0);
+    
+    const itemsPerPage = 20;
+    const pagesPerGroup = 10;
+
+    const currentGroup = Math.floor((currentPage - 1) / pagesPerGroup);
+
     const excelInputRef = React.useRef<HTMLInputElement>(null); 
     const [processingExcel, setProcessingExcel] = useState(false); 
     const [progress, setProgress] = useState(''); 
     const API_KEY = 'b8d66e320b334f4d56728d98a7e39697'; 
     const LANG = 'ar-SA'; 
+
+    useEffect(() => {
+        const fetchMetadata = async () => {
+            try {
+                const snap = await db.collection("content").get();
+                setTotalContentCount(snap.size);
+            } catch (e) { console.error(e); }
+        };
+        fetchMetadata();
+    }, []);
+
+    useEffect(() => {
+        if (searchTerm.trim() === '') {
+            fetchPage(currentPage);
+        } else {
+            handleGlobalSearch();
+        }
+    }, [currentPage, searchTerm]);
+
+    const fetchPage = async (page: number) => {
+        setIsInternalLoading(true);
+        try {
+            const query = db.collection("content").orderBy("updatedAt", "desc");
+            const offset = (page - 1) * itemsPerPage;
+            
+            let finalQuery;
+            if (offset > 0) {
+                const skipSnapshot = await query.limit(offset).get();
+                const lastVisible = skipSnapshot.docs[skipSnapshot.docs.length - 1];
+                if (lastVisible) {
+                    finalQuery = query.startAfter(lastVisible).limit(itemsPerPage);
+                } else {
+                    finalQuery = query.limit(itemsPerPage);
+                }
+            } else {
+                finalQuery = query.limit(itemsPerPage);
+            }
+
+            const snap = await finalQuery.get();
+            const docs = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Content[];
+            setPagedContent(docs);
+        } catch (e) {
+            console.error(e);
+            addToast("خطأ في جلب الصفحة", "error");
+        }
+        setIsInternalLoading(false);
+    };
+
+    const handleGlobalSearch = async () => {
+        if (!searchTerm.trim()) return;
+        setIsInternalLoading(true);
+        try {
+            const queryLower = searchTerm.toLowerCase();
+            const snap = await db.collection("content").get();
+            const results = snap.docs
+                .map(d => ({ ...d.data(), id: d.id } as Content))
+                .filter(c => c.title.toLowerCase().includes(queryLower));
+            
+            setPagedContent(results);
+        } catch (e) {
+            console.error(e);
+        }
+        setIsInternalLoading(false);
+    };
+
     const generateExcelTemplate = () => { const moviesHeader = ["TMDB_ID", "Title", "Description", "Year", "Rating", "Genres", "Poster_URL", "Backdrop_URL", "Logo_URL", "Watch_Server_1", "Watch_Server_2", "Watch_Server_3", "Watch_Server_4", "Download_Link"]; const episodesHeader = ["Series_TMDB_ID", "Series_Name", "Season_Number", "Episode_Number", "Episode_Title", "Watch_Server_1", "Watch_Server_2", "Download_Link"]; const wb = XLSX.utils.book_new(); const wsMovies = XLSX.utils.aoa_to_sheet([moviesHeader]); const wsEpisodes = XLSX.utils.aoa_to_sheet([episodesHeader]); XLSX.utils.book_append_sheet(wb, wsMovies, "Movies"); XLSX.utils.book_append_sheet(wb, wsEpisodes, "Episodes"); XLSX.writeFile(wb, "cinematix_import_template.xlsx"); }; 
     const fetchTMDBData = async (id: string, type: 'movie' | 'tv') => { if (!id) return null; try { const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&language=${LANG}&append_to_response=images,credits`); if (!res.ok) return null; return await res.json(); } catch (e) { console.error("TMDB Fetch Error:", e); return null; } }; 
     const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => { 
@@ -905,10 +988,9 @@ const ContentManagementTab: React.FC<any> = ({content, onEdit, onNew, onRequestD
                         setProgress(`معالجة المسلسل ${seriesCount} من ${Object.keys(seriesGroups).length}...`); 
                         let seriesDoc: any = null; 
                         let seriesId = String(seriesKey); 
-                        const existingSeries = content.find((c:any) => c.id === seriesId || c.title === seriesKey); 
-                        if (existingSeries) { 
-                            seriesDoc = { ...existingSeries }; 
-                            seriesId = existingSeries.id; 
+                        const existingSnap = await db.collection("content").doc(seriesId).get(); 
+                        if (existingSnap.exists) { 
+                            seriesDoc = { ...existingSnap.data(), id: existingSnap.id }; 
                         } else { 
                             let tmdbSeries: any = null; 
                             if (!isNaN(Number(seriesKey))) { 
@@ -975,6 +1057,7 @@ const ContentManagementTab: React.FC<any> = ({content, onEdit, onNew, onRequestD
                 } 
                 addToast('تم استيراد البيانات من Excel بنجاح!', 'success'); 
                 onBulkSuccess(); 
+                fetchPage(1); 
             } catch (err) { 
                 console.error("Excel Import Error:", err); 
                 addToast('حدث خطأ أثناء معالجة ملف Excel.', 'error'); 
@@ -987,32 +1070,56 @@ const ContentManagementTab: React.FC<any> = ({content, onEdit, onNew, onRequestD
         reader.readAsArrayBuffer(file); 
     }; 
     
+    const totalPages = Math.ceil(totalContentCount / itemsPerPage);
+    const pageNumbersInGroup = Array.from(
+        { length: Math.min(pagesPerGroup, totalPages - currentGroup * pagesPerGroup) },
+        (_, i) => currentGroup * pagesPerGroup + i + 1
+    );
+
+    const hasNextGroup = (currentGroup + 1) * pagesPerGroup < totalPages;
+    const hasPrevGroup = currentGroup > 0;
+
     return (
         <div>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#1f2937] p-6 rounded-2xl mb-8 border border-gray-700/50 shadow-lg">
-                <input type="text" placeholder="ابحث عن فيلم أو مسلسل..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-auto md:min-w-[350px] bg-gray-900 border border-gray-700 rounded-xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-[#00A7F8] text-white placeholder-gray-600 shadow-inner"/>
+                <div className="relative w-full md:w-auto md:min-w-[350px]">
+                    <input 
+                        type="text" 
+                        placeholder="ابحث في كامل قاعدة البيانات..." 
+                        value={searchTerm} 
+                        onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            setCurrentPage(1);
+                        }} 
+                        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-12 py-3 focus:outline-none focus:ring-2 focus:ring-[#00A7F8] text-white placeholder-gray-600 shadow-inner"
+                    />
+                    <SearchIcon className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+                </div>
                 <div className="flex gap-3 w-full md:w-auto flex-wrap">
-                    <button onClick={generateExcelTemplate} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-5 rounded-xl transition-colors text-sm border border-gray-600" title="تحميل نموذج Excel"><TableCellsIcon /><span className="hidden sm:inline">تحميل نموذج Excel</span></button>
+                    <button onClick={generateExcelTemplate} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-5 rounded-xl transition-colors text-sm border border-gray-600"><TableCellsIcon /><span className="hidden sm:inline">تحميل نموذج Excel</span></button>
                     <input type="file" accept=".xlsx, .xls" ref={excelInputRef} onChange={handleExcelUpload} className="hidden" />
-                    <button onClick={() => excelInputRef.current?.click()} disabled={processingExcel} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-5 rounded-xl transition-colors text-sm disabled:opacity-50 border border-gray-600" title="استيراد من Excel"><ArrowUpTrayIcon /><span className="hidden sm:inline">{processingExcel ? 'جاري المعالجة...' : 'استيراد من Excel'}</span></button>
+                    <button onClick={() => excelInputRef.current?.click()} disabled={processingExcel} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-5 rounded-xl transition-colors text-sm disabled:opacity-50 border border-gray-600"><ArrowUpTrayIcon /><span className="hidden sm:inline">{processingExcel ? 'جاري المعالجة...' : 'استيراد من Excel'}</span></button>
                     <button onClick={onNew} className="flex-1 md:flex-none bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-extrabold py-3 px-8 rounded-xl hover:shadow-[0_0_20px_rgba(0,167,248,0.4)] transition-all transform hover:scale-105 whitespace-nowrap">+ إضافة محتوى</button>
                 </div>
             </div>
             {processingExcel && (<div className="mb-6 bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 animate-pulse shadow-lg"><div className="flex justify-between mb-3 text-sm text-[#00A7F8] font-bold"><span>جاري الاستيرار...</span><span>{progress}</span></div><div className="w-full bg-gray-800 rounded-full h-3"><div className="bg-[#00A7F8] h-3 rounded-full w-2/3 transition-all duration-500 shadow-[0_0_10px_#00A7F8]"></div></div><p className="text-xs text-gray-500 mt-3 text-center">الرجاء عدم إغلاق الصفحة حتى تكتمل العملية.</p></div>)}
             
-            {isLoading ? (
-                <div className="text-center py-32 text-gray-500">جاري تحميل المحتوى من قاعدة البيانات...</div> 
+            {isInternalLoading ? (
+                <div className="py-32 flex flex-col items-center justify-center gap-6">
+                    <div className="w-16 h-16 border-4 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-gray-500 font-black tracking-widest uppercase text-xs">جاري سحب البيانات...</span>
+                </div> 
             ) : (
                 <>
-                    {filteredContent.length === 0 && (
+                    {pagedContent.length === 0 && (
                         <div className="text-center py-20 text-gray-500 border-2 border-dashed border-gray-800 rounded-3xl mb-8 flex flex-col items-center justify-center">
                             <span className="text-4xl mb-4 opacity-50">📂</span>
                             لا يوجد محتوى مطابق لبحثك.
                         </div>
                     )}
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
-                        {filteredContent.map((c:any) => {
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3 mb-10">
+                        {pagedContent.map((c:any) => {
                             const meta = getTypeMeta(c.type);
                             return (
                                 <div key={c.id} className="group relative aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer bg-gray-800 border border-gray-700/50 shadow-lg hover:shadow-[0_0_25px_rgba(0,167,248,0.2)] transition-all duration-300 hover:scale-[1.02]">
@@ -1040,12 +1147,158 @@ const ContentManagementTab: React.FC<any> = ({content, onEdit, onNew, onRequestD
                             );
                         })}
                     </div>
+
+                    {searchTerm.trim() === '' && totalPages > 1 && (
+                        <div className="flex flex-col items-center gap-6 bg-[#1f2937] p-8 rounded-[2.5rem] border border-gray-700/50 shadow-xl mb-12">
+                            <div className="flex items-center justify-center gap-2 flex-wrap">
+                                {hasPrevGroup && (
+                                    <button 
+                                        onClick={() => setCurrentPage(currentGroup * pagesPerGroup)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-400 font-black rounded-xl hover:bg-gray-700 transition-all border border-gray-700"
+                                    >
+                                        <span className="text-xl rotate-180">«</span>
+                                        <span className="text-xs">المجموعة السابقة</span>
+                                    </button>
+                                )}
+
+                                {pageNumbersInGroup.map(num => (
+                                    <button
+                                        key={num}
+                                        onClick={() => setCurrentPage(num)}
+                                        className={`w-12 h-12 rounded-xl font-black text-sm transition-all border ${currentPage === num ? 'bg-[var(--color-accent)] text-black border-transparent shadow-[0_0_20px_var(--shadow-color)]' : 'bg-gray-900 border-gray-700 text-gray-500 hover:text-white hover:border-gray-500'}`}
+                                    >
+                                        {num}
+                                    </button>
+                                ))}
+
+                                {hasNextGroup && (
+                                    <button 
+                                        onClick={() => setCurrentPage((currentGroup + 1) * pagesPerGroup + 1)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-400 font-black rounded-xl hover:bg-gray-700 transition-all border border-gray-700"
+                                    >
+                                        <span className="text-xs">المجموعة التالية</span>
+                                        <span className="text-xl">»</span>
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-4 text-xs font-bold text-gray-500">
+                                <span>الصفحة {currentPage} من {totalPages}</span>
+                                <span className="w-1 h-1 bg-gray-700 rounded-full"></span>
+                                <span>إجمالي العناصر: {totalContentCount}</span>
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </div>
     ); 
 };
-const RequestsTab: React.FC<any> = ({ addToast, serviceAccountJson }) => { const [requests, setRequests] = useState<ContentRequest[]>([]); const [loading, setLoading] = useState(true); useEffect(() => { fetchRequests(); }, []); const fetchRequests = async () => { setLoading(true); const data = await getContentRequests(); setRequests(data); setLoading(false); }; const handleFulfillRequest = async (req: ContentRequest) => { if (confirm(`هل أنت متأكد من تحديد طلب "${req.title}" كمكتمل؟ سيتم إرسال إشعار للمستخدم وحذف الطلب.`)) { try { let notificationSent = false; if (req.userId && serviceAccountJson) { try { const accessToken = await getAccessToken(serviceAccountJson); if (!accessToken) throw new Error("Could not generate access token"); const userProfile = await getUserProfile(req.userId); const tokens = userProfile?.fcmTokens || []; if (tokens.length > 0) { const parsedServiceAccount = JSON.parse(serviceAccountJson); const projectId = parsedServiceAccount.project_id; const notificationData = { title: 'تم تلبية طلبك! 🎉', body: `تمت إضافة "${req.title}" إلى الموقع. مشاهدة ممتعة!`, image: '/icon-192.png', data: { url: '/' } }; await Promise.all(tokens.map(async (token: string) => { await sendFCMv1Message(token, notificationData, accessToken, projectId); })); notificationSent = true; console.log('HTTP v1 Notification sent.'); } } catch (notifyErr) { console.error("Failed to send notification:", notifyErr); addToast('فشل إرسال الإشعار، لكن سيتم إكمال الطلب.', 'error'); } } else if (req.userId && !serviceAccountJson) { addToast('لم يتم إرسال الإشعار لعدم وجود ملف الخدمة (Service Account) في الإعدادات.', 'error'); } await deleteContentRequest(req.id); setRequests(prev => prev.filter(r => r.id !== req.id)); addToast(notificationSent ? 'تمت تلبية الطلب وإشعار المستخدم.' : 'تمت تلبية الطلب (بدون إشعار).', 'success'); } catch (error) { console.error(error); addToast('حدث خطأ أثناء إرسال الطلب. حاول مرة أخرى.', 'error'); } } }; return (<div className="space-y-6">{!serviceAccountJson && (<div className="bg-yellow-900/20 border border-yellow-500/30 p-4 rounded-xl text-yellow-200 text-sm flex items-center gap-3"><span className="text-xl">⚠️</span><span>تنبيه: يجب إضافة "ملف الخدمة (Service Account JSON)" في تبويب "إعدادات الموقع" لتفعيل الإشعارات التلقائية عند تلبية الطلبات.</span></div>)}<div className="bg-[#1f2937] rounded-2xl border border-gray-700/50 overflow-hidden shadow-xl"><div className="px-8 py-6 border-b border-gray-700/50 flex justify-between items-center"><h3 className="font-bold text-lg text-white flex items-center gap-2"><InboxIcon />طلبات المحتوى ({requests.length})</h3><button onClick={fetchRequests} className="text-sm text-[#00A7F8] hover:text-[#00FFB0] font-bold transition-colors">تحديث القائمة</button></div>{loading ? (<div className="text-center py-12 text-gray-500">جاري التحميل...</div>) : requests.length === 0 ? (<div className="text-center py-20 text-gray-500 flex flex-col items-center gap-4"><span className="text-4xl opacity-50">📭</span>لا يوجد طلبات جديدة حالياً.</div>) : (<div className="overflow-x-auto"><table className="w-full text-sm text-right text-gray-300 whitespace-nowrap"><thead className="bg-gray-800/50 text-xs uppercase font-bold text-gray-400"><tr><th className="px-8 py-4">العنوان</th><th className="px-8 py-4">النوع</th><th className="px-8 py-4">ملاحظات</th><th className="px-8 py-4">التاريخ</th><th className="px-8 py-4">إجراءات</th></tr></thead><tbody>{requests.map(req => (<tr key={req.id} className="border-b border-gray-700/50 hover:bg-gray-700/20 transition-colors"><td className="px-8 py-4 font-bold text-white">{req.title}</td><td className="px-8 py-4"><span className={`px-3 py-1 rounded-full text-xs font-bold ${req.type === 'movie' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>{req.type === 'movie' ? 'فيلم' : 'مسلسل'}</span></td><td className="px-8 py-4 max-w-xs truncate text-gray-400" title={req.notes}>{req.notes || '-'}</td><td className="px-8 py-4 dir-ltr text-right text-xs font-mono">{new Date(req.createdAt).toLocaleDateString('en-GB')}</td><td className="px-8 py-4"><button onClick={() => handleFulfillRequest(req)} className="bg-green-500/10 hover:bg-green-500/20 text-green-400 font-bold py-2 px-4 rounded-lg text-xs transition-colors border border-green-500/20">✓ تمت الإضافة</button></td></tr>))}</tbody></table></div>)}</div></div>); };
+const RequestsTab: React.FC<any> = ({ addToast, serviceAccountJson, onRequestDelete }) => { 
+    const [requests, setRequests] = useState<ContentRequest[]>([]); 
+    const [loading, setLoading] = useState(true); 
+    
+    useEffect(() => { fetchRequests(); }, []); 
+    
+    const fetchRequests = async () => { 
+        setLoading(true); 
+        const data = await getContentRequests(); 
+        setRequests(data); 
+        setLoading(false); 
+    }; 
+    
+    const handleFulfillRequest = async (req: ContentRequest) => { 
+        if (confirm(`هل أنت متأكد من تحديد طلب "${req.title}" كمكتمل؟ سيتم إرسال إشعار للمستخدم وحذف الطلب.`)) { 
+            try { 
+                let notificationSent = false; 
+                if (req.userId && serviceAccountJson) { 
+                    try { 
+                        const accessToken = await getAccessToken(serviceAccountJson); 
+                        if (!accessToken) throw new Error("Could not generate access token"); 
+                        const userProfile = await getUserProfile(req.userId); 
+                        const tokens = userProfile?.fcmTokens || []; 
+                        if (tokens.length > 0) { 
+                            const parsedServiceAccount = JSON.parse(serviceAccountJson); 
+                            const projectId = parsedServiceAccount.project_id; 
+                            const notificationData = { title: 'تم تلبية طلبك! 🎉', body: `تمت إضافة "${req.title}" إلى الموقع. مشاهدة ممتعة!`, image: '/icon-192.png', data: { url: '/' } }; 
+                            await Promise.all(tokens.map(async (token: string) => { await sendFCMv1Message(token, notificationData, accessToken, projectId); })); 
+                            notificationSent = true; 
+                            console.log('HTTP v1 Notification sent.'); 
+                        } 
+                    } catch (notifyErr) { 
+                        console.error("Failed to send notification:", notifyErr); 
+                        addToast('فشل إرسال الإشعار، لكن سيتم إكمال الطلب.', 'error'); 
+                    } 
+                } else if (req.userId && !serviceAccountJson) { 
+                    addToast('لم يتم إرسال الإشعار لعدم وجود ملف الخدمة (Service Account) في الإعدادات.', 'error'); 
+                } 
+                await deleteContentRequest(req.id); 
+                setRequests(prev => prev.filter(r => r.id !== req.id)); 
+                addToast(notificationSent ? 'تمت تلبية الطلب وإشعار المستخدم.' : 'تمت تلبية الطلب (بدون إشعار).', 'success'); 
+            } catch (error) { 
+                console.error(error); 
+                addToast('حدث خطأ أثناء إرسال الطلب. حاول مرة أخرى.', 'error'); 
+            } 
+        } 
+    }; 
+    
+    return (
+        <div className="space-y-6">
+            {!serviceAccountJson && (
+                <div className="bg-yellow-900/20 border border-yellow-500/30 p-4 rounded-xl text-yellow-200 text-sm flex items-center gap-3">
+                    <span className="text-xl">⚠️</span>
+                    <span>تنبيه: يجب إضافة "ملف الخدمة (Service Account JSON)" في تبويب "إعدادات الموقع" لتفعيل الإشعارات التلقائية عند تلبية الطلبات.</span>
+                </div>
+            )}
+            <div className="bg-[#1f2937] rounded-2xl border border-gray-700/50 overflow-hidden shadow-xl">
+                <div className="px-8 py-6 border-b border-gray-700/50 flex justify-between items-center">
+                    <h3 className="font-bold text-lg text-white flex items-center gap-2"><InboxIcon />طلبات المحتوى ({requests.length})</h3>
+                    <button onClick={fetchRequests} className="text-sm text-[#00A7F8] hover:text-[#00FFB0] font-bold transition-colors">تحديث القائمة</button>
+                </div>
+                {loading ? (
+                    <div className="text-center py-12 text-gray-500">جاري التحميل...</div>
+                ) : requests.length === 0 ? (
+                    <div className="text-center py-20 text-gray-500 flex flex-col items-center gap-4">
+                        <span className="text-4xl opacity-50">📭</span>لا يوجد طلبات جديدة حالياً.
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-right text-gray-300 whitespace-nowrap">
+                            <thead className="bg-gray-800/50 text-xs uppercase font-bold text-gray-400">
+                                <tr>
+                                    <th className="px-8 py-4">العنوان</th>
+                                    <th className="px-8 py-4">النوع</th>
+                                    <th className="px-8 py-4">ملاحظات</th>
+                                    <th className="px-8 py-4">التاريخ</th>
+                                    <th className="px-8 py-4">إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {requests.map(req => (
+                                    <tr key={req.id} className="border-b border-gray-700/50 hover:bg-gray-700/20 transition-colors">
+                                        <td className="px-8 py-4 font-bold text-white">{req.title}</td>
+                                        <td className="px-8 py-4">
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${req.type === 'movie' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>{req.type === 'movie' ? 'فيلم' : 'مسلسل'}</span>
+                                        </td>
+                                        <td className="px-8 py-4 max-w-xs truncate text-gray-400" title={req.notes}>{req.notes || '-'}</td>
+                                        <td className="px-8 py-4 dir-ltr text-right text-xs font-mono">{new Date(req.createdAt).toLocaleDateString('en-GB')}</td>
+                                        <td className="px-8 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <button onClick={() => handleFulfillRequest(req)} className="bg-green-500/10 hover:bg-green-500/20 text-green-400 font-bold py-2 px-4 rounded-lg text-xs transition-colors border border-green-500/20">✓ تمت الإضافة</button>
+                                                <button onClick={() => onRequestDelete(req.id, req.title)} className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20" title="حذف الطلب">
+                                                    <TrashIcon />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    ); 
+};
 
 const ReportsManagementTab: React.FC<any> = ({ addToast, onRequestDelete }) => {
     const [reports, setReports] = useState<any[]>([]);
@@ -1317,7 +1570,6 @@ const Top10ManagerTab: React.FC<any> = ({ allContent, pinnedState, setPinnedItem
   
   return ( 
     <div className="animate-fade-in-up space-y-6"> 
-        {/* Navigation / Header */}
         <div className="bg-[#1f2937] p-6 rounded-3xl border border-gray-700/50 shadow-xl overflow-hidden relative">
             <div className="absolute top-0 right-0 w-48 h-48 bg-[#FFD700]/5 rounded-bl-full pointer-events-none"></div>
             <h3 className="text-gray-400 mb-6 text-xs font-black uppercase tracking-widest flex items-center gap-2 relative z-10">
@@ -1338,7 +1590,6 @@ const Top10ManagerTab: React.FC<any> = ({ allContent, pinnedState, setPinnedItem
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8"> 
-            {/* Main Rankings Area */}
             <div className="lg:col-span-8 bg-[#1f2937] p-8 rounded-[2.5rem] border border-gray-700/50 shadow-2xl relative overflow-hidden">
                 <div className="flex justify-between items-center mb-10">
                     <div>
@@ -1397,7 +1648,6 @@ const Top10ManagerTab: React.FC<any> = ({ allContent, pinnedState, setPinnedItem
                 )}
             </div>
 
-            {/* Sidebar Search/Add Area */}
             <div className="lg:col-span-4 space-y-6">
                 <div className="bg-[#1f2937] p-8 rounded-[2.5rem] border border-gray-700/50 shadow-2xl h-fit sticky top-24">
                     <h3 className="font-black text-white mb-6 flex items-center gap-3">
@@ -1541,6 +1791,54 @@ const SiteSettingsTab: React.FC<{
                     </div>
                 </div>
             </div>
+
+            <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl space-y-8">
+                <div>
+                    <h3 className="text-xl font-bold text-[#FFD700] mb-2 flex items-center gap-2">
+                        <TrophyIcon className="w-6 h-6" /> إعدادات قوائم التوب 10 (الأساسية)
+                    </h3>
+                    <p className="text-xs text-gray-500 mb-6">تحكم في ظهور أهم 4 قوائم توب 10 في صفحات الموقع.</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-[#00A7F8]/20 hover:border-[#00A7F8]/50 transition-colors shadow-inner">
+                            <span className="text-sm font-black text-white">توب 10 الصفحة الرئيسية</span>
+                            <ToggleSwitch checked={siteSettings.showTop10Home} onChange={(c) => handleChange('showTop10Home', c)} />
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-[#00A7F8]/20 hover:border-[#00A7F8]/50 transition-colors shadow-inner">
+                            <span className="text-sm font-black text-white">توب 10 المسلسلات</span>
+                            <ToggleSwitch checked={siteSettings.showTop10Series} onChange={(c) => handleChange('showTop10Series', c)} />
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-[#00A7F8]/20 hover:border-[#00A7F8]/50 transition-colors shadow-inner">
+                            <span className="text-sm font-black text-white">توب 10 الأفلام</span>
+                            <ToggleSwitch checked={siteSettings.showTop10Movies} onChange={(c) => handleChange('showTop10Movies', c)} />
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-amber-500/20 hover:border-amber-500/50 transition-colors shadow-inner">
+                            <span className="text-sm font-black text-white">توب 10 رمضان</span>
+                            <ToggleSwitch checked={siteSettings.showTop10Ramadan} onChange={(c) => handleChange('showTop10Ramadan', c)} />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="pt-6 border-t border-gray-700/50">
+                    <h3 className="text-lg font-bold text-gray-400 mb-4 flex items-center gap-2">
+                        <TagIcon className="w-5 h-5" /> فئات توب 10 إضافية (متاحة للتعطيل)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl border border-gray-700/50">
+                            <span className="text-xs font-bold text-gray-400">توب 10 الأطفال</span>
+                            <ToggleSwitch checked={siteSettings.showTop10Kids} onChange={(c) => handleChange('showTop10Kids', c)} className="scale-75" />
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl border border-gray-700/50">
+                            <span className="text-xs font-bold text-gray-400">توب 10 المقالات (بلوج)</span>
+                            <ToggleSwitch checked={siteSettings.showTop10Articles} onChange={(c) => handleChange('showTop10Articles', c)} className="scale-75" />
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl border border-gray-700/50">
+                            <span className="text-xs font-bold text-gray-400">توب 10 المستخدمين</span>
+                            <ToggleSwitch checked={siteSettings.showTop10Users} onChange={(c) => handleChange('showTop10Users', c)} className="scale-75" />
+                        </div>
+                    </div>
+                </div>
+            </div>
             
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 space-y-6 shadow-xl">
                 <h3 className="text-xl font-bold text-amber-500 mb-4 flex items-center gap-2">
@@ -1587,11 +1885,8 @@ const SiteSettingsTab: React.FC<{
                 </div>
             </div>
 
-            {/* ✅ UPDATED: ADS SETTINGS WITH NEW ADS GATE TOGGLE */}
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl space-y-6">
                 <h3 className="text-xl font-bold text-[#00A7F8] mb-4">إعدادات الإعلانات</h3>
-                
-                {/* General Ads Toggle */}
                 <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50">
                     <div className="flex flex-col">
                         <span className="font-bold text-sm">تفعيل الإعلانات في الموقع</span>
@@ -1599,15 +1894,13 @@ const SiteSettingsTab: React.FC<{
                     </div>
                     <ToggleSwitch checked={siteSettings.adsEnabled} onChange={(c) => handleChange('adsEnabled', c)} />
                 </div>
-
-                {/* ✨ NEW: Ads Gate Toggle */}
                 <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50">
                     <div className="flex flex-col">
                         <span className="font-bold text-sm">بوابة الإعلانات (Ads Gate)</span>
                         <span className="text-[10px] text-gray-500">تفعيل البوابة الإعلانية عند الانتقال لصفحة التفاصيل (شاهد الآن/البوستر).</span>
                     </div>
                     <ToggleSwitch 
-                        checked={siteSettings.isAdsGateEnabled ?? false} // Use default false if undefined
+                        checked={siteSettings.isAdsGateEnabled ?? false} 
                         onChange={(c) => handleChange('isAdsGateEnabled', c)} 
                     />
                 </div>
@@ -1857,18 +2150,11 @@ const AnalyticsTab: React.FC<any> = ({ allContent, allUsers }) => {
     );
 };
 
-const RadarIcon = (props: React.SVGProps<SVGSVGElement>) => (
+const TagIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9s2.015-9 4.5-9m0 18c-5.965 0-10.8-4.03-10.8-9S6.035 3 12 3m0 18c5.965 0 10.8-4.03 10.8-9S17.965 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A11.952 11.952 0 0 1 12 13.5c-2.998 0-5.74 1.1-7.843 2.918m7.843-2.918a11.953 11.953 0 0 0 7.843 2.918A8.959 8.959 0 0 1 3 12c0-.778.099-1.533.284-2.253" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
     </svg>
 );
-
-const RefreshIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-    </svg>
-);
-
-type AdminTab = 'dashboard' | 'content' | 'top_content' | 'top10' | 'users' | 'requests' | 'reports' | 'ads' | 'themes' | 'settings' | 'analytics' | 'notifications' | 'stories' | 'app_config' | 'people' | 'content_radar' | 'alerts';
 
 export default AdminPanel;
