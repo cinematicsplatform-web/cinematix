@@ -1,15 +1,12 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs } from 'firebase/firestore/lite';
+import { getFirestore, collection, getDocs, query, orderBy } from 'firebase/firestore/lite';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 /**
  * Cinematix Sitemap Generator (Arabic Slug Strategy)
- * Target URLs:
- * - Series: /series/${slug}/الموسم${s}
- * - Movies: /watch/movie/${slug}
- * - Episodes: /watch/${slug}/الموسم${s}/الحلقة${e}
+ * التحديث التلقائي والاحترافي لكافة القوائم
  */
 
 const firebaseConfig = {
@@ -25,7 +22,20 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const BASE_URL = 'https://cinematix.watch';
 
-// Utility to generate a slug if the manual slug field is missing
+const escapeXml = (unsafe) => {
+  if (!unsafe) return '';
+  return unsafe.toString().replace(/[<>&'"]/g, (c) => {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+      default: return c;
+    }
+  });
+};
+
 const generateSlug = (title) => {
     if (!title) return '';
     return title
@@ -40,15 +50,16 @@ const generateSlug = (title) => {
 };
 
 async function generateSitemap() {
-    console.log('🚀 Generating Dynamic Arabic-Slug-Based Sitemap...');
+    console.log('🚀 Generating Dynamic Professional Sitemap...');
     
     try {
         const contentRef = collection(db, 'content');
-        const snapshot = await getDocs(contentRef);
+        const q = query(contentRef, orderBy('updatedAt', 'desc'));
+        const snapshot = await getDocs(q);
         const lastModDate = new Date().toISOString().split('T')[0];
         
         let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
   <url>
     <loc>${BASE_URL}/</loc>
     <changefreq>daily</changefreq>
@@ -72,38 +83,52 @@ async function generateSitemap() {
             const title = data.title || '';
             const slug = data.slug || generateSlug(title) || id;
             const type = data.type || 'movie';
-            const updatedAt = data.updatedAt ? new Date(data.updatedAt).toISOString().split('T')[0] : lastModDate;
+            const updatedAt = data.updatedAt ? (typeof data.updatedAt === 'string' ? data.updatedAt.split('T')[0] : lastModDate) : lastModDate;
             
             if (type === 'movie') {
-                // Movie Path
                 xml += `  <url>
     <loc>${BASE_URL}/watch/movie/${slug}</loc>
     <lastmod>${updatedAt}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <video:video>
+      <video:thumbnail_loc>${escapeXml(data.poster || '')}</video:thumbnail_loc>
+      <video:title>${escapeXml(title)}</video:title>
+      <video:description>${escapeXml(data.description || title).substring(0, 500)}</video:description>
+    </video:video>
   </url>\n`;
             } else {
-                // Series Logic with Seasons and Arabic Tags
-                if (data.seasons) {
-                    data.seasons.forEach(season => {
-                        const sNum = season.seasonNumber;
-                        // Series Landing Per Season
-                        xml += `  <url>
-    <loc>${BASE_URL}/series/${slug}/الموسم${sNum}</loc>
+                // Series Main URL
+                xml += `  <url>
+    <loc>${BASE_URL}/${type}/${slug}</loc>
     <lastmod>${updatedAt}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>\n`;
 
+                if (data.seasons) {
+                    data.seasons.forEach(season => {
+                        const sNum = season.seasonNumber;
+                        xml += `  <url>
+    <loc>${BASE_URL}/${type}/${slug}/الموسم${sNum}</loc>
+    <lastmod>${updatedAt}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>\n`;
+
                         if (season.episodes) {
                             season.episodes.forEach((ep, index) => {
                                 const eNum = index + 1;
-                                // Watch Path: /watch/${slug}/الموسم${s}/الحلقة${e}
                                 xml += `  <url>
     <loc>${BASE_URL}/watch/${slug}/الموسم${sNum}/الحلقة${eNum}</loc>
     <lastmod>${updatedAt}</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
+    <video:video>
+      <video:thumbnail_loc>${escapeXml(ep.thumbnail || data.poster)}</video:thumbnail_loc>
+      <video:title>${escapeXml(`${title} - الموسم ${sNum} - الحلقة ${eNum}`)}</video:title>
+      <video:description>${escapeXml(ep.description || data.description || title).substring(0, 500)}</video:description>
+    </video:video>
   </url>\n`;
                             });
                         }
@@ -122,7 +147,7 @@ async function generateSitemap() {
         }
 
         fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), xml);
-        console.log(`✅ Success! Generated sitemap.xml with Arabic Slugs.`);
+        console.log(`✅ Success! Generated professional sitemap.xml.`);
 
     } catch (error) {
         console.error('❌ Generator Failed:', error);
