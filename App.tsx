@@ -154,9 +154,11 @@ const App: React.FC = () => {
       if (normalizedPath.startsWith('/category/')) return 'category';
       if (normalizedPath.startsWith('/person/')) return 'personProfile';
       
-      const isEpisodicWatch = normalizedPath.match(/^\/(?:watch|مشاهدة)\/.*?\/.*?\d+.*?\/.*?\d+/);
+      // Improved matching for episodic watch links to include Arabic keywords and ensure slug capturing
+      const isEpisodicWatch = normalizedPath.match(/^\/(?:watch|مشاهدة)\/.*?\/(?:الموسم|season)?\d+.*?\/(?:الحلقة|episode)?\d+/);
       if (isEpisodicWatch) return 'watch';
 
+      // Improved matching for movie/series detail links
       if (normalizedPath.match(/^\/(?:watch|مشاهدة)\/(?:movie|فيلم)\//) || 
           normalizedPath.match(/^\/(?:series|program|مسلسل|برنامج|movie|فيلم|play|concert|watch|مشاهدة)\/([^\/]+)/)) {
           return 'detail';
@@ -349,6 +351,7 @@ const App: React.FC = () => {
         return;
       }
 
+      // 1. Check for detailed watch links (Episodes)
       const watchMatch = decodedPath.match(/^\/(?:watch|مشاهدة)\/([^\/]+)\/(?:الموسم|season)?(\d+)\/(?:الحلقة|episode)?(\d+)/) || 
                          decodedPath.match(/^\/(?:watch|مشاهدة)\/([^\/]+)\/(\d+)\/(\d+)/);
       
@@ -365,6 +368,7 @@ const App: React.FC = () => {
           }
       }
 
+      // 2. Check for movies or single content detail
       const movieWatchMatch = decodedPath.match(/^\/(?:watch|مشاهدة)\/(?:movie|فيلم|video\.movie)\/([^\/]+)/) ||
                               decodedPath.match(/^\/(?:watch|مشاهدة)\/([^\/]+)$/);
       if (movieWatchMatch) {
@@ -377,6 +381,7 @@ const App: React.FC = () => {
           }
       }
 
+      // 3. Check for Series/Season detail pages
       const seriesDetailMatch = decodedPath.match(/^\/(?:series|program|مسلسل|برنامج)\/([^\/]+)\/(?:الموسم|season)?(\d+)/);
       if (seriesDetailMatch) {
           const slug = seriesDetailMatch[1];
@@ -390,6 +395,7 @@ const App: React.FC = () => {
           }
       }
 
+      // 4. Check for general content slug paths
       const match = decodedPath.match(/^\/(?:series|program|مسلسل|برنامج|movie|فيلم|play|concert)\/([^\/]+)/);
       if (match && match[1]) {
           const slug = match[1];
@@ -397,10 +403,16 @@ const App: React.FC = () => {
           if (foundContent) {
               setSelectedContent(foundContent);
               setView('detail');
-          } else if (contentList.length > 0) {
-              setView('home');
-              safeHistoryReplace('/');
+              return;
           }
+      }
+
+      // If nothing matched and list is populated, fallback ONLY IF we're not on a known static path
+      const isStaticPath = Object.keys(VIEW_PATHS).includes(decodedPath) || decodedPath === '/';
+      if (!isStaticPath && contentList.length > 0) {
+          // If contentList is loaded and we still didn't match, THEN go home
+          setView('home');
+          safeHistoryReplace('/');
       }
   }, []);
 
@@ -421,7 +433,7 @@ const App: React.FC = () => {
               setSelectedPersonName(path.split('/person/')[1]);
           }
 
-          if ((newView === 'detail' || newView === 'watch' || newView === 'personProfile' || newView === 'download' || newView === 'adGate') && allContent.length > 0) {
+          if (allContent.length > 0) {
               resolveContentFromUrl(window.location.pathname, allContent);
           }
       };
@@ -840,7 +852,6 @@ const App: React.FC = () => {
            case 'category': return <CategoryPage categoryTitle={selectedCategory} allContent={allContent} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} ads={ads} adsEnabled={siteSettings.adsEnabled} onRequestOpen={() => handleSetView('contentRequest')} />;
            case 'admin': 
                 if (isAuthLoading) return <LoadingSpinner />; 
-                // Admin Guard Improvement: If view is admin but user is not admin, show a loading/check state instead of homepage component
                 if (!isAdmin) {
                     return (
                         <div className="min-h-screen flex flex-col items-center justify-center bg-[#090b10] text-center p-8">
