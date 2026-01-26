@@ -47,12 +47,15 @@ const SEO: React.FC<SEOProps> = ({
 }) => {
   const siteName = "سينماتيكس";
   const domain = 'https://cinematix.watch';
+  const defaultTitle = "مشاهدة افلام ومسلسلات اون لاين - سينماتيكس";
   
   const path = url || (typeof window !== 'undefined' ? window.location.pathname : '');
   const canonicalUrl = path.startsWith('http') ? path : `${domain}${path}`;
   
   const generateFullTitle = () => {
-    if (!title) return "سينماتيكس | Cinematix - مشاهدة أفلام ومسلسلات اون لاين";
+    // If it's the home page or no title provided, use the new default name
+    if (!title || title === "الرئيسية") return defaultTitle;
+    
     let displayTitle = title;
     if (displayTitle.includes('|')) return displayTitle;
 
@@ -92,8 +95,6 @@ const SEO: React.FC<SEOProps> = ({
   const absoluteImageUrl = seoImage.startsWith('http') ? seoImage : `${domain}${seoImage}`;
 
   const generateSchema = () => {
-    // تم إزالة خاصية "image" من الـ Schema لضمان عدم ظهور بوستر العمل في نتائج بحث جوجل (Google SERP)
-    // مع الحفاظ على مظهر نصي نظيف للموقع.
     if (type === 'movie') {
       return {
         "@context": "https://schema.org",
@@ -114,7 +115,7 @@ const SEO: React.FC<SEOProps> = ({
     return {
       "@context": "https://schema.org",
       "@type": "WebSite",
-      "name": "سينماتيكس",
+      "name": siteName,
       "url": domain,
       "description": finalDescription
     };
