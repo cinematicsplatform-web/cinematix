@@ -42,7 +42,7 @@
             return true; 
           };
 
-          // ملاحظة: تم إزالة كود قفل التوجيه (Orientation Lock) للسماح بالتدوير التلقائي
+          // ملاحظة: الموقع يتبع الآن إعدادات النظام الافتراضية للتدوير لضمان عدم التدوير التلقائي غير المرغوب به.
 
         } catch (e) {}
       })();
@@ -63,7 +63,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" href="/android-chrome-192x192.png" />
 
-    <!-- Mobile Viewport - Allows natural adaptation and rotation -->
+    <!-- Mobile Viewport - Allows natural adaptation and rotation strictly following device settings -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     
     <!-- iOS PWA Config -->
@@ -325,8 +325,6 @@
         0%, 100% { transform: translateY(0); }
         50% { transform: translateY(-20px); }
       }
-
-      /* تم إزالة نظام قفل التوجيه (Orientation Lock) للسماح بالتدوير الطبيعي */
     </style>
 <link rel="stylesheet" href="/index.css">
 </head>
