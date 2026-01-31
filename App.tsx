@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -875,6 +876,12 @@ const App: React.FC = () => {
 
   const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'welcome', 'notifications', 'appDownload', 'people', 'personProfile', 'about', 'privacy', 'copyright', 'download', 'category', 'adGate', 'contentRequest'];
   const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
+  
+  // Logic Fix: Header should only show if (Not in login phase) AND (Either Guest OR Profile is already picked)
+  // This prevents the header from showing above the "Who's watching?" (ProfileSelector) screen.
+  const isProfileSelectionPending = currentUser && !activeProfile;
+  const showHeader = !isProfileSelectionPending && !fullScreenViews.includes(view) && !siteSettings.is_maintenance_mode_enabled && !isTv;
+  
   const showGlobalFooter = (!fullScreenViews.includes(view) || view === 'search') && !siteSettings.is_maintenance_mode_enabled && !isTv;
   const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view) && !isTv;
   const footerClass = (mobileCleanViews.includes(view) || view === 'search') ? 'hidden md:block' : '';
@@ -903,7 +910,7 @@ const App: React.FC = () => {
             ))}
         </div>
         {siteSettings.adsEnabled && <AdZone position="global_head" />}
-        {view !== 'login' && view !== 'register' && view !== 'onboarding' && view !== 'profileSelector' && view !== 'admin' && view !== 'myList' && view !== 'accountSettings' && view !== 'category' && view !== 'profileHub' && view !== 'watch' && view !== 'search' && view !== 'welcome' && view !== 'notifications' && view !== 'appDownload' && view !== 'people' && view !== 'personProfile' && view !== 'about' && view !== 'privacy' && view !== 'copyright' && view !== 'download' && view !== 'adGate' && view !== 'contentRequest' && !siteSettings.is_maintenance_mode_enabled && !isTv && (
+        {showHeader && (
             <Header onSetView={handleSetView} currentUser={currentUser} activeProfile={activeProfile} onLogout={handleLogout} allContent={allContent} onSelectContent={handleSelectContent} currentView={view} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} returnView={returnView} isKidProfile={activeProfile?.isKid} onOpenSearch={() => handleSetView('search')} unreadNotificationsCount={unreadNotificationsCount} />
         )}
         {isTv && (

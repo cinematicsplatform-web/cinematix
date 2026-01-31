@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { createPortal } from 'react-dom';
@@ -104,7 +103,20 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isDownloadErrorOpen, setIsDownloadErrorOpen] = useState(false);
   const [isInView, setIsInView] = useState(true);
-  const [isDescending, setIsDescending] = useState(false);
+  
+  // --- تم تعديل منطق الفرز للحفاظ على الخيار عند العودة ---
+  const [isDescending, setIsDescending] = useState(() => {
+      try {
+          return localStorage.getItem('cinematix_pref_sort_desc') === 'true';
+      } catch (e) {
+          return false;
+      }
+  });
+
+  // مزامنة التغيير مع التخزين المحلي
+  useEffect(() => {
+      localStorage.setItem('cinematix_pref_sort_desc', String(isDescending));
+  }, [isDescending]);
    
   const heroRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -278,7 +290,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       } catch (e) { return null; }
   };
 
-  // STRICT AD LOGIC: If episodic, strictly use season trailer. Never fallback to content.trailerUrl.
   const trailerVideoId = useMemo(() => {
     if (isEpisodic) {
         return getVideoId(currentSeason?.trailerUrl);
@@ -303,7 +314,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       return () => clearTimeout(timer);
   }, [content?.id, trailerVideoId, isMobile, selectedSeasonId]);
 
-  // Tab Auto-reset: If user is on trailer tab and switches to a season with no trailer, move to episodes.
   useEffect(() => {
       if (activeTab === 'trailer' && !trailerVideoId) {
           setActiveTab('episodes');
@@ -369,14 +379,11 @@ const DetailPage: React.FC<DetailPageProps> = ({
   };
 
   const handleDownload = () => {
-      // التحقق من توفر روابط تحميل في أي سيرفر
       const hasDownloadLinks = (content.servers || []).some(s => s.downloadUrl && s.downloadUrl.trim().length > 0);
-      
       if (!isEpisodic && !hasDownloadLinks) {
           setIsDownloadErrorOpen(true);
           return;
       }
-
       onSetView('download', undefined, { content: content });
   };
 
@@ -385,7 +392,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
     return allContent.filter(c => c.id !== content.id && c.categories.some(cat => content.categories.includes(cat))).slice(0, 10);
   }, [content, allContent]);
 
-  // FIXED: Active tab class explicitly includes border color for visibility
   const activeTabClass = isRamadanTheme 
     ? 'text-white border-[#FFD700]' 
     : isEidTheme 
@@ -491,13 +497,11 @@ const DetailPage: React.FC<DetailPageProps> = ({
         <div className="absolute inset-0 bg-black overflow-hidden">
             {isLoaded ? (
                 <div key={`season-backdrop-${selectedSeasonId}`} className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}>
-                    {/* Desktop Backdrop - Strictly Hidden on Mobile */}
                     <img 
                         src={displayBackdrop} 
                         alt={content.title} 
                         className="absolute inset-0 w-full h-full object-cover bg-only-desktop object-top"
                     />
-                    {/* Mobile Backdrop - Strictly Hidden on Desktop */}
                     <img 
                         src={currentSeason?.mobileImageUrl || content.mobileBackdropUrl || displayBackdrop} 
                         alt={content.title} 
@@ -510,7 +514,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
             )}
             
             {showVideo && !videoEnded && heroEmbedUrl && !isMobile && isLoaded && (
-                <div key={`season-ad-container-${selectedSeasonId}`} className="absolute inset-0 w-full h-full overflow-hidden animate-fade-in pointer-events-none">
+                <div key={`season-ad-container-${selectedSeasonId}`} className="absolute inset-0 w-full h-full overflow-hidden animate-fade-in-up pointer-events-none">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
                         <iframe 
                             ref={iframeRef} 
@@ -560,7 +564,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         {isSeasonDropdownOpen && (
                             <div className="absolute top-full right-0 mt-2 w-64 bg-[#1f2937] border border-gray-700 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden z-[100] animate-fade-in-up origin-top-right">
                                 <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                                    {[...content.seasons].sort((a, b) => a.seasonNumber - a.seasonNumber).map(season => (
+                                    {[...content.seasons].sort((a, b) => a.seasonNumber - b.seasonNumber).map(season => (
                                         <button
                                             key={season.id}
                                             onClick={() => {
@@ -714,7 +718,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                   <button onClick={() => setActiveTab('related')} className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'related' ? activeTabClass : tabHoverClass}`}>أعمال مشابهة</button>
               </div>
 
-              {/* Sorting Toggle Icon */}
               {activeTab === 'episodes' && isEpisodic && (
                 <button 
                   onClick={() => setIsDescending(!isDescending)}
@@ -790,10 +793,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
                           )}
                       </div>
                   ) : (
-                      /* MOVIE VIEW (Standalone) */
                       <div className="mx-auto w-full max-w-6xl py-8 text-center">
                            {!isLoaded ? (
-                               /* Movie Loading Skeleton: Identical structure to Movie Mode */
                                <div className="space-y-8 animate-fade-in">
                                    <div className="w-full flex flex-col gap-6">
                                         <div className="h-8 w-48 bg-gray-800/40 rounded skeleton-shimmer mx-auto md:mx-0"></div>
@@ -818,7 +819,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                         </div>
                                 </div>
 
-                                {/* Movie Video Container - Rotation Friendly */}
                                 <div className="relative z-10 mx-auto aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl video-player-wrapper">
                                         <VideoPlayer key={playerKey} tmdbId={content.id} type={content.type} manualSrc={selectedServer?.url} poster={displayBackdrop} />
                                 </div>
@@ -972,7 +972,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     </div>
                   </div>
 
-                  {/* Cast and Crew Integrated inside Details Tab */}
                   {isLoaded && (
                     <div className="relative z-10 px-4 md:px-8 py-12 mt-12 border-t border-white/5 bg-black/20 w-full">
                         <div className="w-full text-right">

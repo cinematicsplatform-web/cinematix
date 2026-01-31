@@ -96,7 +96,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
 
   const togglePlay = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    // منع التشغيل/الإيقاف إذا كانت قائمة الجودة مفتوحة
     if (isSettingsOpen) return; 
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
@@ -162,6 +161,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
         if (!document.fullscreenElement) {
             await containerRef.current.requestFullscreen();
             setIsFullscreen(true);
+            // ملاحظة: تم إزالة أي قفل للتدوير هنا لضمان احترام رغبة المستخدم
         } else {
             if (document.exitFullscreen) {
                 await document.exitFullscreen();
@@ -266,7 +266,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                                 <div className="w-8 md:w-10"></div> 
                             </div>
 
-                            {/* Blocking Layer: يظهر عند فتح القوائم لمنع التفاعل مع أجزاء المشغل الأخرى */}
+                            {/* Blocking Layer */}
                             {isSettingsOpen && (
                                 <div 
                                     className="absolute inset-0 z-[150] bg-black/5 pointer-events-auto cursor-default"

@@ -14,8 +14,7 @@ interface ActionButtonsProps {
   isNetflixRedTheme?: boolean;
   showMyList?: boolean;
   className?: string;
-  content?: Content; // Added to generate URL
-  // Fix: Added isSoonOverride prop to handle coming soon logic explicitly
+  content?: Content; 
   isSoonOverride?: boolean; 
 }
 
@@ -30,7 +29,7 @@ const CalendarIcon = () => (
       strokeWidth="2" 
       strokeLinecap="round" 
       strokeLinejoin="round" 
-      className="w-6 h-6 md:w-9 md:h-9 ml-2 inline-block text-black" 
+      className="w-6 h-6 md:w-9 md:h-9 ml-2 inline-block text-white" 
     >
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
       <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -50,7 +49,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   isNetflixRedTheme,
   className = "",
   content,
-  isSoonOverride // Destructure the new prop
+  isSoonOverride
 }) => {
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -74,12 +73,15 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       }
   };
 
-  // Fix: use isSoonOverride if provided, otherwise fallback to content category check
   const isSoon = isSoonOverride ?? content?.categories?.includes('قريباً');
 
-  // Explicit styling for the primary button
+  // Logic for the primary button color
   let primaryBtnClass = "btn-primary";
-  if (isRamadanTheme) {
+  
+  // شرط خاص لزر "قريباً" ليطابق الصورة المرفقة
+  if (isSoon) {
+      primaryBtnClass = "bg-[#374151] text-white hover:bg-[#4b5563] border-none shadow-none";
+  } else if (isRamadanTheme) {
       primaryBtnClass = "bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)] hover:brightness-110 border-none";
   } else if (isEidTheme) {
       primaryBtnClass = "bg-gradient-to-r from-purple-800 to-purple-500 text-white shadow-[0_0_15px_rgba(106,13,173,0.4)] hover:brightness-110 border-none";
@@ -89,7 +91,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       primaryBtnClass = "bg-[#E50914] text-white hover:bg-[#b20710] border-none shadow-none";
   }
 
-  // Standard "My List" Button Style
   let myListBaseClass = "bg-white/10 border border-white/30 text-white hover:bg-white/20 backdrop-blur-md";
   
   if (isNetflixRedTheme) {
@@ -98,7 +99,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   
   const myListActiveClass = "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]";
 
-  // URL Generation for SEO
   let watchUrl = "#";
   if (content) {
       const slug = content.slug || content.id;
@@ -107,7 +107,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   return (
     <div className={`w-full md:w-auto flex flex-row items-stretch gap-3 md:gap-4 z-30 relative action-buttons-container ${className}`}>
-      {/* Watch Button - Optimized as 'a' tag for SEO */}
       <a 
         href={watchUrl}
         aria-label={content ? `شاهد ${content.title}` : "شاهد الآن"}
@@ -134,10 +133,9 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         `}
       >
         {isSoon ? <CalendarIcon /> : <PlayIcon className="w-6 h-6 md:w-9 md:h-9 fill-current" />}
-        <span className={isSoon ? 'text-black' : ''}>{isSoon ? 'قريباً' : 'شاهد الآن'}</span>
+        <span>{isSoon ? 'قريباً' : 'شاهد الآن'}</span>
       </a>
       
-      {/* My List Button - Optimized for Mobile */}
       {showMyList && onToggleMyList && (
         <button 
           onClick={handleToggle}

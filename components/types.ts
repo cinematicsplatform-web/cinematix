@@ -1,4 +1,5 @@
 
+
 export const ContentType = {
   Movie: 'movie',
   Series: 'series',
@@ -29,7 +30,7 @@ export type Category = typeof categories[number];
 export const genres = [
     'أكشن', 'مغامرة', 'تشويق', 'جريمة', 'غموض', 'إثارة', 'دراما', 'اجتماعي', 'رومانسي', 
     'كوميديا', 'رعب', 'خيال علمي', 'فانتازيا', 'تاريخي', 'سيرة ذاتية', 'حربي', 
-    'عائلي', 'أطفال', 'وثائقي',
+    'عائلي', 'أطفال', 'وثائقي', 'موسيقي',
 ] as const;
 
 export type Genre = typeof genres[number];
