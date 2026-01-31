@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { User, Profile, View, Content } from '@/types';
 import { UserRole } from '@/types';
@@ -70,18 +71,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
       <div className="w-full px-4 md:px-8 flex items-center justify-between h-16 md:h-20 gap-2">
         
         <div className="flex items-center gap-8">
-          {isDetailView ? (
-              <div className="flex md:hidden">
-                 <button 
-                    onClick={() => onSetView(returnView || (isKidProfile ? 'kids' : 'home'))} 
-                    className="p-2 rounded-full bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-colors"
-                 >
-                    <ChevronRightIcon className="w-6 h-6 transform rotate-180" />
-                 </button>
-              </div>
-          ) : null}
-
-          <h1 onClick={() => onSetView(isKidProfile ? 'kids' : 'home')} className={`text-2xl md:text-3xl font-extrabold cursor-pointer ${isDetailView ? 'hidden md:block' : 'block'}`}>
+          <h1 onClick={() => onSetView(isKidProfile ? 'kids' : 'home')} className="text-2xl md:text-3xl font-extrabold cursor-pointer">
             {isNetflixRedTheme ? (
                <span className="text-[#E50914] font-['Lalezar'] tracking-wide">CINEMATIX</span>
             ) : (
@@ -109,7 +99,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
           </nav>
         </div>
 
-        <div className={`flex items-center gap-3 md:gap-4 ${isDetailView ? 'hidden md:flex' : 'flex'}`}>
+        <div className="flex items-center gap-3 md:gap-4">
           
           <button 
             onClick={() => {
