@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
   <head>
@@ -13,18 +14,24 @@
             document.documentElement.classList.add('theme-' + t);
           }
 
+          // 2. ضمان عدم فرض التدوير (Orientation Control)
+          // هذا الكود يضمن أن الموقع لن يفرض أي اتجاه وسوف يتبع إعدادات هاتف المستخدم بدقة
+          if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock().catch(function(err) {
+              // التجاهل في حال كان المتصفح لا يدعم القفل/الفك برمجياً
+            });
+          }
+
           // تم تعديل الوظيفة للسماح بالتحديد والنسخ دائماً
           function isSelectionAllowed() {
             return true; 
           }
 
-          // 2. تم فتح نظام حماية المحتوى للسماح بالنسخ والمعاينة
-          // السماح بالقائمة اليمنى (Right Click)
+          // 3. تم فتح نظام حماية المحتوى للسماح بالنسخ والمعاينة
           document.addEventListener('contextmenu', function(e) {
             if (isSelectionAllowed()) return;
           }, false);
 
-          // السماح بالنسخ والقص
           document.addEventListener('copy', function(e) {
             if (isSelectionAllowed()) return;
           }, false);
@@ -32,17 +39,13 @@
             if (isSelectionAllowed()) return;
           }, false);
 
-          // السماح بسحب الصور والنصوص
           document.addEventListener('dragstart', function(e) {
             if (isSelectionAllowed()) return;
           }, false);
 
-          // تم تمكين تحديد النص برمجياً
           document.onselectstart = function() { 
             return true; 
           };
-
-          // ملاحظة: الموقع يتبع الآن إعدادات النظام الافتراضية للتدوير لضمان عدم التدوير التلقائي غير المرغوب به.
 
         } catch (e) {}
       })();
