@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -155,11 +154,9 @@ const App: React.FC = () => {
       if (normalizedPath.startsWith('/category/')) return 'category';
       if (normalizedPath.startsWith('/person/')) return 'personProfile';
       
-      // Improved matching for episodic watch links to include Arabic keywords and ensure slug capturing
       const isEpisodicWatch = normalizedPath.match(/^\/(?:watch|مشاهدة)\/.*?\/(?:الموسم|season)?\d+.*?\/(?:الحلقة|episode)?\d+/);
       if (isEpisodicWatch) return 'watch';
 
-      // Improved matching for movie/series detail links
       if (normalizedPath.match(/^\/(?:watch|مشاهدة)\/(?:movie|فيلم)\//) || 
           normalizedPath.match(/^\/(?:series|program|مسلسل|برنامج|movie|فيلم|play|concert|watch|مشاهدة)\/([^\/]+)/)) {
           return 'detail';
@@ -202,6 +199,7 @@ const App: React.FC = () => {
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   
   const [isTv, setIsTv] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
       let settings = initialSiteSettings;
@@ -226,6 +224,12 @@ const App: React.FC = () => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
@@ -265,12 +269,12 @@ const App: React.FC = () => {
           const candidateAds = [...activeTriggerAds, ...globalPopunderAds];
 
           const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-          const isMobile = /android|iPad|iPhone|iPod/i.test(userAgent) || window.innerWidth <= 768;
+          const isMobileDevice = /android|iPad|iPhone|iPod/i.test(userAgent) || window.innerWidth <= 768;
           
           candidateAds.forEach(ad => {
               const targetDevice = ad.targetDevice || 'all';
-              if (targetDevice === 'mobile' && !isMobile) return;
-              if (targetDevice === 'desktop' && isMobile) return;
+              if (targetDevice === 'mobile' && !isMobileDevice) return;
+              if (targetDevice === 'desktop' && isMobileDevice) return;
               
               const lastRun = localStorage.getItem(`popunder_last_run_${ad.id}`);
               const now = Date.now();
@@ -352,7 +356,6 @@ const App: React.FC = () => {
         return;
       }
 
-      // 1. Check for detailed watch links (Episodes)
       const watchMatch = decodedPath.match(/^\/(?:watch|مشاهدة)\/([^\/]+)\/(?:الموسم|season)?(\d+)\/(?:الحلقة|episode)?(\d+)/) || 
                          decodedPath.match(/^\/(?:watch|مشاهدة)\/([^\/]+)\/(\d+)\/(\d+)/);
       
@@ -369,7 +372,6 @@ const App: React.FC = () => {
           }
       }
 
-      // 2. Check for movies or single content detail
       const movieWatchMatch = decodedPath.match(/^\/(?:watch|مشاهدة)\/(?:movie|فيلم|video\.movie)\/([^\/]+)/) ||
                               decodedPath.match(/^\/(?:watch|مشاهدة)\/([^\/]+)$/);
       if (movieWatchMatch) {
@@ -382,7 +384,6 @@ const App: React.FC = () => {
           }
       }
 
-      // 3. Check for Series/Season detail pages
       const seriesDetailMatch = decodedPath.match(/^\/(?:series|program|مسلسل|برنامج)\/([^\/]+)\/(?:الموسم|season)?(\d+)/);
       if (seriesDetailMatch) {
           const slug = seriesDetailMatch[1];
@@ -396,7 +397,6 @@ const App: React.FC = () => {
           }
       }
 
-      // 4. Check for general content slug paths
       const match = decodedPath.match(/^\/(?:series|program|مسلسل|برنامج|movie|فيلم|play|concert)\/([^\/]+)/);
       if (match && match[1]) {
           const slug = match[1];
@@ -408,10 +408,8 @@ const App: React.FC = () => {
           }
       }
 
-      // If nothing matched and list is populated, fallback ONLY IF we're not on a known static path
       const isStaticPath = Object.keys(VIEW_PATHS).includes(decodedPath) || decodedPath === '/';
       if (!isStaticPath && contentList.length > 0) {
-          // If contentList is loaded and we still didn't match, THEN go home
           setView('home');
           safeHistoryReplace('/');
       }
@@ -874,15 +872,26 @@ const App: React.FC = () => {
       }
   };
 
-  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'detail', 'maintenance', 'watch', 'welcome', 'notifications', 'appDownload', 'people', 'personProfile', 'about', 'privacy', 'copyright', 'download', 'category', 'adGate', 'contentRequest'];
   const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
-  const showGlobalFooter = (!fullScreenViews.includes(view) || view === 'search') && !siteSettings.is_maintenance_mode_enabled && !isTv;
-  const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view) && !isTv;
+  
+  // --- القوائم المحددة لعرض الهيدر حسب طلبك ---
+  const headerAllowedViews: View[] = [
+    'home', 'series', 'movies', 'ramadan', 'kids', 'soon', 'detail'
+  ];
+
+  // الهيدر يختفي تماماً في صفحة التفاصيل إذا كان موبايل، ويظهر في الصفحات المحددة فقط
+  const isDetailMobile = view === 'detail' && isMobile;
+  const showGlobalHeader = headerAllowedViews.includes(view) && !isDetailMobile && !isTv;
+  
+  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'maintenance', 'watch', 'adGate', 'welcome'];
+  const showGlobalFooter = !fullScreenViews.includes(view) && !isTv;
+  
+  const showBottomNav = showGlobalFooter && !mobileCleanViews.includes(view) && view !== 'profileSelector';
+  
   const footerClass = (mobileCleanViews.includes(view) || view === 'search') ? 'hidden md:block' : '';
   const bottomAdClass = mobileCleanViews.includes(view) ? 'hidden md:block' : 'fixed bottom-0 left-0 w-full z-[1000] bg-black/80';
   const socialBarClass = mobileCleanViews.includes(view) ? 'hidden md:block' : 'fixed z-[90] bottom-20 left-4 right-4 md:bottom-4 md:left-4 md:right-auto md:w-auto pointer-events-auto';
 
-  // Persistent Admin Redirect Logic: If on /admin URL but session blips, ensure we don't render broken views
   useEffect(() => {
     if (window.location.pathname === '/admin' && view !== 'admin' && !isAuthLoading) {
         if (currentUser?.role === UserRole.Admin) {
@@ -894,7 +903,7 @@ const App: React.FC = () => {
   }, [currentUser, isAuthLoading, view]);
 
   return (
-    <div className={`min-h-screen text-white font-['Cairo'] ${view === 'detail' || view === 'watch' ? '' : 'pb-16 md:pb-0'} ${isTv ? 'pr-20' : ''}`}>
+    <div className={`min-h-screen text-white font-['Cairo'] ${view === 'watch' ? '' : 'pb-16 md:pb-0'} ${isTv ? 'pr-20' : ''}`}>
         <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
             {toasts.map(toast => (
                 <div key={toast.id} className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-fade-in-up transition-all duration-300 ${toast.type === 'success' ? 'bg-green-600 text-white' : toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'}`}>
@@ -904,19 +913,45 @@ const App: React.FC = () => {
             ))}
         </div>
         {siteSettings.adsEnabled && <AdZone position="global_head" />}
-        {view !== 'login' && view !== 'register' && view !== 'onboarding' && view !== 'profileSelector' && view !== 'admin' && !siteSettings.is_maintenance_mode_enabled && !isTv && (
-            <Header onSetView={handleSetView} currentUser={currentUser} activeProfile={activeProfile} onLogout={handleLogout} allContent={allContent} onSelectContent={handleSelectContent} currentView={view} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} returnView={returnView} isKidProfile={activeProfile?.isKid} onOpenSearch={() => handleSetView('search')} unreadNotificationsCount={unreadNotificationsCount} />
+        
+        {showGlobalHeader && (
+            <Header 
+                onSetView={handleSetView} 
+                currentUser={currentUser} 
+                activeProfile={activeProfile} 
+                onLogout={handleLogout} 
+                allContent={allContent} 
+                onSelectContent={handleSelectContent} 
+                currentView={view} 
+                isRamadanTheme={siteSettings.activeTheme === 'ramadan'} 
+                isEidTheme={siteSettings.activeTheme === 'eid'} 
+                isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} 
+                isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} 
+                returnView={returnView} 
+                isKidProfile={activeProfile?.isKid} 
+                onOpenSearch={() => handleSetView('search')} 
+                unreadNotificationsCount={unreadNotificationsCount} 
+            />
         )}
+
         {isTv && (
             <TvSidebar onSetView={handleSetView} currentView={view} activeProfile={activeProfile} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} />
         )}
+        
         <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className={socialBarClass} />
         <AdPlacement ads={ads} placement="global-sticky-footer" isEnabled={siteSettings.adsEnabled} className={bottomAdClass} />
+        
         {renderView()}
+
         {showGlobalFooter && (
             <>
                 <Footer socialLinks={siteSettings.socialLinks} onSetView={handleSetView} isRamadanFooter={siteSettings.activeTheme === 'ramadan'} className={footerClass} />
-                {showBottomNav && ( <> <BottomNavigation currentView={view} onSetView={handleSetView} activeProfile={activeProfile} isLoggedIn={!!currentUser} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} /> <PWAInstallPrompt /> </> )}
+                {showBottomNav && ( 
+                    <> 
+                        <BottomNavigation currentView={view} onSetView={handleSetView} activeProfile={activeProfile} isLoggedIn={!!currentUser} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} /> 
+                        <PWAInstallPrompt /> 
+                    </> 
+                )}
             </>
         )}
     </div>
