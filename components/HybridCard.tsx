@@ -129,6 +129,8 @@ const HybridCard: React.FC<HybridCardProps> = ({
         ? `/watch/movie/${content.slug || content.id}` 
         : `/series/${content.slug || content.id}`;
 
+    const flipStyle = { transform: content.flipBackdrop ? 'scaleX(-1)' : 'none' };
+
     return (
         <a 
             href={detailUrl}
@@ -157,12 +159,13 @@ const HybridCard: React.FC<HybridCardProps> = ({
                                     ref={iframeRef}
                                     src={`https://www.youtube.com/embed/${trailerId}?autoplay=1&mute=1&enablejsapi=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=1&playlist=${trailerId}&playsinline=1&disablekb=1&iv_load_policy=3&fs=0`}
                                     className="absolute top-1/2 left-0 w-full h-[120%] -translate-y-1/2 pointer-events-none border-none scale-[1.05]" 
+                                    style={flipStyle}
                                     title={content.title}
                                     allow="autoplay; encrypted-media"
                                 />
                             </div>
                         ) : (
-                            <img src={backdropSrc} alt={content.title} className="w-full h-full object-cover" />
+                            <img src={backdropSrc} style={flipStyle} alt={content.title} className="w-full h-full object-cover" />
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/40 to-transparent"></div>
                     </div>

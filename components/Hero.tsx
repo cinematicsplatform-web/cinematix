@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Content } from '@/types';
 import ActionButtons from './ActionButtons';
@@ -305,7 +306,12 @@ const Hero: React.FC<HeroProps> = ({
                 const isActive = index === activeIndex;
                 const posX = content.mobileCropPositionX ?? content.mobileCropPosition ?? 50;
                 const posY = content.mobileCropPositionY ?? 50;
-                const imgStyle: React.CSSProperties = { '--mob-x': `${posX}%`, '--mob-y': `${posY}%` } as React.CSSProperties;
+                const flipBackdrop = content.flipBackdrop || false;
+                const imgStyle: React.CSSProperties = { 
+                    '--mob-x': `${posX}%`, 
+                    '--mob-y': `${posY}%`,
+                    transform: flipBackdrop ? 'scaleX(-1)' : 'none'
+                } as React.CSSProperties;
                 
                 const cropClass = content.enableMobileCrop ? 'mobile-custom-crop' : '';
 
@@ -359,6 +365,7 @@ const Hero: React.FC<HeroProps> = ({
                                     src={content.backdrop} 
                                     alt={content.title} 
                                     className="absolute inset-0 w-full h-full object-cover z-10 bg-only-desktop object-top"
+                                    style={{ transform: flipBackdrop ? 'scaleX(-1)' : 'none' }}
                                     draggable={false}
                                     loading={isActive ? "eager" : "lazy"}
                                 />
@@ -395,7 +402,7 @@ const Hero: React.FC<HeroProps> = ({
                                 <div className={`flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-xs md:text-base font-medium text-gray-200 transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'mb-1 md:mb-2 opacity-80' : 'mb-1 md:mb-3 opacity-100'}`}>
                                     <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/10">
                                         <StarIcon className="w-3 h-3 md:w-4 md:h-4" />
-                                        <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
+                                        <span className="font-bold text-white">{(Number(content.rating) || 0).toFixed(1)}</span>
                                     </div>
                                     
                                     <span className="text-gray-500 text-sm md:text-lg">|</span>
@@ -445,7 +452,7 @@ const Hero: React.FC<HeroProps> = ({
                                     <ActionButtons onWatch={() => onWatchNow(content)} onToggleMyList={() => onToggleMyList(content.id)} isInMyList={!!myList?.includes(content.id)} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} showMyList={isLoggedIn} content={content} />
                                     {shouldShowVideo && (
                                         <button onClick={toggleMute} className="p-3.5 md:p-6 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group origin-center cursor-pointer" title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}>
-                                            <SpeakerIcon isMuted={isMuted} className="w-6 h-6 md:w-9 md:h-9 text-white group-hover:scale-110 transition-transform" />
+                                            <SpeakerIcon isMuted={isMuted} className="h-6 w-6 md:h-9 md:w-9 text-white group-hover:scale-110 transition-transform" />
                                         </button>
                                     )}
                                 </div>

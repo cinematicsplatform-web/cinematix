@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { createPortal } from 'react-dom';
@@ -17,6 +18,7 @@ import { ExpandIcon } from './icons/ExpandIcon';
 import { CheckIcon } from './CheckIcon';
 import { ChevronDownIcon } from './icons/ChevronDownIcon';
 import { DownloadIcon } from './icons/DownloadIcon';
+import { ChevronRightIcon } from './icons/ChevronRightIcon';
 
 interface DetailPageProps {
   content: Content;
@@ -36,6 +38,7 @@ interface DetailPageProps {
   isNetflixRedTheme?: boolean;
   locationPath?: string; 
   initialSeasonNumber?: number;
+  returnView?: View;
 }
 
 export const UserIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -74,7 +77,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
   isCosmicTealTheme,
   isNetflixRedTheme,
   locationPath,
-  initialSeasonNumber
+  initialSeasonNumber,
+  returnView
 }) => {
   const isLoaded = !!content && !!content.id;
   const safeTitle = content?.title || 'جاري التحميل...';
@@ -315,12 +319,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
   }, [content?.id, trailerVideoId, isMobile, selectedSeasonId]);
 
   useEffect(() => {
-      if (activeTab === 'trailer' && !trailerVideoId) {
-          setActiveTab('episodes');
-      }
-  }, [activeTab, trailerVideoId]);
-
-  useEffect(() => {
     if (!showVideo || !iframeRef.current) return;
     const win = iframeRef.current.contentWindow;
     if (!win) return;
@@ -475,7 +473,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const cropPosX = currentSeason?.mobileCropPositionX ?? currentSeason?.mobileCropPosition ?? content?.mobileCropPositionX ?? content?.mobileCropPosition ?? 50;
   const cropPosY = currentSeason?.mobileCropPositionY ?? currentSeason?.mobileCropPositionY ?? content?.mobileCropPositionY ?? 50;
   const enableCrop = currentSeason?.enableMobileCrop ?? content?.enableMobileCrop ?? false;
-  const imgStyle: React.CSSProperties = { '--mob-x': `${cropPosX}%`, '--mob-y': `${cropPosY}%` } as React.CSSProperties;
+  const flipBackdrop = currentSeason?.flipBackdrop ?? content?.flipBackdrop ?? false;
+  const imgStyle: React.CSSProperties = { 
+      '--mob-x': `${cropPosX}%`, 
+      '--mob-y': `${cropPosY}%`,
+      transform: flipBackdrop ? 'scaleX(-1)' : 'none'
+  } as React.CSSProperties;
 
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0 relative overflow-x-hidden w-full">
@@ -494,18 +497,33 @@ const DetailPage: React.FC<DetailPageProps> = ({
       />
 
       <div ref={heroRef} className="relative h-[83vh] md:h-[90vh] lg:h-[90vh] w-full group z-[45]">
+        {/* Mobile Back Button */}
+        <div className="flex md:hidden absolute top-6 right-4 z-[100] pointer-events-auto">
+            <button 
+                onClick={(e) => {
+                    e.preventDefault();
+                    onSetView(returnView || 'home');
+                }}
+                className="p-3 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10 active:scale-90 transition-all shadow-lg group"
+                aria-label="Back"
+            >
+                <ChevronRightIcon className="w-6 h-6 transform rotate-0 text-white" />
+            </button>
+        </div>
+
         <div className="absolute inset-0 bg-black overflow-hidden">
             {isLoaded ? (
                 <div key={`season-backdrop-${selectedSeasonId}`} className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}>
                     <img 
                         src={displayBackdrop} 
                         alt={content.title} 
-                        className="absolute inset-0 w-full h-full object-cover bg-only-desktop object-top"
+                        className="absolute inset-0 w-full h-full object-cover z-10 bg-only-desktop object-top"
+                        style={{ transform: flipBackdrop ? 'scaleX(-1)' : 'none' }}
                     />
                     <img 
                         src={currentSeason?.mobileImageUrl || content.mobileBackdropUrl || displayBackdrop} 
                         alt={content.title} 
-                        className={`absolute inset-0 w-full h-full object-cover bg-only-mobile ${enableCrop ? 'mobile-custom-crop' : 'object-top'} md:object-top`}
+                        className={`absolute inset-0 w-full h-full object-cover z-10 bg-only-mobile ${enableCrop ? 'mobile-custom-crop' : 'object-top'} md:object-top`}
                         style={imgStyle}
                     />
                 </div>
@@ -591,7 +609,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         <>
                             <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
                                 <StarIcon className="h-5 w-5" />
-                                <span className="font-bold text-white">{content.rating.toFixed(1)}</span>
+                                <span className="font-bold text-white">{(Number(content.rating) || 0).toFixed(1)}</span>
                             </div>
 
                             <span className="text-gray-500 opacity-60">|</span>
@@ -1002,7 +1020,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                       contents={similarContent} 
                       onSelectContent={onSelectContent} 
                       isLoggedIn={isLoggedIn} 
-                      myList={myList} 
+                      myList={similarContent.length > 0 ? (myList || []) : []} 
                       onToggleMyList={onToggleMyList}
                       isRamadanTheme={isRamadanTheme}
                       isEidTheme={isEidTheme}

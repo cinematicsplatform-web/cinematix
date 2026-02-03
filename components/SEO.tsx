@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 
@@ -129,9 +130,9 @@ const SEO: React.FC<SEOProps> = ({
       {keywords && <meta name="keywords" content={keywords} />}
       <link rel="canonical" href={canonicalUrl} />
       
-      {/* تقييد ظهور الصور في مقتطفات جوجل (SERP Snippets) لعرض نتائج نصية فقط */}
-      <meta name="robots" content={noIndex ? "noindex, nofollow" : "index, follow, max-image-preview:none"} />
-      <meta name="googlebot" content="index, follow, max-image-preview:none" />
+      {/* تم تعديل الفهرسة للسماح بالمعاينة الكاملة والصور الكبيرة في جوجل (SERP Snippets) */}
+      <meta name="robots" content={noIndex ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"} />
+      <meta name="googlebot" content={noIndex ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"} />
       
       {/* Open Graph / Facebook - الصور تظهر هنا بشكل طبيعي عند المشاركة */}
       <meta property="og:type" content={type === 'series' ? 'video.tv_show' : type === 'movie' ? 'video.movie' : 'website'} />

@@ -73,6 +73,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
         return null;
     }, [currentSeason, episodeNumber]);
 
+    const flipBackdrop = currentSeason?.flipBackdrop ?? content?.flipBackdrop ?? false;
     const displayBackdrop = currentSeason?.backdrop || content?.backdrop || '';
     const displayDescription = currentSeason?.description || content?.description || '';
 
@@ -121,6 +122,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     const cropStyle: React.CSSProperties = {
       '--mob-x': `${currentSeason?.mobileCropPositionX ?? currentSeason?.mobileCropPosition ?? content?.mobileCropPositionX ?? content?.mobileCropPosition ?? 50}%`,
       '--mob-y': `${currentSeason?.mobileCropPositionY ?? currentSeason?.mobileCropPositionY ?? content?.mobileCropPositionY ?? 50}%`,
+      transform: flipBackdrop ? 'scaleX(-1)' : 'none'
     } as React.CSSProperties;
 
     const enableCrop = currentSeason?.enableMobileCrop ?? content?.enableMobileCrop ?? false;
@@ -269,7 +271,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                                         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">التقييم</span>
                                         <div className="flex items-center gap-1.5 text-yellow-500">
                                             <StarIcon className="w-3 h-3" />
-                                            <span className="font-black text-sm md:text-base">{content.rating.toFixed(1)}</span>
+                                            <span className="font-black text-sm md:text-base">{(Number(content.rating) || 0).toFixed(1)}</span>
                                         </div>
                                     </div>
                                 </div>
