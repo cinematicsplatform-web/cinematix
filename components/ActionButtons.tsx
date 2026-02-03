@@ -29,7 +29,7 @@ const CalendarIcon = () => (
       strokeWidth="2" 
       strokeLinecap="round" 
       strokeLinejoin="round" 
-      className="w-6 h-6 md:w-9 md:h-9 ml-2 inline-block text-white" 
+      className="w-6 h-6 md:w-9 md:h-9 inline-block text-white" 
     >
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
       <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -78,9 +78,9 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   // Logic for the primary button color
   let primaryBtnClass = "btn-primary";
   
-  // شرط خاص لزر "قريباً" ليطابق الصورة المرفقة
+  // شرط خاص لزر "قريباً" ليطابق الصورة المرفقة مع توحيد الأبعاد والظلال
   if (isSoon) {
-      primaryBtnClass = "bg-[#374151] text-white hover:bg-[#4b5563] border-none shadow-none";
+      primaryBtnClass = "bg-[#374151] text-white hover:bg-[#4b5563] border-none shadow-lg hover:shadow-xl";
   } else if (isRamadanTheme) {
       primaryBtnClass = "bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)] hover:brightness-110 border-none";
   } else if (isEidTheme) {

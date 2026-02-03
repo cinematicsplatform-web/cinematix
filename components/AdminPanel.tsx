@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-// Added deleteBroadcastNotification, deleteReport, deleteContentRequest to imports
 import { db, getReleaseSchedules, deleteReleaseSchedule, deleteBroadcastNotification, deleteReport, deleteContentRequest } from '../firebase'; 
-// Added PinnedContentState, Top10State, Story to imports
 import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, Top10State, PageKey, Story } from '../types';
 import { ContentType, UserRole } from '../types';
 import ContentEditModal from './ContentEditModal'; 
@@ -65,7 +63,11 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = (props) => {
-    const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+    const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+        const saved = localStorage.getItem('cinematix_admin_active_tab');
+        return (saved as AdminTab) || 'dashboard';
+    });
+    
     const [isContentModalOpen, setIsContentModalOpen] = useState(false);
     const [editingContent, setEditingContent] = useState<Content | null>(null);
     const [isAdModalOpen, setIsAdModalOpen] = useState(false);
@@ -84,6 +86,10 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; type: 'content' | 'user' | 'ad' | 'pinned' | 'story' | 'broadcast' | 'report' | 'radar' | 'request'; id: string; title?: string; meta?: any; }>({ isOpen: false, type: 'content', id: '' });
 
     useEffect(() => {
+        localStorage.setItem('cinematix_admin_active_tab', activeTab);
+    }, [activeTab]);
+
+    useEffect(() => {
         localStorage.setItem('cinematix_dismissed_radar_alerts', JSON.stringify(dismissedAlerts));
     }, [dismissedAlerts]);
 
@@ -95,20 +101,21 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
         prevRadarCountRef.current = radarCount;
     }, [radarCount]);
 
+    const fetchAllContent = async () => {
+        setIsLoadingContent(true);
+        try {
+            const data = await db.collection("content").orderBy("updatedAt", "desc").get();
+            const contentData = data.docs.map(d => ({ ...d.data(), id: d.id })) as Content[];
+            setAllContent(contentData);
+        } catch (err) {
+            console.error("Error fetching content:", err);
+            props.addToast("حدث خطأ أثناء جلب المحتوى من قاعدة البيانات.", "error");
+        }
+        setIsLoadingContent(false);
+    };
+
     useEffect(() => {
-        const getContent = async () => {
-            setIsLoadingContent(true);
-            try {
-                const data = await db.collection("content").orderBy("updatedAt", "desc").get();
-                const contentData = data.docs.map(d => ({ ...d.data(), id: d.id })) as Content[];
-                setAllContent(contentData);
-            } catch (err) {
-                console.error("Error fetching content:", err);
-                props.addToast("حدث خطأ أثناء جلب المحتوى من قاعدة البيانات.", "error");
-            }
-            setIsLoadingContent(false);
-        };
-        getContent();
+        fetchAllContent();
         
         const refreshRadarBadge = () => {
             getReleaseSchedules().then(schedules => {
@@ -165,7 +172,33 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const openContentModalForEdit = (c: Content) => { setEditingContent(c); setIsContentModalOpen(true); };
     const openContentModalForNew = () => { setEditingContent(null); setIsContentModalOpen(true); };
     
-    const handleSaveContent = async (c: Content) => { try { const contentWithDate = { ...c, updatedAt: new Date().toISOString() }; if(editingContent) { const { id, ...contentData } = contentWithDate; await db.collection("content").doc(c.id).update(contentData); setAllContent(prev => { const filtered = prev.filter(item => item.id !== c.id); return [contentWithDate, ...filtered]; }); props.addToast("تم تعديل المحتوى وتصدر القائمة!", "success"); } else { const { id, ...contentData } = contentWithDate; const docRef = await db.collection("content").add(contentData); setAllContent(prev => [{...contentWithDate, id: docRef.id}, ...prev]); props.addToast("تم إضافة المحتوى وتصدر القائمة!", "success"); } props.onContentChanged(); setIsContentModalOpen(false); setEditingContent(null); } catch (err) { console.error("Error saving content:", err); props.addToast("حدث خطأ أثناء حفظ المحتوى.", "error"); } };
+    const handleSaveContent = async (c: Content) => { 
+        try { 
+            const contentWithDate = { ...c, updatedAt: new Date().toISOString() }; 
+            
+            if(editingContent) { 
+                const { id, ...contentData } = contentWithDate; 
+                await db.collection("content").doc(c.id).update(contentData); 
+                props.addToast("تم تعديل المحتوى بنجاح!", "success"); 
+                // Manual local update to prevent stale UI during background re-fetch
+                setAllContent(prev => prev.map(item => item.id === c.id ? contentWithDate : item));
+            } else { 
+                const { id, ...contentData } = contentWithDate; 
+                const docRef = await db.collection("content").add(contentData); 
+                props.addToast("تم إضافة المحتوى بنجاح!", "success"); 
+                // Manual local add
+                setAllContent(prev => [{...contentWithDate, id: docRef.id}, ...prev]);
+            } 
+            
+            setIsContentModalOpen(false); 
+            setEditingContent(null);
+            // Trigger parent refresh to update site-wide content list
+            props.onContentChanged(); 
+        } catch (err) { 
+            console.error("Error saving content:", err); 
+            props.addToast("حدث خطأ أثناء حفظ المحتوى.", "error"); 
+        } 
+    };
     
     const confirmDeleteContent = (contentId: string, contentTitle: string) => { setDeleteModalState({ isOpen: true, type: 'content', id: contentId, title: contentTitle }); };
     const confirmDeleteUser = (userId: string, userName: string) => { setDeleteModalState({ isOpen: true, type: 'user', id: userId, title: userName }); };
@@ -178,7 +211,15 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const executeDelete = async () => { 
         const { type, id } = deleteModalState; 
         if (type === 'content') { 
-            try { await db.collection("content").doc(id).delete(); setAllContent(prev => prev.filter(item => item.id !== id)); props.onContentChanged(); props.addToast('تم حذف المحتوى بنجاح.', 'success'); } catch (err) { console.error("Error deleting content:", err); props.addToast("حدث خطأ أثناء الحذف.", "error"); } 
+            try { 
+                await db.collection("content").doc(id).delete(); 
+                setAllContent(prev => prev.filter(item => item.id !== id)); 
+                props.onContentChanged(); 
+                props.addToast('تم حذف المحتوى بنجاح.', 'success'); 
+            } catch (err) { 
+                console.error("Error deleting content:", err); 
+                props.addToast("حدث خطأ أثناء الحذف.", "error"); 
+            } 
         } else if (type === 'user') { 
             props.onDeleteUser(id); 
         } else if (type === 'ad') { 
@@ -232,17 +273,6 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
         }
     };
 
-    if (isContentModalOpen) {
-        return (
-            <ContentEditModal 
-                content={editingContent} 
-                onClose={() => setIsContentModalOpen(false)} 
-                onSave={handleSaveContent} 
-                addToast={props.addToast} 
-            />
-        );
-    }
-
     const navItems: {id: AdminTab, label: string, icon: any}[] = [
         { id: 'dashboard', label: 'نظرة عامة', icon: HomeIcon },
         { id: 'content', label: 'المحتوى', icon: FilmIcon },
@@ -275,7 +305,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             />
 
             <aside className={`fixed inset-y-0 right-0 z-[100] w-72 bg-[#0f1014] border-l border-gray-800 flex flex-col shadow-2xl transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
-                <div className="p-8 border-b border-gray-800 flex flex-col items-center text-center gap-3">
+                <div className="p-8 border-b border-gray-800 flex flex-col items-center gap-3">
                     <div className="text-3xl font-extrabold cursor-default flex flex-row items-baseline gap-1 justify-center">
                         <span className="text-white font-['Cairo']">سينما</span>
                         <span className="gradient-text font-['Lalezar'] tracking-wide text-4xl">تيكس</span>
@@ -316,6 +346,21 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             </aside>
 
             <main className="flex-1 flex flex-col min-w-0 bg-[#090b10] relative">
+                {/* Content Editor Modal Overlay - Ensures structure stability */}
+                {isContentModalOpen && (
+                    <div className="fixed inset-0 z-[200] bg-[#090b10] animate-fade-in">
+                        <ContentEditModal 
+                            content={editingContent} 
+                            onClose={() => {
+                                setIsContentModalOpen(false);
+                                setEditingContent(null);
+                            }} 
+                            onSave={handleSaveContent} 
+                            addToast={props.addToast} 
+                        />
+                    </div>
+                )}
+
                 <header className="h-20 border-b border-gray-800 bg-[#0f1014]/90 backdrop-blur-md flex items-center justify-between px-6 md:px-10 z-10 sticky top-0">
                     <div className="flex items-center gap-4">
                         <button 

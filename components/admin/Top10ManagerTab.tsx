@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Content, PinnedItem, PageKey } from '../../types';
 import { ContentType } from '../../types';
@@ -108,7 +109,7 @@ const Top10ManagerTab: React.FC<any> = ({ allContent, pinnedState, setPinnedItem
                                     <div className="flex items-center gap-3 mt-2">
                                         <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-black text-gray-400 uppercase tracking-tighter">{item.contentDetails.type}</span>
                                         <span className="text-[11px] font-black text-gray-500 font-mono">{item.contentDetails.releaseYear}</span>
-                                        <span className="text-[11px] text-yellow-500 font-black">★ {item.contentDetails.rating.toFixed(1)}</span>
+                                        <span className="text-[11px] text-yellow-500 font-black">★ {(Number(item.contentDetails.rating) || 0).toFixed(1)}</span>
                                     </div>
                                 </div>
                                 <button onClick={() => handleUnpin(item.contentId)} className="p-4 text-red-500/30 hover:text-red-500 hover:bg-red-500/10 rounded-2xl transition-all active:scale-90"><TrashIcon/></button>

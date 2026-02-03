@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Content } from '@/types';
 import { ContentType } from '@/types';
@@ -44,7 +45,6 @@ const ContentCard: React.FC<ContentCardProps> = ({
     onToggleMyList(content.id);
   };
 
-  // البرنامج والمسلسل هما فقط من يعاملان بنظام الحلقات
   const isEpisodic = content.type === ContentType.Series || content.type === ContentType.Program;
 
   const latestSeason = isEpisodic && content.seasons && content.seasons.length > 0
@@ -136,7 +136,6 @@ const ContentCard: React.FC<ContentCardProps> = ({
 
   const aspectRatioClass = isHorizontal ? 'aspect-video' : 'aspect-[2/3]';
 
-  // تحديد الرابط بناءً على ما إذا كان المحتوى بنظام حلقات أم لا
   const slug = content.slug || content.id;
   let detailUrl = '#';
   if (!isEpisodic) {
@@ -151,8 +150,8 @@ const ContentCard: React.FC<ContentCardProps> = ({
           case ContentType.Movie: return 'فيلم';
           case ContentType.Series: return 'مسلسل';
           case ContentType.Program: return 'برنامج';
-          case ContentType.Concert: return 'حفل';
-          case ContentType.Play: return 'مسرحية';
+          case 'concert': return 'حفل';
+          case 'play': return 'مسرحية';
           default: return 'عمل';
       }
   }
@@ -224,7 +223,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
             )}
         </div>
       </div>
-    </a>
+    </div>
   );
 };
 
