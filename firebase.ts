@@ -23,14 +23,15 @@ const getEnvVar = (key: string, viteKey: string) => {
   return undefined;
 };
 
-// Configuration
+// Configuration for Cinematix
 const firebaseConfig = {
   apiKey: getEnvVar("NEXT_PUBLIC_FIREBASE_API_KEY", "VITE_FIREBASE_API_KEY") || "AIzaSyBVK0Zla5VD05Hgf4QqExAWUuXX64odyes", 
-  authDomain: getEnvVar("NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN", "VITE_FIREBASE_AUTH_DOMAIN") || "cinematic-d3697.firebaseapp.com",
-  projectId: getEnvVar("NEXT_PUBLIC_FIREBASE_PROJECT_ID", "VITE_FIREBASE_PROJECT_ID") || "cinematic-d3697", 
-  storageBucket: getEnvVar("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET", "VITE_FIREBASE_STORAGE_BUCKET") || "cinematic-d3697.firebasestorage.app", 
-  messagingSenderId: getEnvVar("NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID", "VITE_FIREBASE_MESSAGING_SENDER_ID") || "247576999692",
-  appId: getEnvVar("NEXT_PUBLIC_FIREBASE_APP_ID", "VITE_FIREBASE_APP_ID") || "1:247576999692:web:309f001a211dc1b150fb29", 
+  authDomain: "cinematic-d3697.firebaseapp.com",
+  projectId: "cinematic-d3697", 
+  storageBucket: "cinematic-d3697.firebasestorage.app", 
+  messagingSenderId: "247576999692",
+  appId: "1:247576999692:web:309f001a211dc1b150fb29",
+  measurementId: "G-XWRXYMGWRG"
 };
 
 // Initialize Firebase
@@ -39,17 +40,13 @@ if (!firebase.apps.length) {
 }
 const app = firebase.app();
 
-// Initialize Firestore with specific settings to fix connectivity issues
+// Initialize Firestore
 const firestoreInstance = app.firestore();
 
 try {
   firestoreInstance.settings({
     ignoreUndefinedProperties: true,
-    // FIX: Force long polling to resolve "Could not reach Cloud Firestore backend"
-    // This is critical for environments that block WebSockets or have strict proxy rules.
     experimentalForceLongPolling: true,
-    experimentalAutoDetectLongPolling: true,
-    // Optimization for better synchronization
     cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
   });
 } catch (e: any) {
@@ -60,6 +57,10 @@ try {
 
 export const db = firestoreInstance;
 export const storage = app.storage();
+export const auth = app.auth();
+
+// Google Auth Provider for Social Login
+export const googleProvider = new firebase.auth.GoogleAuthProvider();
 
 if (typeof window !== 'undefined') {
     db.enablePersistence({ synchronizeTabs: true })
@@ -72,7 +73,6 @@ if (typeof window !== 'undefined') {
       });
 }
 
-export const auth = app.auth();
 export const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
 export const Timestamp = firebase.firestore.Timestamp;
 
@@ -117,9 +117,6 @@ const handleFirestoreError = (error: any, context: string, fallback: any) => {
         console.error(`[Cinematix] Missing Index for ${context}.`);
         return fallback;
     }
-    if (code === 'unavailable' || msg.includes('offline') || code === 'failed-precondition') {
-        return fallback;
-    } 
     return fallback;
 };
 
@@ -255,11 +252,6 @@ export const deleteAd = async (adId: string): Promise<void> => {
     await db.collection("ads").doc(adId).delete();
 };
 
-/**
- * جلب كافة المحتويات مع مراعاة الجدولة.
- * للمسؤولين: يتم جلب الكل.
- * للزوار: يتم استبعاد المحتوى الذي موعد نشره في المستقبل.
- */
 export const getAllContent = async (isAdmin: boolean = false): Promise<Content[]> => {
     try {
         const snapshot = await db.collection('content').get();
@@ -268,7 +260,6 @@ export const getAllContent = async (isAdmin: boolean = false): Promise<Content[]
         let contents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Content));
         
         if (!isAdmin) {
-            // تصفية المحتوى المجدول للزوار العاديين
             contents = contents.filter(c => {
                 if (!c.isScheduled || !c.scheduledAt) return true;
                 const scheduleDate = new Date(c.scheduledAt);
@@ -312,8 +303,8 @@ export const createUserProfileInFirestore = async (uid: string, data: Omit<User,
 
 export const updateUserProfileInFirestore = async (userId: string, userData: Partial<User>): Promise<void> => {
     const dataToUpdate = { ...userData };
-    delete dataToUpdate.id;
-    delete dataToUpdate.password;
+    delete (dataToUpdate as any).id;
+    delete (dataToUpdate as any).password;
     await db.collection("users").doc(userId).update(dataToUpdate);
 };
 
@@ -326,7 +317,7 @@ export const requestNotificationPermission = async (userId: string) => {
     try {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            const token = await messaging.getToken({
+            const token = await (messaging as any).getToken({
                 vapidKey: 'BM_s__YOUR_VAPID_KEY_IF_NEEDED__HERE' 
             });
             if (token && userId) {
@@ -340,7 +331,6 @@ export const requestNotificationPermission = async (userId: string) => {
     }
 };
 
-// تم توحيد الاسم إلى 'requests' بدلاً من 'content_requests' ليتطابق مع الـ Rules
 export const addContentRequest = async (request: Omit<ContentRequest, 'id' | 'createdAt' | 'status'>): Promise<void> => {
     const sanitizedData = {
         ...request,

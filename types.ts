@@ -1,5 +1,3 @@
-
-
 export const ContentType = {
   Movie: 'movie',
   Series: 'series',
@@ -79,6 +77,7 @@ export interface Season {
   cast?: string[]; 
   adLink?: string; 
   isUpcoming?: boolean; 
+  flipBackdrop?: boolean; 
   
   mobileImageUrl?: string; 
   useCustomMobileImage?: boolean; 
@@ -126,6 +125,7 @@ export interface Content {
   mobileCropPositionY?: number; 
   slug?: string; 
   isUpcoming?: boolean; 
+  flipBackdrop?: boolean; 
 }
 
 export interface Person {
