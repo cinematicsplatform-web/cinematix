@@ -154,7 +154,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
           case 'play': return 'مسرحية';
           default: return 'عمل';
       }
-  }
+  };
 
   return (
     <a 
@@ -166,7 +166,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
         aria-label={`مشاهدة ${content.title}`}
         className={`relative ${widthClass} block no-underline text-inherit cursor-pointer group transition-transform duration-300 ease-out transform hover:scale-105 hover:z-50 origin-center`}
     >
-      <div className={`relative rounded-xl overflow-hidden transition-colors duration-300`}>
+      <div className="relative rounded-xl overflow-hidden transition-colors duration-300">
         <div className={`${aspectRatioClass} w-full relative`}>
             <img 
                 src={displayPoster} 
@@ -189,7 +189,12 @@ const ContentCard: React.FC<ContentCardProps> = ({
                     {!content.top10Poster && (
                         <div className={`flex flex-wrap items-center gap-x-2 gap-y-2 text-[10px] md:text-xs font-medium text-gray-300 w-full ${isHorizontal ? 'justify-start' : 'justify-center'}`}>
                             <span className="bg-white/20 backdrop-blur-md border border-white/10 px-2 py-0.5 rounded text-white font-bold shadow-sm">{getTypeText(content.type)}</span>
-                            {seasonBadgeText && <><span className={isRamadanTheme ? 'text-amber-500 font-bold' : 'text-[#00A7F8] font-bold'}>{seasonBadgeText}</span><span className="opacity-50 text-[8px]">•</span></>}
+                            {seasonBadgeText && (
+                                <>
+                                    <span className={isRamadanTheme ? 'text-amber-500 font-bold' : 'text-[#00A7F8] font-bold'}>{seasonBadgeText}</span>
+                                    <span className="opacity-50 text-[8px]">•</span>
+                                </>
+                            )}
                             <span className="text-white font-bold">{displayYear}</span>
                         </div>
                     )}
@@ -199,7 +204,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
             {rank && rank <= 10 && (
                 <div className="absolute top-0 left-0 z-40 w-[20%] md:w-[22%] pointer-events-none">
                     <div className="relative w-full h-full">
-                        <img src="https://shahid.mbc.net/staticFiles/production/static/images/top10.svg" alt="Top 10" className="w-full h-auto" draggable={false}/>
+                        <img src="https://shahid.mbc.net/staticFiles/production/static/images/top10.svg" alt="Top 10" className="w-full h-auto" draggable={false} />
                         <div className="absolute inset-x-0 top-0 h-[74%] flex items-center justify-center translate-y-[22%] pt-[2%]">
                             <span className="rank-font text-white select-none" style={{ fontSize: 'clamp(22px, 4.6vw, 44px)', lineHeight: '1', letterSpacing: '-1px', textShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>{rank}</span>
                         </div>
@@ -219,11 +224,17 @@ const ContentCard: React.FC<ContentCardProps> = ({
             )}
 
             {isLoggedIn && (
-                <button onClick={handleToggle} className={`absolute bottom-2 left-2 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-all duration-200 z-30 ${buttonClass} opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0`} title={isInMyList ? "إزالة من القائمة" : "إضافة للقائمة"}>{isInMyList ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5"/> : <PlusIcon className="w-4 h-4 md:w-5 md:h-5"/>}</button>
+                <button 
+                  onClick={handleToggle} 
+                  className={`absolute bottom-2 left-2 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-all duration-200 z-30 ${buttonClass} opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0`} 
+                  title={isInMyList ? "إزالة من القائمة" : "إضافة للقائمة"}
+                >
+                    {isInMyList ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5" /> : <PlusIcon className="w-4 h-4 md:w-5 md:h-5" />}
+                </button>
             )}
         </div>
       </div>
-    </div>
+    </a>
   );
 };
 
