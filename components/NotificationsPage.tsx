@@ -1,9 +1,15 @@
+
 import React, { useEffect, useState } from 'react';
 import type { Notification, View } from '@/types';
-import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '@/firebase';
+import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteUserNotification, deleteAllUserNotifications } from '@/firebase';
 import { BellIcon } from './icons/BellIcon';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
-import { PlayIcon } from './icons/PlayIcon';
+
+const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 0-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+  </svg>
+);
 
 interface NotificationsPageProps {
   userId: string;
@@ -47,6 +53,24 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ userId, onSetView
     await markAllNotificationsAsRead(userId);
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     onUpdateUnreadCount(0);
+  };
+
+  const handleDeleteNotification = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm('هل تريد حذف هذا الإشعار؟')) {
+      await deleteUserNotification(id);
+      const updated = notifications.filter(n => n.id !== id);
+      setNotifications(updated);
+      onUpdateUnreadCount(updated.filter(n => !n.isRead).length);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (confirm('هل أنت متأكد من حذف كافة الإشعارات؟ لا يمكن التراجع عن هذا الإجراء.')) {
+      await deleteAllUserNotifications(userId);
+      setNotifications([]);
+      onUpdateUnreadCount(0);
+    }
   };
 
   const formatTime = (dateStr: string) => {
@@ -106,14 +130,24 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ userId, onSetView
              </div>
           </div>
 
-          {notifications.length > 0 && (
-            <button 
-                onClick={handleMarkAllAsRead}
-                className="text-xs font-black text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-4 py-2 rounded-full hover:bg-[var(--color-accent)] hover:text-black transition-all border border-[var(--color-accent)]/20"
-            >
-                قراءة الكل
-            </button>
-          )}
+          <div className="flex gap-2">
+            {notifications.length > 0 && (
+              <>
+                <button 
+                    onClick={handleMarkAllAsRead}
+                    className="text-[10px] font-black text-gray-300 bg-white/5 px-3 py-1.5 rounded-full hover:bg-white/10 transition-all border border-white/10"
+                >
+                    قراءة الكل
+                </button>
+                <button 
+                    onClick={handleClearAll}
+                    className="text-[10px] font-black text-red-400 bg-red-500/10 px-3 py-1.5 rounded-full hover:bg-red-500/20 transition-all border border-red-500/20"
+                >
+                    مسح الكل
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {isLoading ? (
@@ -144,7 +178,16 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ userId, onSetView
                 `}
               >
                 {/* 1. TEXT CONTENT (RIGHT SIDE IN RTL) */}
-                <div className="flex-1 flex flex-col p-4 md:p-6 text-right order-1 min-w-0">
+                <div className="flex-1 flex flex-col p-4 md:p-6 text-right order-1 min-w-0 relative">
+                    {/* Delete Button (Individual) */}
+                    <button 
+                        onClick={(e) => handleDeleteNotification(e, notif.id)}
+                        className="absolute top-4 left-4 p-2 bg-red-600/10 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white z-40"
+                        title="حذف"
+                    >
+                        <TrashIcon className="w-4 h-4" />
+                    </button>
+
                     {/* Timestamp */}
                     <div className="flex justify-start mb-1">
                         <span className="text-gray-500 font-bold text-[9px] md:text-xs">{formatTime(notif.createdAt)}</span>
@@ -173,7 +216,6 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ userId, onSetView
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-110" 
                         loading="lazy"
                     />
-                    {/* Layer removed to prevent fading effect */}
                 </div>
 
                 {/* Unread Dot */}
