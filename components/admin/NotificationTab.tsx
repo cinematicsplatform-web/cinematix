@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { db, getBroadcastHistory, deleteBroadcastNotification } from '../../firebase';
 import type { Notification, BroadcastNotification } from '../../types';
@@ -22,25 +23,55 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
 
     const handleSendNotification = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!title.trim() || !body.trim()) {
+            addToast('الرجاء تعبئة العنوان ونص الرسالة.', 'info');
+            return;
+        }
+
         setSending(true);
         try {
             const broadcastId = String(Date.now());
+            let pushCount = 0;
             
+            // 1. Send Push Notifications via FCM HTTP v1 if Service Account is available
             if (serviceAccountJson) {
-                const accessToken = await getAccessToken(serviceAccountJson);
-                if (accessToken) {
-                    const parsedServiceAccount = JSON.parse(serviceAccountJson);
-                    const projectId = parsedServiceAccount.project_id;
-                    const allTokens: string[] = [];
-                    allUsers.forEach((u: any) => {
-                        if (u.fcmTokens && Array.isArray(u.fcmTokens)) allTokens.push(...u.fcmTokens);
-                    });
-                    const uniqueTokens = Array.from(new Set(allTokens));
-                    const notificationData = { title, body, image: image || '/icon-192.png', data: { url } };
-                    await Promise.all(uniqueTokens.map(token => sendFCMv1Message(token, notificationData, accessToken, projectId)));
+                try {
+                    const accessToken = await getAccessToken(serviceAccountJson);
+                    if (accessToken) {
+                        const parsedServiceAccount = JSON.parse(serviceAccountJson);
+                        const projectId = parsedServiceAccount.project_id;
+                        
+                        const allTokens: string[] = [];
+                        allUsers.forEach((u: any) => {
+                            if (u.fcmTokens && Array.isArray(u.fcmTokens)) {
+                                allTokens.push(...u.fcmTokens);
+                            }
+                        });
+                        
+                        const uniqueTokens = Array.from(new Set(allTokens));
+                        if (uniqueTokens.length > 0) {
+                            const notificationData = { 
+                                title, 
+                                body, 
+                                image: image || '/android-chrome-192x192.png', 
+                                data: { url } 
+                            };
+                            
+                            // Send to all tokens
+                            const results = await Promise.allSettled(
+                                uniqueTokens.map(token => sendFCMv1Message(token, notificationData, accessToken, projectId))
+                            );
+                            pushCount = results.filter(r => r.status === 'fulfilled').length;
+                        }
+                    }
+                } catch (pushErr) {
+                    console.error("[Cinematix] Push Service Error:", pushErr);
+                    // We continue to save in-app notifications even if push fails
                 }
             }
 
+            // 2. Save In-App Notifications for each user in Firestore
             const batch = db.batch();
             allUsers.forEach((user: any) => {
                 const notifRef = db.collection('notifications').doc();
@@ -58,6 +89,7 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
                 batch.set(notifRef, newNotif);
             });
 
+            // 3. Record in Broadcast History
             const historyRef = db.collection('broadcast_history').doc(broadcastId);
             batch.set(historyRef, {
                 title, body, type, imageUrl: image || null, targetUrl: url || null,
@@ -67,10 +99,11 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
 
             await batch.commit();
 
-            addToast(`تم إرسال الإشعار لـ ${allUsers.length} مستخدم بنجاح!`, 'success');
+            addToast(`تم إرسال الإشعار لـ ${allUsers.length} مستخدم. (تم تسليم ${pushCount} تنبيه دفع)`, 'success');
             setTitle(''); setBody(''); setImage(''); setUrl('/'); setType('new_content');
             fetchHistory();
         } catch (error: any) { 
+            console.error("[Cinematix] Global Notification Error:", error);
             addToast('فشل إرسال الإشعارات: ' + error.message, 'error'); 
         } finally { 
             setSending(false); 
@@ -95,6 +128,16 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
 
     return (
         <div className="space-y-10 animate-fade-in">
+            {!serviceAccountJson && (
+                <div className="bg-amber-900/20 border border-amber-500/30 p-4 rounded-xl text-amber-200 text-xs flex items-center gap-3">
+                    <span className="text-xl">💡</span>
+                    <div>
+                        <p className="font-bold">ملاحظة للمسؤول:</p>
+                        <p>لتفعيل إشعارات الدفع (Push Notifications) للهواتف، يرجى إضافة ملف الـ <b>Service Account JSON</b> في تبويب <b>إعدادات الموقع</b>.</p>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <div className="lg:col-span-7 bg-[#1f2937] p-8 rounded-3xl border border-gray-700/50 shadow-xl">
                     <div className="flex justify-between items-center mb-6">
