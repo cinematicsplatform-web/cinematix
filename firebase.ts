@@ -1,5 +1,12 @@
+// Modular SDK imports for advanced caching
+import { initializeApp } from "firebase/app";
+import { 
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentMultipleTabManager 
+} from "firebase/firestore";
 
-// FIX: Use 'compat' imports to support v8 namespaced syntax with Firebase v9+ SDK.
+// Compatibility imports to support existing project logic
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
@@ -34,43 +41,40 @@ const firebaseConfig = {
   measurementId: "G-XWRXYMGWRG"
 };
 
-// Initialize Firebase
+// 1. Initialize Firebase Modular App
+const app = initializeApp(firebaseConfig);
+
+// 2. Initialize Firestore with Advanced Persistent Cache (Reduces Reads)
+// This implements the requested cache management features
+const firestoreInstance = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager() 
+  })
+});
+
+// 3. Setup Compat Layer for the rest of the application
+// This ensures all existing db.collection(...) calls still work
 if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
 }
-const app = firebase.app();
 
-// Initialize Firestore
-const firestoreInstance = app.firestore();
+export const db = firebase.firestore();
+export const storage = firebase.app().storage();
+export const auth = firebase.app().auth();
 
+// Google Auth Provider for Social Login
+export const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+// Additional Firestore Settings for compat layer (if needed)
 try {
-  firestoreInstance.settings({
+  db.settings({
     ignoreUndefinedProperties: true,
-    experimentalForceLongPolling: true,
-    cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+    experimentalForceLongPolling: true
   });
 } catch (e: any) {
   if (!e.message.includes('already been initialized')) {
     console.warn("[Cinematix] Firestore settings error:", e.message);
   }
-}
-
-export const db = firestoreInstance;
-export const storage = app.storage();
-export const auth = app.auth();
-
-// Google Auth Provider for Social Login
-export const googleProvider = new firebase.auth.GoogleAuthProvider();
-
-if (typeof window !== 'undefined') {
-    db.enablePersistence({ synchronizeTabs: true })
-      .catch((err) => {
-          if (err.code === 'failed-precondition') {
-              console.debug("[Cinematix] Persistence already active in another tab.");
-          } else if (err.code === 'unimplemented') {
-              console.warn("[Cinematix] Persistence failed: Browser not supported.");
-          }
-      });
 }
 
 export const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
@@ -317,17 +321,21 @@ export const requestNotificationPermission = async (userId: string) => {
     try {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            const token = await (messaging as any).getToken({
-                vapidKey: 'BM_s__YOUR_VAPID_KEY_IF_NEEDED__HERE' 
+            const token = await messaging.getToken({
+                vapidKey: 'BHy3zaLsQsTzR23TNBbBRyVzz2OjySYt4k62K8TEOk0Wceez6uao-THJIzAaRzkSN7czJPLfMfaWfsbRt_rN9VQ' 
             });
             if (token && userId) {
+                // Ensure we use arrayUnion to store multiple tokens for the same user (different devices)
                 await db.collection('users').doc(userId).set({
                     fcmTokens: firebase.firestore.FieldValue.arrayUnion(token)
                 }, { merge: true });
+                console.log('[Cinematix] FCM Token successfully registered for user:', userId);
             }
+        } else {
+            console.warn('[Cinematix] Notification permission denied by user.');
         }
     } catch (error) {
-        // SILENT
+        console.error('[Cinematix] Error requesting notification permission:', error);
     }
 };
 
@@ -527,6 +535,14 @@ export const markNotificationAsRead = async (notificationId: string): Promise<vo
     }
 };
 
+export const deleteUserNotification = async (notificationId: string): Promise<void> => {
+    try {
+        await db.collection('notifications').doc(notificationId).delete();
+    } catch (error) {
+        console.error('Error deleting notification:', error);
+    }
+};
+
 export const markAllNotificationsAsRead = async (userId: string): Promise<void> => {
     try {
         const unreadSnapshot = await db.collection('notifications')
@@ -540,6 +556,19 @@ export const markAllNotificationsAsRead = async (userId: string): Promise<void> 
         await batch.commit();
     } catch (error) {
         console.error('Error marking all notifications as read:', error);
+    }
+};
+
+export const deleteAllUserNotifications = async (userId: string): Promise<void> => {
+    try {
+        const snapshot = await db.collection('notifications')
+            .where('userId', '==', userId)
+            .get();
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+    } catch (error) {
+        console.error('Error deleting all notifications:', error);
     }
 };
 
@@ -563,8 +592,8 @@ export const deleteBroadcastNotification = async (broadcastId: string): Promise<
         const batch = db.batch();
         userNotifs.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
-    } catch (e) {
-        console.error('Error deleting broadcast notification:', e);
+    } catch (error) {
+        console.error('Error deleting broadcast notification:', error);
     }
 };
 
