@@ -34,44 +34,44 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
             const broadcastId = String(Date.now());
             let pushCount = 0;
             
-            // 1. Send Push Notifications via FCM HTTP v1 if Service Account is available
-            if (serviceAccountJson) {
+            // 1. Gather ALL tokens from ALL users in the database
+            // Note: allUsers prop must be fresh from Firestore
+            const allTokens: string[] = [];
+            allUsers.forEach((u: any) => {
+                if (u.fcmTokens && Array.isArray(u.fcmTokens)) {
+                    allTokens.push(...u.fcmTokens);
+                }
+            });
+            const uniqueTokens = Array.from(new Set(allTokens));
+
+            // 2. Send Push Notifications via FCM HTTP v1 if Service Account is available
+            if (serviceAccountJson && uniqueTokens.length > 0) {
                 try {
                     const accessToken = await getAccessToken(serviceAccountJson);
                     if (accessToken) {
                         const parsedServiceAccount = JSON.parse(serviceAccountJson);
                         const projectId = parsedServiceAccount.project_id;
                         
-                        const allTokens: string[] = [];
-                        allUsers.forEach((u: any) => {
-                            if (u.fcmTokens && Array.isArray(u.fcmTokens)) {
-                                allTokens.push(...u.fcmTokens);
-                            }
-                        });
+                        const notificationData = { 
+                            title, 
+                            body, 
+                            image: image || 'https://cinematix.watch/android-chrome-192x192.png', 
+                            data: { url } 
+                        };
                         
-                        const uniqueTokens = Array.from(new Set(allTokens));
-                        if (uniqueTokens.length > 0) {
-                            const notificationData = { 
-                                title, 
-                                body, 
-                                image: image || '/android-chrome-192x192.png', 
-                                data: { url } 
-                            };
-                            
-                            // Send to all tokens
-                            const results = await Promise.allSettled(
-                                uniqueTokens.map(token => sendFCMv1Message(token, notificationData, accessToken, projectId))
-                            );
-                            pushCount = results.filter(r => r.status === 'fulfilled').length;
-                        }
+                        // Send to all unique tokens discovered
+                        const results = await Promise.allSettled(
+                            uniqueTokens.map(token => sendFCMv1Message(token, notificationData, accessToken, projectId))
+                        );
+                        pushCount = results.filter(r => r.status === 'fulfilled').length;
+                        console.log(`[Cinematix] Push delivery report: ${pushCount}/${uniqueTokens.length} successful.`);
                     }
                 } catch (pushErr) {
-                    console.error("[Cinematix] Push Service Error:", pushErr);
-                    // We continue to save in-app notifications even if push fails
+                    console.error("[Cinematix] External Push Service Error:", pushErr);
                 }
             }
 
-            // 2. Save In-App Notifications for each user in Firestore
+            // 3. Save In-App Notifications for each user in Firestore (Path for In-App visibility)
             const batch = db.batch();
             allUsers.forEach((user: any) => {
                 const notifRef = db.collection('notifications').doc();
@@ -89,7 +89,7 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
                 batch.set(notifRef, newNotif);
             });
 
-            // 3. Record in Broadcast History
+            // 4. Record in Broadcast History
             const historyRef = db.collection('broadcast_history').doc(broadcastId);
             batch.set(historyRef, {
                 title, body, type, imageUrl: image || null, targetUrl: url || null,
@@ -99,7 +99,12 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
 
             await batch.commit();
 
-            addToast(`تم إرسال الإشعار لـ ${allUsers.length} مستخدم. (تم تسليم ${pushCount} تنبيه دفع)`, 'success');
+            if (uniqueTokens.length === 0) {
+                addToast(`تم إرسال التنبيه الداخلي لـ ${allUsers.length} مستخدم، ولكن لم يتم العثور على أي توكنات لإرسال تنبيه دفع خارجي.`, 'info');
+            } else {
+                addToast(`تم إرسال الإشعار لـ ${allUsers.length} مستخدم. (تم تسليم ${pushCount} تنبيه دفع للهواتف)`, 'success');
+            }
+            
             setTitle(''); setBody(''); setImage(''); setUrl('/'); setType('new_content');
             fetchHistory();
         } catch (error: any) { 
@@ -133,7 +138,7 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
                     <span className="text-xl">💡</span>
                     <div>
                         <p className="font-bold">ملاحظة للمسؤول:</p>
-                        <p>لتفعيل إشعارات الدفع (Push Notifications) للهواتف، يرجى إضافة ملف الـ <b>Service Account JSON</b> في تبويب <b>إعدادات الموقع</b>.</p>
+                        <p>لتفعيل إشعارات الدفع (Push Notifications) للهواتف وهي مغلقة، يرجى إضافة ملف الـ <b>Service Account JSON</b> في تبويب <b>إعدادات الموقع</b>.</p>
                     </div>
                 </div>
             )}
@@ -165,7 +170,7 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
                             <div><label className="block text-xs font-bold text-gray-400 mb-2">رابط التوجيه (URL)</label><input value={url} onChange={e => setUrl(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white dir-ltr" placeholder="/watch/movie/123"/></div>
                         </div>
                         <button type="submit" disabled={sending || !title} className="w-full bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-black py-4 rounded-2xl shadow-lg hover:shadow-[#00A7F8]/40 transition-all transform hover:scale-[1.01] disabled:opacity-50">
-                            {sending ? 'جاري الإرسال...' : `🚀 إرسال إلى ${allUsers.length} مستخدم`}
+                            {sending ? 'جاري الإرسال...' : `🚀 إرسال إشعار عام`}
                         </button>
                     </form>
                 </div>

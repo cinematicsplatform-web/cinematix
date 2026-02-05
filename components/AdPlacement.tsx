@@ -24,8 +24,11 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
 
   // 2. فلترة الإعلان النشط لهذا المكان وهذا الجهاز
   const activeAd = ads.find(activeAdItem => {
-    if (activeAdItem.placement !== placement && activeAdItem.position !== placement) return false;
+    // Match by placement OR position for redundancy
+    const matchesPlacement = activeAdItem.placement === placement || activeAdItem.position === placement;
+    if (!matchesPlacement) return false;
     
+    // Check multiple status flags used across the app
     const isAdActive = activeAdItem.status === 'active' || activeAdItem.isActive === true;
     if (!isAdActive) return false;
     
@@ -54,7 +57,7 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
               >
                   <img 
                     src={activeAd.imageUrl} 
-                    alt={activeAd.title || "Cinemaitx Ad"} 
+                    alt={activeAd.title || "Cinematix Ad"} 
                     className="max-w-full h-auto rounded-2xl shadow-xl object-contain border border-white/5 mx-auto"
                     style={{ maxHeight: '250px' }}
                   />

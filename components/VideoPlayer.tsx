@@ -40,6 +40,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
   const [selectedQuality, setSelectedQuality] = useState('تلقائي');
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // New States for Skip Indicators
+  const [showForwardIndicator, setShowForwardIndicator] = useState(false);
+  const [showBackwardIndicator, setShowBackwardIndicator] = useState(false);
+  const forwardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backwardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const qualities = [
     { id: 'full-hd', label: 'Full HD', sub: 'اشترك للتفعيل', disabled: true },
     { id: 'high', label: 'جودة عالية', value: '1080p' },
@@ -94,9 +100,43 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
     return videoExtensions.some(ext => cleanUrl.endsWith(ext));
   }, [activeSource]);
 
+  const skip = (seconds: number) => {
+    if (isSettingsOpen) return;
+    if (videoRef.current) {
+      videoRef.current.currentTime += seconds;
+      
+      // Trigger Indicators
+      if (seconds > 0) {
+        setShowForwardIndicator(true);
+        if (forwardTimeoutRef.current) clearTimeout(forwardTimeoutRef.current);
+        forwardTimeoutRef.current = setTimeout(() => setShowForwardIndicator(false), 800);
+      } else {
+        setShowBackwardIndicator(true);
+        if (backwardTimeoutRef.current) clearTimeout(backwardTimeoutRef.current);
+        backwardTimeoutRef.current = setTimeout(() => setShowBackwardIndicator(false), 800);
+      }
+    }
+  };
+
   const togglePlay = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
+    if (e) e.stopPropagation();
     if (isSettingsOpen) return; 
+
+    // منطق النقر المنفرد على الجوانب للتقديم والتأخير
+    if (isDirectVideo && videoRef.current && containerRef.current && e) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const width = rect.width;
+        
+        if (clickX < width * 0.3) {
+            skip(-10);
+            return;
+        } else if (clickX > width * 0.7) {
+            skip(10);
+            return;
+        }
+    }
+
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
       videoRef.current.play();
@@ -120,13 +160,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
     }
   };
 
-  const skip = (seconds: number) => {
-    if (isSettingsOpen) return;
-    if (videoRef.current) {
-      videoRef.current.currentTime += seconds;
-    }
-  };
-
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
     if (videoRef.current) {
@@ -137,15 +170,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
-    setVolume(val);
+    updateVolume(val);
+  };
+
+  const updateVolume = (val: number) => {
+    const newVolume = Math.max(0, Math.min(1, val));
+    setVolume(newVolume);
     if (videoRef.current) {
-      videoRef.current.volume = val;
-      setIsMuted(val === 0);
+      videoRef.current.volume = newVolume;
+      setIsMuted(newVolume === 0);
     }
   };
 
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleMute = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     const newMute = !isMuted;
     setIsMuted(newMute);
     if (videoRef.current) {
@@ -154,17 +192,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
   };
 
   const toggleFullscreen = async (e?: React.MouseEvent) => {
-    e?.stopPropagation();
+    if (e) e.stopPropagation();
     if (!containerRef.current) return;
     
     try {
         if (!document.fullscreenElement) {
             await containerRef.current.requestFullscreen();
             setIsFullscreen(true);
-            // ملاحظة: تم إزالة أي قفل للتدوير هنا لضمان احترام رغبة المستخدم
+            if (window.screen && window.screen.orientation && (window.screen.orientation as any).lock) {
+                try {
+                    await (window.screen.orientation as any).lock('landscape').catch(() => {});
+                } catch (err) {}
+            }
         } else {
             if (document.exitFullscreen) {
                 await document.exitFullscreen();
+            }
+            if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+                window.screen.orientation.unlock();
             }
             setIsFullscreen(false);
         }
@@ -193,6 +238,57 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
       if (isPlaying && !isSettingsOpen) setShowControls(false);
     }, 3000);
   };
+
+  // --- KEYBOARD SHORTCUTS LOGIC ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        // Prevent shortcuts if user is typing in an input
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+        
+        if (!isDirectVideo) return;
+
+        switch(e.code) {
+            case 'Space':
+                e.preventDefault();
+                togglePlay();
+                handleMouseMove();
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                skip(10);
+                handleMouseMove();
+                break;
+            case 'ArrowLeft':
+                e.preventDefault();
+                skip(-10);
+                handleMouseMove();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                updateVolume(volume + 0.1);
+                handleMouseMove();
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                updateVolume(volume - 0.1);
+                handleMouseMove();
+                break;
+            case 'KeyF':
+                e.preventDefault();
+                toggleFullscreen();
+                handleMouseMove();
+                break;
+            case 'KeyM':
+                e.preventDefault();
+                toggleMute();
+                handleMouseMove();
+                break;
+        }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDirectVideo, isPlaying, volume, isMuted, isSettingsOpen]);
 
   // --- ICONS ---
   const RewindIcon = () => (
@@ -232,6 +328,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
             </div>
         )}
 
+        {/* Skip Visual Indicators Overlays */}
+        <div className="absolute inset-0 z-[90] flex pointer-events-none select-none">
+            {/* Forward Indicator */}
+            <div className="flex-1 flex items-center justify-center">
+                <div className={`transition-all duration-300 transform bg-black/40 backdrop-blur-md p-6 rounded-full flex flex-col items-center gap-1 ${showForwardIndicator ? 'opacity-100 scale-110' : 'opacity-0 scale-90'}`}>
+                    <ForwardIcon />
+                    <span className="text-white font-black text-sm">10+</span>
+                </div>
+            </div>
+            {/* Backward Indicator */}
+            <div className="flex-1 flex items-center justify-center">
+                <div className={`transition-all duration-300 transform bg-black/40 backdrop-blur-md p-6 rounded-full flex flex-col items-center gap-1 ${showBackwardIndicator ? 'opacity-100 scale-110' : 'opacity-0 scale-90'}`}>
+                    <RewindIcon />
+                    <span className="text-white font-black text-sm">10-</span>
+                </div>
+            </div>
+        </div>
+
         {activeSource && (
             <div className="absolute inset-0 z-10">
                 {isDirectVideo ? (
@@ -252,7 +366,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                             <source src={activeSource} type={activeSource.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'} />
                         </video>
 
-                        {/* --- Custom Overlay UI --- */}
                         <div className={`absolute inset-0 z-50 flex flex-col justify-between transition-opacity duration-300 pointer-events-none ${showControls || isSettingsOpen ? 'opacity-100' : 'opacity-0'}`} 
                              style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 25%, rgba(0,0,0,0) 75%, rgba(0,0,0,0.9) 100%)' }}>
                             
@@ -361,7 +474,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                                             onMouseEnter={() => setIsVolumeHovered(true)}
                                             onMouseLeave={() => setIsVolumeHovered(false)}
                                         >
-                                            <button onClick={toggleMute} className="text-white hover:text-[#00cba9] transition-colors z-10">
+                                            <button onClick={() => toggleMute()} className="text-white hover:text-[#00cba9] transition-colors z-10">
                                                 <SpeakerIcon isMuted={isMuted} className="w-7 h-7" />
                                             </button>
                                             <div className={`flex items-center relative transition-all duration-300 ease-in-out overflow-visible ${isVolumeHovered ? 'w-24 opacity-100 ml-2' : 'w-0 opacity-0 ml-0'}`}>
@@ -396,7 +509,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                                         >
                                             <SettingsIcon />
                                         </button>
-                                        <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform shrink-0"><ExpandIcon className="w-6 h-6 md:w-7 md:h-7" /></button>
+                                        <button onClick={() => toggleFullscreen()} className="text-white hover:scale-110 transition-transform shrink-0"><ExpandIcon className="w-6 h-6 md:w-7 md:h-7" /></button>
                                     </div>
                                 </div>
                             </div>
@@ -419,7 +532,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
         )}
       </div>
 
-      {/* Server Selection Toolbar */}
       {!manualSrc && tmdbId && (
         <div className="flex flex-wrap gap-2 justify-center bg-gray-900/50 p-3 md:p-4 rounded-2xl border border-white/5 animate-fade-in-up" dir="rtl">
           <span className="text-[10px] md:text-xs text-gray-400 self-center ml-1 md:ml-2 font-black uppercase tracking-widest font-['Cairo']">سيرفرات تلقائية</span>

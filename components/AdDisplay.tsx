@@ -31,6 +31,7 @@ const AdDisplay: React.FC<AdDisplayProps> = ({ adCode, className = '', style }) 
         postscribe(container, adCode, {
           done: () => {
             // 3. الحل الجذري: إرسال أحداث وهمية لتنبيه السكربتات "الكسولة"
+            // هذا يحل مشكلة الإعلانات التي لا تظهر إلا بعد التمرير
             setTimeout(() => {
               window.dispatchEvent(new Event('scroll'));
               window.dispatchEvent(new Event('resize'));
@@ -46,7 +47,7 @@ const AdDisplay: React.FC<AdDisplayProps> = ({ adCode, className = '', style }) 
     }
 
     return () => {
-        // Postscribe handles its own cleanup usually, but we ensure inner content is dead on unmount
+        // Cleanup if necessary
     };
   }, [adCode]);
 
@@ -60,6 +61,7 @@ const AdDisplay: React.FC<AdDisplayProps> = ({ adCode, className = '', style }) 
         justifyContent: 'center', 
         alignItems: 'center', 
         width: '100%',
+        minHeight: '1px',
         ...style 
       }} 
     />
