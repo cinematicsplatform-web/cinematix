@@ -1,3 +1,4 @@
+
 // Modular SDK imports for advanced caching
 import { initializeApp } from "firebase/app";
 import { 
@@ -45,7 +46,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // 2. Initialize Firestore with Advanced Persistent Cache (Reduces Reads)
-// This implements the requested cache management features
 const firestoreInstance = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager() 
@@ -53,7 +53,6 @@ const firestoreInstance = initializeFirestore(app, {
 });
 
 // 3. Setup Compat Layer for the rest of the application
-// This ensures all existing db.collection(...) calls still work
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
@@ -65,7 +64,7 @@ export const auth = firebase.app().auth();
 // Google Auth Provider for Social Login
 export const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-// Additional Firestore Settings for compat layer (if needed)
+// Additional Firestore Settings for compat layer
 try {
   db.settings({
     ignoreUndefinedProperties: true,
@@ -115,7 +114,6 @@ export const generateSlug = (title: string): string => {
 };
 
 const handleFirestoreError = (error: any, context: string, fallback: any) => {
-    const code = error?.code;
     const msg = error?.message || '';
     if (msg.toLowerCase().includes('index')) {
         console.error(`[Cinematix] Missing Index for ${context}.`);
@@ -194,6 +192,7 @@ export const getAds = async (): Promise<Ad[]> => {
                 placement: data.placement || data.position || 'home-top',
                 type: data.type || 'code',
                 status: data.status || (data.isActive === false ? 'disabled' : 'active'),
+                isActive: data.status === 'active' || data.isActive === true,
                 timerDuration: data.timerDuration || 0,
                 updatedAt: safeGetTimestamp(data.updatedAt),
             };
@@ -205,30 +204,34 @@ export const getAds = async (): Promise<Ad[]> => {
 
 export const getAdByPosition = async (position: string): Promise<Ad | null> => {
   try {
-    let q = db.collection("ads")
+    // Try matching by both placement and position fields to ensure backward compatibility
+    let snap = await db.collection("ads")
         .where("placement", "==", position)
-        .where("status", "==", "active")
-        .limit(1);
-    
-    let snap = await q.get();
+        .limit(5)
+        .get();
     
     if (snap.empty) {
-        q = db.collection("ads")
+        snap = await db.collection("ads")
             .where("position", "==", position)
-            .where("status", "==", "active")
-            .limit(1);
-        snap = await q.get();
+            .limit(5)
+            .get();
     }
 
     if (!snap.empty) {
-        const doc = snap.docs[0];
-        const data = doc.data();
+        // Find first active ad among results
+        const activeDoc = snap.docs.find(d => {
+            const data = d.data();
+            return data.status === 'active' || data.isActive === true;
+        }) || snap.docs[0];
+
+        const data = activeDoc.data();
         return { 
-            id: doc.id, 
+            id: activeDoc.id, 
             ...data, 
             placement: data.placement || data.position || position,
             type: data.type || 'code',
-            status: 'active'
+            status: data.status || 'active',
+            isActive: true
         } as Ad;
     }
     return null;
@@ -325,17 +328,17 @@ export const requestNotificationPermission = async (userId: string) => {
                 vapidKey: 'BHy3zaLsQsTzR23TNBbBRyVzz2OjySYt4k62K8TEOk0Wceez6uao-THJIzAaRzkSN7czJPLfMfaWfsbRt_rN9VQ' 
             });
             if (token && userId) {
-                // Ensure we use arrayUnion to store multiple tokens for the same user (different devices)
+                // Ensure unique tokens per user
                 await db.collection('users').doc(userId).set({
                     fcmTokens: firebase.firestore.FieldValue.arrayUnion(token)
                 }, { merge: true });
                 console.log('[Cinematix] FCM Token successfully registered for user:', userId);
             }
         } else {
-            console.warn('[Cinematix] Notification permission denied by user.');
+            console.warn('[Cinematix] Push Notification permission denied.');
         }
     } catch (error) {
-        console.error('[Cinematix] Error requesting notification permission:', error);
+        console.error('[Cinematix] FCM Token Request Error:', error);
     }
 };
 
@@ -592,8 +595,8 @@ export const deleteBroadcastNotification = async (broadcastId: string): Promise<
         const batch = db.batch();
         userNotifs.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
-    } catch (error) {
-        console.error('Error deleting broadcast notification:', error);
+    } catch (e) {
+        console.error('Error deleting broadcast notification:', e);
     }
 };
 

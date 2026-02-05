@@ -20,12 +20,15 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification.title;
+  const notificationTitle = payload.notification.title || "تنبيه جديد من سينماتيكس";
   const notificationOptions = {
     body: payload.notification.body,
     icon: payload.notification.icon || '/android-chrome-192x192.png',
-    image: payload.notification.image,
-    data: payload.data // Store extra data (like URL) here
+    image: payload.notification.image || payload.data?.image,
+    badge: '/favicon-32x32.png',
+    data: payload.data, // Store extra data (like URL) here
+    tag: payload.data?.broadcastId || 'cinematix-global-alert',
+    renotify: true
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
@@ -35,11 +38,16 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
 
-  // Get URL from data payload (Admin Panel sends 'url' in data)
-  const targetUrl = event.notification.data?.url || '/';
+  // Get URL from data payload
+  let targetUrl = event.notification.data?.url || '/';
+  
+  // Ensure absolute URL if it starts with /
+  if (targetUrl.startsWith('/')) {
+      targetUrl = self.location.origin + targetUrl;
+  }
 
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(function(windowClients) {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(windowClients) {
       // Check if there is already a window open with this URL
       for (var i = 0; i < windowClients.length; i++) {
         var client = windowClients[i];

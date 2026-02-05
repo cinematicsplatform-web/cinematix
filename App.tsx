@@ -91,7 +91,8 @@ const VIEW_PATHS: Record<string, View> = {
     '/people': 'people',
     '/person': 'personProfile',
     '/ad-gate': 'adGate',
-    '/request': 'contentRequest'
+    '/request': 'contentRequest',
+    '/download': 'download'
 };
 
 const REVERSE_VIEW_PATHS: Record<string, string> = {
@@ -251,64 +252,70 @@ const App: React.FC = () => {
       }
   }, [activeProfile, view]);
 
+  // --- SMART AD / POPUNDER ENGINE FIX ---
   useEffect(() => {
       if (!siteSettings.adsEnabled) return;
+
       const handleSmartPopunder = (e: MouseEvent) => {
-          const activeTriggerAds = ads.filter(a => 
-              (a.status === 'active' || a.isActive === true) && 
-              a.triggerTarget && 
-              a.triggerTarget !== 'all'
-          );
-
-          const globalPopunderAds = ads.filter(a => 
-              (a.status === 'active' || a.isActive === true) && 
-              a.placement === 'global-popunder' && 
-              a.triggerTarget === 'all'
-          );
-
-          const candidateAds = [...activeTriggerAds, ...globalPopunderAds];
-
+          const now = Date.now();
           const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
           const isMobileDevice = /android|iPad|iPhone|iPod/i.test(userAgent) || window.innerWidth <= 768;
-          
-          candidateAds.forEach(ad => {
-              const targetDevice = ad.targetDevice || 'all';
-              if (targetDevice === 'mobile' && !isMobileDevice) return;
-              if (targetDevice === 'desktop' && isMobileDevice) return;
-              
-              const lastRun = localStorage.getItem(`popunder_last_run_${ad.id}`);
-              const now = Date.now();
-              const oneDay = 24 * 60 * 60 * 1000;
-              if (lastRun && (now - parseInt(lastRun) < oneDay)) return; 
-              
+
+          // 1. Identify candidate ads for the click
+          const popunderAds = ads.filter(a => {
+              const isActive = a.status === 'active' || a.isActive === true;
+              const matchesDevice = a.targetDevice === 'all' || (a.targetDevice === 'mobile' && isMobileDevice) || (a.targetDevice === 'desktop' && !isMobileDevice);
+              const isPopunderType = a.placement === 'global-popunder' || a.triggerTarget;
+              return isActive && matchesDevice && isPopunderType;
+          });
+
+          if (popunderAds.length === 0) return;
+
+          // 2. Filter ads based on specific trigger selectors
+          popunderAds.forEach(ad => {
               const triggerKey = ad.triggerTarget || 'all';
-              const selector = triggerSelectors[triggerKey];
+              const selector = triggerSelectors[triggerKey] || 'body';
               const targetElement = (e.target as Element).closest(selector);
               
               if (targetElement) {
+                  // Reduced cooldown to 5 minutes to ensure "everywhere" feel for the user while testing
+                  const lastRun = localStorage.getItem(`pop_last_${ad.id}`);
+                  if (lastRun && (now - parseInt(lastRun) < 300000)) return; 
+
+                  const code = (ad.code || ad.scriptCode || '').trim();
+                  
+                  // If it's a URL in a "popunder" slot, open it
                   if (ad.type === 'banner' && ad.destinationUrl) {
                       window.open(ad.destinationUrl, '_blank');
-                      localStorage.setItem(`popunder_last_run_${ad.id}`, now.toString());
-                  } else {
+                      localStorage.setItem(`pop_last_${ad.id}`, now.toString());
+                  } else if (code.startsWith('http')) {
+                      // Smart link detection
+                      window.open(code, '_blank');
+                      localStorage.setItem(`pop_last_${ad.id}`, now.toString());
+                  } else if (code) {
+                      // Script injection
                       const div = document.createElement('div');
                       div.style.display = 'none';
-                      div.className = `smart-popunder-container-${ad.id}`;
+                      div.className = `pop-exec-${ad.id}`;
                       try {
                           const range = document.createRange();
                           range.selectNode(document.body);
-                          const fragment = range.createContextualFragment(ad.code || ad.scriptCode || '');
+                          const fragment = range.createContextualFragment(code);
                           div.appendChild(fragment);
                           document.body.appendChild(div);
-                          localStorage.setItem(`popunder_last_run_${ad.id}`, now.toString());
+                          localStorage.setItem(`pop_last_${ad.id}`, now.toString());
+                          // Remove after execution to keep DOM clean
+                          setTimeout(() => div.remove(), 1000);
                       } catch (err) {
-                          console.error("Popunder Execution Error:", err);
+                          console.error("Popunder Exec Error:", err);
                       }
                   }
               }
           });
       };
-      window.addEventListener('click', handleSmartPopunder); 
-      return () => window.removeEventListener('click', handleSmartPopunder);
+
+      window.addEventListener('click', handleSmartPopunder, { capture: true }); 
+      return () => window.removeEventListener('click', handleSmartPopunder, { capture: true });
   }, [ads, siteSettings.adsEnabled]);
 
   useEffect(() => {
@@ -586,9 +593,9 @@ const App: React.FC = () => {
           }
       } else if (newView === 'download' && params) {
           setDownloadParams(params);
-      } else if (newView === 'personProfile' && params?.name) {
-          setSelectedPersonName(params.name);
-          safeHistoryPush(`/person/${params.name}`);
+          if (params.content) setSelectedContent(params.content);
+          const path = REVERSE_VIEW_PATHS['download'];
+          if (path && window.location.pathname !== path) safeHistoryPush(path);
       } else {
           if (newView !== 'watch' && newView !== 'download') {
               setWatchParams(null);
