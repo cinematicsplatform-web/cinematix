@@ -553,12 +553,16 @@ const DetailPage: React.FC<DetailPageProps> = ({
             <div className="max-w-4xl w-full flex flex-col items-center md:items-start text-center md:text-right pointer-events-auto">
                 
                 {isLoaded ? (
-                    content.isLogoEnabled && displayLogo ? (
-                        <img 
-                            src={displayLogo} 
-                            alt={content.title} 
-                            className={`w-auto h-auto max-w-[190px] md:max-w-[435px] max-h-[190px] md:max-h-[300px] mb-3 object-contain drop-shadow-2xl transition-transform duration-700 mx-auto md:mx-0 ${showVideo ? 'scale-90 origin-bottom-right' : 'scale-100'}`}
-                        />
+                    content.isLogoEnabled ? (
+                        displayLogo ? (
+                            <img 
+                                src={displayLogo} 
+                                alt={content.title} 
+                                className={`w-auto h-auto max-w-[190px] md:max-w-[435px] max-h-[190px] md:max-h-[300px] mb-3 object-contain drop-shadow-2xl transition-transform duration-700 mx-auto md:mx-0 ${showVideo ? 'scale-90 origin-bottom-right' : 'scale-100'}`}
+                            />
+                        ) : (
+                            <div className="h-12 md:h-20 mb-3"></div>
+                        )
                     ) : (
                         <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-3 leading-tight text-white drop-shadow-lg text-center md:text-right">{content.title}</h1>
                     )
