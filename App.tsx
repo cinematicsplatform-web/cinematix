@@ -252,16 +252,16 @@ const App: React.FC = () => {
       }
   }, [activeProfile, view]);
 
-  // --- SMART AD / POPUNDER ENGINE FIX ---
+  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'maintenance', 'watch', 'adGate', 'welcome'];
+
   useEffect(() => {
-      if (!siteSettings.adsEnabled) return;
+      if (!siteSettings.adsEnabled || fullScreenViews.includes(view)) return;
 
       const handleSmartPopunder = (e: MouseEvent) => {
           const now = Date.now();
           const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
           const isMobileDevice = /android|iPad|iPhone|iPod/i.test(userAgent) || window.innerWidth <= 768;
 
-          // 1. Identify candidate ads for the click
           const popunderAds = ads.filter(a => {
               const isActive = a.status === 'active' || a.isActive === true;
               const matchesDevice = a.targetDevice === 'all' || (a.targetDevice === 'mobile' && isMobileDevice) || (a.targetDevice === 'desktop' && !isMobileDevice);
@@ -271,29 +271,24 @@ const App: React.FC = () => {
 
           if (popunderAds.length === 0) return;
 
-          // 2. Filter ads based on specific trigger selectors
           popunderAds.forEach(ad => {
               const triggerKey = ad.triggerTarget || 'all';
               const selector = triggerSelectors[triggerKey] || 'body';
               const targetElement = (e.target as Element).closest(selector);
               
               if (targetElement) {
-                  // Reduced cooldown to 5 minutes to ensure "everywhere" feel for the user while testing
                   const lastRun = localStorage.getItem(`pop_last_${ad.id}`);
                   if (lastRun && (now - parseInt(lastRun) < 300000)) return; 
 
                   const code = (ad.code || ad.scriptCode || '').trim();
                   
-                  // If it's a URL in a "popunder" slot, open it
                   if (ad.type === 'banner' && ad.destinationUrl) {
                       window.open(ad.destinationUrl, '_blank');
                       localStorage.setItem(`pop_last_${ad.id}`, now.toString());
                   } else if (code.startsWith('http')) {
-                      // Smart link detection
                       window.open(code, '_blank');
                       localStorage.setItem(`pop_last_${ad.id}`, now.toString());
                   } else if (code) {
-                      // Script injection
                       const div = document.createElement('div');
                       div.style.display = 'none';
                       div.className = `pop-exec-${ad.id}`;
@@ -304,7 +299,6 @@ const App: React.FC = () => {
                           div.appendChild(fragment);
                           document.body.appendChild(div);
                           localStorage.setItem(`pop_last_${ad.id}`, now.toString());
-                          // Remove after execution to keep DOM clean
                           setTimeout(() => div.remove(), 1000);
                       } catch (err) {
                           console.error("Popunder Exec Error:", err);
@@ -316,7 +310,7 @@ const App: React.FC = () => {
 
       window.addEventListener('click', handleSmartPopunder, { capture: true }); 
       return () => window.removeEventListener('click', handleSmartPopunder, { capture: true });
-  }, [ads, siteSettings.adsEnabled]);
+  }, [ads, siteSettings.adsEnabled, view]);
 
   useEffect(() => {
       if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
@@ -699,6 +693,14 @@ const App: React.FC = () => {
   };
 
   const handleGoogleLogin = async () => {
+    // Check if the current protocol is supported by Firebase Auth popups
+    const isSupportedProtocol = ['http:', 'https:', 'chrome-extension:'].includes(window.location.protocol);
+    
+    if (!isSupportedProtocol) {
+      addToast('تسجيل الدخول عبر جوجل غير مدعوم في بيئة المعاينة الحالية (بروتوكول غير صالح). يرجى استخدام البريد الإلكتروني وكلمة المرور.', 'error');
+      return;
+    }
+
     try {
       setIsAuthLoading(true);
       const result = await auth.signInWithPopup(googleProvider);
@@ -707,7 +709,6 @@ const App: React.FC = () => {
         const profileData = await getUserProfile(uid);
         
         if (!profileData) {
-          // New User via Google: Create essential Firestore record
           const nameParts = result.user.displayName?.split(' ') || ['User'];
           const firstName = nameParts[0];
           const lastName = nameParts.slice(1).join(' ');
@@ -733,7 +734,6 @@ const App: React.FC = () => {
           setActiveProfile(defaultProfile);
           addToast('مرحباً بك في سينماتيكس!', 'success');
         } else {
-          // Existing user via Google
           if (profileData.profiles && profileData.profiles.length > 0) {
               const savedProfileId = localStorage.getItem('cinematix_active_profile');
               const active = profileData.profiles.find(p => String(p.id) === savedProfileId) || profileData.profiles[0];
@@ -746,7 +746,9 @@ const App: React.FC = () => {
       }
     } catch (error: any) {
       console.error("Google Login Error:", error);
-      if (error.code !== 'auth/popup-closed-by-user') {
+      if (error.code === 'auth/operation-not-supported-in-this-environment') {
+          addToast('بيئة التشغيل الحالية لا تدعم النوافذ المنبثقة. يرجى استخدام متصفح قياسي أو الدخول عبر البريد الإلكتروني.', 'error');
+      } else if (error.code !== 'auth/popup-closed-by-user') {
           addToast('فشل تسجيل الدخول بواسطة Google.', 'error');
       }
     } finally {
@@ -952,8 +954,6 @@ const App: React.FC = () => {
 
   const showGlobalHeader = headerAllowedViews.includes(view) && !isDetailMobile && !isChoosingProfile && !isTv && !isMaintenanceActive;
   
-  const fullScreenViews = ['login', 'register', 'onboarding', 'profileSelector', 'admin', 'maintenance', 'watch', 'adGate', 'welcome'];
-  
   const showGlobalFooter = !fullScreenViews.includes(view) && !isTv && !isMaintenanceActive;
   
   const bottomNavRestrictedViews = ['home', 'movies', 'series', 'search', 'kids', 'ramadan'];
@@ -962,6 +962,9 @@ const App: React.FC = () => {
   const footerClass = (mobileCleanViews.includes(view) || view === 'search') ? 'hidden md:block' : '';
   const bottomAdClass = mobileCleanViews.includes(view) ? 'hidden md:block' : 'fixed bottom-0 left-0 w-full z-[1000] bg-black/80';
   const socialBarClass = mobileCleanViews.includes(view) ? 'hidden md:block' : 'fixed z-[90] bottom-20 left-4 right-4 md:bottom-4 md:left-4 md:right-auto md:w-auto pointer-events-auto';
+
+  // تحديد ما إذا كانت الإعلانات العالمية يجب أن تظهر (استثناء الإدارة والدخول)
+  const shouldShowGlobalAds = siteSettings.adsEnabled && !isMaintenanceActive && !fullScreenViews.includes(view);
 
   useEffect(() => {
     if (window.location.pathname === '/admin' && view !== 'admin' && !isAuthLoading) {
@@ -983,7 +986,9 @@ const App: React.FC = () => {
                 </div>
             ))}
         </div>
-        {siteSettings.adsEnabled && !isMaintenanceActive && <AdZone position="global_head" />}
+        
+        {/* Global Head Ad Zone (Disabled on Login/Admin) - ONLY SCRIPT BASED HERE */}
+        {shouldShowGlobalAds && <AdZone position="global_head" />}
         
         {showGlobalHeader && (
             <Header 
@@ -1009,10 +1014,15 @@ const App: React.FC = () => {
             <TvSidebar onSetView={handleSetView} currentView={view} activeProfile={activeProfile} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} />
         )}
         
-        {!isMaintenanceActive && <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className={socialBarClass} />}
-        {!isMaintenanceActive && <AdPlacement ads={ads} placement="global-sticky-footer" isEnabled={siteSettings.adsEnabled} className={bottomAdClass} />}
+        {/* Global Social Bar Ad (Disabled on Login/Admin) */}
+        {shouldShowGlobalAds && <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className={socialBarClass} />}
         
-        {renderView()}
+        {/* Global Sticky Footer Ad (Disabled on Login/Admin) */}
+        {shouldShowGlobalAds && <AdPlacement ads={ads} placement="global-sticky-footer" isEnabled={siteSettings.adsEnabled} className={bottomAdClass} />}
+        
+        <div className="relative z-10">
+            {renderView()}
+        </div>
 
         {showGlobalFooter && (
             <>

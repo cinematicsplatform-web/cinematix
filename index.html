@@ -14,14 +14,6 @@
             document.documentElement.classList.add('theme-' + t);
           }
 
-          // 2. ضمان عدم فرض التدوير (Orientation Control)
-          // هذا الكود يضمن أن الموقع لن يفرض أي اتجاه وسوف يتبع إعدادات هاتف المستخدم بدقة
-          if (screen.orientation && screen.orientation.unlock) {
-            screen.orientation.unlock().catch(function(err) {
-              // التجاهل في حال كان المتصفح لا يدعم القفل/الفك برمجياً
-            });
-          }
-
           // تم تعديل الوظيفة للسماح بالتحديد والنسخ دائماً
           function isSelectionAllowed() {
             return true; 

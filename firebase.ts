@@ -61,6 +61,13 @@ export const db = firebase.firestore();
 export const storage = firebase.app().storage();
 export const auth = firebase.app().auth();
 
+// Set explicit persistence to ensure it works across environments if possible
+try {
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+} catch (e) {
+  console.warn("[Cinematix] Auth persistence could not be set:", e);
+}
+
 // Google Auth Provider for Social Login
 export const googleProvider = new firebase.auth.GoogleAuthProvider();
 

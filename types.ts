@@ -1,3 +1,4 @@
+
 export const ContentType = {
   Movie: 'movie',
   Series: 'series',
@@ -243,7 +244,12 @@ export const adPlacements = [
   'ramadan-top', 'ramadan-bottom', 'soon-page-top', 'soon-page-bottom', 'global-popunder',
   'global-social-bar', 'global-sticky-footer', 'global_head', 'details_sidebar',
   'player_overlay', 'player_bottom', 'action_download', 'action_next_episode',
-  'page_movies_top', 'page_series_top', 'page_kids_top', 'page_ramadan_top'
+  'page_movies_top', 'page_series_top', 'page_kids_top', 'page_ramadan_top',
+  // NEW PLACEMENTS
+  'search-top', 'search-bottom', 'category-top', 'category-bottom', 'category-sidebar',
+  'person-profile-top', 'person-profile-bottom', 'notifications-top', 'notifications-bottom',
+  'profile-hub-top', 'profile-hub-bottom', 'account-settings-top', 'about-page-top',
+  'privacy-page-top', 'copyright-page-top', 'download-page-top', 'download-page-bottom'
 ] as const;
 
 export type AdPlacement = typeof adPlacements[number];
@@ -286,6 +292,24 @@ export const adPlacementLabels: Record<AdPlacement, string> = {
     'page_series_top': 'صفحة المسلسلات - بانر علوي',
     'page_kids_top': 'صفحة الأطفال - بانر علوي',
     'page_ramadan_top': 'صفحة رمضان - بانر علوي',
+    // NEW LABELS
+    'search-top': 'البحث - أعلى النتائج',
+    'search-bottom': 'البحث - أسفل النتائج',
+    'category-top': 'الأقسام - أعلى الشبكة',
+    'category-bottom': 'الأقسام - أسفل الشبكة',
+    'category-sidebar': 'الأقسام - شريط جانبي',
+    'person-profile-top': 'صفحة الفنان - أعلى',
+    'person-profile-bottom': 'صفحة الفنان - أسفل',
+    'notifications-top': 'الإشعارات - أعلى',
+    'notifications-bottom': 'الإشعارات - أسفل',
+    'profile-hub-top': 'الملف الشخصي - أعلى',
+    'profile-hub-bottom': 'الملف الشخصي - أسفل',
+    'account-settings-top': 'الإعدادات - أعلى',
+    'about-page-top': 'من نحن - أعلى',
+    'privacy-page-top': 'الخصوصية - أعلى',
+    'copyright-page-top': 'حقوق الملكية - أعلى',
+    'download-page-top': 'التحميل - أعلى',
+    'download-page-bottom': 'التحميل - أسفل',
 };
 
 export type DeviceTarget = 'all' | 'mobile' | 'desktop';
@@ -328,6 +352,7 @@ export interface Ad {
   triggerTarget?: TriggerTarget; 
   timerDuration?: number; 
   updatedAt: string; 
+  isGlobal?: boolean; // New: Global fallback property
 }
 
 export interface ShoutBar {
