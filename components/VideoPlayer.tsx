@@ -199,7 +199,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
         if (!document.fullscreenElement) {
             await containerRef.current.requestFullscreen();
             setIsFullscreen(true);
-            // تم إزالة قفل التدوير الأفقي القسري لاحترام إعدادات الهاتف
+            // ملاحظة: لا نقوم باستدعاء أي قفل للتدوير هنا لاحترام إعدادات الهاتف
         } else {
             if (document.exitFullscreen) {
                 await document.exitFullscreen();
