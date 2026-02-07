@@ -199,17 +199,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
         if (!document.fullscreenElement) {
             await containerRef.current.requestFullscreen();
             setIsFullscreen(true);
-            if (window.screen && window.screen.orientation && (window.screen.orientation as any).lock) {
-                try {
-                    await (window.screen.orientation as any).lock('landscape').catch(() => {});
-                } catch (err) {}
-            }
+            // تم إزالة قفل التدوير الأفقي القسري لاحترام إعدادات الهاتف
         } else {
             if (document.exitFullscreen) {
                 await document.exitFullscreen();
-            }
-            if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
-                window.screen.orientation.unlock();
             }
             setIsFullscreen(false);
         }
