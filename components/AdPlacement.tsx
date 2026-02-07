@@ -22,22 +22,25 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 2. فلترة الإعلان النشط لهذا المكان وهذا الجهاز
-  const activeAd = ads.find(activeAdItem => {
-    // Match by placement OR position for redundancy
-    const matchesPlacement = activeAdItem.placement === placement || activeAdItem.position === placement;
-    if (!matchesPlacement) return false;
-    
-    // Check multiple status flags used across the app
-    const isAdActive = activeAdItem.status === 'active' || activeAdItem.isActive === true;
+  // 2. تصفية الإعلانات الصالحة للجهاز والنشطة
+  const validAds = ads.filter(adItem => {
+    const isAdActive = adItem.status === 'active' || adItem.isActive === true;
     if (!isAdActive) return false;
-    
-    const target = activeAdItem.targetDevice || 'all';
+
+    const target = adItem.targetDevice || 'all';
     if (target === 'mobile' && !isMobile) return false;
     if (target === 'desktop' && isMobile) return false;
 
-    return true; 
+    return true;
   });
+
+  // 3. البحث عن إعلان مخصص لهذا المكان تحديداً
+  let activeAd = validAds.find(ad => ad.placement === placement || ad.position === placement);
+
+  // 4. إذا لم يوجد إعلان مخصص، نبحث عن إعلان "عالمي" (Global) كإحتياطي
+  if (!activeAd) {
+    activeAd = validAds.find(ad => ad.isGlobal === true);
+  }
 
   if (!isEnabled || !activeAd) return null;
 

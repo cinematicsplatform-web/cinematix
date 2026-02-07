@@ -920,7 +920,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     season.mobileImageUrl !== updatedSeason.mobileImageUrl ||
                     season.enableMobileCrop !== updatedSeason.enableMobileCrop ||
                     season.mobileCropPositionX !== updatedSeason.mobileCropPositionX ||
-                    season.mobileCropPositionY !== updatedSeason.mobileCropPositionY ||
+                    season.mobileCropPositionX !== updatedSeason.mobileCropPositionX || // Check X
+                    season.mobileCropPositionY !== updatedSeason.mobileCropPositionY || // Check Y
                     season.trailerUrl !== updatedSeason.trailerUrl ||
                     season.description !== updatedSeason.description ||
                     season.releaseYear !== updatedSeason.releaseYear ||
@@ -2878,7 +2879,23 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 </footer>
             </main>
 
-            {galleryState.isOpen && <ImageGalleryModal isOpen={galleryState.isOpen} onClose={() => setGalleryState(prev => ({ ...prev, isOpen: false }))} tmdbId={formData.tmdbId || formData.id} type={formData.type} targetField={galleryState.imageType} onSelect={(url) => galleryState.imageType === 'logo' ? setFormData(prev => ({...prev, logoUrl: url, isLogoEnabled: true})) : galleryState.onSelect(url)} />}
+            {galleryState.isOpen && (
+                <ImageGalleryModal 
+                    isOpen={galleryState.isOpen} 
+                    onClose={() => setGalleryState(prev => ({ ...prev, isOpen: false }))} 
+                    tmdbId={formData.tmdbId || formData.id} 
+                    type={formData.type} 
+                    targetField={galleryState.imageType} 
+                    onSelect={(url) => {
+                        // Fix: Execute the provided callback first to update the specific field (main content or specific season)
+                        galleryState.onSelect(url);
+                        // If it's a logo, ensure logo display is enabled globally
+                        if (galleryState.imageType === 'logo') {
+                            setFormData(prev => ({ ...prev, isLogoEnabled: true }));
+                        }
+                    }} 
+                />
+            )}
             {isTitleModalOpen && <TitleGalleryModal isOpen={isTitleModalOpen} onClose={() => setIsTitleModalOpen(false)} tmdbId={formData.tmdbId || formData.id || ''} type={formData.type} onSelect={(title) => setFormData(prev => ({...prev, title}))} />}
             {editingServersForEpisode && <ServerManagementModal episode={editingServersForEpisode} onClose={() => setEditingServersForEpisode(null)} onSave={handleUpdateEpisodeServers} />}
             {isManagingMovieServers && <ServerManagementModal episode={{id: 0, title: 'الفيلم', progress: 0, servers: formData.servers || []}} onClose={() => setIsManagingMovieServers(false)} onSave={handleUpdateMovieServers} />}

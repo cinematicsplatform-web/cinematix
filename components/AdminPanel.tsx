@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { db, getReleaseSchedules, deleteReleaseSchedule, deleteBroadcastNotification, deleteReport, deleteContentRequest } from '../firebase'; 
 import type { Content, User, Ad, PinnedItem, SiteSettings, View, PinnedContentState, Top10State, PageKey, Story } from '../types';
@@ -81,6 +82,9 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
         const saved = localStorage.getItem('cinematix_dismissed_radar_alerts');
         return saved ? JSON.parse(saved) : [];
     });
+
+    // مفتاح لتنشيط تحديث المكونات التابعة
+    const [contentRefreshKey, setContentRefreshKey] = useState(0);
 
     const prevRadarCountRef = useRef(0);
     const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; type: 'content' | 'user' | 'ad' | 'pinned' | 'story' | 'broadcast' | 'report' | 'radar' | 'request'; id: string; title?: string; meta?: any; }>({ isOpen: false, type: 'content', id: '' });
@@ -180,19 +184,28 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 const { id, ...contentData } = contentWithDate; 
                 await db.collection("content").doc(c.id).update(contentData); 
                 props.addToast("تم تعديل المحتوى بنجاح!", "success"); 
-                // Manual local update to prevent stale UI during background re-fetch
-                setAllContent(prev => prev.map(item => item.id === c.id ? contentWithDate : item));
+                
+                // تحديث الحالة المحلية وترتيبها لتظهر في المقدمة
+                setAllContent(prev => {
+                    const updated = prev.map(item => item.id === c.id ? contentWithDate : item);
+                    return [...updated].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+                });
             } else { 
                 const { id, ...contentData } = contentWithDate; 
                 const docRef = await db.collection("content").add(contentData); 
                 props.addToast("تم إضافة المحتوى بنجاح!", "success"); 
-                // Manual local add
-                setAllContent(prev => [{...contentWithDate, id: docRef.id}, ...prev]);
+                
+                const newContentWithId = {...contentWithDate, id: docRef.id};
+                setAllContent(prev => [newContentWithId, ...prev]);
             } 
             
             setIsContentModalOpen(false); 
             setEditingContent(null);
-            // Trigger parent refresh to update site-wide content list
+            
+            // تحديث المفتاح لإجبار ContentManagementTab على إعادة الجلب
+            setContentRefreshKey(prev => prev + 1);
+            
+            // تحديث حالة التطبيق العامة
             props.onContentChanged(); 
         } catch (err) { 
             console.error("Error saving content:", err); 
@@ -215,6 +228,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 await db.collection("content").doc(id).delete(); 
                 setAllContent(prev => prev.filter(item => item.id !== id)); 
                 props.onContentChanged(); 
+                setContentRefreshKey(prev => prev + 1);
                 props.addToast('تم حذف المحتوى بنجاح.', 'success'); 
             } catch (err) { 
                 console.error("Error deleting content:", err); 
@@ -253,7 +267,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
 
     const renderTabContent = () => {
         switch(activeTab) {
-            case 'content': return <ContentManagementTab onEdit={openContentModalForEdit} onNew={openContentModalForNew} onRequestDelete={confirmDeleteContent} addToast={props.addToast} onBulkSuccess={props.onContentChanged} />;
+            case 'content': return <ContentManagementTab onEdit={openContentModalForEdit} onNew={openContentModalForNew} onRequestDelete={confirmDeleteContent} addToast={props.addToast} onBulkSuccess={() => { props.onContentChanged(); setContentRefreshKey(prev => prev + 1); }} refreshKey={contentRefreshKey} />;
             case 'users': return <UserManagementTab users={props.allUsers} onAddAdmin={props.onAddAdmin} onRequestDelete={confirmDeleteUser} addToast={props.addToast} />;
             case 'requests': return <RequestsTab addToast={props.addToast} serviceAccountJson={props.siteSettings.serviceAccountJson} onRequestDelete={confirmDeleteRequest} />;
             case 'reports': return <ReportsManagementTab addToast={props.addToast} onRequestDelete={confirmDeleteReport} />;
