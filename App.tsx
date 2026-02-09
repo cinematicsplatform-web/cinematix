@@ -316,36 +316,37 @@ const App: React.FC = () => {
       if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
   }, []);
 
+  // --- تم تحديث منطق التحكم في التمرير هنا ---
   useLayoutEffect(() => {
       const prevView = prevViewRef.current;
       
-      if (view === 'detail' || view === 'watch' || view === 'personProfile' || view === 'download' || view === 'adGate') {
-          window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+      // قائمة صفحات التفاصيل والمحتوى الفردي
+      const contentViews: View[] = ['detail', 'watch', 'personProfile', 'download', 'adGate', 'contentRequest'];
+      // قائمة صفحات القوائم الرئيسية
+      const listingViews: View[] = ['home', 'movies', 'series', 'programs', 'kids', 'ramadan', 'soon', 'myList', 'category', 'search'];
+
+      if (contentViews.includes(view)) {
+          // إذا انتقلنا لصفحة تفاصيل، دائماً نمرر للأعلى بغض النظر عن الصفحة السابقة
+          window.scrollTo(0, 0);
       } 
-      else {
+      else if (listingViews.includes(view)) {
+          // إذا انتقلنا لصفحة قائمة
           const savedPosition = scrollPositions.current[view];
-          if (savedPosition !== undefined && (
-              prevView === 'detail' || 
-              prevView === 'watch' || 
-              prevView === 'personProfile' || 
-              prevView === 'download' || 
-              prevView === 'category' || 
-              prevView === 'search' ||
-              prevView === 'login' ||
-              prevView === 'register' ||
-              prevView === 'adGate' ||
-              prevView === 'contentRequest' ||
-              prevView === 'about' ||
-              prevView === 'privacy' ||
-              prevView === 'copyright'
-          )) {
-              window.scrollTo({ top: savedPosition, left: 0, behavior: 'instant' as any });
+          
+          // لا نستعيد الموضع إلا إذا كنا عائدين من صفحة تفاصيل (Back navigation pattern)
+          if (savedPosition !== undefined && contentViews.includes(prevView)) {
+              window.scrollTo(0, savedPosition);
           } else {
-              window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+              // أي انتقال آخر (بين القوائم نفسها) يبدأ من الصفر
+              window.scrollTo(0, 0);
           }
+      } else {
+          // أي صفحة أخرى غير معرفة تبدأ من الصفر
+          window.scrollTo(0, 0);
       }
+      
       prevViewRef.current = view;
-  }, [view, selectedContent, selectedPersonName]); 
+  }, [view, selectedContent?.id, selectedPersonName]); 
 
   const resolveContentFromUrl = useCallback((path: string, contentList: Content[], currentView?: View) => {
       const decodedPath = decodeURIComponent(path);
@@ -419,7 +420,11 @@ const App: React.FC = () => {
   useEffect(() => {
       const handlePopState = () => {
           const currentView = view;
-          scrollPositions.current[currentView] = window.scrollY;
+          // حفظ الموضع قبل العودة
+          const listingViews: View[] = ['home', 'movies', 'series', 'programs', 'kids', 'ramadan', 'soon', 'myList', 'category', 'search'];
+          if (listingViews.includes(currentView)) {
+              scrollPositions.current[currentView] = window.scrollY;
+          }
 
           const newView = getInitialView();
           if (newView !== 'search') setIsSearchOpen(false); 
@@ -564,7 +569,12 @@ const App: React.FC = () => {
   }, []);
 
   const handleSetView = (newView: View, category?: string, params?: any) => {
-      scrollPositions.current[view] = window.scrollY;
+      const listingViews: View[] = ['home', 'movies', 'series', 'programs', 'kids', 'ramadan', 'soon', 'myList', 'category', 'search'];
+      // حفظ الموضع فقط إذا كنا نغادر صفحة قائمة
+      if (listingViews.includes(view)) {
+          scrollPositions.current[view] = window.scrollY;
+      }
+      
       const subViews: View[] = ['detail', 'watch', 'personProfile', 'download', 'category', 'search', 'login', 'register', 'welcome', 'adGate', 'contentRequest', 'about', 'privacy', 'copyright'];
       
       if (subViews.includes(newView) && !subViews.includes(view)) setReturnView(view);
@@ -616,7 +626,12 @@ const App: React.FC = () => {
 
   const handleSelectContent = (content: Content, seasonNumber?: number, episodeNumber?: number) => {
       if (isSearchOpen) setIsSearchOpen(false);
-      scrollPositions.current[view] = window.scrollY;
+      // حفظ الموضع قبل الانتقال للتفاصيل
+      const listingViews: View[] = ['home', 'movies', 'series', 'programs', 'kids', 'ramadan', 'soon', 'myList', 'category', 'search'];
+      if (listingViews.includes(view)) {
+          scrollPositions.current[view] = window.scrollY;
+      }
+      
       if (view !== 'detail' && view !== 'adGate') setReturnView(view);
       
       const slug = content.slug || content.id;
@@ -682,7 +697,10 @@ const App: React.FC = () => {
   };
 
   const handlePersonClick = (name: string) => {
-    scrollPositions.current[view] = window.scrollY;
+    const listingViews: View[] = ['home', 'movies', 'series', 'programs', 'kids', 'ramadan', 'soon', 'myList', 'category', 'search'];
+    if (listingViews.includes(view)) {
+        scrollPositions.current[view] = window.scrollY;
+    }
     if (view !== 'personProfile') setReturnView(view);
     handleSetView('personProfile', undefined, { name });
   };
@@ -980,7 +998,6 @@ const App: React.FC = () => {
     <div className={`min-h-screen text-white font-['Cairo'] ${view === 'watch' ? '' : 'pb-16 md:pb-0'} ${isTv ? 'pr-20' : ''}`}>
         <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
             {toasts.map(toast => (
-                // Corrected broken string template on line 983
                 <div key={toast.id} className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-fade-in-up transition-all duration-300 ${toast.type === 'success' ? 'bg-green-600 text-white' : toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'}`}>
                     {toast.type === 'success' ? <CheckCircleIcon /> : toast.type === 'error' ? <ExclamationCircleIcon /> : null}
                     <span className="text-sm font-bold">{toast.message}</span>
