@@ -466,7 +466,7 @@ const App: React.FC = () => {
       try {
           setIsContentLoading(true);
           const [contentList, settings, adsList, pinnedData, top10Data, storiesList, peopleList] = await Promise.all([
-              getAllContent(),
+              getAllContent(currentUser?.role === UserRole.Admin),
               getSiteSettings(),
               getAds(),
               getPinnedContent(),
@@ -901,11 +901,11 @@ const App: React.FC = () => {
           case 'contentRequest': return <ContentRequestPage onSetView={handleSetView} currentUser={currentUser} addToast={addToast} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
           case 'detail':
                return (
-                   <DetailPage key={window.location.pathname} locationPath={window.location.pathname} content={selectedContent || ({} as Content)} people={people} initialSeasonNumber={detailParams?.seasonNumber} ads={ads} adsEnabled={siteSettings.adsEnabled} allContent={allContent} onSelectContent={handleSelectContent} onPersonClick={handlePersonClick} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
+                   <DetailPage key={window.location.pathname} locationPath={window.location.pathname} content={selectedContent || ({} as Content)} people={people} initialSeasonNumber={detailParams?.seasonNumber} ads={ads} adsEnabled={siteSettings.adsEnabled} allContent={allContent} onSelectContent={handleSelectContent} onPersonClick={handlePersonClick} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
                );
           case 'watch':
                return (
-                   <EpisodeWatchPage content={selectedContent || ({} as Content)} seasonNumber={watchParams?.season || 1} episodeNumber={watchParams?.episode || 1} allContent={allContent} onSetView={handleSetView} ads={ads} adsEnabled={siteSettings.adsEnabled} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
+                   <EpisodeWatchPage content={selectedContent || ({} as Content)} seasonNumber={watchParams?.season || 1} episodeNumber={watchParams?.episode || 1} allContent={allContent} onSetView={handleSetView} isAdmin={isAdmin} ads={ads} adsEnabled={siteSettings.adsEnabled} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
                );
            case 'download':
                return (
@@ -980,6 +980,7 @@ const App: React.FC = () => {
     <div className={`min-h-screen text-white font-['Cairo'] ${view === 'watch' ? '' : 'pb-16 md:pb-0'} ${isTv ? 'pr-20' : ''}`}>
         <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
             {toasts.map(toast => (
+                // Corrected broken string template on line 983
                 <div key={toast.id} className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-fade-in-up transition-all duration-300 ${toast.type === 'success' ? 'bg-green-600 text-white' : toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'}`}>
                     {toast.type === 'success' ? <CheckCircleIcon /> : toast.type === 'error' ? <ExclamationCircleIcon /> : null}
                     <span className="text-sm font-bold">{toast.message}</span>

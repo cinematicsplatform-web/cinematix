@@ -132,13 +132,20 @@ const YouTubeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 const CalendarIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
     </svg>
 );
 
 const StackIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+    </svg>
+);
+
+// --- New Icon for Notifications ---
+const BellIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
     </svg>
 );
 
@@ -175,10 +182,11 @@ interface MobileSimulatorProps {
     onUpdateX: (val: number) => void;
     onUpdateY: (val: number) => void;
     contentData: Content; 
+    orientation: 'portrait' | 'landscape'; // New prop
     children?: React.ReactNode;
 }
 
-const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY, onUpdateX, onUpdateY, contentData, children }) => {
+const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY, onUpdateX, onUpdateY, contentData, orientation, children }) => {
     const cropClass = contentData.enableMobileCrop ? 'mobile-custom-crop' : '';
     const imgStyle: React.CSSProperties = { 
         '--mob-x': `${posX}%`, 
@@ -221,20 +229,24 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
         (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     };
 
+    // Calculate dynamic dimensions based on orientation
+    const simWidth = orientation === 'portrait' ? '300px' : '620px';
+    const simHeight = orientation === 'portrait' ? '620px' : '300px';
+
     return (
-        <div className="mt-6 flex flex-col items-center gap-12 rounded-3xl border border-gray-800 bg-[#080a0f] p-4 md:p-8 md:flex-row md:items-start shadow-2xl">
-            <div className="relative mx-auto flex-shrink-0 md:mx-0">
+        <div className="mt-6 flex flex-col items-center gap-12 rounded-3xl border border-gray-800 bg-[#080a0f] p-4 md:p-8 shadow-2xl w-full">
+            <div className="relative mx-auto flex-shrink-0 transition-all duration-500 ease-in-out">
                 <div 
                     ref={containerRef}
-                    className="relative overflow-hidden rounded-[3rem] border-[10px] border-[#1f2127] bg-black shadow-2xl ring-1 ring-white/10 select-none touch-none scale-90 md:scale-100 origin-top"
-                    style={{ width: '300px', height: '620px', cursor: isPanning ? 'grabbing' : 'grab' }} 
+                    className="relative overflow-hidden rounded-[3rem] border-[10px] border-[#1f2127] bg-black shadow-2xl ring-1 ring-white/10 select-none touch-none scale-90 md:scale-100 origin-top transition-all duration-500"
+                    style={{ width: simWidth, height: simHeight, cursor: isPanning ? 'grabbing' : 'grab' }} 
                     onPointerDown={handlePointerDown}
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
                 >
                     {children ? children : (
                         <div className="h-full bg-[#141b29] overflow-y-auto no-scrollbar scroll-smooth flex flex-col pointer-events-none">
-                            <div className="relative h-[440px] w-full flex-shrink-0">
+                            <div className={`relative w-full flex-shrink-0 ${orientation === 'portrait' ? 'h-[440px]' : 'h-full'}`}>
                                 <img 
                                     src={imageUrl || 'https://placehold.co/1080x1920/101010/101010/png'} 
                                     className={`absolute inset-0 h-full w-full object-cover ${cropClass} object-top transition-none`}
@@ -251,9 +263,9 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                                     )}
                                     <div className="mb-3">
                                         {contentData.isLogoEnabled && contentData.logoUrl ? (
-                                            <img src={contentData.logoUrl} className="max-w-[160px] max-h-[100px] object-contain drop-shadow-2xl mx-auto" alt="" />
+                                            <img src={contentData.logoUrl} className={`${orientation === 'portrait' ? 'max-w-[160px]' : 'max-w-[120px]'} max-h-[100px] object-contain drop-shadow-2xl mx-auto`} alt="" />
                                         ) : (
-                                            <h1 className="text-2xl font-black drop-shadow-lg leading-tight">{contentData.title || 'العنوان'}</h1>
+                                            <h1 className={`${orientation === 'portrait' ? 'text-2xl' : 'text-xl'} font-black drop-shadow-lg leading-tight`}>{contentData.title || 'العنوان'}</h1>
                                         )}
                                     </div>
                                     <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] text-gray-200 mb-4 font-bold">
@@ -266,7 +278,7 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                                         <span>•</span>
                                         <span className="px-1 border border-gray-500 rounded text-[8px]">{contentData.ageRating || 'G'}</span>
                                     </div>
-                                    <div className="flex gap-2 w-full">
+                                    <div className="flex gap-2 w-full max-w-[240px] mx-auto">
                                         <div className="flex-1 bg-[var(--color-accent)] text-black h-10 rounded-full flex items-center justify-center font-black text-xs gap-2">
                                             <PlayIcon className="w-3 h-3 fill-black" />
                                             شاهد الآن
@@ -285,34 +297,39 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                                     </div>
                                 </div>
                             </div>
-                            <div className="sticky top-0 z-30 bg-[#141b29]/95 backdrop-blur-md border-b border-white/5 flex gap-4 px-4 h-12 items-center flex-shrink-0">
-                                <div className="text-[10px] font-black border-b-2 border-[var(--color-accent)] py-3 text-white">الحلقات</div>
-                                <div className="text-[10px] font-black text-gray-500 py-3">التفاصيل</div>
-                                <div className="text-[10px] font-black text-gray-500 py-3">أعمال مشابهة</div>
-                            </div>
-                            <div className="p-4 space-y-4 flex-1">
-                                <p className="text-[11px] text-gray-400 leading-relaxed text-justify line-clamp-4">
-                                    {contentData.description || 'قصة العمل تظهر هنا...'}
-                                </p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
-                                        <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">المخرج</span>
-                                        <span className="text-[10px] font-bold text-gray-300 truncate block">{contentData.director || 'N/A'}</span>
+                            
+                            {orientation === 'portrait' && (
+                                <>
+                                    <div className="sticky top-0 z-30 bg-[#141b29]/95 backdrop-blur-md border-b border-white/5 flex gap-4 px-4 h-12 items-center flex-shrink-0">
+                                        <div className="text-[10px] font-black border-b-2 border-[var(--color-accent)] py-3 text-white">الحلقات</div>
+                                        <div className="text-[10px] font-black text-gray-500 py-3">التفاصيل</div>
+                                        <div className="text-[10px] font-black text-gray-500 py-3">أعمال مشابهة</div>
                                     </div>
-                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
-                                        <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">التقييم</span>
-                                        <span className="text-[10px] font-bold text-yellow-400">★ {contentData.rating}</span>
+                                    <div className="p-4 space-y-4 flex-1">
+                                        <p className="text-[11px] text-gray-400 leading-relaxed text-justify line-clamp-4">
+                                            {contentData.description || 'قصة العمل تظهر هنا...'}
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
+                                                <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">المخرج</span>
+                                                <span className="text-[10px] font-bold text-gray-300 truncate block">{contentData.director || 'N/A'}</span>
+                                            </div>
+                                            <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
+                                                <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">التقييم</span>
+                                                <span className="text-[10px] font-bold text-yellow-400">★ {contentData.rating}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
+                                </>
+                            )}
                         </div>
                     )}
 
-                    <div className="absolute top-0 left-1/2 z-30 h-7 w-36 -translate-x-1/2 rounded-b-2xl bg-[#1f2127] pointer-events-none"></div>
-                    <div className="absolute top-3 right-6 z-30 h-3 w-3 rounded-full bg-gray-600/30 pointer-events-none"></div>
-                    <div className="absolute bottom-2 left-1/2 z-30 h-1 w-32 -translate-x-1/2 rounded-full bg-white/20 pointer-events-none"></div>
+                    <div className={`absolute z-30 rounded-b-2xl bg-[#1f2127] pointer-events-none transition-all ${orientation === 'portrait' ? 'top-0 left-1/2 h-7 w-36 -translate-x-1/2' : 'top-1/2 left-0 w-7 h-36 -translate-y-1/2 rounded-r-2xl rounded-bl-none'}`}></div>
+                    <div className={`absolute z-30 h-3 w-3 rounded-full bg-gray-600/30 pointer-events-none ${orientation === 'portrait' ? 'top-3 right-6' : 'bottom-6 left-3'}`}></div>
+                    <div className={`absolute z-30 rounded-full bg-white/20 pointer-events-none ${orientation === 'portrait' ? 'bottom-2 left-1/2 h-1 w-32 -translate-x-1/2' : 'right-2 top-1/2 w-1 h-32 -translate-y-1/2'}`}></div>
                 </div>
-                <div className="mt-6 text-center font-mono text-xs text-gray-500 uppercase tracking-[0.2em]">Mobile Preview</div>
+                <div className="mt-6 text-center font-mono text-xs text-gray-500 uppercase tracking-[0.2em]">Mobile {orientation} Preview</div>
             </div>
 
             <div className="flex w-full flex-1 flex-col gap-8 pt-4">
@@ -320,8 +337,7 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                     <div>
                         <h3 className="text-xl font-bold text-white mb-2">تخصيص العرض للجوال</h3>
                         <p className="text-sm text-gray-400 leading-relaxed">
-                            تحكم دقيق في نقطة تركيز الصورة (Focal Point) لتظهر بشكل مثالي على صفحة العرض الرسمية في الجوال. 
-                            المعاينة أمامك هي نسخة طبق الأصل لما سيراه المستخدم النهائي. يمكنك السحب مباشرة على صورة الجوال للتحريك.
+                            تحكم دقيق في نقطة تركيز الصورة لتظهر بشكل مثالي. يمكنك السحب مباشرة على صورة الجوال للتحريك أو استخدام الأزرار لتغيير وضع المعاينة.
                         </p>
                     </div>
                     <button 
@@ -797,9 +813,21 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [activeTab, setActiveTab] = useState('general');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // New Orientation State for Preview
+    const [simOrientation, setSimOrientation] = useState<'portrait' | 'landscape'>('portrait');
 
-    // حالة الجدولة
+    // --- Scheduling & Notification States ---
     const [showSchedulingUI, setShowSchedulingUI] = useState(false);
+    // حالة للتحكم في نافذة جدولة حلقة معينة
+    const [episodeSchedulingState, setEpisodeSchedulingState] = useState<{
+        isOpen: boolean;
+        seasonId: number | null;
+        episodeId: number | null;
+        currentDate: string;
+        notifyUsers: boolean;
+        notifyAdmins: boolean;
+    }>({ isOpen: false, seasonId: null, episodeId: null, currentDate: '', notifyUsers: true, notifyAdmins: true });
 
     const getDefaultFormData = (): Content => ({
         id: '', tmdbId: '', title: '', description: '', type: ContentType.Movie, poster: '', top10Poster: '', backdrop: '', horizontalPoster: '', mobileBackdropUrl: '',
@@ -810,8 +838,10 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         slug: '',
         director: '', writer: '',
         isUpcoming: false,
+        // Global Content Scheduling (Movies/Series level)
         isScheduled: false,
         scheduledAt: '',
+        notifyOnPublish: true, // New: Notify when main content drops
         flipBackdrop: false,
         ...content,
     });
@@ -839,7 +869,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const globalFileInputRef = useRef<HTMLInputElement>(null);
     const movieExcelInputRef = useRef<HTMLInputElement>(null);
     
-    // --- NEW BULK ACTION STATES ---
+    // --- BULK ACTION STATES ---
     const [bulkActionState, setBulkActionState] = useState<{
         isOpen: boolean;
         type: 'add' | 'delete';
@@ -920,8 +950,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     season.mobileImageUrl !== updatedSeason.mobileImageUrl ||
                     season.enableMobileCrop !== updatedSeason.enableMobileCrop ||
                     season.mobileCropPositionX !== updatedSeason.mobileCropPositionX ||
-                    season.mobileCropPositionX !== updatedSeason.mobileCropPositionX || // Check X
-                    season.mobileCropPositionY !== updatedSeason.mobileCropPositionY || // Check Y
+                    season.mobileCropPositionY !== updatedSeason.mobileCropPositionY || 
                     season.trailerUrl !== updatedSeason.trailerUrl ||
                     season.description !== updatedSeason.description ||
                     season.releaseYear !== updatedSeason.releaseYear ||
@@ -1015,8 +1044,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         addToast(`تم تصفير بيانات قسم ${tabId} بنجاح.`, 'info');
     };
 
-    // --- NEW LOGIC: BULK ADD & DELETE ---
-
     const openBulkActionModal = (seasonId: number, type: 'add' | 'delete') => {
         setBulkActionState({
             isOpen: true,
@@ -1043,10 +1070,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 let updatedEpisodes = [...(season.episodes || [])];
 
                 if (type === 'add') {
-                    // Bulk Add Logic
                     const newEpisodes: Episode[] = [];
                     for (let i = startFrom; i <= endTo; i++) {
-                        // Check if episode already exists to avoid duplicates (optional, but good practice)
                         const exists = updatedEpisodes.some(ep => parseInt(ep.title.replace(/\D/g, '') || '0') === i);
                         if (!exists) {
                             newEpisodes.push({
@@ -1062,15 +1087,12 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     }
                     updatedEpisodes = [...updatedEpisodes, ...newEpisodes];
                 } else {
-                    // Bulk Delete Logic
                     updatedEpisodes = updatedEpisodes.filter(ep => {
                         const epNum = parseInt(ep.title.replace(/\D/g, '') || '0');
-                        // Keep episode if it is OUTSIDE the range [startFrom, endTo]
                         return epNum < startFrom || epNum > endTo;
                     });
                 }
 
-                // Sort episodes by number
                 updatedEpisodes.sort((a, b) => {
                     const numA = parseInt(a.title.replace(/\D/g, '') || '0');
                     const numB = parseInt(b.title.replace(/\D/g, '') || '0');
@@ -1084,8 +1106,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         addToast(type === 'add' ? `تم إضافة الحلقات من ${startFrom} إلى ${endTo} بنجاح.` : `تم حذف الحلقات من ${startFrom} إلى ${endTo} بنجاح.`, "success");
         setBulkActionState(prev => ({ ...prev, isOpen: false }));
     };
-
-    // ------------------------------------
 
     const renderImageInput = (
         label: string, 
@@ -1692,6 +1712,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         });
     };
 
+    // --- SUBMIT HANDLER WITH SCHEDULING LOGIC ---
     const handleSubmit = async (e: React.FormEvent, isScheduled: boolean = false) => {
         e.preventDefault();
         if (isSubmitting) return; 
@@ -1699,8 +1720,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         if (!formData.title) { addToast('الرجاء كتابة اسم العمل.', "info"); return; }
         if (formData.categories.length === 0) { addToast('الرجاء اختيار تصنيف واحد على الأقل.', "info"); return; }
         
+        // Validation for content-level scheduling
         if (isScheduled && !formData.scheduledAt) {
-            addToast('الرجاء اختيار تاريخ ووقت الجدولة.', "info");
+            addToast('الرجاء اختيار تاريخ ووقت الجدولة للمحتوى.', "info");
             return;
         }
 
@@ -1709,7 +1731,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         
         const seasons = formData.seasons?.map(s => ({
             ...s,
-            mobileImageUrl: s.mobileImageUrl || ''
+            mobileImageUrl: s.mobileImageUrl || '',
+            episodes: s.episodes.map(ep => ({
+                ...ep,
+                // Ensure episode scheduling data is clean
+                isScheduled: ep.isScheduled || false,
+                scheduledAt: ep.isScheduled ? ep.scheduledAt : '',
+                notifyOnPublish: ep.notifyOnPublish ?? true
+            }))
         }));
 
         const finalSlug = formData.slug?.trim() || generateSlug(formData.title);
@@ -1723,13 +1752,26 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             createdAt: formData.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             isScheduled: isScheduled,
-            scheduledAt: isScheduled ? formData.scheduledAt : ''
+            scheduledAt: isScheduled ? formData.scheduledAt : '',
+            notifyOnPublish: formData.notifyOnPublish ?? true // Default to true
         };
 
         setIsSubmitting(true);
         try {
             await onSave(contentToSave);
-            addToast(isScheduled ? "تم جدولة النشر بنجاح!" : "تم النشر بنجاح!", "success");
+            
+            // Logic implies that if scheduled, the backend handles the trigger.
+            // If published now (not scheduled), notifications might be handled by onSave implementation or backend triggers.
+            let message = "تم النشر بنجاح!";
+            if (isScheduled) message = "تم جدولة النشر بنجاح!";
+            
+            // Check if any separate episodes are scheduled
+            const scheduledEpisodesCount = seasons?.reduce((acc, season) => acc + season.episodes.filter(e => e.isScheduled).length, 0) || 0;
+            if (scheduledEpisodesCount > 0) {
+                 message += ` (تم جدولة ${scheduledEpisodesCount} حلقة)`;
+            }
+
+            addToast(message, "success");
         } catch (err) {
             console.error("Submit failed:", err);
             setIsSubmitting(false);
@@ -1884,7 +1926,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 thumbnail: getRowValue(row, 'صورة', 'Thumbnail') || s.backdrop || formData.backdrop,
                                 description: getRowValue(row, 'الوصف', 'Description') || `شاهد أحداث الحلقة ${eNum} من الموسم ${seasonNumber}.`,
                                 progress: 0,
-                                servers: epServers
+                                servers: epServers,
+                                isScheduled: false,
+                                scheduledAt: ''
                             };
 
                             const targetIdx = updatedEpisodes.findIndex(ep => {
@@ -1928,7 +1972,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 const newEpNum = (s.episodes?.length || 0) + 1;
                 return {
                     ...s,
-                    episodes: [...(s.episodes || []), { id: Date.now(), title: `الحلقة ${newEpNum}`, duration: '', progress: 0, servers: [] }]
+                    episodes: [...(s.episodes || []), { 
+                        id: Date.now(), 
+                        title: `الحلقة ${newEpNum}`, 
+                        duration: '', 
+                        progress: 0, 
+                        servers: [],
+                        isScheduled: false
+                    }]
                 };
             })
         }));
@@ -1952,7 +2003,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         setDeleteEpisodeState(prev => ({...prev, isOpen: false})); 
     };
     
-    const handleUpdateEpisode = (seasonId: number, episodeId: number, field: keyof Episode, value: any) => { 
+    const handleUpdateEpisode = (seasonId: number, episodeId: number, field: keyof Episode | 'isScheduled' | 'scheduledAt' | 'notifyOnPublish', value: any) => { 
         setFormData(prev => ({
             ...prev,
             seasons: (prev.seasons || []).map(s => {
@@ -1963,6 +2014,47 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 };
             })
         }));
+    };
+
+    // --- Helper to open Scheduling Modal for an Episode ---
+    const openEpisodeScheduling = (seasonId: number, episodeId: number, currentSchedule: string) => {
+        setEpisodeSchedulingState({
+            isOpen: true,
+            seasonId,
+            episodeId,
+            currentDate: currentSchedule,
+            notifyUsers: true,
+            notifyAdmins: true
+        });
+    };
+
+    // --- Confirm Episode Scheduling ---
+    const confirmEpisodeSchedule = () => {
+        const { seasonId, episodeId, currentDate, notifyUsers, notifyAdmins } = episodeSchedulingState;
+        if (seasonId && episodeId) {
+            setFormData(prev => ({
+                ...prev,
+                seasons: (prev.seasons || []).map(s => {
+                    if (s.id !== seasonId) return s;
+                    return {
+                        ...s,
+                        episodes: s.episodes.map(e => {
+                            if (e.id === episodeId) {
+                                return {
+                                    ...e,
+                                    isScheduled: !!currentDate,
+                                    scheduledAt: currentDate,
+                                    notifyOnPublish: notifyUsers // Storing this preference
+                                };
+                            }
+                            return e;
+                        })
+                    };
+                })
+            }));
+            addToast(currentDate ? "تم جدولة الحلقة بنجاح" : "تم إلغاء جدولة الحلقة", "success");
+        }
+        setEpisodeSchedulingState(prev => ({ ...prev, isOpen: false }));
     };
     
     const handleUpdateEpisodeServers = (newServers: Server[]) => { 
@@ -2067,7 +2159,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             default: return { label: mediaType === 'person' ? 'فنان' : mediaType, color: 'bg-gray-600/90' };
         }
     };
-
     const renderLivePreview = () => {
         const posX = formData.mobileCropPositionX ?? 50;
         const posY = formData.mobileCropPositionY ?? 50;
@@ -2082,82 +2173,40 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         return (
             <div className="space-y-12 animate-fade-in">
                 <div className="flex flex-col items-center gap-6">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <span className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">📱</span>
-                        معاينة الجوال (Mobile View)
-                    </h3>
-                    <div className="relative w-[300px] md:w-[320px] h-[600px] md:h-[650px] bg-black border-[8px] md:border-[10px] border-[#1f2127] rounded-[2.5rem] md:rounded-[3rem] shadow-2xl overflow-hidden ring-1 ring-white/10 scale-95 md:scale-100">
-                        <div className="absolute top-0 left-0 right-0 h-14 bg-gradient-to-b from-black/80 to-transparent z-40 px-6 flex items-center">
-                            <div className="w-6 h-6 rounded-full bg-white/10"></div>
-                        </div>
+                    <div className="flex flex-col md:flex-row items-center justify-between w-full max-w-4xl gap-4">
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <span className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">📱</span>
+                            معاينة الجوال (Mobile View)
+                        </h3>
                         
-                        <div className="h-full bg-[#141b29] overflow-y-auto no-scrollbar scroll-smooth flex flex-col">
-                            <div className="relative h-[400px] md:h-[480px] w-full flex-shrink-0">
-                                <img 
-                                    src={formData.mobileBackdropUrl || formData.backdrop || 'https://placehold.co/1080x1920/101010/101010/png'} 
-                                    className={`absolute inset-0 h-full w-full object-cover ${cropClass} object-top transition-none`} 
-                                    style={imgStyle}
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-[#141b29] via-[#141b29]/40 via-40% to-transparent z-10"></div>
-                                
-                                <div className="absolute inset-0 z-20 flex flex-col justify-end p-5 pb-8 text-white text-center">
-                                    {formData.bannerNote && (
-                                        <div className="mb-2 mx-auto text-[10px] font-bold bg-[#6366f1]/80 text-white border border-[#6366f1]/30 px-2 py-0.5 rounded backdrop-blur-md w-fit">
-                                            {formData.bannerNote}
-                                        </div>
-                                    )}
-                                    <div className="mb-3">
-                                        {formData.isLogoEnabled && formData.logoUrl ? (
-                                            <img src={formData.logoUrl} className="max-w-[140px] md:max-w-[160px] max-h-[80px] md:max-h-[100px] object-contain drop-shadow-2xl mx-auto" alt="" />
-                                        ) : (
-                                            <h1 className="text-xl md:text-2xl font-black drop-shadow-lg leading-tight">{formData.title || 'العنوان'}</h1>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] text-gray-200 mb-4 font-bold">
-                                        <div className="flex items-center gap-1 text-yellow-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/10">
-                                            <StarIcon className="w-2.5 h-2.5" />
-                                            <span>{formData.rating.toFixed(1)}</span>
-                                        </div>
-                                        <span>•</span>
-                                        <span>{formData.releaseYear}</span>
-                                        <span>•</span>
-                                        <span className="px-1 border border-gray-500 rounded text-[8px]">{formData.ageRating || 'G'}</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <div className="flex-1 bg-[#00A7F8] text-black h-10 rounded-full flex items-center justify-center font-black text-xs gap-2">
-                                            <PlayIcon className="w-3 h-3 fill-black" />
-                                            شاهد الآن
-                                        </div>
-                                        <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center font-bold text-lg">+</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="sticky top-0 z-30 bg-[#141b29]/95 backdrop-blur-md border-b border-white/5 flex gap-4 px-4 h-12 items-center flex-shrink-0">
-                                <div className="text-[10px] font-black border-b-2 border-[#00A7F8] py-3 text-white">الحلقات</div>
-                                <div className="text-[10px] font-black text-gray-500 py-3">التفاصيل</div>
-                                <div className="text-[10px] font-black text-gray-500 py-3">أعمال مشابهة</div>
-                            </div>
-
-                            <div className="p-4 space-y-4 flex-1">
-                                <p className="text-[11px] text-gray-400 leading-relaxed text-justify line-clamp-4">
-                                    {formData.description || 'قصة العمل تظهر هنا...'}
-                                </p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
-                                        <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">المخرج</span>
-                                        <span className="text-[10px] font-bold text-gray-300 truncate block">{formData.director || 'N/A'}</span>
-                                    </div>
-                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
-                                        <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">التقييم</span>
-                                        <span className="text-[10px] font-bold text-yellow-400">★ {formData.rating}</span>
-                                    </div>
-                                </div>
-                            </div>
+                        {/* Manual Orientation Toggles */}
+                        <div className="flex bg-[#161b22] p-1 rounded-xl border border-gray-700">
+                             <button 
+                                type="button"
+                                onClick={() => setSimOrientation('portrait')}
+                                className={`px-6 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${simOrientation === 'portrait' ? 'bg-[#00A7F8] text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                             >
+                                <span>📱 عمودي</span>
+                             </button>
+                             <button 
+                                type="button"
+                                onClick={() => setSimOrientation('landscape')}
+                                className={`px-6 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${simOrientation === 'landscape' ? 'bg-[#00A7F8] text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                             >
+                                <span>📟 أفقي</span>
+                             </button>
                         </div>
-
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#1f2127] rounded-b-2xl z-50"></div>
                     </div>
+
+                    <MobileSimulator 
+                        imageUrl={formData.mobileBackdropUrl || formData.backdrop || ''} 
+                        posX={formData.mobileCropPositionX ?? 50} 
+                        posY={formData.mobileCropPositionY ?? 50} 
+                        contentData={formData} 
+                        orientation={simOrientation}
+                        onUpdateX={(v) => setFormData(prev => ({...prev, mobileCropPositionX: v}))} 
+                        onUpdateY={(v) => setFormData(prev => ({...prev, mobileCropPositionY: v}))}
+                    />
                 </div>
 
                 <div className="flex flex-col items-center gap-6">
@@ -2220,6 +2269,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             </div>
         );
     };
+
     return (
         <div className="flex h-screen w-full bg-[#090b10] text-gray-200 overflow-hidden font-sans selection:bg-[var(--color-accent)] selection:text-black" dir="rtl">
             <div 
@@ -2609,7 +2659,25 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             <ToggleSwitch checked={formData.enableMobileCrop || false} onChange={(val) => setFormData(prev => ({...prev, enableMobileCrop: val}))} label={formData.enableMobileCrop ? "مفعل" : "معطل"}/>
                                         </div>
                                         {formData.enableMobileCrop && (
-                                            <MobileSimulator imageUrl={formData.mobileBackdropUrl || formData.backdrop || ''} posX={formData.mobileCropPositionX ?? 50} posY={formData.mobileCropPositionY ?? 50} contentData={formData} onUpdateX={(v) => setFormData(prev => ({...prev, mobileCropPositionX: v}))} onUpdateY={(v) => setFormData(prev => ({...prev, mobileCropPositionY: v}))}/>
+                                            <div className="flex flex-col items-center">
+                                                <div className="flex bg-[#161b22] p-1 rounded-xl border border-gray-700 mb-6 self-start">
+                                                     <button 
+                                                        type="button"
+                                                        onClick={() => setSimOrientation('portrait')}
+                                                        className={`px-6 py-2 rounded-lg text-xs font-black transition-all ${simOrientation === 'portrait' ? 'bg-[#00A7F8] text-black' : 'text-gray-500'}`}
+                                                     >
+                                                        عمودي
+                                                     </button>
+                                                     <button 
+                                                        type="button"
+                                                        onClick={() => setSimOrientation('landscape')}
+                                                        className={`px-6 py-2 rounded-lg text-xs font-black transition-all ${simOrientation === 'landscape' ? 'bg-[#00A7F8] text-black' : 'text-gray-500'}`}
+                                                     >
+                                                        أفقي
+                                                     </button>
+                                                </div>
+                                                <MobileSimulator orientation={simOrientation} imageUrl={formData.mobileBackdropUrl || formData.backdrop || ''} posX={formData.mobileCropPositionX ?? 50} posY={formData.mobileCropPositionY ?? 50} contentData={formData} onUpdateX={(v) => setFormData(prev => ({...prev, mobileCropPositionX: v}))} onUpdateY={(v) => setFormData(prev => ({...prev, mobileCropPositionY: v}))}/>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -2710,7 +2778,15 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                 <div className="col-span-full"><label className={labelClass}>قصة الموسم</label><textarea value={season.description || ''} onChange={(e) => handleUpdateSeason(season.id, 'description', e.target.value)} className={inputClass} rows={2}/></div>
                                                                 <div className="col-span-full mt-4 p-4 border-t border-gray-800">
                                                                     <div className="flex justify-between items-center mb-4"><label className={labelClass}>تخصيص الموبايل لهذا الموسم</label><ToggleSwitch checked={season.enableMobileCrop || false} onChange={(val) => handleUpdateSeason(season.id, 'enableMobileCrop', val)} label={season.enableMobileCrop ? "مفعل" : "معطل"}/></div>
-                                                                    {season.enableMobileCrop && (<div className="mt-2"><MobileSimulator imageUrl={season.mobileImageUrl || season.backdrop || formData.backdrop || ''} posX={season.mobileCropPositionX ?? 50} posY={season.mobileCropPositionY ?? 50} contentData={{...formData, ...season, id: formData.id} as Content} onUpdateX={(v) => handleUpdateSeason(season.id, 'mobileCropPositionX', v)} onUpdateY={(v) => handleUpdateSeason(season.id, 'mobileCropPositionY', v)} /></div>)}
+                                                                    {season.enableMobileCrop && (
+                                                                        <div className="mt-2 flex flex-col items-center">
+                                                                            <div className="flex bg-[#161b22] p-1 rounded-xl border border-gray-700 mb-6 self-start">
+                                                                                 <button type="button" onClick={() => setSimOrientation('portrait')} className={`px-6 py-2 rounded-lg text-xs font-black transition-all ${simOrientation === 'portrait' ? 'bg-[#00A7F8] text-black' : 'text-gray-500'}`}>عمودي</button>
+                                                                                 <button type="button" onClick={() => setSimOrientation('landscape')} className={`px-6 py-2 rounded-lg text-xs font-black transition-all ${simOrientation === 'landscape' ? 'bg-[#00A7F8] text-black' : 'text-gray-500'}`}>أفقي</button>
+                                                                            </div>
+                                                                            <MobileSimulator orientation={simOrientation} imageUrl={season.mobileImageUrl || season.backdrop || formData.backdrop || ''} posX={season.mobileCropPositionX ?? 50} posY={season.mobileCropPositionY ?? 50} contentData={{...formData, ...season, id: formData.id} as Content} onUpdateX={(v) => handleUpdateSeason(season.id, 'mobileCropPositionX', v)} onUpdateY={(v) => handleUpdateSeason(season.id, 'mobileCropPositionY', v)} />
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </>
                                                         )}
@@ -2733,6 +2809,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                         </div>
                                                                         
                                                                         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+                                                                            {/* New: Display Scheduled Date if Exists */}
+                                                                            {ep.isScheduled && (
+                                                                                <div className="flex items-center gap-1 text-[10px] text-amber-500 bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/10">
+                                                                                    <ClockIcon className="w-3 h-3" />
+                                                                                    <span>{new Date(ep.scheduledAt).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</span>
+                                                                                </div>
+                                                                            )}
+
                                                                             <input value={ep.duration} onChange={(e) => handleUpdateEpisode(season.id, ep.id, 'duration', e.target.value)} className="bg-transparent border-b border-gray-700 text-xs text-gray-400 w-20 text-center" placeholder="00:00"/>
                                                                             <label className="flex items-center gap-2 cursor-pointer bg-gray-800/50 px-3 py-1 rounded-lg border border-gray-700">
                                                                                 <input type="checkbox" checked={ep.isLastEpisode} onChange={e => handleUpdateEpisode(season.id, ep.id, 'isLastEpisode', e.target.checked)} className="accent-red-500 h-4 w-4"/>
@@ -2760,6 +2844,17 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                     <button type="button" onClick={() => setEditingServersForEpisode(ep)} className={`flex-1 md:flex-none px-4 py-3 md:py-2 text-xs md:text-[10px] font-black rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all ${ep.servers?.length ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-gray-800 text-gray-500 hover:bg-gray-700'}`}>
                                                                         <ServerIcon className="w-4 h-4 md:w-3.5 md:h-3.5"/> سيرفرات ({ep.servers?.length || 0})
                                                                     </button>
+                                                                    
+                                                                    {/* NEW: Episode Scheduling Button */}
+                                                                    <button 
+                                                                        type="button" 
+                                                                        onClick={() => openEpisodeScheduling(season.id, ep.id, ep.scheduledAt || '')}
+                                                                        className={`flex-1 md:flex-none p-3 md:p-2 rounded-xl transition-all border shadow-sm flex items-center justify-center ${ep.isScheduled ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20' : 'text-gray-400 bg-gray-800 border-transparent hover:bg-gray-700 hover:text-white'}`}
+                                                                        title="جدولة نشر الحلقة"
+                                                                    >
+                                                                        <CalendarIcon className="w-5 h-5"/>
+                                                                    </button>
+
                                                                     <button type="button" onClick={() => requestDeleteEpisode(season.id, ep.id, ep.title || '')} className="p-3 md:p-2 text-red-500 bg-red-500/10 hover:bg-red-500 hover:text-red-white rounded-xl transition-all border border-red-500/20 shadow-sm" title="حذف الحلقة">
                                                                         <TrashIcon className="w-5 h-5"/>
                                                                     </button>
@@ -2822,23 +2917,27 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     <CalendarIcon className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <h4 className="text-white font-bold">تحديد موعد النشر المجدول</h4>
+                                    <h4 className="text-white font-bold">تحديد موعد النشر المجدول (المحتوى بالكامل)</h4>
                                     <p className="text-xs text-gray-500 mt-1">اختر متى تريد أن يظهر هذا المحتوى للجمهور تلقائياً.</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4 w-full md:w-auto">
-                                <input 
-                                    type="datetime-local" 
-                                    value={formData.scheduledAt || ''} 
-                                    onChange={(e) => setFormData(prev => ({...prev, scheduledAt: e.target.value}))}
-                                    className="bg-[#0f1014] border border-amber-500/30 rounded-xl px-4 py-3 text-white focus:border-amber-500 outline-none w-full md:w-64 shadow-lg text-sm"
-                                />
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] text-gray-400 uppercase font-bold">تاريخ النشر</label>
+                                    <input 
+                                        type="datetime-local" 
+                                        value={formData.scheduledAt || ''} 
+                                        onChange={(e) => setFormData(prev => ({...prev, scheduledAt: e.target.value}))}
+                                        className="bg-[#0f1014] border border-amber-500/30 rounded-xl px-4 py-3 text-white focus:border-amber-500 outline-none w-full md:w-64 shadow-lg text-sm"
+                                    />
+                                </div>
+                                
                                 <button 
                                     onClick={() => {
                                         setFormData(prev => ({...prev, isScheduled: false, scheduledAt: ''}));
                                         setShowSchedulingUI(false);
                                     }}
-                                    className="p-3 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
+                                    className="p-3 mt-4 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
                                     title="إلغاء الجدولة"
                                 >
                                     <TrashIcon className="w-5 h-5" />
@@ -2862,7 +2961,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     : 'bg-gray-800 text-amber-500 border border-amber-500/30 hover:bg-amber-500/10'}`}
                           >
                             <CalendarIcon className="w-5 h-5" />
-                            <span>{showSchedulingUI ? 'تعديل الجدولة' : 'جدولة '}</span>
+                            <span>{showSchedulingUI ? 'تعديل الجدولة' : 'جدولة النشر'}</span>
                           </button>
 
                           {/* Main Save & Publish Button */}
@@ -2873,7 +2972,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             className={`flex-none px-8 py-3 rounded-xl text-sm font-black bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-lg shadow-[var(--color-accent)]/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
                           >
                             {isSubmitting ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : <CheckSmallIcon className="w-4 h-4" />}
-                            <span>{isSubmitting ? 'جاري الحفظ...' : (showSchedulingUI ? 'حفظ وجدولة' : 'حفظ ونشر')}</span>
+                            <span>{isSubmitting ? 'جاري الحفظ...' : (showSchedulingUI ? 'حفظ وجدولة' : 'حفظ ونشر المحتوى')}</span>
                           </button>
                       </div>
                 </footer>
@@ -2887,9 +2986,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     type={formData.type} 
                     targetField={galleryState.imageType} 
                     onSelect={(url) => {
-                        // Fix: Execute the provided callback first to update the specific field (main content or specific season)
                         galleryState.onSelect(url);
-                        // If it's a logo, ensure logo display is enabled globally
                         if (galleryState.imageType === 'logo') {
                             setFormData(prev => ({ ...prev, isLogoEnabled: true }));
                         }
@@ -2902,7 +2999,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             <DeleteConfirmationModal isOpen={deleteSeasonState.isOpen} onClose={() => setDeleteSeasonState({ isOpen: false, seasonId: null, title: '' })} onConfirm={executeDeleteSeason} title="حذف الموسم" message={`هل أنت متأكد من حذف ${deleteSeasonState.title}؟`} />
             <DeleteConfirmationModal isOpen={deleteEpisodeState.isOpen} onClose={() => setDeleteEpisodeState({ isOpen: false, seasonId: null, episodeId: null, title: '' })} onConfirm={executeDeleteEpisode} title="حذف الحلقة" message={`هل أنت متأكد من حذف ${deleteEpisodeState.title}؟`} />
             
-            {/* NEW: BULK ACTION MODAL */}
+            {/* BULK ACTION MODAL */}
             {bulkActionState.isOpen && (
                 <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setBulkActionState(prev => ({ ...prev, isOpen: false }))}>
                     <div className="w-full max-w-md bg-[#0f1014] border border-gray-800 rounded-2xl p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
@@ -2935,6 +3032,71 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             <button onClick={() => setBulkActionState(prev => ({ ...prev, isOpen: false }))} className="flex-1 rounded-lg bg-gray-800 py-2.5 text-sm font-bold text-gray-300 hover:bg-gray-700">إلغاء</button>
                             <button onClick={executeBulkAction} className={`flex-1 rounded-lg py-2.5 text-sm font-bold text-white shadow-lg ${bulkActionState.type === 'add' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-red-600 hover:bg-red-500'}`}>
                                 {bulkActionState.type === 'add' ? 'تأكيد الإضافة' : 'تأكيد الحذف'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* NEW: EPISODE SCHEDULING MODAL */}
+            {episodeSchedulingState.isOpen && (
+                <div className="fixed inset-0 z-[310] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setEpisodeSchedulingState(prev => ({ ...prev, isOpen: false }))}>
+                    <div className="w-full max-w-sm bg-[#0f1014] border border-amber-500/30 rounded-2xl p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-800">
+                            <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
+                                <CalendarIcon className="w-5 h-5"/>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-white">جدولة نشر الحلقة</h3>
+                                <p className="text-xs text-gray-400">حدد موعد ظهور هذه الحلقة للمستخدمين.</p>
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-5">
+                            <div>
+                                <label className={labelClass}>تاريخ ووقت النشر</label>
+                                <input 
+                                    type="datetime-local" 
+                                    value={episodeSchedulingState.currentDate || ''} 
+                                    onChange={(e) => setEpisodeSchedulingState(prev => ({ ...prev, currentDate: e.target.value }))}
+                                    className={inputClass + " border-amber-500/30 focus:border-amber-500"} 
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={() => setEpisodeSchedulingState(prev => ({ ...prev, currentDate: '' }))}
+                                    className="text-xs text-red-400 hover:text-red-300 mt-2 underline"
+                                >
+                                    مسح التاريخ (إلغاء الجدولة)
+                                </button>
+                            </div>
+
+                            <div className="bg-[#161b22] rounded-xl p-4 space-y-3 border border-gray-800">
+                                <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 flex items-center gap-2">
+                                    <BellIcon className="w-3 h-3"/> إعدادات الإشعارات
+                                </h4>
+                                
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${episodeSchedulingState.notifyUsers ? 'bg-blue-600 border-blue-600' : 'bg-transparent border-gray-600'}`}>
+                                        {episodeSchedulingState.notifyUsers && <CheckSmallIcon className="w-3.5 h-3.5 text-white"/>}
+                                    </div>
+                                    <input type="checkbox" className="hidden" checked={episodeSchedulingState.notifyUsers} onChange={(e) => setEpisodeSchedulingState(prev => ({ ...prev, notifyUsers: e.target.checked }))} />
+                                    <div className="text-xs text-gray-300">إرسال إشعار للمستخدمين عند النشر</div>
+                                </label>
+
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${episodeSchedulingState.notifyAdmins ? 'bg-purple-600 border-purple-600' : 'bg-transparent border-gray-600'}`}>
+                                        {episodeSchedulingState.notifyAdmins && <CheckSmallIcon className="w-3.5 h-3.5 text-white"/>}
+                                    </div>
+                                    <input type="checkbox" className="hidden" checked={episodeSchedulingState.notifyAdmins} onChange={(e) => setEpisodeSchedulingState(prev => ({ ...prev, notifyAdmins: e.target.checked }))} />
+                                    <div className="text-xs text-gray-300">إشعار الأدمن عند اكتمال النشر</div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6 pt-4 border-t border-gray-800">
+                            <button onClick={() => setEpisodeSchedulingState(prev => ({ ...prev, isOpen: false }))} className="flex-1 rounded-lg bg-gray-800 py-2.5 text-sm font-bold text-gray-300 hover:bg-gray-700">إغلاق</button>
+                            <button onClick={confirmEpisodeSchedule} className="flex-1 rounded-lg py-2.5 text-sm font-bold text-black bg-amber-500 hover:bg-amber-400 shadow-lg shadow-amber-500/20">
+                                حفظ الجدولة
                             </button>
                         </div>
                     </div>
