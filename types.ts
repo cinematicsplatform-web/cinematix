@@ -61,6 +61,10 @@ export interface Episode {
   servers: Server[];
   isLastEpisode?: boolean;
   badgeText?: string; 
+  // حقول الجدولة الجديدة
+  isScheduled?: boolean;
+  scheduledAt?: string;
+  notifyOnPublish?: boolean;
 }
 
 export interface Season {
@@ -116,6 +120,7 @@ export interface Content {
   updatedAt?: string;
   scheduledAt?: string; // موعد النشر المجدول (ISO String)
   isScheduled?: boolean; // هل العمل مجدول؟
+  notifyOnPublish?: boolean; // هل نرسل إشعار عند النشر؟
   logoUrl?: string; 
   isLogoEnabled?: boolean; 
   trailerUrl?: string; 

@@ -9,6 +9,8 @@ import { PlayIcon } from './icons/PlayIcon';
 import { DownloadIcon } from './icons/DownloadIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
+// Corrected: Import missing ClockIcon
+import { ClockIcon } from './icons/ClockIcon';
 import SEO from './SEO';
 import AdWaiterModal from './AdWaiterModal';
 import ReportModal from './ReportModal';
@@ -21,6 +23,7 @@ interface EpisodeWatchPageProps {
     episodeNumber: number;
     allContent: Content[];
     onSetView: (view: View, category?: string, params?: any) => void;
+    isAdmin: boolean;
     ads: Ad[];
     adsEnabled: boolean;
     isRamadanTheme?: boolean;
@@ -46,6 +49,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     seasonNumber,
     episodeNumber,
     onSetView,
+    isAdmin,
     ads,
     adsEnabled,
     isRamadanTheme,
@@ -68,10 +72,19 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     const selectedEpisode = useMemo(() => {
         if (!currentSeason?.episodes) return null;
         if (episodeNumber > 0 && episodeNumber <= currentSeason.episodes.length) {
-            return currentSeason.episodes[episodeNumber - 1];
+            const ep = currentSeason.episodes[episodeNumber - 1];
+            
+            // تحقق من الجدولة
+            if (!isAdmin && ep.isScheduled && ep.scheduledAt) {
+                const now = new Date();
+                if (now < new Date(ep.scheduledAt)) {
+                    return null; // الحلقة غير منشورة بعد
+                }
+            }
+            return ep;
         }
         return null;
-    }, [currentSeason, episodeNumber]);
+    }, [currentSeason, episodeNumber, isAdmin]);
 
     const flipBackdrop = currentSeason?.flipBackdrop ?? content?.flipBackdrop ?? false;
     const displayBackdrop = currentSeason?.backdrop || content?.backdrop || '';
@@ -95,7 +108,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     }, [activeServers]);
 
     // تأكيد جاهزية الصفحة كاملة: يجب توفر المحتوى والسيرفر النشط
-    const isFullyReady = isBasicLoaded && !!selectedServer;
+    const isFullyReady = isBasicLoaded && !!selectedServer && !!selectedEpisode;
 
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [isDownloadErrorOpen, setIsDownloadErrorOpen] = useState(false);
@@ -127,6 +140,20 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
     const enableCrop = currentSeason?.enableMobileCrop ?? content?.enableMobileCrop ?? false;
 
+    // إذا لم يتم العثور على الحلقة (مجدولة) يتم عرض رسالة "غير متاحة"
+    if (isBasicLoaded && !selectedEpisode && !isAdmin) {
+        return (
+            <div className="min-h-screen bg-[var(--bg-body)] text-white flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+                <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6 border border-amber-500/20">
+                    <ClockIcon className="w-12 h-12 text-amber-500" />
+                </div>
+                <h1 className="text-2xl md:text-4xl font-black mb-4">هذه الحلقة غير متاحة حالياً</h1>
+                <p className="text-gray-400 max-w-md mx-auto mb-8">عذراً، الحلقة التي تحاول الوصول إليها مجدولة للنشر في وقت لاحق. يرجى العودة لاحقاً للمشاهدة.</p>
+                <button onClick={() => onSetView('detail', undefined, { season: seasonNumber })} className={`px-8 py-3 rounded-full font-bold ${bgAccent} text-black active:scale-95 transition-all shadow-lg`}>العودة للتفاصيل</button>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-[var(--bg-body)] text-white pb-20 animate-fade-in-up relative overflow-x-hidden overflow-y-auto">
             <SEO 
@@ -136,6 +163,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 episodeNumber={episodeNumber}
                 description={selectedEpisode?.description || currentSeason?.description || content?.description} 
                 image={selectedEpisode?.thumbnail || currentSeason?.poster || content?.poster}
+                // Corrected: canonicalPath -> canonicalUrl
                 url={canonicalUrl}
                 noIndex={true} 
             />
@@ -153,6 +181,9 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                                     <span className={`text-[10px] md:text-xs font-bold ${accentColor}`}>الموسم {seasonNumber} | الحلقة {episodeNumber}</span>
                                     {selectedEpisode?.isLastEpisode && (
                                         <span className="bg-red-600/20 text-red-500 border border-red-500/30 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">الحلقة الأخيرة</span>
+                                    )}
+                                    {selectedEpisode?.isScheduled && isAdmin && (
+                                        <span className="bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full">معاينة (مجدولة)</span>
                                     )}
                                 </div>
                             </>

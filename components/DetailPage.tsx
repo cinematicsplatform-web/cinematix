@@ -29,6 +29,7 @@ interface DetailPageProps {
   onSelectContent: (content: Content, seasonNum?: number, episodeNum?: number) => void;
   onPersonClick: (name: string) => void; 
   isLoggedIn: boolean;
+  isAdmin: boolean;
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
   onSetView: (view: View, category?: string, params?: any) => void;
@@ -69,6 +70,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   onSelectContent,
   onPersonClick,
   isLoggedIn,
+  isAdmin,
   myList,
   onToggleMyList,
   onSetView,
@@ -185,13 +187,31 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
         if (targetSeason) {
             setSelectedSeasonId(targetSeason.id);
-            if (targetSeason.episodes && targetSeason.episodes.length > 0) setSelectedEpisode(targetSeason.episodes[0]);
+            if (targetSeason.episodes && targetSeason.episodes.length > 0) {
+                // Find first non-scheduled or already released episode
+                const now = new Date();
+                const firstAvailable = targetSeason.episodes.find(ep => 
+                    isAdmin || !ep.isScheduled || !ep.scheduledAt || now >= new Date(ep.scheduledAt)
+                );
+                setSelectedEpisode(firstAvailable || targetSeason.episodes[0]);
+            }
         }
     }
-  }, [content?.id, isLoaded, initialSeasonNumber, locationPath, isEpisodic]);
+  }, [content?.id, isLoaded, initialSeasonNumber, locationPath, isEpisodic, isAdmin]);
 
   const currentSeason = useMemo(() => content?.seasons?.find(s => s.id === selectedSeasonId), [content?.seasons, selectedSeasonId]);
-  const episodes = useMemo(() => currentSeason?.episodes || [], [currentSeason]);
+  
+  // تصفية الحلقات بناءً على الجدولة
+  const episodes = useMemo(() => {
+    const rawEpisodes = currentSeason?.episodes || [];
+    if (isAdmin) return rawEpisodes;
+    
+    const now = new Date();
+    return rawEpisodes.filter(ep => {
+        if (!ep.isScheduled || !ep.scheduledAt) return true;
+        return now >= new Date(ep.scheduledAt);
+    });
+  }, [currentSeason, isAdmin]);
 
   const sortedEpisodes = useMemo(() => {
     const list = episodes.map((ep, idx) => ({ ...ep, originalNumber: idx + 1 }));
@@ -789,6 +809,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                                     {ep.badgeText}
                                                 </span>
                                             </div>
+                                          )}
+
+                                          {/* Scheduled Label for Admins */}
+                                          {ep.isScheduled && isAdmin && (
+                                              <div className="absolute top-10 right-2 z-10">
+                                                  <span className="rounded-md border border-blue-500/50 bg-blue-600/90 backdrop-blur-sm px-2 py-0.5 text-[8px] font-black text-white shadow-lg uppercase">مجدولة</span>
+                                              </div>
                                           )}
 
                                           <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
