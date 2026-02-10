@@ -48,7 +48,6 @@ const generateSlug = (title) => {
     .replace(/\s+/g, '-')
     .replace(/[^\w\u0621-\u064A\-]+/g, '')
     .replace(/\-\-+/g, '-')
-    .replace(/^-+/, '')
     .replace(/-+$/, '');
 };
 
@@ -106,6 +105,7 @@ module.exports = async (req, res) => {
 
       if (type === 'movie') {
         // --- إضافة رابط الفيلم ---
+        // تم التعديل لإضافة video:player_loc لحل مشكلة جوجل كونسول
         xml += `
   <url>
     <loc>${BASE_URL}/watch/movie/${slug}</loc>
@@ -120,6 +120,7 @@ module.exports = async (req, res) => {
       <video:thumbnail_loc>${escapeXml(poster)}</video:thumbnail_loc>
       <video:title>${escapeXml(title)}</video:title>
       <video:description>${escapeXml(description).substring(0, 1000)}</video:description>
+      <video:player_loc autoplay="ap">${escapeXml(`${BASE_URL}/embed/movie/${slug}`)}</video:player_loc>
     </video:video>
   </url>`;
       } else if (type === 'series' || type === 'program') {
@@ -155,6 +156,7 @@ module.exports = async (req, res) => {
                      const epTitle = ep.title || `الحلقة ${eNum}`;
                      const epThumb = ep.thumbnail || sPoster;
                      
+                     // تم التعديل لإضافة video:player_loc للحلقات أيضاً
                      xml += `
   <url>
     <loc>${BASE_URL}/watch/${slug}/الموسم${sNum}/الحلقة${eNum}</loc>
@@ -165,6 +167,7 @@ module.exports = async (req, res) => {
       <video:thumbnail_loc>${escapeXml(epThumb)}</video:thumbnail_loc>
       <video:title>${escapeXml(`${title} - ${sTitle} - ${epTitle}`)}</video:title>
       <video:description>${escapeXml(ep.description || description).substring(0, 1000)}</video:description>
+      <video:player_loc autoplay="ap">${escapeXml(`${BASE_URL}/embed/series/${slug}/${sNum}/${eNum}`)}</video:player_loc>
     </video:video>
   </url>`;
                  });
