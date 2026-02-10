@@ -139,15 +139,15 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
                     <span className="text-3xl">⚠️</span>
                     <div>
                         <p className="font-black text-lg mb-2">تنبيه هام للمسؤول:</p>
-                        <p className="leading-relaxed">
+                        <div className="leading-relaxed">
                             نظام <b>إشعارات الدفع (Push Notifications)</b> للهواتف معطل حالياً. لكي تصل الإشعارات للهواتف وهي مغلقة (مثل تطبيقات Facebook و WhatsApp)، يجب عليك اتباع الخطوات التالية:
                             <ol className="list-decimal list-inside mt-2 space-y-1 opacity-80">
                                 <li>اذهب إلى لوحة تحكم Firebase.</li>
-                                <li>Project Settings -> Service accounts.</li>
+                                <li>Project Settings &rarr; Service accounts.</li>
                                 <li>اضغط <b>Generate new private key</b>.</li>
                                 <li>افتح الملف المحمل، انسخ محتواه، وضعه في تبويب <b>"إعدادات الموقع"</b> في حقل <b>Service Account JSON</b>.</li>
                             </ol>
-                        </p>
+                        </div>
                     </div>
                 </div>
             )}
