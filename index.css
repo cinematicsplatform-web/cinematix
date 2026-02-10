@@ -12,31 +12,34 @@ body, h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, select, textarea {
 
 /* Ensure window scroll is not blocked and handle rotation smoothly */
 html {
-    height: auto !important;
-    min-height: 100%;
-    overflow-x: hidden;
+    height: 100% !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
     direction: rtl;
     text-align: right;
+    width: 100vw;
+    position: relative;
 }
 
 body {
     height: auto !important;
     min-height: 100%;
     overflow-y: visible !important; 
-    overflow-x: hidden;
+    overflow-x: hidden !important;
     margin: 0;
     padding: 0;
     font-family: 'Cairo', sans-serif;
     background-color: var(--bg-body);
     color: #fff;
     transition: background-color 0.5s ease;
-    touch-action: pan-y; /* Explicitly allow vertical scrolling and touch gestures */
+    width: 100vw;
+    position: relative;
     
     /* --- تم تفعيل تحديد النصوص والنسخ --- */
     -webkit-user-select: text;
     -moz-user-select: text;
-    -ms-user-select: text;
+    -ms-text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
     user-select: text;
     -webkit-touch-callout: default; /* السماح بظهور قائمة الخيارات في iOS عند الضغط المطول */
 }

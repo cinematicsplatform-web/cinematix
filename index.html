@@ -39,6 +39,11 @@
             return true; 
           };
 
+          // 4. منع أي محاولة برمجية لتدوير الشاشة لضمان احترام إعدادات النظام فقط
+          if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock();
+          }
+
         } catch (e) {}
       })();
     </script>
@@ -58,8 +63,8 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" href="/android-chrome-192x192.png" />
 
-    <!-- Mobile Viewport - تم تحسينه لضمان ثبات التوجه واحترام إعدادات الجهاز -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <!-- Mobile Viewport - تم تحسينه لمنع الارتجاج وضمان ثبات التوجه العمودي -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover" />
     
     <!-- iOS PWA Config -->
     <meta name="apple-mobile-web-app-capable" content="yes">
