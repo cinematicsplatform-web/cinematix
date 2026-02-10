@@ -120,7 +120,6 @@ module.exports = async (req, res) => {
       <video:thumbnail_loc>${escapeXml(poster)}</video:thumbnail_loc>
       <video:title>${escapeXml(title)}</video:title>
       <video:description>${escapeXml(description).substring(0, 1000)}</video:description>
-      <video:content_loc>${BASE_URL}/watch/movie/${slug}</video:content_loc>
     </video:video>
   </url>`;
       } else if (type === 'series' || type === 'program') {
