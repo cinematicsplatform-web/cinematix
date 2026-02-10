@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import type { Content, Ad, View } from '@/types';
 import Hero from './Hero';
@@ -10,6 +11,7 @@ interface SoonPageProps {
   pinnedContent: Content[];
   onSelectContent: (content: Content) => void;
   isLoggedIn: boolean;
+  isAdmin?: boolean; // تم الإضافة
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
   ads: Ad[];
@@ -27,6 +29,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
   pinnedContent, 
   onSelectContent, 
   isLoggedIn, 
+  isAdmin = false,
   myList, 
   onToggleMyList, 
   ads, 
@@ -113,6 +116,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
           contents={heroSoonContents} 
           onWatchNow={onSelectContent} 
           isLoggedIn={isLoggedIn} 
+          isAdmin={isAdmin}
           myList={myList} 
           onToggleMyList={onToggleMyList} 
           autoSlideInterval={5000}
@@ -143,6 +147,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
                 contents={carousel.contents}
                 onSelectContent={onSelectContent}
                 isLoggedIn={isLoggedIn}
+                isAdmin={isAdmin}
                 myList={myList}
                 onToggleMyList={onToggleMyList}
                 isRamadanTheme={isRamadanTheme}

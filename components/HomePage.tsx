@@ -1,6 +1,7 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import type { Content, Category, Ad, SiteSettings, View, Profile, Story } from '@/types';
-import { ContentType } from '@/types'; 
+import { ContentType, UserRole } from '@/types'; 
 import Hero from './Hero';
 import ContentCarousel from './ContentCarousel';
 import AdPlacement from './AdPlacement';
@@ -16,6 +17,7 @@ interface HomePageProps {
   stories?: Story[]; 
   onSelectContent: (content: Content) => void;
   isLoggedIn: boolean;
+  isAdmin?: boolean; // تم الإضافة
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
   ads: Ad[];
@@ -164,14 +166,12 @@ const HomePage: React.FC<HomePageProps> = (props) => {
       else props.onNavigate('movies'); 
   };
 
-  // Improved Loading View Structure with Separator Line
   const renderContent = () => {
     if (props.isLoading && props.allContent.length === 0) {
         return (
             <>
                 <Hero contents={[] as Content[]} onWatchNow={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} isRamadanTheme={isRamadan} isEidTheme={isEid} isCosmicTealTheme={isCosmicTeal} isNetflixRedTheme={isNetflixRed} />
                 <main className="pb-24 pt-0 z-30 relative bg-[var(--bg-body)]">
-                    {/* LOADING SEPARATOR LINE - VISIBLE DURING NETWORK RETRIEVAL */}
                     <div className={`w-full h-px mb-6 animate-pulse ${isRamadan ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent' : isEid ? 'bg-gradient-to-r from-transparent via-purple-500/50 to-transparent' : isCosmicTeal ? 'bg-gradient-to-r from-transparent via-[#35F18B]/50 to-transparent' : isNetflixRed ? 'bg-gradient-to-r from-transparent via-[#E50914]/50 to-transparent' : 'bg-gradient-to-r from-transparent via-white/20 to-transparent'}`}></div>
                     
                     <div className="space-y-8">
@@ -190,9 +190,8 @@ const HomePage: React.FC<HomePageProps> = (props) => {
 
     return (
         <>
-            <Hero contents={heroContent} onWatchNow={props.onSelectContent} isLoggedIn={props.isLoggedIn} myList={props.myList} onToggleMyList={props.onToggleMyList} autoSlideInterval={5000} isRamadanTheme={isRamadan} isEidTheme={isEid} isCosmicTealTheme={isCosmicTeal} isNetflixRedTheme={isNetflixRed} />
+            <Hero contents={heroContent} onWatchNow={props.onSelectContent} isLoggedIn={props.isLoggedIn} isAdmin={props.isAdmin} myList={props.myList} onToggleMyList={props.onToggleMyList} autoSlideInterval={5000} isRamadanTheme={isRamadan} isEidTheme={isEid} isCosmicTealTheme={isCosmicTeal} isNetflixRedTheme={isNetflixRed} />
             <main className="pb-24 z-30 relative bg-[var(--bg-body)] overflow-visible">
-              {/* PAGE CONTENT SEPARATOR LINE */}
               <div className={`w-full h-px mt-0 mb-2 md:my-4 ${isRamadan ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent opacity-80' : isEid ? 'bg-gradient-to-r from-transparent via-purple-500/50 to-transparent opacity-80' : isCosmicTeal ? 'bg-gradient-to-r from-transparent via-[#35F18B]/50 to-transparent opacity-80' : isNetflixRed ? 'bg-gradient-to-r from-transparent via-[#E50914]/50 to-transparent opacity-80' : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'}`}></div>
               
               <div className="pt-2">
@@ -212,7 +211,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                     const showAd = index === 2;
                     return (
                         <React.Fragment key={(carousel as any).id}>
-                            <ContentCarousel title={(carousel as any).title} contents={(carousel as any).contents} onSelectContent={props.onSelectContent} isLoggedIn={false} onToggleMyList={props.onToggleMyList} isNew={(carousel as any).isNew} onSeeAll={() => handleSeeAll(carousel)} isRamadanTheme={isRamadan} isEidTheme={isEid} isCosmicTealTheme={isCosmicTeal} isNetflixRedTheme={isNetflixRed} showRanking={(carousel as any).showRanking} displayType={(carousel as any).displayType} />
+                            <ContentCarousel title={(carousel as any).title} contents={(carousel as any).contents} onSelectContent={props.onSelectContent} isLoggedIn={false} isAdmin={props.isAdmin} onToggleMyList={props.onToggleMyList} isNew={(carousel as any).isNew} onSeeAll={() => handleSeeAll(carousel)} isRamadanTheme={isRamadan} isEidTheme={isEid} isCosmicTealTheme={isCosmicTeal} isNetflixRedTheme={isNetflixRed} showRanking={(carousel as any).showRanking} displayType={(carousel as any).displayType} />
                             {showAd && <AdPlacement ads={props.ads} placement="home-carousel-3-4" isEnabled={props.siteSettings.adsEnabled}/>}
                         </React.Fragment>
                     );

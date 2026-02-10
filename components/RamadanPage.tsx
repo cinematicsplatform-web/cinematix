@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Content, SiteSettings, Ad, View } from '@/types';
 import Hero from './Hero';
@@ -13,6 +14,7 @@ interface RamadanPageProps {
   onSelectContent: (content: Content) => void;
   siteSettings: SiteSettings;
   isLoggedIn: boolean;
+  isAdmin?: boolean; // تم الإضافة
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
   ads: Ad[];
@@ -93,6 +95,7 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
     onSelectContent, 
     siteSettings, 
     isLoggedIn, 
+    isAdmin = false,
     myList, 
     onToggleMyList, 
     ads, 
@@ -198,7 +201,6 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
       <div className="min-h-screen bg-black">
         <Hero contents={[] as Content[]} onWatchNow={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} isRamadanTheme={true} />
         <main className="pb-24 pt-0 z-30 relative bg-black">
-            {/* LOADING SEPARATOR LINE - GOLDEN FOR RAMADAN */}
             <div className="w-full h-px mb-8 animate-pulse bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent"></div>
             
             <div className="space-y-4">
@@ -232,6 +234,7 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
             contents={heroContents} 
             onWatchNow={onSelectContent} 
             isLoggedIn={isLoggedIn} 
+            isAdmin={isAdmin}
             myList={myList} 
             onToggleMyList={onToggleMyList} 
             autoSlideInterval={5000}
@@ -258,6 +261,7 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
                         contents={carousel.contents}
                         onSelectContent={onSelectContent}
                         isLoggedIn={isLoggedIn}
+                        isAdmin={isAdmin}
                         myList={myList}
                         onToggleMyList={onToggleMyList}
                         isNew={carousel.isNew}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Content, Ad, View } from '@/types';
 import ContentCarousel from './ContentCarousel';
@@ -12,6 +13,7 @@ interface KidsPageProps {
   top10Content?: Content[]; 
   onSelectContent: (content: Content) => void;
   isLoggedIn: boolean;
+  isAdmin?: boolean; // تم الإضافة
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
   ads: Ad[];
@@ -30,6 +32,7 @@ const KidsPage: React.FC<KidsPageProps> = ({
   top10Content,
   onSelectContent, 
   isLoggedIn, 
+  isAdmin = false,
   myList, 
   onToggleMyList, 
   ads, 
@@ -92,7 +95,6 @@ const KidsPage: React.FC<KidsPageProps> = ({
       <div className="min-h-screen bg-[var(--bg-body)]">
         <Hero contents={[] as Content[]} onWatchNow={()=>{}} isLoggedIn={false} onToggleMyList={()=>{}} isLoading={true} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
         <main className="pb-24 pt-0 z-30 relative bg-[var(--bg-body)]">
-            {/* LOADING SEPARATOR LINE */}
             <div className={`w-full h-px mb-6 animate-pulse ${isCosmicTealTheme ? 'bg-gradient-to-r from-transparent via-[#35F18B]/50 to-transparent' : 'bg-gradient-to-r from-transparent via-white/20 to-transparent'}`}></div>
             
             <div className="space-y-4">
@@ -120,6 +122,7 @@ const KidsPage: React.FC<KidsPageProps> = ({
           contents={heroContent} 
           onWatchNow={onSelectContent}
           isLoggedIn={isLoggedIn}
+          isAdmin={isAdmin}
           myList={myList}
           onToggleMyList={onToggleMyList}
           autoSlideInterval={5000} 
@@ -153,6 +156,7 @@ const KidsPage: React.FC<KidsPageProps> = ({
               contents={(carousel as any).contents}
               onSelectContent={onSelectContent}
               isLoggedIn={isLoggedIn}
+              isAdmin={isAdmin}
               myList={myList}
               onToggleMyList={onToggleMyList}
               isNew={(carousel as any).isNew}

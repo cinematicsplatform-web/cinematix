@@ -316,37 +316,26 @@ const App: React.FC = () => {
       if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
   }, []);
 
-  // --- تم تحديث منطق التحكم في التمرير هنا ---
+  // --- تفعيل تصفير الاسكرول عند التنقل بين الصفحات ---
   useLayoutEffect(() => {
       const prevView = prevViewRef.current;
       
-      // قائمة صفحات التفاصيل والمحتوى الفردي
-      const contentViews: View[] = ['detail', 'watch', 'personProfile', 'download', 'adGate', 'contentRequest'];
-      // قائمة صفحات القوائم الرئيسية
-      const listingViews: View[] = ['home', 'movies', 'series', 'programs', 'kids', 'ramadan', 'soon', 'myList', 'category', 'search'];
-
-      if (contentViews.includes(view)) {
-          // إذا انتقلنا لصفحة تفاصيل، دائماً نمرر للأعلى بغض النظر عن الصفحة السابقة
-          window.scrollTo(0, 0);
+      const isEnteringDetailOrWatch = (view === 'detail' || view === 'watch' || view === 'personProfile' || view === 'download' || view === 'adGate' || view === 'search' || view === 'category');
+      
+      if (isEnteringDetailOrWatch || view !== prevView) {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
       } 
-      else if (listingViews.includes(view)) {
-          // إذا انتقلنا لصفحة قائمة
+      else if (view === 'home' || view === 'movies' || view === 'series' || view === 'kids' || view === 'ramadan') {
           const savedPosition = scrollPositions.current[view];
-          
-          // لا نستعيد الموضع إلا إذا كنا عائدين من صفحة تفاصيل (Back navigation pattern)
-          if (savedPosition !== undefined && contentViews.includes(prevView)) {
-              window.scrollTo(0, savedPosition);
+          if (savedPosition !== undefined) {
+              window.scrollTo({ top: savedPosition, left: 0, behavior: 'instant' as any });
           } else {
-              // أي انتقال آخر (بين القوائم نفسها) يبدأ من الصفر
-              window.scrollTo(0, 0);
+              window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
           }
-      } else {
-          // أي صفحة أخرى غير معرفة تبدأ من الصفر
-          window.scrollTo(0, 0);
       }
       
       prevViewRef.current = view;
-  }, [view, selectedContent?.id, selectedPersonName]); 
+  }, [view, selectedContent?.id, selectedPersonName, selectedCategory]); 
 
   const resolveContentFromUrl = useCallback((path: string, contentList: Content[], currentView?: View) => {
       const decodedPath = decodeURIComponent(path);
@@ -420,11 +409,7 @@ const App: React.FC = () => {
   useEffect(() => {
       const handlePopState = () => {
           const currentView = view;
-          // حفظ الموضع قبل العودة
-          const listingViews: View[] = ['home', 'movies', 'series', 'programs', 'kids', 'ramadan', 'soon', 'myList', 'category', 'search'];
-          if (listingViews.includes(currentView)) {
-              scrollPositions.current[currentView] = window.scrollY;
-          }
+          scrollPositions.current[currentView] = window.scrollY;
 
           const newView = getInitialView();
           if (newView !== 'search') setIsSearchOpen(false); 
@@ -520,11 +505,20 @@ const App: React.FC = () => {
       if (allContent.length > 0) resolveContentFromUrl(window.location.pathname, allContent, view);
   }, [allContent, resolveContentFromUrl, view]);
 
+  /**
+   * تم تعديل هذا الجزء لطلب الإذن بالإشعارات فور تشغيل التطبيق
+   * ولربط التوكن بحساب المستخدم فور تسجيل دخوله
+   */
   useEffect(() => {
+      // 1. طلب الإذن فور تحميل التطبيق لجميع الزوار
+      requestNotificationPermission();
+
       const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
           try {
               if (firebaseUser) {
+                  // 2. تحديث التوكن لربطه بالمستخدم المسجل
                   requestNotificationPermission(firebaseUser.uid);
+                  
                   const profile = await getUserProfile(firebaseUser.uid);
                   if (profile) {
                       const user: User = { 
@@ -569,12 +563,8 @@ const App: React.FC = () => {
   }, []);
 
   const handleSetView = (newView: View, category?: string, params?: any) => {
-      const listingViews: View[] = ['home', 'movies', 'series', 'programs', 'kids', 'ramadan', 'soon', 'myList', 'category', 'search'];
-      // حفظ الموضع فقط إذا كنا نغادر صفحة قائمة
-      if (listingViews.includes(view)) {
-          scrollPositions.current[view] = window.scrollY;
-      }
-      
+      scrollPositions.current[view] = window.scrollY;
+
       const subViews: View[] = ['detail', 'watch', 'personProfile', 'download', 'category', 'search', 'login', 'register', 'welcome', 'adGate', 'contentRequest', 'about', 'privacy', 'copyright'];
       
       if (subViews.includes(newView) && !subViews.includes(view)) setReturnView(view);
@@ -626,12 +616,8 @@ const App: React.FC = () => {
 
   const handleSelectContent = (content: Content, seasonNumber?: number, episodeNumber?: number) => {
       if (isSearchOpen) setIsSearchOpen(false);
-      // حفظ الموضع قبل الانتقال للتفاصيل
-      const listingViews: View[] = ['home', 'movies', 'series', 'programs', 'kids', 'ramadan', 'soon', 'myList', 'category', 'search'];
-      if (listingViews.includes(view)) {
-          scrollPositions.current[view] = window.scrollY;
-      }
-      
+      scrollPositions.current[view] = window.scrollY;
+
       if (view !== 'detail' && view !== 'adGate') setReturnView(view);
       
       const slug = content.slug || content.id;
@@ -697,10 +683,7 @@ const App: React.FC = () => {
   };
 
   const handlePersonClick = (name: string) => {
-    const listingViews: View[] = ['home', 'movies', 'series', 'programs', 'kids', 'ramadan', 'soon', 'myList', 'category', 'search'];
-    if (listingViews.includes(view)) {
-        scrollPositions.current[view] = window.scrollY;
-    }
+    scrollPositions.current[view] = window.scrollY;
     if (view !== 'personProfile') setReturnView(view);
     handleSetView('personProfile', undefined, { name });
   };
@@ -711,7 +694,6 @@ const App: React.FC = () => {
   };
 
   const handleGoogleLogin = async () => {
-    // Check if the current protocol is supported by Firebase Auth popups
     const isSupportedProtocol = ['http:', 'https:', 'chrome-extension:'].includes(window.location.protocol);
     
     if (!isSupportedProtocol) {
@@ -902,13 +884,13 @@ const App: React.FC = () => {
       const getTop10ContentWithMeta = (page: PageKey) => getContentWithMeta(top10Items[page]);
 
       switch (view) {
-          case 'home': return <HomePage allContent={allContent} pinnedContent={getPinnedContentWithMeta('home')} top10Content={getTop10ContentWithMeta('home')} stories={allStories} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} activeProfile={activeProfile} />;
-          case 'movies': return <MoviesPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('movies')} top10Content={getTop10ContentWithMeta('movies')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} siteSettings={siteSettings} />;
-          case 'series': return <SeriesPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('series')} top10Content={getTop10ContentWithMeta('series')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
+          case 'home': return <HomePage allContent={allContent} pinnedContent={getPinnedContentWithMeta('home')} top10Content={getTop10ContentWithMeta('home')} stories={allStories} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} activeProfile={activeProfile} />;
+          case 'movies': return <MoviesPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('movies')} top10Content={getTop10ContentWithMeta('movies')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} siteSettings={siteSettings} />;
+          case 'series': return <SeriesPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('series')} top10Content={getTop10ContentWithMeta('series')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
           case 'programs': return <ProgramsPage allContent={allContent} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} activeProfile={activeProfile} />;
-          case 'kids': return <KidsPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('kids')} top10Content={getTop10ContentWithMeta('kids')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
-          case 'ramadan': return <RamadanPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('ramadan')} top10Content={getTop10ContentWithMeta('ramadan')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} />;
-          case 'soon': return <SoonPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('soon')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
+          case 'kids': return <KidsPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('kids')} top10Content={getTop10ContentWithMeta('kids')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
+          case 'ramadan': return <RamadanPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('ramadan')} top10Content={getTop10ContentWithMeta('ramadan')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} />;
+          case 'soon': return <SoonPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('soon')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
           case 'welcome': return <WelcomePage allContent={allContent} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} returnView={returnView} />;
           case 'onboarding': return <OnboardingPage allContent={allContent} activeProfile={activeProfile} onFinish={handleOnboardingFinish} onSetView={handleSetView} />;
           case 'notifications': return currentUser ? <NotificationsPage userId={currentUser.id} onSetView={handleSetView} onUpdateUnreadCount={setUnreadNotificationsCount} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} authReturnView={returnView} initialEmail={authPrefillEmail} />;
@@ -981,7 +963,6 @@ const App: React.FC = () => {
   const bottomAdClass = mobileCleanViews.includes(view) ? 'hidden md:block' : 'fixed bottom-0 left-0 w-full z-[1000] bg-black/80';
   const socialBarClass = mobileCleanViews.includes(view) ? 'hidden md:block' : 'fixed z-[90] bottom-20 left-4 right-4 md:bottom-4 md:left-4 md:right-auto md:w-auto pointer-events-auto';
 
-  // تحديد ما إذا كانت الإعلانات العالمية يجب أن تظهر (استثناء الإدارة والدخول)
   const shouldShowGlobalAds = siteSettings.adsEnabled && !isMaintenanceActive && !fullScreenViews.includes(view);
 
   useEffect(() => {
@@ -1005,7 +986,6 @@ const App: React.FC = () => {
             ))}
         </div>
         
-        {/* Global Head Ad Zone (Disabled on Login/Admin) - ONLY SCRIPT BASED HERE */}
         {shouldShowGlobalAds && <AdZone position="global_head" />}
         
         {showGlobalHeader && (
@@ -1032,10 +1012,8 @@ const App: React.FC = () => {
             <TvSidebar onSetView={handleSetView} currentView={view} activeProfile={activeProfile} isRamadanTheme={siteSettings.activeTheme === 'ramadan'} isEidTheme={siteSettings.activeTheme === 'eid'} isCosmicTealTheme={siteSettings.activeTheme === 'cosmic-teal'} isNetflixRedTheme={siteSettings.activeTheme === 'netflix-red'} />
         )}
         
-        {/* Global Social Bar Ad (Disabled on Login/Admin) */}
         {shouldShowGlobalAds && <AdPlacement ads={ads} placement="global-social-bar" isEnabled={siteSettings.adsEnabled} className={socialBarClass} />}
         
-        {/* Global Sticky Footer Ad (Disabled on Login/Admin) */}
         {shouldShowGlobalAds && <AdPlacement ads={ads} placement="global-sticky-footer" isEnabled={siteSettings.adsEnabled} className={bottomAdClass} />}
         
         <div className="relative z-10">

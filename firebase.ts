@@ -326,7 +326,11 @@ export const deleteUserFromFirestore = async (userId: string): Promise<void> => 
     await db.collection("users").doc(userId).delete();
 };
 
-export const requestNotificationPermission = async (userId: string) => {
+/**
+ * دالة طلب الإذن بالإشعارات وتسجيل توكن الجهاز
+ * تم تحديثها لتسجيل التوكن في مجموعة عامة لضمان وصول الإشعارات للجميع (زوار وأعضاء)
+ */
+export const requestNotificationPermission = async (userId?: string) => {
     if (!messaging || typeof window === 'undefined') return;
     try {
         const permission = await Notification.requestPermission();
@@ -334,12 +338,24 @@ export const requestNotificationPermission = async (userId: string) => {
             const token = await messaging.getToken({
                 vapidKey: 'BHy3zaLsQsTzR23TNBbBRyVzz2OjySYt4k62K8TEOk0Wceez6uao-THJIzAaRzkSN7czJPLfMfaWfsbRt_rN9VQ' 
             });
-            if (token && userId) {
-                // Ensure unique tokens per user
-                await db.collection('users').doc(userId).set({
-                    fcmTokens: firebase.firestore.FieldValue.arrayUnion(token)
+            
+            if (token) {
+                // 1. تسجيل التوكن في المجموعة العامة للإرسال الشامل (Global Push)
+                await db.collection('fcm_tokens').doc(token).set({
+                    token: token,
+                    lastSeen: serverTimestamp(),
+                    userId: userId || null,
+                    device: navigator.userAgent
                 }, { merge: true });
-                console.log('[Cinematix] FCM Token successfully registered for user:', userId);
+
+                // 2. إذا كان المستخدم مسجلاً، نربط التوكن بحسابه أيضاً
+                if (userId) {
+                    await db.collection('users').doc(userId).set({
+                        fcmTokens: firebase.firestore.FieldValue.arrayUnion(token)
+                    }, { merge: true });
+                }
+                
+                console.log('[Cinematix] FCM Token successfully registered.');
             }
         } else {
             console.warn('[Cinematix] Push Notification permission denied.');

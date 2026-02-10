@@ -10,6 +10,7 @@ interface HeroProps {
   contents: Content[];
   onWatchNow: (content: Content) => void;
   isLoggedIn: boolean;
+  isAdmin?: boolean; // تم الإضافة
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
   autoSlideInterval?: number;
@@ -19,7 +20,6 @@ interface HeroProps {
   isNetflixRedTheme?: boolean;
   hideDescription?: boolean;
   disableVideo?: boolean; // Prop to disable background video playback
-  // Fix: Added missing isLoading property to HeroProps
   isLoading?: boolean;
 }
 
@@ -27,6 +27,7 @@ const Hero: React.FC<HeroProps> = ({
     contents, 
     onWatchNow, 
     isLoggedIn, 
+    isAdmin = false,
     myList, 
     onToggleMyList, 
     autoSlideInterval = 3000, 
@@ -36,7 +37,6 @@ const Hero: React.FC<HeroProps> = ({
     isNetflixRedTheme,
     hideDescription = false,
     disableVideo = false,
-    // Fix: Destructure isLoading from props
     isLoading
 }) => {
     const [unboundedIndex, setUnboundedIndex] = useState(0);
@@ -75,7 +75,6 @@ const Hero: React.FC<HeroProps> = ({
     useEffect(() => {
         const observer = new IntersectionObserver(
             ([entry]) => {
-                // If less than 30% of the hero is visible, consider it out of view to pause playback
                 setIsInView(entry.intersectionRatio > 0.3);
             },
             { threshold: [0, 0.3, 0.5, 1.0] }
@@ -228,8 +227,6 @@ const Hero: React.FC<HeroProps> = ({
         const diffX = clientX - startPos;
         const diffY = clientY - startPosY;
 
-        // Smart Swipe vs Scroll Detection
-        // If vertical movement is greater than horizontal, it's a scroll attempt
         if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 5) {
             setIsScrollAttempt(true);
             setIsDragging(false);
@@ -260,7 +257,6 @@ const Hero: React.FC<HeroProps> = ({
         setIsMuted(prev => !prev);
     };
 
-    // Fix: Implement loading skeleton state when isLoading is true
     if (isLoading) {
         const containerBgColor = isRamadanTheme ? 'bg-[#1a1000]' : isEidTheme ? 'bg-[#1a0b2e]' : isCosmicTealTheme ? 'bg-[#0b1116]' : isNetflixRedTheme ? 'bg-[#141414]' : 'bg-black';
         return (
