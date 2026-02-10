@@ -10,6 +10,7 @@ interface ContentCardProps {
   content: Content;
   onSelectContent: (content: Content) => void;
   isLoggedIn: boolean;
+  isAdmin?: boolean; // خاصية جديدة لتحديد صلاحية الإدارة
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
   showLatestBadge?: boolean;
@@ -26,6 +27,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
     content, 
     onSelectContent, 
     isLoggedIn, 
+    isAdmin = false,
     myList, 
     onToggleMyList, 
     showLatestBadge, 
@@ -51,6 +53,19 @@ const ContentCard: React.FC<ContentCardProps> = ({
     ? [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
     : null;
   
+  // --- منطق احتساب الحلقات المنشورة فقط ---
+  const getPublishedEpisodesCount = () => {
+    if (!latestSeason) return 0;
+    if (isAdmin) return latestSeason.episodes.length;
+    
+    const now = new Date();
+    return latestSeason.episodes.filter(ep => {
+        if (!ep.isScheduled || !ep.scheduledAt) return true;
+        return now >= new Date(ep.scheduledAt);
+    }).length;
+  };
+
+  const publishedEpCount = getPublishedEpisodesCount();
   const logoSrc = (isEpisodic && latestSeason?.logoUrl) ? latestSeason.logoUrl : content.logoUrl;
 
   let displayPoster = content.poster;
@@ -101,8 +116,8 @@ const ContentCard: React.FC<ContentCardProps> = ({
   
   let bottomRightBadge: string | null = null;
   if (showLatestBadge) {
-      if (isEpisodic && latestSeason && latestSeason.episodes.length > 0) {
-          bottomRightBadge = `الحلقة ${latestSeason.episodes.length}`;
+      if (isEpisodic && latestSeason && publishedEpCount > 0) {
+          bottomRightBadge = `الحلقة ${publishedEpCount}`;
       } else if (isEpisodic && latestSeason) {
           bottomRightBadge = `الموسم ${latestSeason.seasonNumber}`;
       } else {

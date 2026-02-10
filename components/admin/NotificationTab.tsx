@@ -34,17 +34,15 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
             const broadcastId = String(Date.now());
             let pushCount = 0;
             
-            // 1. Gather ALL tokens from ALL users in the database
-            // Note: allUsers prop must be fresh from Firestore
-            const allTokens: string[] = [];
-            allUsers.forEach((u: any) => {
-                if (u.fcmTokens && Array.isArray(u.fcmTokens)) {
-                    allTokens.push(...u.fcmTokens);
-                }
+            // 1. جلب كافة التوكنات المسجلة في النظام (للزوار والمستخدمين)
+            const tokenSnap = await db.collection('fcm_tokens').get();
+            const uniqueTokens: string[] = [];
+            tokenSnap.docs.forEach(doc => {
+                const t = doc.data().token;
+                if (t) uniqueTokens.push(t);
             });
-            const uniqueTokens = Array.from(new Set(allTokens));
 
-            // 2. Send Push Notifications via FCM HTTP v1 if Service Account is available
+            // 2. إرسال إشعارات الدفع (Push Notifications) عبر FCM HTTP v1
             if (serviceAccountJson && uniqueTokens.length > 0) {
                 try {
                     const accessToken = await getAccessToken(serviceAccountJson);
@@ -56,10 +54,13 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
                             title, 
                             body, 
                             image: image || 'https://cinematix.watch/android-chrome-192x192.png', 
-                            data: { url } 
+                            data: { 
+                                url: url || '/',
+                                broadcastId: broadcastId
+                            } 
                         };
                         
-                        // Send to all unique tokens discovered
+                        // إرسال لكافة الرموز المكتشفة
                         const results = await Promise.allSettled(
                             uniqueTokens.map(token => sendFCMv1Message(token, notificationData, accessToken, projectId))
                         );
@@ -71,7 +72,7 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
                 }
             }
 
-            // 3. Save In-App Notifications for each user in Firestore (Path for In-App visibility)
+            // 3. حفظ التنبيهات الداخلية في Firestore للمستخدمين المسجلين فقط (للعرض في صفحة الإشعارات)
             const batch = db.batch();
             allUsers.forEach((user: any) => {
                 const notifRef = db.collection('notifications').doc();
@@ -89,20 +90,20 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
                 batch.set(notifRef, newNotif);
             });
 
-            // 4. Record in Broadcast History
+            // 4. تسجيل العملية في سجل الإرسال التاريخي
             const historyRef = db.collection('broadcast_history').doc(broadcastId);
             batch.set(historyRef, {
                 title, body, type, imageUrl: image || null, targetUrl: url || null,
                 createdAt: new Date().toISOString(),
-                recipientCount: allUsers.length
+                recipientCount: uniqueTokens.length || allUsers.length
             });
 
             await batch.commit();
 
             if (uniqueTokens.length === 0) {
-                addToast(`تم إرسال التنبيه الداخلي لـ ${allUsers.length} مستخدم، ولكن لم يتم العثور على أي توكنات لإرسال تنبيه دفع خارجي.`, 'info');
+                addToast(`تم إرسال التنبيه الداخلي لـ ${allUsers.length} مستخدم، ولكن لم يقم أي زائر بتفعيل الإشعارات بعد.`, 'info');
             } else {
-                addToast(`تم إرسال الإشعار لـ ${allUsers.length} مستخدم. (تم تسليم ${pushCount} تنبيه دفع للهواتف)`, 'success');
+                addToast(`تم إرسال الإشعار لـ ${uniqueTokens.length} جهاز بنجاح! سيصل التنبيه للهواتف فوراً.`, 'success');
             }
             
             setTitle(''); setBody(''); setImage(''); setUrl('/'); setType('new_content');
@@ -134,11 +135,19 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
     return (
         <div className="space-y-10 animate-fade-in">
             {!serviceAccountJson && (
-                <div className="bg-amber-900/20 border border-amber-500/30 p-4 rounded-xl text-amber-200 text-xs flex items-center gap-3">
-                    <span className="text-xl">💡</span>
+                <div className="bg-amber-900/20 border border-amber-500/30 p-6 rounded-2xl text-amber-200 text-sm flex items-start gap-4">
+                    <span className="text-3xl">⚠️</span>
                     <div>
-                        <p className="font-bold">ملاحظة للمسؤول:</p>
-                        <p>لتفعيل إشعارات الدفع (Push Notifications) للهواتف وهي مغلقة، يرجى إضافة ملف الـ <b>Service Account JSON</b> في تبويب <b>إعدادات الموقع</b>.</p>
+                        <p className="font-black text-lg mb-2">تنبيه هام للمسؤول:</p>
+                        <p className="leading-relaxed">
+                            نظام <b>إشعارات الدفع (Push Notifications)</b> للهواتف معطل حالياً. لكي تصل الإشعارات للهواتف وهي مغلقة (مثل تطبيقات Facebook و WhatsApp)، يجب عليك اتباع الخطوات التالية:
+                            <ol className="list-decimal list-inside mt-2 space-y-1 opacity-80">
+                                <li>اذهب إلى لوحة تحكم Firebase.</li>
+                                <li>Project Settings -> Service accounts.</li>
+                                <li>اضغط <b>Generate new private key</b>.</li>
+                                <li>افتح الملف المحمل، انسخ محتواه، وضعه في تبويب <b>"إعدادات الموقع"</b> في حقل <b>Service Account JSON</b>.</li>
+                            </ol>
+                        </p>
                     </div>
                 </div>
             )}
@@ -146,7 +155,10 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <div className="lg:col-span-7 bg-[#1f2937] p-8 rounded-3xl border border-gray-700/50 shadow-xl">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-bold text-white flex items-center gap-2"><PaperAirplaneIcon /> إرسال إشعار جماعي</h3>
+                        <div className="flex flex-col">
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2"><PaperAirplaneIcon /> إرسال إشعار شامل</h3>
+                            <p className="text-[10px] text-gray-500 font-bold mt-1">سيصل الإشعار لكافة من قام بتحميل التطبيق ووافق على التنبيهات.</p>
+                        </div>
                         <button type="button" onClick={() => {setTitle(''); setBody(''); setImage(''); setUrl('/');}} className="text-xs text-gray-500 hover:text-white">مسح الحقول</button>
                     </div>
                     <form onSubmit={handleSendNotification} className="space-y-5">
@@ -170,14 +182,14 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
                             <div><label className="block text-xs font-bold text-gray-400 mb-2">رابط التوجيه (URL)</label><input value={url} onChange={e => setUrl(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white dir-ltr" placeholder="/watch/movie/123"/></div>
                         </div>
                         <button type="submit" disabled={sending || !title} className="w-full bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-black py-4 rounded-2xl shadow-lg hover:shadow-[#00A7F8]/40 transition-all transform hover:scale-[1.01] disabled:opacity-50">
-                            {sending ? 'جاري الإرسال...' : `🚀 إرسال إشعار عام`}
+                            {sending ? 'جاري الإرسال...' : `🚀 بث الإشعار لكافة الأجهزة`}
                         </button>
                     </form>
                 </div>
 
                 <div className="lg:col-span-5">
                     <div className="sticky top-28">
-                        <label className="block text-xs font-bold text-gray-500 mb-4 uppercase tracking-widest text-center">المعاينة الحية (Mobile Preview)</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-4 uppercase tracking-widest text-center">معاينة على هاتف المستخدم</label>
                         <div className="relative mx-auto w-[280px] h-[580px] bg-[#000] border-[8px] border-[#1f2937] rounded-[3rem] shadow-2xl overflow-hidden">
                             <div className="absolute top-0 w-full h-6 bg-[#1f2937] flex justify-center items-end pb-1"><div className="w-16 h-3 bg-black rounded-full"></div></div>
                             <div className="p-4 pt-10">
@@ -196,7 +208,7 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
 
                                         <div className="flex-1 p-3 min-w-0">
                                             <div className="flex justify-between items-center mb-1">
-                                                <span className="text-[7px] font-bold text-gray-400 uppercase tracking-tighter">تحديث</span>
+                                                <span className="text-[7px] font-bold text-gray-400 uppercase tracking-tighter">سينماتيكس</span>
                                                 <span className="text-[7px] text-gray-500 font-bold">الآن</span>
                                             </div>
                                             
@@ -226,14 +238,14 @@ const NotificationTab: React.FC<any> = ({ addToast, serviceAccountJson, allUsers
             </div>
 
             <div className="bg-[#1f2937] rounded-3xl border border-gray-700/50 shadow-xl overflow-hidden">
-                <div className="px-8 py-6 border-b border-gray-700/50 flex justify-between items-center bg-black/10">
-                    <h3 className="font-bold text-xl text-white">آخر الإشعارات المرسلة</h3>
-                    <span className="text-xs text-gray-500">تلقائياً يتم حذف السجلات القديمة</span>
+                <div className="px-8 py-6 border-b border-gray-700/50 flex justify-between items-center bg-black/20">
+                    <h3 className="font-bold text-xl text-white">سجل البث العام</h3>
+                    <span className="text-xs text-gray-500">آخر 20 عملية إرسال</span>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-right text-gray-300">
                         <thead className="bg-gray-800/50 text-xs font-bold text-gray-400 uppercase">
-                            <tr><th className="px-8 py-4">النوع</th><th className="px-8 py-4">العنوان</th><th className="px-8 py-4">المستلمون</th><th className="px-8 py-4">التاريخ</th><th className="px-8 py-4">إجراء</th></tr>
+                            <tr><th className="px-8 py-4">النوع</th><th className="px-8 py-4">العنوان</th><th className="px-8 py-4">المستلمون التقريبيون</th><th className="px-8 py-4">التاريخ</th><th className="px-8 py-4">إجراء</th></tr>
                         </thead>
                         <tbody>
                             {history.map(item => (

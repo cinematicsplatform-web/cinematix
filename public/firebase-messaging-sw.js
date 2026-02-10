@@ -16,46 +16,55 @@ firebase.initializeApp(firebaseConfig);
 
 const messaging = firebase.messaging();
 
-// Handle Background Messages
+/**
+ * معالج الإشعارات في الخلفية
+ * هذا الجزء هو المسؤول عن إظهار التنبيه في شريط الإشعارات العلوي للهاتف
+ */
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification.title || "تنبيه جديد من سينماتيكس";
+  // استخراج البيانات من الحمولة المرسلة
+  const notificationTitle = payload.notification?.title || payload.data?.title || "تنبيه جديد من سينماتيكس";
+  const notificationBody = payload.notification?.body || payload.data?.body || "لديك تحديث جديد في المنصة، اكتشفه الآن.";
+  const notificationIcon = payload.notification?.icon || payload.data?.icon || '/android-chrome-192x192.png';
+  const notificationImage = payload.notification?.image || payload.data?.image || null;
+  
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: payload.notification.icon || '/android-chrome-192x192.png',
-    image: payload.notification.image || payload.data?.image,
+    body: notificationBody,
+    icon: notificationIcon,
+    image: notificationImage,
     badge: '/favicon-32x32.png',
-    data: payload.data, // Store extra data (like URL) here
+    data: {
+        url: payload.data?.url || '/',
+        broadcastId: payload.data?.broadcastId || 'cinematix-alert'
+    },
     tag: payload.data?.broadcastId || 'cinematix-global-alert',
-    renotify: true
+    renotify: true,
+    dir: 'rtl',
+    lang: 'ar'
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Deep Linking Click Handler
+// معالج الضغط على الإشعار للتوجه للرابط المحدد
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
 
-  // Get URL from data payload
   let targetUrl = event.notification.data?.url || '/';
   
-  // Ensure absolute URL if it starts with /
   if (targetUrl.startsWith('/')) {
       targetUrl = self.location.origin + targetUrl;
   }
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(windowClients) {
-      // Check if there is already a window open with this URL
       for (var i = 0; i < windowClients.length; i++) {
         var client = windowClients[i];
         if (client.url === targetUrl && 'focus' in client) {
           return client.focus();
         }
       }
-      // If not, open a new window
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }

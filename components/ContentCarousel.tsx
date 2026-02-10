@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import type { Content, SectionDisplayType } from '@/types';
 import ContentCard from './ContentCard';
@@ -11,6 +12,7 @@ interface ContentCarouselProps {
   contents: Content[];
   onSelectContent: (content: Content) => void;
   isLoggedIn: boolean;
+  isAdmin?: boolean; // خاصية جديدة
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
   isNew?: boolean;
@@ -32,6 +34,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
     contents, 
     onSelectContent, 
     isLoggedIn, 
+    isAdmin = false,
     myList, 
     onToggleMyList, 
     isNew, 
@@ -51,28 +54,19 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
     const [isHovered, setIsHovered] = useState(false);
     
-    // حالة التحكم في ظهور الأسهم بناءً على موضع التمرير
-    const [canScrollLeft, setCanScrollLeft] = useState(true);  // للتقدم لليسار (النهاية)
-    const [canScrollRight, setCanScrollRight] = useState(false); // للرجوع لليمين (البداية)
+    const [canScrollLeft, setCanScrollLeft] = useState(true);
+    const [canScrollRight, setCanScrollRight] = useState(false);
 
-    // دالة التحقق من حدود التمرير (RTL Aware)
     const checkScrollBoundaries = useCallback(() => {
         if (scrollRef.current) {
             const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-            
-            // في نظام RTL:
-            // scrollLeft يكون 0 عند أقصى اليمين (البداية)
-            // ويصبح سالباً كلما اتجهنا يساراً
-            
-            const isAtStart = scrollLeft >= -5; // سماحية 5 بكسل
+            const isAtStart = scrollLeft >= -5;
             const isAtEnd = Math.abs(scrollLeft) + clientWidth >= scrollWidth - 5;
-            
             setCanScrollRight(!isAtStart);
             setCanScrollLeft(!isAtEnd);
         }
     }, []);
 
-    // تحديث الحدود عند تحميل المكون أو تغيير المحتوى أو تغيير الحجم
     useEffect(() => {
         checkScrollBoundaries();
         window.addEventListener('resize', checkScrollBoundaries);
@@ -82,11 +76,8 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
     const scroll = (direction: 'left' | 'right') => {
         if (scrollRef.current) {
             const { clientWidth } = scrollRef.current;
-            // في RTL: الاتجاه لليسار يعني قيمة سالبة، واليمين موجبة
             const scrollAmount = direction === 'left' ? -clientWidth : clientWidth;
             scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-            
-            // التحقق بعد انتهاء الحركة (تقريباً)
             setTimeout(checkScrollBoundaries, 400);
         }
     };
@@ -167,7 +158,6 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
       )}
       
       <div className="relative">
-        {/* سهم الرجوع لليمين (البداية) - يختفي عند أقصى اليمين أو عند عدم وجود هوفر */}
         <button 
             onClick={() => scroll('right')} 
             className={`hidden md:flex absolute z-[100] right-2 md:right-4 top-1/2 -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-[#141b29]/90 border border-gray-600 backdrop-blur-md text-white items-center justify-center transition-all duration-300 
@@ -210,6 +200,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
                     content={content} 
                     onSelectContent={onSelectContent}
                     isLoggedIn={isLoggedIn}
+                    isAdmin={isAdmin}
                     myList={myList}
                     onToggleMyList={onToggleMyList}
                     showLatestBadge={isNew}
@@ -224,7 +215,6 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
           })}
         </div>
         
-        {/* سهم التقدم لليسار (النهاية) - يختفي عند أقصى اليسار أو عند عدم وجود هوفر */}
          <button 
             onClick={() => scroll('left')} 
             className={`hidden md:flex absolute z-[100] left-2 md:left-4 top-1/2 -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-[#141b29]/90 border border-gray-600 backdrop-blur-md text-white items-center justify-center transition-all duration-300

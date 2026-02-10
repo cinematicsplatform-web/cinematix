@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Content, Server, Season, Episode, Category, Genre } from '@/types';
 import { ContentType, genres } from '@/types';
@@ -132,13 +131,13 @@ const YouTubeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 const CalendarIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
     </svg>
 );
 
 const StackIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
     </svg>
 );
 
@@ -182,11 +181,10 @@ interface MobileSimulatorProps {
     onUpdateX: (val: number) => void;
     onUpdateY: (val: number) => void;
     contentData: Content; 
-    orientation: 'portrait' | 'landscape'; // New prop
     children?: React.ReactNode;
 }
 
-const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY, onUpdateX, onUpdateY, contentData, orientation, children }) => {
+const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY, onUpdateX, onUpdateY, contentData, children }) => {
     const cropClass = contentData.enableMobileCrop ? 'mobile-custom-crop' : '';
     const imgStyle: React.CSSProperties = { 
         '--mob-x': `${posX}%`, 
@@ -229,24 +227,20 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
         (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     };
 
-    // Calculate dynamic dimensions based on orientation
-    const simWidth = orientation === 'portrait' ? '300px' : '620px';
-    const simHeight = orientation === 'portrait' ? '620px' : '300px';
-
     return (
-        <div className="mt-6 flex flex-col items-center gap-12 rounded-3xl border border-gray-800 bg-[#080a0f] p-4 md:p-8 shadow-2xl w-full">
-            <div className="relative mx-auto flex-shrink-0 transition-all duration-500 ease-in-out">
+        <div className="mt-6 flex flex-col items-center gap-12 rounded-3xl border border-gray-800 bg-[#080a0f] p-4 md:p-8 md:flex-row md:items-start shadow-2xl">
+            <div className="relative mx-auto flex-shrink-0 md:mx-0">
                 <div 
                     ref={containerRef}
-                    className="relative overflow-hidden rounded-[3rem] border-[10px] border-[#1f2127] bg-black shadow-2xl ring-1 ring-white/10 select-none touch-none scale-90 md:scale-100 origin-top transition-all duration-500"
-                    style={{ width: simWidth, height: simHeight, cursor: isPanning ? 'grabbing' : 'grab' }} 
+                    className="relative overflow-hidden rounded-[3rem] border-[10px] border-[#1f2127] bg-black shadow-2xl ring-1 ring-white/10 select-none touch-none scale-90 md:scale-100 origin-top"
+                    style={{ width: '300px', height: '620px', cursor: isPanning ? 'grabbing' : 'grab' }} 
                     onPointerDown={handlePointerDown}
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
                 >
                     {children ? children : (
                         <div className="h-full bg-[#141b29] overflow-y-auto no-scrollbar scroll-smooth flex flex-col pointer-events-none">
-                            <div className={`relative w-full flex-shrink-0 ${orientation === 'portrait' ? 'h-[440px]' : 'h-full'}`}>
+                            <div className="relative h-[440px] w-full flex-shrink-0">
                                 <img 
                                     src={imageUrl || 'https://placehold.co/1080x1920/101010/101010/png'} 
                                     className={`absolute inset-0 h-full w-full object-cover ${cropClass} object-top transition-none`}
@@ -263,9 +257,9 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                                     )}
                                     <div className="mb-3">
                                         {contentData.isLogoEnabled && contentData.logoUrl ? (
-                                            <img src={contentData.logoUrl} className={`${orientation === 'portrait' ? 'max-w-[160px]' : 'max-w-[120px]'} max-h-[100px] object-contain drop-shadow-2xl mx-auto`} alt="" />
+                                            <img src={contentData.logoUrl} className="max-w-[160px] max-h-[100px] object-contain drop-shadow-2xl mx-auto" alt="" />
                                         ) : (
-                                            <h1 className={`${orientation === 'portrait' ? 'text-2xl' : 'text-xl'} font-black drop-shadow-lg leading-tight`}>{contentData.title || 'العنوان'}</h1>
+                                            <h1 className="text-2xl font-black drop-shadow-lg leading-tight">{contentData.title || 'العنوان'}</h1>
                                         )}
                                     </div>
                                     <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] text-gray-200 mb-4 font-bold">
@@ -278,7 +272,7 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                                         <span>•</span>
                                         <span className="px-1 border border-gray-500 rounded text-[8px]">{contentData.ageRating || 'G'}</span>
                                     </div>
-                                    <div className="flex gap-2 w-full max-w-[240px] mx-auto">
+                                    <div className="flex gap-2 w-full">
                                         <div className="flex-1 bg-[var(--color-accent)] text-black h-10 rounded-full flex items-center justify-center font-black text-xs gap-2">
                                             <PlayIcon className="w-3 h-3 fill-black" />
                                             شاهد الآن
@@ -297,39 +291,34 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                                     </div>
                                 </div>
                             </div>
-                            
-                            {orientation === 'portrait' && (
-                                <>
-                                    <div className="sticky top-0 z-30 bg-[#141b29]/95 backdrop-blur-md border-b border-white/5 flex gap-4 px-4 h-12 items-center flex-shrink-0">
-                                        <div className="text-[10px] font-black border-b-2 border-[var(--color-accent)] py-3 text-white">الحلقات</div>
-                                        <div className="text-[10px] font-black text-gray-500 py-3">التفاصيل</div>
-                                        <div className="text-[10px] font-black text-gray-500 py-3">أعمال مشابهة</div>
+                            <div className="sticky top-0 z-30 bg-[#141b29]/95 backdrop-blur-md border-b border-white/5 flex gap-4 px-4 h-12 items-center flex-shrink-0">
+                                <div className="text-[10px] font-black border-b-2 border-[var(--color-accent)] py-3 text-white">الحلقات</div>
+                                <div className="text-[10px] font-black text-gray-500 py-3">التفاصيل</div>
+                                <div className="text-[10px] font-black text-gray-500 py-3">أعمال مشابهة</div>
+                            </div>
+                            <div className="p-4 space-y-4 flex-1">
+                                <p className="text-[11px] text-gray-400 leading-relaxed text-justify line-clamp-4">
+                                    {contentData.description || 'قصة العمل تظهر هنا...'}
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
+                                        <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">المخرج</span>
+                                        <span className="text-[10px] font-bold text-gray-300 truncate block">{contentData.director || 'N/A'}</span>
                                     </div>
-                                    <div className="p-4 space-y-4 flex-1">
-                                        <p className="text-[11px] text-gray-400 leading-relaxed text-justify line-clamp-4">
-                                            {contentData.description || 'قصة العمل تظهر هنا...'}
-                                        </p>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
-                                                <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">المخرج</span>
-                                                <span className="text-[10px] font-bold text-gray-300 truncate block">{contentData.director || 'N/A'}</span>
-                                            </div>
-                                            <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
-                                                <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">التقييم</span>
-                                                <span className="text-[10px] font-bold text-yellow-400">★ {contentData.rating}</span>
-                                            </div>
-                                        </div>
+                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
+                                        <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">التقييم</span>
+                                        <span className="text-[10px] font-bold text-yellow-400">★ {contentData.rating}</span>
                                     </div>
-                                </>
-                            )}
+                                </div>
+                            </div>
                         </div>
                     )}
 
-                    <div className={`absolute z-30 rounded-b-2xl bg-[#1f2127] pointer-events-none transition-all ${orientation === 'portrait' ? 'top-0 left-1/2 h-7 w-36 -translate-x-1/2' : 'top-1/2 left-0 w-7 h-36 -translate-y-1/2 rounded-r-2xl rounded-bl-none'}`}></div>
-                    <div className={`absolute z-30 h-3 w-3 rounded-full bg-gray-600/30 pointer-events-none ${orientation === 'portrait' ? 'top-3 right-6' : 'bottom-6 left-3'}`}></div>
-                    <div className={`absolute z-30 rounded-full bg-white/20 pointer-events-none ${orientation === 'portrait' ? 'bottom-2 left-1/2 h-1 w-32 -translate-x-1/2' : 'right-2 top-1/2 w-1 h-32 -translate-y-1/2'}`}></div>
+                    <div className="absolute top-0 left-1/2 z-30 h-7 w-36 -translate-x-1/2 rounded-b-2xl bg-[#1f2127] pointer-events-none"></div>
+                    <div className="absolute top-3 right-6 z-30 h-3 w-3 rounded-full bg-gray-600/30 pointer-events-none"></div>
+                    <div className="absolute bottom-2 left-1/2 z-30 h-1 w-32 -translate-x-1/2 rounded-full bg-white/20 pointer-events-none"></div>
                 </div>
-                <div className="mt-6 text-center font-mono text-xs text-gray-500 uppercase tracking-[0.2em]">Mobile {orientation} Preview</div>
+                <div className="mt-6 text-center font-mono text-xs text-gray-500 uppercase tracking-[0.2em]">Mobile Preview</div>
             </div>
 
             <div className="flex w-full flex-1 flex-col gap-8 pt-4">
@@ -337,7 +326,8 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                     <div>
                         <h3 className="text-xl font-bold text-white mb-2">تخصيص العرض للجوال</h3>
                         <p className="text-sm text-gray-400 leading-relaxed">
-                            تحكم دقيق في نقطة تركيز الصورة لتظهر بشكل مثالي. يمكنك السحب مباشرة على صورة الجوال للتحريك أو استخدام الأزرار لتغيير وضع المعاينة.
+                            تحكم دقيق في نقطة تركيز الصورة (Focal Point) لتظهر بشكل مثالي على صفحة العرض الرسمية في الجوال. 
+                            المعاينة أمامك هي نسخة طبق الأصل لما سيراه المستخدم النهائي. يمكنك السحب مباشرة على صورة الجوال للتحريك.
                         </p>
                     </div>
                     <button 
@@ -813,9 +803,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [activeTab, setActiveTab] = useState('general');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    // New Orientation State for Preview
-    const [simOrientation, setSimOrientation] = useState<'portrait' | 'landscape'>('portrait');
 
     // --- Scheduling & Notification States ---
     const [showSchedulingUI, setShowSchedulingUI] = useState(false);
@@ -2173,40 +2160,82 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         return (
             <div className="space-y-12 animate-fade-in">
                 <div className="flex flex-col items-center gap-6">
-                    <div className="flex flex-col md:flex-row items-center justify-between w-full max-w-4xl gap-4">
-                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                            <span className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">📱</span>
-                            معاينة الجوال (Mobile View)
-                        </h3>
-                        
-                        {/* Manual Orientation Toggles */}
-                        <div className="flex bg-[#161b22] p-1 rounded-xl border border-gray-700">
-                             <button 
-                                type="button"
-                                onClick={() => setSimOrientation('portrait')}
-                                className={`px-6 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${simOrientation === 'portrait' ? 'bg-[#00A7F8] text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
-                             >
-                                <span>📱 عمودي</span>
-                             </button>
-                             <button 
-                                type="button"
-                                onClick={() => setSimOrientation('landscape')}
-                                className={`px-6 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${simOrientation === 'landscape' ? 'bg-[#00A7F8] text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
-                             >
-                                <span>📟 أفقي</span>
-                             </button>
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <span className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">📱</span>
+                        معاينة الجوال (Mobile View)
+                    </h3>
+                    <div className="relative w-[300px] md:w-[320px] h-[600px] md:h-[650px] bg-black border-[8px] md:border-[10px] border-[#1f2127] rounded-[2.5rem] md:rounded-[3rem] shadow-2xl overflow-hidden ring-1 ring-white/10 scale-95 md:scale-100">
+                        <div className="absolute top-0 left-0 right-0 h-14 bg-gradient-to-b from-black/80 to-transparent z-40 px-6 flex items-center">
+                            <div className="w-6 h-6 rounded-full bg-white/10"></div>
                         </div>
-                    </div>
+                        
+                        <div className="h-full bg-[#141b29] overflow-y-auto no-scrollbar scroll-smooth flex flex-col">
+                            <div className="relative h-[400px] md:h-[480px] w-full flex-shrink-0">
+                                <img 
+                                    src={formData.mobileBackdropUrl || formData.backdrop || 'https://placehold.co/1080x1920/101010/101010/png'} 
+                                    className={`absolute inset-0 h-full w-full object-cover ${cropClass} object-top transition-none`} 
+                                    style={imgStyle}
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#141b29] via-[#141b29]/40 via-40% to-transparent z-10"></div>
+                                
+                                <div className="absolute inset-0 z-20 flex flex-col justify-end p-5 pb-8 text-white text-center">
+                                    {formData.bannerNote && (
+                                        <div className="mb-2 mx-auto text-[10px] font-bold bg-[#6366f1]/80 text-white border border-[#6366f1]/30 px-2 py-0.5 rounded backdrop-blur-md w-fit">
+                                            {formData.bannerNote}
+                                        </div>
+                                    )}
+                                    <div className="mb-3">
+                                        {formData.isLogoEnabled && formData.logoUrl ? (
+                                            <img src={formData.logoUrl} className="max-w-[140px] md:max-w-[160px] max-h-[80px] md:max-h-[100px] object-contain drop-shadow-2xl mx-auto" alt="" />
+                                        ) : (
+                                            <h1 className="text-xl md:text-2xl font-black drop-shadow-lg leading-tight">{formData.title || 'العنوان'}</h1>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] text-gray-200 mb-4 font-bold">
+                                        <div className="flex items-center gap-1 text-yellow-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/10">
+                                            <StarIcon className="w-2.5 h-2.5" />
+                                            <span>{formData.rating.toFixed(1)}</span>
+                                        </div>
+                                        <span>•</span>
+                                        <span>{formData.releaseYear}</span>
+                                        <span>•</span>
+                                        <span className="px-1 border border-gray-500 rounded text-[8px]">{formData.ageRating || 'G'}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <div className="flex-1 bg-[#00A7F8] text-black h-10 rounded-full flex items-center justify-center font-black text-xs gap-2">
+                                            <PlayIcon className="w-3 h-3 fill-black" />
+                                            شاهد الآن
+                                        </div>
+                                        <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center font-bold text-lg">+</div>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <MobileSimulator 
-                        imageUrl={formData.mobileBackdropUrl || formData.backdrop || ''} 
-                        posX={formData.mobileCropPositionX ?? 50} 
-                        posY={formData.mobileCropPositionY ?? 50} 
-                        contentData={formData} 
-                        orientation={simOrientation}
-                        onUpdateX={(v) => setFormData(prev => ({...prev, mobileCropPositionX: v}))} 
-                        onUpdateY={(v) => setFormData(prev => ({...prev, mobileCropPositionY: v}))}
-                    />
+                            <div className="sticky top-0 z-30 bg-[#141b29]/95 backdrop-blur-md border-b border-white/5 flex gap-4 px-4 h-12 items-center flex-shrink-0">
+                                <div className="text-[10px] font-black border-b-2 border-[#00A7F8] py-3 text-white">الحلقات</div>
+                                <div className="text-[10px] font-black text-gray-500 py-3">التفاصيل</div>
+                                <div className="text-[10px] font-black text-gray-500 py-3">أعمال مشابهة</div>
+                            </div>
+
+                            <div className="p-4 space-y-4 flex-1">
+                                <p className="text-[11px] text-gray-400 leading-relaxed text-justify line-clamp-4">
+                                    {formData.description || 'قصة العمل تظهر هنا...'}
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
+                                        <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">المخرج</span>
+                                        <span className="text-[10px] font-bold text-gray-300 truncate block">{formData.director || 'N/A'}</span>
+                                    </div>
+                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-right">
+                                        <span className="block text-[8px] text-gray-500 font-bold uppercase mb-1">التقييم</span>
+                                        <span className="text-[10px] font-bold text-yellow-400">★ {formData.rating}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#1f2127] rounded-b-2xl z-50"></div>
+                    </div>
                 </div>
 
                 <div className="flex flex-col items-center gap-6">
@@ -2659,25 +2688,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             <ToggleSwitch checked={formData.enableMobileCrop || false} onChange={(val) => setFormData(prev => ({...prev, enableMobileCrop: val}))} label={formData.enableMobileCrop ? "مفعل" : "معطل"}/>
                                         </div>
                                         {formData.enableMobileCrop && (
-                                            <div className="flex flex-col items-center">
-                                                <div className="flex bg-[#161b22] p-1 rounded-xl border border-gray-700 mb-6 self-start">
-                                                     <button 
-                                                        type="button"
-                                                        onClick={() => setSimOrientation('portrait')}
-                                                        className={`px-6 py-2 rounded-lg text-xs font-black transition-all ${simOrientation === 'portrait' ? 'bg-[#00A7F8] text-black' : 'text-gray-500'}`}
-                                                     >
-                                                        عمودي
-                                                     </button>
-                                                     <button 
-                                                        type="button"
-                                                        onClick={() => setSimOrientation('landscape')}
-                                                        className={`px-6 py-2 rounded-lg text-xs font-black transition-all ${simOrientation === 'landscape' ? 'bg-[#00A7F8] text-black' : 'text-gray-500'}`}
-                                                     >
-                                                        أفقي
-                                                     </button>
-                                                </div>
-                                                <MobileSimulator orientation={simOrientation} imageUrl={formData.mobileBackdropUrl || formData.backdrop || ''} posX={formData.mobileCropPositionX ?? 50} posY={formData.mobileCropPositionY ?? 50} contentData={formData} onUpdateX={(v) => setFormData(prev => ({...prev, mobileCropPositionX: v}))} onUpdateY={(v) => setFormData(prev => ({...prev, mobileCropPositionY: v}))}/>
-                                            </div>
+                                            <MobileSimulator imageUrl={formData.mobileBackdropUrl || formData.backdrop || ''} posX={formData.mobileCropPositionX ?? 50} posY={formData.mobileCropPositionY ?? 50} contentData={formData} onUpdateX={(v) => setFormData(prev => ({...prev, mobileCropPositionX: v}))} onUpdateY={(v) => setFormData(prev => ({...prev, mobileCropPositionY: v}))}/>
                                         )}
                                     </div>
                                 </div>
@@ -2778,15 +2789,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                 <div className="col-span-full"><label className={labelClass}>قصة الموسم</label><textarea value={season.description || ''} onChange={(e) => handleUpdateSeason(season.id, 'description', e.target.value)} className={inputClass} rows={2}/></div>
                                                                 <div className="col-span-full mt-4 p-4 border-t border-gray-800">
                                                                     <div className="flex justify-between items-center mb-4"><label className={labelClass}>تخصيص الموبايل لهذا الموسم</label><ToggleSwitch checked={season.enableMobileCrop || false} onChange={(val) => handleUpdateSeason(season.id, 'enableMobileCrop', val)} label={season.enableMobileCrop ? "مفعل" : "معطل"}/></div>
-                                                                    {season.enableMobileCrop && (
-                                                                        <div className="mt-2 flex flex-col items-center">
-                                                                            <div className="flex bg-[#161b22] p-1 rounded-xl border border-gray-700 mb-6 self-start">
-                                                                                 <button type="button" onClick={() => setSimOrientation('portrait')} className={`px-6 py-2 rounded-lg text-xs font-black transition-all ${simOrientation === 'portrait' ? 'bg-[#00A7F8] text-black' : 'text-gray-500'}`}>عمودي</button>
-                                                                                 <button type="button" onClick={() => setSimOrientation('landscape')} className={`px-6 py-2 rounded-lg text-xs font-black transition-all ${simOrientation === 'landscape' ? 'bg-[#00A7F8] text-black' : 'text-gray-500'}`}>أفقي</button>
-                                                                            </div>
-                                                                            <MobileSimulator orientation={simOrientation} imageUrl={season.mobileImageUrl || season.backdrop || formData.backdrop || ''} posX={season.mobileCropPositionX ?? 50} posY={season.mobileCropPositionY ?? 50} contentData={{...formData, ...season, id: formData.id} as Content} onUpdateX={(v) => handleUpdateSeason(season.id, 'mobileCropPositionX', v)} onUpdateY={(v) => handleUpdateSeason(season.id, 'mobileCropPositionY', v)} />
-                                                                        </div>
-                                                                    )}
+                                                                    {season.enableMobileCrop && (<div className="mt-2"><MobileSimulator imageUrl={season.mobileImageUrl || season.backdrop || formData.backdrop || ''} posX={season.mobileCropPositionX ?? 50} posY={season.mobileCropPositionY ?? 50} contentData={{...formData, ...season, id: formData.id} as Content} onUpdateX={(v) => handleUpdateSeason(season.id, 'mobileCropPositionX', v)} onUpdateY={(v) => handleUpdateSeason(season.id, 'mobileCropPositionY', v)} /></div>)}
                                                                 </div>
                                                             </>
                                                         )}
