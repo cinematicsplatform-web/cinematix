@@ -64,10 +64,35 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
   const pageAdsEnabled = adsEnabled && !heroIsPresent;
 
   const carousels = useMemo(() => {
+    const nowTimestamp = Date.now();
+
+    const getEffectiveUpdateDate = (c: Content) => {
+        let maxDate = new Date(c.updatedAt || c.createdAt).getTime();
+        
+        // Check content level schedule
+        if (c.isScheduled && c.scheduledAt) {
+            const sched = new Date(c.scheduledAt).getTime();
+            if (nowTimestamp >= sched && sched > maxDate) maxDate = sched;
+        }
+
+        // Check episode level schedules
+        if (c.seasons) {
+            c.seasons.forEach(s => {
+                s.episodes?.forEach(ep => {
+                    if (ep.isScheduled && ep.scheduledAt) {
+                        const epSched = new Date(ep.scheduledAt).getTime();
+                        if (nowTimestamp >= epSched && epSched > maxDate) maxDate = epSched;
+                    }
+                });
+            });
+        }
+        return maxDate;
+    };
+
     const limit = (list: Content[]) => list.slice(0, 12);
 
     const recentSeries = limit([...allSeries]
-      .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()));
+      .sort((a, b) => getEffectiveUpdateDate(b) - getEffectiveUpdateDate(a)));
 
     const arabicSeries = limit(allSeries.filter(c => c.categories.includes('مسلسلات عربية')));
     const turkishSeries = limit(allSeries.filter(c => c.categories.includes('مسلسلات تركية')));

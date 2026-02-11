@@ -143,9 +143,34 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
   const isCountdownActive = siteSettings.isCountdownVisible && (+new Date(siteSettings.countdownDate) - +new Date()) > 0;
   
   const carousels = useMemo(() => {
+    const nowTimestamp = Date.now();
+
+    const getEffectiveUpdateDate = (c: Content) => {
+        let maxDate = new Date(c.updatedAt || c.createdAt).getTime();
+        
+        // Check content level schedule
+        if (c.isScheduled && c.scheduledAt) {
+            const sched = new Date(c.scheduledAt).getTime();
+            if (nowTimestamp >= sched && sched > maxDate) maxDate = sched;
+        }
+
+        // Check episode level schedules
+        if (c.seasons) {
+            c.seasons.forEach(s => {
+                s.episodes?.forEach(ep => {
+                    if (ep.isScheduled && ep.scheduledAt) {
+                        const epSched = new Date(ep.scheduledAt).getTime();
+                        if (nowTimestamp >= epSched && epSched > maxDate) maxDate = epSched;
+                    }
+                });
+            });
+        }
+        return maxDate;
+    };
+
     const limit = (list: Content[]) => list.slice(0, 12);
     const recentAdditions = limit([...allRamadanContent]
-      .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()));
+      .sort((a, b) => getEffectiveUpdateDate(b) - getEffectiveUpdateDate(a)));
 
     let topRatedContent = (top10Content && top10Content.length > 0) ? top10Content : pinnedContent;
     

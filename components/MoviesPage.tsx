@@ -61,10 +61,35 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
   const pageAdsEnabled = adsEnabled && !heroIsPresent;
 
   const carousels = useMemo(() => {
+    const nowTimestamp = Date.now();
+
+    const getEffectiveUpdateDate = (c: Content) => {
+        let maxDate = new Date(c.updatedAt || c.createdAt).getTime();
+        
+        // Check content level schedule
+        if (c.isScheduled && c.scheduledAt) {
+            const sched = new Date(c.scheduledAt).getTime();
+            if (nowTimestamp >= sched && sched > maxDate) maxDate = sched;
+        }
+
+        // Check episode level schedules (for consistency, though movies usually don't have them)
+        if (c.seasons) {
+            c.seasons.forEach(s => {
+                s.episodes?.forEach(ep => {
+                    if (ep.isScheduled && ep.scheduledAt) {
+                        const epSched = new Date(ep.scheduledAt).getTime();
+                        if (nowTimestamp >= epSched && epSched > maxDate) maxDate = epSched;
+                    }
+                });
+            });
+        }
+        return maxDate;
+    };
+
     const limit = (list: Content[]) => list.slice(0, 12);
 
     const recentMovies = limit([...allMovies]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      .sort((a, b) => getEffectiveUpdateDate(b) - getEffectiveUpdateDate(a)));
 
     const arabicMovies = limit(allMovies.filter(c => c.categories.includes('افلام عربية')));
     const turkishMovies = limit(allMovies.filter(c => c.categories.includes('افلام تركية')));
