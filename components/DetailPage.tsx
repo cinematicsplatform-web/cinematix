@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { createPortal } from 'react-dom';
@@ -110,7 +109,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [isDownloadErrorOpen, setIsDownloadErrorOpen] = useState(false);
   const [isInView, setIsInView] = useState(true);
   
-  // --- تم تعديل منطق الفرز للحفاظ على الخيار عند العودة ---
   const [isDescending, setIsDescending] = useState(() => {
       try {
           return localStorage.getItem('cinematix_pref_sort_desc') === 'true';
@@ -119,7 +117,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       }
   });
 
-  // مزامنة التغيير مع التخزين المحلي
   useEffect(() => {
       localStorage.setItem('cinematix_pref_sort_desc', String(isDescending));
   }, [isDescending]);
@@ -188,7 +185,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
         if (targetSeason) {
             setSelectedSeasonId(targetSeason.id);
             if (targetSeason.episodes && targetSeason.episodes.length > 0) {
-                // Find first non-scheduled or already released episode
                 const now = new Date();
                 const firstAvailable = targetSeason.episodes.find(ep => 
                     isAdmin || !ep.isScheduled || !ep.scheduledAt || now >= new Date(ep.scheduledAt)
@@ -201,7 +197,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   const currentSeason = useMemo(() => content?.seasons?.find(s => s.id === selectedSeasonId), [content?.seasons, selectedSeasonId]);
   
-  // تصفية الحلقات بناءً على الجدولة
   const episodes = useMemo(() => {
     const rawEpisodes = currentSeason?.episodes || [];
     if (isAdmin) return rawEpisodes;
@@ -517,7 +512,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       />
 
       <div ref={heroRef} className="relative h-[83vh] md:h-[90vh] lg:h-[90vh] w-full group z-[45]">
-        {/* Mobile Back Button */}
         <div className="flex md:hidden absolute top-6 right-4 z-[100] pointer-events-auto">
             <button 
                 onClick={(e) => {
@@ -785,6 +779,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
                               const sNum = currentSeason?.seasonNumber || 1;
                               const watchUrl = `/watch/${seriesSlug}/${sNum}/${eNum}`;
                               
+                              // منطق تحديد هل الجدولة في المستقبل أم مرت
+                              const isFutureScheduled = ep.isScheduled && ep.scheduledAt && new Date() < new Date(ep.scheduledAt);
+                              
                               return (
                                   <a 
                                     key={ep.id} 
@@ -811,8 +808,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                             </div>
                                           )}
 
-                                          {/* Scheduled Label for Admins */}
-                                          {ep.isScheduled && isAdmin && (
+                                          {/* Scheduled Label for Admins - Updated Logic: Hide if time passed */}
+                                          {isFutureScheduled && isAdmin && (
                                               <div className="absolute top-10 right-2 z-10">
                                                   <span className="rounded-md border border-blue-500/50 bg-blue-600/90 backdrop-blur-sm px-2 py-0.5 text-[8px] font-black text-white shadow-lg uppercase">مجدولة</span>
                                               </div>

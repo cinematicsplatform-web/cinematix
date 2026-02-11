@@ -893,13 +893,53 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const isStandalone = !isEpisodic;
 
     useEffect(() => {
-        const initData = getDefaultFormData();
+        let initData = getDefaultFormData();
         if (initData.mobileCropPosition !== undefined && initData.mobileCropPositionX === undefined) {
             initData.mobileCropPositionX = initData.mobileCropPosition;
         }
         
         if (!initData.tmdbId && initData.id && !isNaN(Number(initData.id))) {
             initData.tmdbId = initData.id;
+        }
+
+        // --- FIX START: Check for expired schedules (Episode Level) ---
+        // فحص تلقائي لتحويل الحلقات المجدولة القديمة إلى حلقات منشورة
+        if (initData.seasons && initData.seasons.length > 0) {
+            const now = new Date();
+            initData = {
+                ...initData,
+                seasons: initData.seasons.map(season => ({
+                    ...season,
+                    episodes: season.episodes.map(ep => {
+                        // Check if episode is scheduled AND schedule time has passed
+                        if (ep.isScheduled && ep.scheduledAt) {
+                            const scheduledTime = new Date(ep.scheduledAt).getTime();
+                            if (scheduledTime < now.getTime()) {
+                                // Convert to normal published episode
+                                return { 
+                                    ...ep, 
+                                    isScheduled: false, 
+                                    scheduledAt: ''
+                                    // We keep notifyOnPublish as is, or you can force reset if needed.
+                                };
+                            }
+                        }
+                        return ep;
+                    })
+                }))
+            };
+        }
+        // --- FIX END ---
+
+        // --- FIX Check for expired schedules (Content Level) ---
+        // فحص تلقائي للمحتوى الرئيسي (فيلم مثلاً) إذا كان مجدولاً ومر وقته
+        if (initData.isScheduled && initData.scheduledAt) {
+            const now = new Date();
+            const scheduledTime = new Date(initData.scheduledAt).getTime();
+            if (scheduledTime < now.getTime()) {
+                initData.isScheduled = false;
+                initData.scheduledAt = '';
+            }
         }
 
         setFormData(initData);

@@ -36,7 +36,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
     isRamadanTheme, 
     isEidTheme, 
     isCosmicTealTheme, 
-    isNetflixRedTheme,
+    isNetflixRedTheme, 
     isHorizontal
 }) => {
   const isInMyList = !!myList?.includes(content.id);
