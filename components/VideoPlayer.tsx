@@ -17,13 +17,6 @@ interface VideoPlayerProps {
   onClose?: () => void;
 }
 
-// Fullscreen Glyph for the requested button
-const FullscreenGlyph = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M7 2H5C3.34315 2 2 3.34315 2 5V7M17 2H19C20.6569 2 22 3.34315 22 5V7M7 22H5C3.34315 22 2 20.6569 2 19V17M17 22H19C20.6569 22 22 20.6569 22 19V17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-);
-
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, type, season, episode, title, onClose }) => {
   // Logic states
   const [isServerLoading, setIsServerLoading] = useState(false);
@@ -52,15 +45,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
   const [showBackwardIndicator, setShowBackwardIndicator] = useState(false);
   const forwardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backwardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   const qualities = [
     { id: 'full-hd', label: 'Full HD', sub: 'اشترك للتفعيل', disabled: true },
@@ -215,25 +199,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
         if (!document.fullscreenElement) {
             await containerRef.current.requestFullscreen();
             setIsFullscreen(true);
-            
-            // محاولة تدوير الشاشة إذا كان المستخدم على الموبايل
-            if (isMobile && screen.orientation && (screen.orientation as any).lock) {
-                try {
-                    await (screen.orientation as any).lock('landscape');
-                } catch (err) {
-                    console.debug('Orientation lock rejected or not supported');
-                }
-            }
+            // ملاحظة: لا نقوم باستدعاء أي قفل للتدوير هنا لاحترام إعدادات الهاتف
         } else {
             if (document.exitFullscreen) {
                 await document.exitFullscreen();
             }
             setIsFullscreen(false);
-            
-            // محاولة إعادة التدوير للوضع الطبيعي
-            if (isMobile && screen.orientation && screen.orientation.unlock) {
-                screen.orientation.unlock();
-            }
         }
     } catch (err: any) {
         console.error(`Error toggling fullscreen: ${err.message}`);
@@ -311,15 +282,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isDirectVideo, isPlaying, volume, isMuted, isSettingsOpen]);
-
-  // Listen for fullscreen changes (handles escape key, etc)
-  useEffect(() => {
-    const handleFsChange = () => {
-        setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFsChange);
-    return () => document.removeEventListener('fullscreenchange', handleFsChange);
-  }, []);
 
   // --- ICONS ---
   const RewindIcon = () => (
@@ -427,19 +389,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                                     <div className="w-16 h-16 md:w-20 md:h-20 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 shadow-2xl">
                                         <PlayIcon className="w-8 h-8 md:w-10 md:h-10 text-white translate-x-1" />
                                     </div>
-                                </div>
-                            )}
-
-                            {/* New: Floating Fullscreen Button for Mobile (TikTok Style) */}
-                            {isMobile && !isFullscreen && isDirectVideo && (
-                                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[100] animate-fade-in pointer-events-auto">
-                                    <button
-                                        onClick={toggleFullscreen}
-                                        className="mobile-fullscreen-btn"
-                                    >
-                                        <FullscreenGlyph />
-                                        <span>ملء الشاشة</span>
-                                    </button>
                                 </div>
                             )}
 
