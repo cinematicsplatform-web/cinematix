@@ -422,17 +422,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
             </div>
         </div>
 
-        {/* Floating Landscape Fullscreen Button for Mobile (TikTok Style) */}
-        {isMobile && !isFullscreen && activeSource && !isServerLoading && (
-          <button
-            onClick={toggleLandscape}
-            className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 z-[85] flex items-center gap-2 px-5 py-2.5 bg-black/50 backdrop-blur-xl border border-white/20 rounded-full text-white text-sm font-black transition-all hover:bg-black/70 active:scale-95 shadow-2xl animate-fade-in ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-          >
-            <RotateIcon />
-            <span>Fullscreen</span>
-          </button>
-        )}
-
         {activeSource && (
             <div className="absolute inset-0 z-10">
                 {isDirectVideo ? (
@@ -596,7 +585,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                                         >
                                             <SettingsIcon />
                                         </button>
-                                        <button onClick={() => toggleFullscreen()} className="text-white hover:scale-110 transition-transform shrink-0"><ExpandIcon className="w-6 h-6 md:w-7 md:h-7" /></button>
+                                        <button onClick={toggleLandscape} className="text-white hover:scale-110 transition-transform shrink-0"><ExpandIcon className="w-6 h-6 md:w-7 md:h-7" /></button>
                                     </div>
                                 </div>
                             </div>
