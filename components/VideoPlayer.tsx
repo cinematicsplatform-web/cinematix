@@ -17,6 +17,22 @@ interface VideoPlayerProps {
   onClose?: () => void;
 }
 
+const RotateIcon = () => (
+  <svg 
+    width="16" 
+    height="16" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+  >
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+  </svg>
+);
+
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, type, season, episode, title, onClose }) => {
   // Logic states
   const [isServerLoading, setIsServerLoading] = useState(false);
@@ -46,6 +62,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
   const forwardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backwardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [isMobile, setIsMobile] = useState(false);
+
   const qualities = [
     { id: 'full-hd', label: 'Full HD', sub: 'اشترك للتفعيل', disabled: true },
     { id: 'high', label: 'جودة عالية', value: '1080p' },
@@ -53,6 +71,25 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
     { id: 'low', label: 'جودة منخفضة', value: '480p' },
     { id: 'auto', label: 'تلقائي', value: 'تلقائي' }
   ];
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement || !!(document as any).webkitFullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+  }, []);
 
   useEffect(() => {
     let finalUrl = manualSrc;
@@ -196,18 +233,65 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
     if (!containerRef.current) return;
     
     try {
-        if (!document.fullscreenElement) {
-            await containerRef.current.requestFullscreen();
+        if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+            if (containerRef.current.requestFullscreen) {
+                await containerRef.current.requestFullscreen();
+            } else if ((containerRef.current as any).webkitRequestFullscreen) {
+                (containerRef.current as any).webkitRequestFullscreen();
+            }
             setIsFullscreen(true);
-            // ملاحظة: لا نقوم باستدعاء أي قفل للتدوير هنا لاحترام إعدادات الهاتف
         } else {
             if (document.exitFullscreen) {
                 await document.exitFullscreen();
+            } else if ((document as any).webkitExitFullscreen) {
+                (document as any).webkitExitFullscreen();
             }
             setIsFullscreen(false);
         }
     } catch (err: any) {
         console.error(`Error toggling fullscreen: ${err.message}`);
+    }
+  };
+
+  const toggleLandscape = async (e: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!containerRef.current) return;
+    
+    try {
+      if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+        // Normal Fullscreen Request
+        if (containerRef.current.requestFullscreen) {
+          await containerRef.current.requestFullscreen();
+        } else if ((containerRef.current as any).webkitRequestFullscreen) {
+          (containerRef.current as any).webkitRequestFullscreen();
+        } else if ((videoRef.current as any)?.webkitEnterFullscreen) {
+          (videoRef.current as any).webkitEnterFullscreen();
+          return;
+        }
+
+        // Attempt to lock orientation to landscape
+        if (screen.orientation && (screen.orientation as any).lock) {
+          try {
+            await (screen.orientation as any).lock('landscape');
+          } catch (err) {
+            console.log('Screen orientation lock not supported or failed');
+          }
+        }
+        setIsFullscreen(true);
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        }
+        
+        if (screen.orientation && screen.orientation.unlock) {
+          screen.orientation.unlock();
+        }
+        setIsFullscreen(false);
+      }
+    } catch (err: any) {
+      console.error('Fullscreen Error:', err);
     }
   };
 
@@ -235,7 +319,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
   // --- KEYBOARD SHORTCUTS LOGIC ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        // Prevent shortcuts if user is typing in an input
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
         
         if (!isDirectVideo) return;
@@ -338,6 +421,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                 </div>
             </div>
         </div>
+
+        {/* Floating Landscape Fullscreen Button for Mobile (TikTok Style) */}
+        {isMobile && !isFullscreen && activeSource && !isServerLoading && (
+          <button
+            onClick={toggleLandscape}
+            className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 z-[85] flex items-center gap-2 px-5 py-2.5 bg-black/50 backdrop-blur-xl border border-white/20 rounded-full text-white text-sm font-black transition-all hover:bg-black/70 active:scale-95 shadow-2xl animate-fade-in ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          >
+            <RotateIcon />
+            <span>Fullscreen</span>
+          </button>
+        )}
 
         {activeSource && (
             <div className="absolute inset-0 z-10">
