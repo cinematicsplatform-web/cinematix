@@ -148,6 +148,13 @@ const BellIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+// --- New Icon for Auto Links ---
+const LinkIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+    </svg>
+);
+
 // --- REFINED STYLES ---
 const INPUT_BG = "bg-[#161b22]"; 
 const BORDER_COLOR = "border-gray-700/50";
@@ -791,6 +798,7 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
         </div>
     );
 };
+
 interface ContentEditModalProps {
     content: Content | null;
     onClose: () => void; 
@@ -806,7 +814,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
     // --- Scheduling & Notification States ---
     const [showSchedulingUI, setShowSchedulingUI] = useState(false);
-    // حالة للتحكم في نافذة جدولة حلقة معينة
     const [episodeSchedulingState, setEpisodeSchedulingState] = useState<{
         isOpen: boolean;
         seasonId: number | null;
@@ -816,6 +823,16 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         notifyAdmins: boolean;
     }>({ isOpen: false, seasonId: null, episodeId: null, currentDate: '', notifyUsers: true, notifyAdmins: true });
 
+    // --- NEW: Auto-Link Generation State ---
+    const [autoLinkState, setAutoLinkState] = useState<{
+        isOpen: boolean;
+        seasonId: number | null;
+        prefix: string;
+        suffix: string;
+        startNum: number | '';
+        endNum: number | '';
+        padZero: boolean;
+    }>({ isOpen: false, seasonId: null, prefix: '', suffix: '.mp4', startNum: '', endNum: '', padZero: true });
     const getDefaultFormData = (): Content => ({
         id: '', tmdbId: '', title: '', description: '', type: ContentType.Movie, poster: '', top10Poster: '', backdrop: '', horizontalPoster: '', mobileBackdropUrl: '',
         rating: 0, ageRating: '', categories: [], genres: [], releaseYear: new Date().getFullYear(), cast: [],
@@ -861,9 +878,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         isOpen: boolean;
         type: 'add' | 'delete';
         seasonId: number | null;
-        startFrom: number;
-        endTo: number;
-    }>({ isOpen: false, type: 'add', seasonId: null, startFrom: 1, endTo: 10 });
+        startFrom: number | '';
+        endTo: number | '';
+    }>({ isOpen: false, type: 'add', seasonId: null, startFrom: '', endTo: '' });
 
     const [deleteSeasonState, setDeleteSeasonState] = useState<{
         isOpen: boolean;
@@ -903,7 +920,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
 
         // --- FIX START: Check for expired schedules (Episode Level) ---
-        // فحص تلقائي لتحويل الحلقات المجدولة القديمة إلى حلقات منشورة
         if (initData.seasons && initData.seasons.length > 0) {
             const now = new Date();
             initData = {
@@ -911,16 +927,13 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 seasons: initData.seasons.map(season => ({
                     ...season,
                     episodes: season.episodes.map(ep => {
-                        // Check if episode is scheduled AND schedule time has passed
                         if (ep.isScheduled && ep.scheduledAt) {
                             const scheduledTime = new Date(ep.scheduledAt).getTime();
                             if (scheduledTime < now.getTime()) {
-                                // Convert to normal published episode
                                 return { 
                                     ...ep, 
                                     isScheduled: false, 
                                     scheduledAt: ''
-                                    // We keep notifyOnPublish as is, or you can force reset if needed.
                                 };
                             }
                         }
@@ -932,7 +945,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         // --- FIX END ---
 
         // --- FIX Check for expired schedules (Content Level) ---
-        // فحص تلقائي للمحتوى الرئيسي (فيلم مثلاً) إذا كان مجدولاً ومر وقته
         if (initData.isScheduled && initData.scheduledAt) {
             const now = new Date();
             const scheduledTime = new Date(initData.scheduledAt).getTime();
@@ -1076,15 +1088,19 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             isOpen: true,
             type,
             seasonId,
-            startFrom: 1,
-            endTo: 1
+            startFrom: '',
+            endTo: ''
         });
     };
 
     const executeBulkAction = () => {
         const { type, seasonId, startFrom, endTo } = bulkActionState;
         if (!seasonId) return;
-        if (endTo < startFrom) {
+        
+        const sFrom = typeof startFrom === 'number' ? startFrom : 1;
+        const eTo = typeof endTo === 'number' ? endTo : 1;
+
+        if (eTo < sFrom) {
             addToast("رقم البداية يجب أن يكون أصغر من أو يساوي رقم النهاية.", "error");
             return;
         }
@@ -1098,7 +1114,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
                 if (type === 'add') {
                     const newEpisodes: Episode[] = [];
-                    for (let i = startFrom; i <= endTo; i++) {
+                    for (let i = sFrom; i <= eTo; i++) {
                         const exists = updatedEpisodes.some(ep => parseInt(ep.title.replace(/\D/g, '') || '0') === i);
                         if (!exists) {
                             newEpisodes.push({
@@ -1116,7 +1132,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 } else {
                     updatedEpisodes = updatedEpisodes.filter(ep => {
                         const epNum = parseInt(ep.title.replace(/\D/g, '') || '0');
-                        return epNum < startFrom || epNum > endTo;
+                        return epNum < sFrom || epNum > eTo;
                     });
                 }
 
@@ -1130,9 +1146,92 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             })
         }));
 
-        addToast(type === 'add' ? `تم إضافة الحلقات من ${startFrom} إلى ${endTo} بنجاح.` : `تم حذف الحلقات من ${startFrom} إلى ${endTo} بنجاح.`, "success");
+        addToast(type === 'add' ? `تم إضافة الحلقات من ${sFrom} إلى ${eTo} بنجاح.` : `تم حذف الحلقات من ${sFrom} إلى ${eTo} بنجاح.`, "success");
         setBulkActionState(prev => ({ ...prev, isOpen: false }));
     };
+
+    // --- NEW: Auto-Link Generation Functions ---
+    const openAutoLinkModal = (seasonId: number) => {
+        setAutoLinkState(prev => ({ ...prev, isOpen: true, seasonId, startNum: '', endNum: '' }));
+    };
+
+    const executeAutoLinkGeneration = () => {
+        const { seasonId, prefix, suffix, startNum, endNum, padZero } = autoLinkState;
+        if (!seasonId) return;
+
+        const sNum = typeof startNum === 'number' ? startNum : 1;
+        const eNum = typeof endNum === 'number' ? endNum : 1;
+
+        if (eNum < sNum) {
+            addToast("رقم البداية يجب أن يكون أصغر من أو يساوي رقم النهاية.", "error");
+            return;
+        }
+        if (!prefix.trim()) {
+            addToast("الجزء الثابت (الرابط) مطلوب.", "error");
+            return;
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            seasons: (prev.seasons || []).map(season => {
+                if (season.id !== seasonId) return season;
+
+                let updatedEpisodes = [...(season.episodes || [])];
+
+                for (let i = sNum; i <= eNum; i++) {
+                    const numStr = padZero && i < 10 ? `0${i}` : `${i}`;
+                    const generatedUrl = `${prefix}${numStr}${suffix}`;
+
+                    const existingEpIndex = updatedEpisodes.findIndex(ep => parseInt(ep.title.replace(/\D/g, '') || '0') === i);
+                    
+                    // حساب رقم السيرفر ليكون "سيرفر 1" أو "سيرفر 2" الخ...
+                    let nextServerNum = 1;
+                    if (existingEpIndex !== -1) {
+                        nextServerNum = (updatedEpisodes[existingEpIndex].servers?.length || 0) + 1;
+                    }
+
+                    const newServer: Server = {
+                        id: Date.now() + i + Math.random(),
+                        name: `سيرفر ${nextServerNum}`,
+                        url: generatedUrl,
+                        downloadUrl: generatedUrl,
+                        isActive: true
+                    };
+
+                    if (existingEpIndex !== -1) {
+                        updatedEpisodes[existingEpIndex] = {
+                            ...updatedEpisodes[existingEpIndex],
+                            servers: [...(updatedEpisodes[existingEpIndex].servers || []), newServer]
+                        };
+                    } else {
+                        updatedEpisodes.push({
+                            id: Date.now() + i + Math.random(),
+                            title: `الحلقة ${i}`,
+                            duration: '',
+                            description: `شاهد أحداث الحلقة ${i} من الموسم ${season.seasonNumber}.`,
+                            thumbnail: season.backdrop || prev.backdrop || '',
+                            progress: 0,
+                            servers: [newServer],
+                            isScheduled: false,
+                            scheduledAt: ''
+                        });
+                    }
+                }
+
+                updatedEpisodes.sort((a, b) => {
+                    const numA = parseInt(a.title.replace(/\D/g, '') || '0');
+                    const numB = parseInt(b.title.replace(/\D/g, '') || '0');
+                    return numA - numB;
+                });
+
+                return { ...season, episodes: updatedEpisodes };
+            })
+        }));
+
+        addToast(`تم توليد روابط وإضافة/تحديث الحلقات من ${sNum} إلى ${eNum} بنجاح.`, "success");
+        setAutoLinkState(prev => ({ ...prev, isOpen: false }));
+    };
+    // --- END NEW AUTO-LINK FUNCTIONS ---
 
     const renderImageInput = (
         label: string, 
@@ -1207,7 +1306,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
              const vipUrl = `https://vidsrc.vip/embed/tv/${tmdbId}/${seasonNum}/${episodeNum}`;
              epServers.push({
                  id: 80000 + episodeNum,
-                 name: 'Cinematix VIP (سريع)',
+                 name: 'سيرفر 1',
                  url: vipUrl,
                  downloadUrl: vipUrl,
                  isActive: true
@@ -1222,7 +1321,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             const vipUrl = `https://vidsrc.vip/embed/movie/${tmdbId}`;
             movieServers.push({
                 id: 99901,
-                name: 'Cinematix VIP (سريع)',
+                name: 'سيرفر 1',
                 url: vipUrl,
                 downloadUrl: vipUrl,
                 isActive: true
@@ -1230,7 +1329,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
         return movieServers;
     };
-
     const searchTMDB = async () => {
         if (!tmdbSearchQuery.trim()) return;
         setIsSearchingTMDB(true);
@@ -1856,7 +1954,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 if (enableAutoLinks) {
                     const idToUse = formData.tmdbId || formData.id;
                     const vipUrl = `https://vidsrc.vip/embed/movie/${idToUse}`;
-                    updatedServers.push({ id: 99991, name: 'Cinematix VIP', url: vipUrl, downloadUrl: vipUrl, isActive: true });
+                    updatedServers.push({ id: 99991, name: 'سيرفر 1', url: vipUrl, downloadUrl: vipUrl, isActive: true });
                 }
 
                 for (let i = 1; i <= 8; i++) {
@@ -1866,7 +1964,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     if ((watchUrl && String(watchUrl).trim() !== '') || (downloadUrl && String(downloadUrl).trim() !== '')) {
                         updatedServers.push({
                             id: Date.now() + i + Math.random(),
-                            name: getRowValue(row, `اسم سيرفر ${i}`, `Server Name ${i}`) || `سيرفر ${i}`,
+                            name: getRowValue(row, `اسم سيرفر ${i}`, `Server Name ${i}`) || `سيرفر ${(updatedServers.length + 1)}`,
                             url: String(watchUrl || '').trim(),
                             downloadUrl: String(downloadUrl || '').trim(),
                             isActive: true
@@ -1928,7 +2026,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             if (enableAutoLinks) {
                                 const idToUse = formData.tmdbId || formData.id;
                                 const vipUrl = `https://vidsrc.vip/embed/tv/${idToUse}/${seasonNumber}/${eNum}`;
-                                epServers.push({ id: 99999 + Math.random(), name: 'Cinematix VIP', url: vipUrl, downloadUrl: vipUrl, isActive: true });
+                                epServers.push({ id: 99999 + Math.random(), name: 'سيرفر 1', url: vipUrl, downloadUrl: vipUrl, isActive: true });
                             }
 
                             for (let i = 1; i <= 8; i++) {
@@ -1938,7 +2036,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 if ((watchUrl && String(watchUrl).trim() !== '') || (downloadUrl && String(downloadUrl).trim() !== '')) {
                                     epServers.push({
                                         id: Date.now() + i + Math.random(),
-                                        name: getRowValue(row, `اسم سيرفر ${i}`, `Server Name ${i}`) || `سيرفر ${i}`,
+                                        name: getRowValue(row, `اسم سيرفر ${i}`, `Server Name ${i}`) || `سيرفر ${(epServers.length + 1)}`,
                                         url: String(watchUrl || '').trim(),
                                         downloadUrl: String(downloadUrl || '').trim(),
                                         isActive: true
@@ -2126,7 +2224,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     if (enableAutoLinks) {
                         const idToUse = formData.tmdbId || formData.id;
                         const vipUrl = `https://vidsrc.vip/embed/tv/${idToUse}/${sNum}/${eNum}`;
-                        epServers.push({ id: 99999, name: 'Cinematix VIP', url: vipUrl, downloadUrl: vipUrl, isActive: true });
+                        epServers.push({ id: 99999, name: 'سيرفر 1', url: vipUrl, downloadUrl: vipUrl, isActive: true });
                     }
                     
                     for (let i = 1; i <= 8; i++) {
@@ -2136,7 +2234,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         if ((watchUrl && String(watchUrl).trim() !== '') || (downloadUrl && String(downloadUrl).trim() !== '')) {
                             epServers.push({
                                 id: Date.now() + i + Math.random(),
-                                name: getRowValue(row, `اسم سيرفر ${i}`, `Server Name ${i}`) || `سيرفر ${i}`,
+                                name: getRowValue(row, `اسم سيرفر ${i}`, `Server Name ${i}`) || `سيرفر ${(epServers.length + 1)}`,
                                 url: String(watchUrl || '').trim(),
                                 downloadUrl: String(downloadUrl || '').trim(),
                                 isActive: true
@@ -2338,7 +2436,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             </div>
         );
     };
-
     return (
         <div className="flex h-screen w-full bg-[#090b10] text-gray-200 overflow-hidden font-sans selection:bg-[var(--color-accent)] selection:text-black" dir="rtl">
             <div 
@@ -2767,6 +2864,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     <input onClick={e => e.stopPropagation()} type="file" id={`excel-${season.id}`} className="hidden" accept=".xlsx" onChange={(e) => handleSeasonExcelImport(e, season.id, season.seasonNumber)}/>
                                                     <label htmlFor={`excel-${season.id}`} className="p-2 hover:bg-green-900/30 text-green-600 rounded cursor-pointer" title="استيراد حلقات"><ExcelIcon className="w-4 h-4"/></label>
                                                     
+                                                    {/* زر توليد الروابط التلقائية */}
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); openAutoLinkModal(season.id); }} className="p-2 hover:bg-green-600/10 text-green-500 rounded font-bold text-[10px] flex items-center gap-1" title="توليد روابط تلقائية"><LinkIcon className="w-4 h-4"/> روابط</button>
+
                                                     <button type="button" onClick={(e) => { e.stopPropagation(); openBulkActionModal(season.id, 'add'); }} className="p-2 hover:bg-blue-600/10 text-blue-500 rounded font-bold text-[10px] flex items-center gap-1" title="إضافة حلقات متعددة"><StackIcon className="w-4 h-4"/> +</button>
                                                     <button type="button" onClick={(e) => { e.stopPropagation(); openBulkActionModal(season.id, 'delete'); }} className="p-2 hover:bg-red-600/10 text-red-500 rounded font-bold text-[10px] flex items-center gap-1" title="حذف حلقات متعددة"><StackIcon className="w-4 h-4"/> -</button>
                                                     
@@ -2852,7 +2952,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                         </div>
                                                                         
                                                                         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
-                                                                            {/* New: Display Scheduled Date if Exists */}
                                                                             {ep.isScheduled && (
                                                                                 <div className="flex items-center gap-1 text-[10px] text-amber-500 bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/10">
                                                                                     <ClockIcon className="w-3 h-3" />
@@ -2888,7 +2987,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                         <ServerIcon className="w-4 h-4 md:w-3.5 md:h-3.5"/> سيرفرات ({ep.servers?.length || 0})
                                                                     </button>
                                                                     
-                                                                    {/* NEW: Episode Scheduling Button */}
                                                                     <button 
                                                                         type="button" 
                                                                         onClick={() => openEpisodeScheduling(season.id, ep.id, ep.scheduledAt || '')}
@@ -2951,7 +3049,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     </div>
                 </div>
 
-                {/* Scheduling UI Section - Appears above footer when toggled */}
                 {showSchedulingUI && (
                     <div className="px-4 md:px-10 py-6 bg-[#1a2230] border-t border-gray-800 animate-fade-in-up">
                         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
@@ -2994,7 +3091,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                       <button type="button" onClick={onClose} disabled={isSubmitting} className="flex-none px-8 py-3 rounded-xl text-sm font-bold text-gray-400 bg-gray-800/50 border border-gray-700 hover:bg-gray-800 hover:text-white transition-all shadow-sm disabled:opacity-50">إلغاء</button>
                       
                       <div className="flex items-center gap-3">
-                          {/* Scheduling Toggle Button */}
                           <button 
                             type="button" 
                             onClick={() => setShowSchedulingUI(!showSchedulingUI)}
@@ -3007,7 +3103,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             <span>{showSchedulingUI ? 'تعديل الجدولة' : 'جدولة النشر'}</span>
                           </button>
 
-                          {/* Main Save & Publish Button */}
                           <button 
                             type="button" 
                             onClick={(e) => handleSubmit(e, showSchedulingUI)} 
@@ -3057,17 +3152,17 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             <div className="flex gap-4">
                                 <div className="flex-1">
                                     <label className={labelClass}>من الحلقة رقم</label>
-                                    <input type="number" min="1" value={bulkActionState.startFrom} onChange={(e) => setBulkActionState(prev => ({ ...prev, startFrom: parseInt(e.target.value) || 0 }))} className={inputClass} />
+                                    <input type="number" min="1" value={bulkActionState.startFrom} onChange={(e) => setBulkActionState(prev => ({ ...prev, startFrom: e.target.value === '' ? '' : parseInt(e.target.value) }))} className={inputClass} />
                                 </div>
                                 <div className="flex-1">
                                     <label className={labelClass}>إلى الحلقة رقم</label>
-                                    <input type="number" min="1" value={bulkActionState.endTo} onChange={(e) => setBulkActionState(prev => ({ ...prev, endTo: parseInt(e.target.value) || 0 }))} className={inputClass} />
+                                    <input type="number" min="1" value={bulkActionState.endTo} onChange={(e) => setBulkActionState(prev => ({ ...prev, endTo: e.target.value === '' ? '' : parseInt(e.target.value) }))} className={inputClass} />
                                 </div>
                             </div>
                             <p className="text-xs text-gray-400 bg-gray-900 p-3 rounded border border-gray-800 leading-relaxed">
                                 {bulkActionState.type === 'add' 
-                                    ? `سيتم إضافة حلقات جديدة تبدأ من ${bulkActionState.startFrom} وتنتهي عند ${bulkActionState.endTo}. لن يتم تكرار الحلقات الموجودة بالفعل.`
-                                    : `تحذير: سيتم حذف جميع الحلقات التي تقع أرقامها بين ${bulkActionState.startFrom} و ${bulkActionState.endTo} نهائياً.`
+                                    ? `سيتم إضافة حلقات جديدة تبدأ من ${bulkActionState.startFrom || '?'} وتنتهي عند ${bulkActionState.endTo || '?'}. لن يتم تكرار الحلقات الموجودة بالفعل.`
+                                    : `تحذير: سيتم حذف جميع الحلقات التي تقع أرقامها بين ${bulkActionState.startFrom || '?'} و ${bulkActionState.endTo || '?'} نهائياً.`
                                 }
                             </p>
                         </div>
@@ -3081,7 +3176,83 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 </div>
             )}
 
-            {/* NEW: EPISODE SCHEDULING MODAL */}
+            {/* NEW: AUTO-LINK GENERATION MODAL */}
+            {autoLinkState.isOpen && (
+                <div className="fixed inset-0 z-[320] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setAutoLinkState(prev => ({ ...prev, isOpen: false }))}>
+                    <div className="w-full max-w-lg bg-[#0f1014] border border-green-500/30 rounded-2xl p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <LinkIcon className="w-6 h-6 text-green-500"/>
+                                توليد روابط الحلقات تلقائياً
+                            </h3>
+                            <button onClick={() => setAutoLinkState(prev => ({ ...prev, isOpen: false }))} className="text-gray-400 hover:text-white"><CloseIcon className="w-5 h-5"/></button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div className="bg-[#161b22] p-4 rounded-xl border border-gray-800 space-y-4">
+                                <div>
+                                    <label className={labelClass}>الجزء الثابت (بداية الرابط - Prefix)</label>
+                                    <input 
+                                        type="text" 
+                                        value={autoLinkState.prefix} 
+                                        onChange={e => setAutoLinkState(prev => ({...prev, prefix: e.target.value}))} 
+                                        className={`${inputClass} font-mono focus:ring-green-500 focus:border-green-500`}
+                                        dir="ltr"
+                                        style={{ textAlign: 'left', direction: 'ltr' }}
+                                        placeholder="مثال: https://vid1.arab.../El-Set-Monaliza/" 
+                                    />
+                                    <p className="text-[10px] text-gray-500 mt-1.5 font-bold">تلميح: الحقل يبدأ من اليسار لرؤية وتعديل نهاية الرابط بسهولة دون تمرير الشاشة.</p>
+                                </div>
+                                <div>
+                                    <label className={labelClass}>الجزء الثابت (نهاية الرابط - Suffix)</label>
+                                    <input 
+                                        type="text" 
+                                        value={autoLinkState.suffix} 
+                                        onChange={e => setAutoLinkState(prev => ({...prev, suffix: e.target.value}))} 
+                                        className={`${inputClass} dir-ltr focus:ring-green-500 focus:border-green-500 text-left`} 
+                                        placeholder="مثال: .mp4" 
+                                        dir="ltr"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <label className={labelClass}>من الحلقة</label>
+                                    <input type="number" min="1" value={autoLinkState.startNum} onChange={e => setAutoLinkState(prev => ({...prev, startNum: e.target.value === '' ? '' : parseInt(e.target.value)}))} className={`${inputClass} focus:ring-green-500 focus:border-green-500`} placeholder="رقم البداية" />
+                                </div>
+                                <div className="flex-1">
+                                    <label className={labelClass}>إلى الحلقة</label>
+                                    <input type="number" min="1" value={autoLinkState.endNum} onChange={e => setAutoLinkState(prev => ({...prev, endNum: e.target.value === '' ? '' : parseInt(e.target.value)}))} className={`${inputClass} focus:ring-green-500 focus:border-green-500`} placeholder="رقم النهاية" />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between bg-[#161b22] p-4 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
+                                <span className="text-xs font-bold text-gray-300">إضافة صفر للأرقام الفردية (01, 02 بدل 1, 2)</span>
+                                <ToggleSwitch checked={autoLinkState.padZero} onChange={val => setAutoLinkState(prev => ({...prev, padZero: val}))} label={autoLinkState.padZero ? "مفعل" : "معطل"} />
+                            </div>
+
+                            <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl mt-2 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/5 rounded-bl-full pointer-events-none"></div>
+                                <span className="text-[10px] text-green-500 font-bold uppercase block mb-2">معاينة للرابط (الحلقة الأولى):</span>
+                                <div className="text-xs text-white font-mono break-all dir-ltr text-left bg-black/50 p-3 rounded-lg border border-green-500/20 shadow-inner">
+                                    {autoLinkState.prefix || 'https://...'}{autoLinkState.padZero && (autoLinkState.startNum || 1) < 10 ? `0${autoLinkState.startNum || 1}` : (autoLinkState.startNum || 1)}{autoLinkState.suffix || '.mp4'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6 pt-4 border-t border-gray-800">
+                            <button onClick={() => setAutoLinkState(prev => ({ ...prev, isOpen: false }))} className="flex-1 rounded-lg bg-gray-800 py-2.5 text-sm font-bold text-gray-300 hover:bg-gray-700">إلغاء</button>
+                            <button onClick={executeAutoLinkGeneration} className="flex-1 rounded-lg py-2.5 text-sm font-bold text-black bg-green-500 hover:bg-green-400 shadow-lg shadow-green-500/20 transform hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                                <LinkIcon className="w-4 h-4" />
+                                توليد واعتماد الروابط
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* EPISODE SCHEDULING MODAL */}
             {episodeSchedulingState.isOpen && (
                 <div className="fixed inset-0 z-[310] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setEpisodeSchedulingState(prev => ({ ...prev, isOpen: false }))}>
                     <div className="w-full max-w-sm bg-[#0f1014] border border-amber-500/30 rounded-2xl p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
