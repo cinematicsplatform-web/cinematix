@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PlayIcon } from './icons/PlayIcon';
 import { SpeakerIcon } from './icons/SpeakerIcon';
@@ -94,6 +93,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
   useEffect(() => {
     let finalUrl = manualSrc;
     let shouldUseIsolation = false;
+    let loadingTimeout: NodeJS.Timeout;
 
     setActiveSource(undefined);
 
@@ -120,14 +120,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
         setIsServerLoading(true);
         if (shouldUseIsolation) {
             const encodedUrl = encodeURIComponent(finalUrl);
-            setTimeout(() => setActiveSource(`/embed.html?url=${encodedUrl}`), 50);
+            setActiveSource(`/embed.html?url=${encodedUrl}`);
         } else {
-            setTimeout(() => setActiveSource(finalUrl), 50);
+            setActiveSource(finalUrl);
         }
+        
+        // Force hide loading overlay quickly to prevent blocking the player, especially on mobile
+        loadingTimeout = setTimeout(() => {
+            setIsServerLoading(false);
+        }, 100);
     } else {
         setActiveSource(undefined);
         setIsServerLoading(false);
     }
+
+    return () => {
+        if (loadingTimeout) clearTimeout(loadingTimeout);
+    };
   }, [manualSrc, tmdbId, type, season, episode, activeServerType]);
 
   const isDirectVideo = useMemo(() => {
