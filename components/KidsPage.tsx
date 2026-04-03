@@ -11,7 +11,7 @@ interface KidsPageProps {
   allContent: Content[];
   pinnedContent: Content[];
   top10Content?: Content[]; 
-  onSelectContent: (content: Content) => void;
+  onSelectContent: (content: Content, seasonNumber?: number) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean; // تم الإضافة
   myList?: string[];
@@ -139,7 +139,8 @@ const KidsPage: React.FC<KidsPageProps> = ({
     <div className="min-h-screen bg-[var(--bg-body)] text-white"> 
       <SEO 
         title="أطفال و أنمي" 
-        description="عالم من المرح والتعليم، أفلام كرتون ومسلسلات أنميشن للأطفال."
+        description="عالم من المرح والتعليم، أفلام كرتون ومسلسلات أنميشن للأطفال على سينماتيكس (Cinematix)."
+        keywords="اطفال سينماتيكس, انمي سينماتيكس, cinematix kids, cinematics kids, افلام كرتون, مسلسلات انميشن, محتوى اطفال"
         type="website"
       />
 

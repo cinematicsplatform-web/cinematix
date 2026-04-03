@@ -12,7 +12,7 @@ interface MoviesPageProps {
   allContent: Content[];
   pinnedContent: Content[];
   top10Content?: Content[];
-  onSelectContent: (content: Content) => void;
+  onSelectContent: (content: Content, seasonNumber?: number) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean; // تم الإضافة
   myList?: string[];
@@ -150,7 +150,8 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
     <div className="min-h-screen bg-[var(--bg-body)]">
         <SEO 
             title="أفلام" 
-            description="مكتبة ضخمة من الأفلام العربية والأجنبية والتركية والأندية بجودة عالية."
+            description="مكتبة ضخمة من الأفلام العربية والأجنبية والتركية والهندية بجودة عالية على سينماتيكس (Cinematix)."
+            keywords="افلام سينماتيكس, cinematix movies, cinematics movies, افلام عربية, افلام اجنبية, افلام تركية, افلام هندية, مشاهدة افلام"
             type="website"
         />
 

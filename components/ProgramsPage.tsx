@@ -8,7 +8,7 @@ import AdZone from './AdZone';
 
 interface ProgramsPageProps {
   allContent: Content[];
-  onSelectContent: (content: Content) => void;
+  onSelectContent: (content: Content, seasonNumber?: number) => void;
   isLoggedIn: boolean;
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
@@ -112,7 +112,8 @@ const ProgramsPage: React.FC<ProgramsPageProps> = ({
     <div className="relative min-h-screen bg-[var(--bg-body)]">
         <SEO 
             title="البرامج والعروض" 
-            description="شاهد أحدث البرامج التلفزيونية والمسرحيات والحفلات الغنائية بجودة عالية على سينماتيكس."
+            description="شاهد أحدث البرامج التلفزيونية والمسرحيات والحفلات الغنائية بجودة عالية على سينماتيكس (Cinematix)."
+            keywords="برامج سينماتيكس, عروض سينماتيكس, cinematix programs, cinematics shows, برامج تلفزيونية, مسرحيات, حفلات"
             type="website"
         />
 

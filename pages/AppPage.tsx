@@ -7,6 +7,7 @@ import { DownloadIcon } from '../components/icons/DownloadIcon';
 
 interface AppPageProps {
   onSetView: (view: View) => void;
+  onGoBack: (fallbackView: View) => void;
   appConfig?: AppConfig;
   returnView?: View;
 }
@@ -24,7 +25,7 @@ const InfoIcon = () => (
   </svg>
 );
 
-const AppPage: React.FC<AppPageProps> = ({ onSetView, appConfig, returnView }) => {
+const AppPage: React.FC<AppPageProps> = ({ onSetView, onGoBack, appConfig, returnView }) => {
   const [isInstalling, setIsInstalling] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -119,7 +120,7 @@ const AppPage: React.FC<AppPageProps> = ({ onSetView, appConfig, returnView }) =
       {/* Header */}
       <div className="w-full px-4 pt-6 pb-4 flex items-center justify-between sticky top-0 bg-[#010101] z-50">
         <button 
-          onClick={() => onSetView(returnView || 'home')}
+          onClick={() => onGoBack(returnView || 'home')}
           className="p-2 -mr-2"
         >
           <ChevronRightIcon className="w-6 h-6 text-white" />

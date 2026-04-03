@@ -11,6 +11,7 @@ interface MyListPageProps {
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
   onSetView: (view: View) => void;
+  onGoBack: (fallbackView: View) => void;
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
@@ -24,7 +25,7 @@ const BackArrowIcon = () => (
 );
 
 const MyListPage: React.FC<MyListPageProps> = (props) => {
-  const { allContent, activeProfile, onSelectContent, onSetView, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme } = props;
+  const { allContent, activeProfile, onSelectContent, onSetView, onGoBack, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme } = props;
   const myListContent = activeProfile.myList
     .map(contentId => allContent.find(c => c.id === contentId))
     .filter((c): c is Content => c !== undefined)
@@ -42,7 +43,7 @@ const MyListPage: React.FC<MyListPageProps> = (props) => {
             </h1>
 
             <button 
-                onClick={() => onSetView('home')}
+                onClick={() => onGoBack('home')}
                 className={`group flex items-center gap-2 px-6 py-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-300 hover:border-transparent hover:text-black hover:scale-105 active:scale-95
                     ${isRamadanTheme 
                         ? 'hover:bg-[#FFD700]' 
@@ -91,7 +92,7 @@ const MyListPage: React.FC<MyListPageProps> = (props) => {
             </div>
             <h2 className="text-2xl font-bold text-gray-300 mb-2">قائمتك فارغة</h2>
             <p className="text-gray-500 max-w-md">أضف أفلامك ومسلسلاتك المفضلة هنا لتجدها بسهولة لاحقًا وتشاهدها في أي وقت.</p>
-            <button onClick={() => onSetView('home')} className={`mt-8 px-6 py-3 rounded-lg transition-all border ${isCosmicTealTheme ? 'text-[#35F18B] bg-[#35F18B]/10 border-[#35F18B]/30 hover:bg-[#35F18B] hover:text-black' : isNetflixRedTheme ? 'text-[#E50914] bg-[#E50914]/10 border-[#E50914]/30 hover:bg-[#E50914] hover:text-white' : 'text-[#00A7F8] bg-[#00A7F8]/10 border-[#00A7F8]/30 hover:bg-[#00A7F8] hover:text-white'}`}>
+            <button onClick={() => onGoBack('home')} className={`mt-8 px-6 py-3 rounded-lg transition-all border ${isCosmicTealTheme ? 'text-[#35F18B] bg-[#35F18B]/10 border-[#35F18B]/30 hover:bg-[#35F18B] hover:text-black' : isNetflixRedTheme ? 'text-[#E50914] bg-[#E50914]/10 border-[#E50914]/30 hover:bg-[#E50914] hover:text-white' : 'text-[#00A7F8] bg-[#00A7F8]/10 border-[#00A7F8]/30 hover:bg-[#00A7F8] hover:text-white'}`}>
                 تصفح المحتوى
             </button>
           </div>

@@ -8,6 +8,7 @@ import SEO from '../components/SEO';
 
 interface AppDownloadPageProps {
   onSetView: (view: View) => void;
+  onGoBack: (fallbackView: View) => void;
   apkUrl?: string;
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
@@ -31,6 +32,7 @@ const QrCodeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 const AppDownloadPage: React.FC<AppDownloadPageProps> = ({ 
     onSetView, 
+    onGoBack,
     apkUrl, 
     isRamadanTheme, 
     isEidTheme, 
@@ -132,7 +134,7 @@ const AppDownloadPage: React.FC<AppDownloadPageProps> = ({
                 </h1>
                 
                 <button 
-                    onClick={() => onSetView(returnView || 'home')}
+                    onClick={() => onGoBack(returnView || 'home')}
                     className="p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
                     aria-label="رجوع"
                 >

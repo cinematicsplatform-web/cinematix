@@ -24,6 +24,7 @@ interface PersonProfilePageProps {
   people: Person[];
   onSelectContent: (content: Content) => void;
   onSetView: (view: View) => void;
+  onGoBack: (fallbackView: View) => void;
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
@@ -37,6 +38,7 @@ const PersonProfilePage: React.FC<PersonProfilePageProps> = ({
   people, 
   onSelectContent, 
   onSetView,
+  onGoBack,
   isRamadanTheme,
   isEidTheme,
   isCosmicTealTheme,
@@ -74,7 +76,7 @@ const PersonProfilePage: React.FC<PersonProfilePageProps> = ({
           onClick={(e) => {
             e.preventDefault();
             // Direct navigation using internal state for high reliability
-            onSetView(returnView || 'home');
+            onGoBack(returnView || 'home');
           }}
           className="mb-8 flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
         >

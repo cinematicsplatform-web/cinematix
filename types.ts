@@ -82,6 +82,7 @@ export interface Season {
   cast?: string[]; 
   adLink?: string; 
   isUpcoming?: boolean; 
+  status?: string;
   flipBackdrop?: boolean; 
   
   mobileImageUrl?: string; 

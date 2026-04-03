@@ -11,7 +11,7 @@ interface RamadanPageProps {
   allContent: Content[];
   pinnedContent: Content[];
   top10Content?: Content[];
-  onSelectContent: (content: Content) => void;
+  onSelectContent: (content: Content, seasonNumber?: number) => void;
   siteSettings: SiteSettings;
   isLoggedIn: boolean;
   isAdmin?: boolean; // تم الإضافة
@@ -245,7 +245,8 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
     <div className="min-h-screen bg-black text-white font-sans selection:bg-amber-500 selection:text-black">
         <SEO 
             title="مسلسلات رمضان" 
-            description="تغطية حصرية لمسلسلات وبرامج رمضان 2026. تابع أحدث الحلقات والبرامج الدينية والترفيهية."
+            description="تغطية حصرية لمسلسلات وبرامج رمضان 2026. تابع أحدث الحلقات والبرامج الدينية والترفيهية على سينماتيكس (Cinematix)."
+            keywords="رمضان سينماتيكس, مسلسلات رمضان سينماتيكس, cinematix ramadan, cinematics ramadan, مسلسلات رمضان 2026, برامج رمضان"
             type="website"
         />
 

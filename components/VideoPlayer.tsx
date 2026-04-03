@@ -185,8 +185,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
 
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
-      videoRef.current.play();
-      setIsPlaying(true);
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          setIsPlaying(true);
+        }).catch((error: any) => {
+          if (error.name !== 'AbortError') {
+            console.debug('Playback prevented:', error);
+          }
+        });
+      } else {
+        setIsPlaying(true);
+      }
     } else {
       videoRef.current.pause();
       setIsPlaying(false);

@@ -12,7 +12,7 @@ interface SeriesPageProps {
   allContent: Content[];
   pinnedContent: Content[];
   top10Content?: Content[]; 
-  onSelectContent: (content: Content) => void;
+  onSelectContent: (content: Content, seasonNumber?: number) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean; // تم الإضافة
   myList?: string[];
@@ -164,7 +164,8 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
     <div className="min-h-screen bg-[var(--bg-body)] text-white">
         <SEO 
             title="مسلسلات" 
-            description="تصفح أحدث المسلسلات العربية والتركية والأجنبية بجودة عالية على سينماتيكس."
+            description="تصفح أحدث المسلسلات العربية والتركية والأجنبية بجودة عالية على سينماتيكس (Cinematix)."
+            keywords="مسلسلات سينماتيكس, cinematix series, cinematics series, مسلسلات عربية, مسلسلات اجنبية, مسلسلات تركية, مشاهدة مسلسلات"
             type="website"
         />
 

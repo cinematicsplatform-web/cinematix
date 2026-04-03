@@ -9,7 +9,7 @@ import SEO from './SEO';
 interface SoonPageProps {
   allContent: Content[];
   pinnedContent: Content[];
-  onSelectContent: (content: Content) => void;
+  onSelectContent: (content: Content, seasonNumber?: number, episodeNumber?: number, isSoon?: boolean) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean; // تم الإضافة
   myList?: string[];
@@ -42,7 +42,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
 }) => {
   
   const { allSoonContent, soonAndRamadan, soonOnly } = useMemo(() => {
-    const allSoon = allContent.filter(c => c.categories.includes('قريباً'));
+    const allSoon = allContent.filter(c => c.categories.includes('قريباً') || (c.seasons && c.seasons.some(s => s.isUpcoming || s.status === 'coming_soon')));
     const soonAndRamadan = allSoon.filter(c => c.categories.includes('رمضان'));
     const soonOnly = allSoon.filter(c => !c.categories.includes('رمضان'));
     
@@ -88,8 +88,8 @@ const SoonPage: React.FC<SoonPageProps> = ({
     const sortedSoonOnly = [...soonOnly].sort((a, b) => getEffectiveUpdateDate(b) - getEffectiveUpdateDate(a));
     
     const definedCarousels = [
-      { id: 's1', title: 'قريباً في رمضان', contents: sortedSoonRamadan, isRestricted: false },
-      { id: 's2', title: 'قريباً', contents: sortedSoonOnly, isRestricted: false }, 
+      { id: 's1', title: 'قريباً في رمضان', contents: sortedSoonRamadan, isRestricted: false, isSoonCarousel: true },
+      { id: 's2', title: 'قريباً', contents: sortedSoonOnly, isRestricted: false, isSoonCarousel: true }, 
     ].filter(carousel => carousel.contents.length > 0);
 
     return definedCarousels;
@@ -133,7 +133,8 @@ const SoonPage: React.FC<SoonPageProps> = ({
     <div className="min-h-screen bg-[var(--bg-body)]">
       <SEO 
         title="قريباً - سينماتيكس" 
-        description="تعرف على أحدث الإصدارات القادمة من الأفلام والمسلسلات على سينماتيكس."
+        description="تعرف على أحدث الإصدارات القادمة من الأفلام والمسلسلات على سينماتيكس (Cinematix)."
+        keywords="قريبا سينماتيكس, cinematix coming soon, cinematics soon, افلام قادمة, مسلسلات قادمة, جديد سينماتيكس"
         type="website"
       />
 
@@ -149,6 +150,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
           isEidTheme={isEidTheme}
           isCosmicTealTheme={isCosmicTealTheme}
           isNetflixRedTheme={isNetflixRedTheme}
+          isSoonCarousel={true}
       />
       
       <main className="pb-24 text-right bg-[var(--bg-body)]">
@@ -179,6 +181,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
                 isEidTheme={isEidTheme}
                 isCosmicTealTheme={isCosmicTealTheme}
                 isNetflixRedTheme={isNetflixRedTheme}
+                isSoonCarousel={carousel.isSoonCarousel}
                 />
             );
         })}

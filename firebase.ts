@@ -75,7 +75,7 @@ export const googleProvider = new firebase.auth.GoogleAuthProvider();
 try {
   db.settings({
     ignoreUndefinedProperties: true,
-    experimentalForceLongPolling: true
+    merge: true
   });
 } catch (e: any) {
   if (!e.message.includes('already been initialized')) {
@@ -333,6 +333,9 @@ export const deleteUserFromFirestore = async (userId: string): Promise<void> => 
 export const requestNotificationPermission = async (userId?: string) => {
     if (!messaging || typeof window === 'undefined') return;
     try {
+        if (Notification.permission === 'denied') {
+            return;
+        }
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
             const token = await messaging.getToken({
@@ -358,7 +361,7 @@ export const requestNotificationPermission = async (userId?: string) => {
                 console.log('[Cinematix] FCM Token successfully registered.');
             }
         } else {
-            console.warn('[Cinematix] Push Notification permission denied.');
+            console.log('[Cinematix] Push Notification permission denied.');
         }
     } catch (error) {
         console.error('[Cinematix] FCM Token Request Error:', error);

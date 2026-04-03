@@ -20,6 +20,7 @@ interface HybridCardProps {
     isEidTheme?: boolean;
     isCosmicTealTheme?: boolean;
     isNetflixRedTheme?: boolean;
+    isSoonCarousel?: boolean;
 }
 
 const HybridCard: React.FC<HybridCardProps> = ({
@@ -35,7 +36,8 @@ const HybridCard: React.FC<HybridCardProps> = ({
     isRamadanTheme,
     isEidTheme,
     isCosmicTealTheme,
-    isNetflixRedTheme
+    isNetflixRedTheme,
+    isSoonCarousel
 }) => {
     const [showVideo, setShowVideo] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
@@ -47,8 +49,13 @@ const HybridCard: React.FC<HybridCardProps> = ({
     const isInMyList = !!myList?.includes(content.id);
     const isExpanded = expandedIndex === index;
 
+    // تحديد الموسم الأخير بناءً على نوع الكاروسيل:
+    // - في كاروسيل "قريباً": نعرض الموسم الأخير المضاف (حتى لو كان قريباً).
+    // - في باقي الكاروسيلات (مثل أحدث الإضافات): نعرض آخر موسم مفعل (ليس قريباً).
     const latestSeason = content.type === 'series' && content.seasons && content.seasons.length > 0
-        ? [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
+        ? isSoonCarousel
+            ? [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
+            : [...content.seasons].filter(season => season.status !== 'coming_soon' && !season.isUpcoming).sort((a, b) => b.seasonNumber - a.seasonNumber)[0] || [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
         : null;
 
     const posterSrc = (content.type === 'series' && latestSeason?.poster) ? latestSeason.poster : content.poster;
@@ -127,7 +134,7 @@ const HybridCard: React.FC<HybridCardProps> = ({
 
     const detailUrl = content.type === 'movie' 
         ? `/watch/movie/${content.slug || content.id}` 
-        : `/series/${content.slug || content.id}`;
+        : `/series/${content.slug || content.id}${latestSeason ? `/الموسم${latestSeason.seasonNumber}` : ''}${isSoonCarousel ? '?targetSeason=upcoming' : ''}`;
 
     const flipStyle = { transform: content.flipBackdrop ? 'scaleX(-1)' : 'none' };
 

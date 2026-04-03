@@ -7,6 +7,7 @@ import { addContentRequest, getContentRequests } from '../firebase';
 
 interface ContentRequestPageProps {
   onSetView: (view: View) => void;
+  onGoBack: (fallbackView: View) => void;
   currentUser: User | null;
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
   returnView?: View;
@@ -18,6 +19,7 @@ interface ContentRequestPageProps {
 
 const ContentRequestPage: React.FC<ContentRequestPageProps> = ({ 
     onSetView, 
+    onGoBack,
     currentUser, 
     addToast, 
     returnView,
@@ -117,7 +119,7 @@ const ContentRequestPage: React.FC<ContentRequestPageProps> = ({
                 {/* Navigation - Top Bar */}
                 <div className="w-full px-4 md:px-12 py-6 flex items-center justify-between">
                     <button 
-                        onClick={() => onSetView(returnView || 'home')} 
+                        onClick={() => onGoBack(returnView || 'home')} 
                         className="p-3 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-white transition-all border border-white/10 shadow-lg group"
                     >
                         <ChevronRightIcon className="w-6 h-6 transform rotate-180 group-hover:-translate-x-1 transition-transform" />

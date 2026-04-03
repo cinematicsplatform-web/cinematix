@@ -9,6 +9,7 @@ interface SearchPageProps {
     allContent: Content[];
     onSelectContent: (content: Content, seasonNumber?: number) => void;
     onSetView: (view: View, category?: string, params?: any) => void;
+    onGoBack: (fallbackView: View) => void;
     onClose?: () => void;
 }
 
@@ -101,7 +102,7 @@ const SearchResultCard: React.FC<{ content: any; onClick: () => void }> = ({ con
     );
 };
 
-const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, onSetView, onClose }) => {
+const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, onSetView, onGoBack, onClose }) => {
     const [query, setQuery] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -193,7 +194,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
                         </div>
 
                         <button 
-                            onClick={() => onSetView('home')} 
+                            onClick={() => onGoBack('home')} 
                             className="hidden md:block text-gray-400 hover:theme-accent-text font-bold transition-colors text-lg whitespace-nowrap"
                         >
                             إلغاء

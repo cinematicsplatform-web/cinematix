@@ -12,7 +12,7 @@ interface TopTenPageProps {
   top10Series: Content[];
   top10Ramadan: Content[];
   top10Kids: Content[];
-  onSelectContent: (content: Content) => void;
+  onSelectContent: (content: Content, seasonNumber?: number) => void;
   isLoggedIn: boolean;
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
@@ -51,7 +51,8 @@ const TopTenPage: React.FC<TopTenPageProps> = ({
         <div className="relative min-h-screen bg-[var(--bg-body)]">
             <SEO 
                 title="أفضل 10 أعمال - سينماتيكس" 
-                description="قائمة أفضل 10 أفلام ومسلسلات وأعمال رمضانية وللأطفال المنسقة بعناية من قبل فريق سينماتيكس."
+                description="قائمة أفضل 10 أفلام ومسلسلات وأعمال رمضانية وللأطفال المنسقة بعناية من قبل فريق سينماتيكس (Cinematix)."
+                keywords="افضل 10 سينماتيكس, توب 10 سينماتيكس, cinematix top 10, cinematics top 10, افضل افلام, افضل مسلسلات"
                 type="website"
             />
 

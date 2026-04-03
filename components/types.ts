@@ -71,6 +71,7 @@ export interface Season {
   releaseYear?: number; // New: Optional release year for the season
   description?: string; // New: Optional description/plot for the season
   cast?: string[]; // New: Optional cast specific to the season
+  isUpcoming?: boolean; // New: Mark season as upcoming
   
   // Mobile Specifics
   mobileImageUrl?: string; // Optional custom image for mobile (Portrait/Custom Crop)

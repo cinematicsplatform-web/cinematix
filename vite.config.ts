@@ -19,6 +19,17 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve('.'),
         }
+      },
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'react-vendor': ['react', 'react-dom'],
+              'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+              'ui-vendor': ['lucide-react', 'motion', 'react-helmet-async']
+            }
+          }
+        }
       }
     };
 });
