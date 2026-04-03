@@ -10,7 +10,7 @@ import { ChevronRightIcon } from './icons/ChevronRightIcon';
 interface ContentCarouselProps {
   title: React.ReactNode;
   contents: Content[];
-  onSelectContent: (content: Content) => void;
+  onSelectContent: (content: Content, seasonNumber?: number, episodeNumber?: number, isSoon?: boolean) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean; // خاصية جديدة
   myList?: string[];
@@ -27,6 +27,7 @@ interface ContentCarouselProps {
   isLoading?: boolean; 
   isHorizontal?: boolean; 
   displayType?: SectionDisplayType;
+  isSoonCarousel?: boolean;
 }
 
 const ContentCarousel: React.FC<ContentCarouselProps> = ({ 
@@ -48,7 +49,8 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
     isNetflixRedTheme,
     isLoading,
     isHorizontal,
-    displayType
+    displayType,
+    isSoonCarousel
 }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
@@ -183,7 +185,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
                           totalItems={contents.length}
                           expandedIndex={expandedIndex}
                           onSetExpandedIndex={handleCardExpand}
-                          onSelectContent={onSelectContent}
+                          onSelectContent={(content) => onSelectContent(content, undefined, undefined, isSoonCarousel)}
                           isLoggedIn={isLoggedIn}
                           myList={myList}
                           onToggleMyList={onToggleMyList}
@@ -191,6 +193,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
                           isEidTheme={isEidTheme}
                           isCosmicTealTheme={isCosmicTealTheme}
                           isNetflixRedTheme={isNetflixRedTheme}
+                          isSoonCarousel={isSoonCarousel}
                       />
                   )
               }
@@ -198,7 +201,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
                 <ContentCard 
                     key={content.id} 
                     content={content} 
-                    onSelectContent={onSelectContent}
+                    onSelectContent={(content) => onSelectContent(content, undefined, undefined, isSoonCarousel)}
                     isLoggedIn={isLoggedIn}
                     isAdmin={isAdmin}
                     myList={myList}
@@ -210,6 +213,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
                     isCosmicTealTheme={isCosmicTealTheme}
                     isNetflixRedTheme={isNetflixRedTheme}
                     isHorizontal={isHorizontalCard}
+                    isSoonCarousel={isSoonCarousel}
                 />
               );
           })}

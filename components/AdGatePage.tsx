@@ -121,7 +121,14 @@ const AdGatePage: React.FC<AdGatePageProps> = ({
                 // طلب الإعلانات وبدء التشغيل
                 player.ima.initializeAdDisplayContainer();
                 player.ima.requestAds();
-                player.play();
+                const playPromise = player.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch((error: any) => {
+                        if (error.name !== 'AbortError') {
+                            console.debug('VAST Ad Play Error:', error);
+                        }
+                    });
+                }
             }
         }
 

@@ -14,6 +14,7 @@ interface CategoryPageProps {
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
   onSetView: (view: View) => void;
+  onGoBack: (fallbackView: View) => void;
   returnView?: View; // Prop to know where to return
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
@@ -32,6 +33,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
     myList, 
     onToggleMyList, 
     onSetView,
+    onGoBack,
     returnView,
     isRamadanTheme,
     isEidTheme,
@@ -188,7 +190,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
                     </h1>
 
                     <button 
-                        onClick={() => onSetView(returnView || 'home')}
+                        onClick={() => onGoBack(returnView || 'home')}
                         className={`group flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-300 hover:theme-accent-border hover:text-black hover:scale-105 active:scale-95 shadow-md
                             ${isRamadanTheme 
                                 ? 'hover:bg-[#FFD700]' 

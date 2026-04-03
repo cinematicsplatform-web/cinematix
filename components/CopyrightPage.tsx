@@ -7,6 +7,7 @@ import SEO from './SEO';
 interface CopyrightPageProps {
   content: string;
   onSetView: (view: View) => void;
+  onGoBack: (fallbackView: View) => void;
   returnView?: View;
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
@@ -14,7 +15,7 @@ interface CopyrightPageProps {
   isNetflixRedTheme?: boolean;
 }
 
-const CopyrightPage: React.FC<CopyrightPageProps> = ({ content, onSetView, returnView, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
+const CopyrightPage: React.FC<CopyrightPageProps> = ({ content, onSetView, onGoBack, returnView, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
   const accentColor = isRamadanTheme ? 'text-amber-500' : isEidTheme ? 'text-purple-500' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]';
   const bgAccent = isRamadanTheme ? 'bg-amber-500' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]';
 
@@ -31,7 +32,7 @@ const CopyrightPage: React.FC<CopyrightPageProps> = ({ content, onSetView, retur
         {/* Navigation Bar */}
         <div className="flex items-center justify-between mb-16">
             <button 
-                onClick={() => onSetView(returnView || 'home')} 
+                onClick={() => onGoBack(returnView || 'home')} 
                 className="p-3 rounded-full bg-white/5 hover:bg-white/10 backdrop-blur-md text-white transition-all border border-white/10 shadow-lg group"
                 title="رجوع"
             >

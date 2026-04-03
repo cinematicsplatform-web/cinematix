@@ -102,7 +102,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   let watchUrl = "#";
   if (content) {
       const slug = content.slug || content.id;
-      watchUrl = content.type === 'movie' ? `/watch/movie/${slug}` : `/series/${slug}`;
+      watchUrl = content.type === 'movie' ? `/watch/movie/${slug}` : `/series/${slug}${isSoon ? '?targetSeason=upcoming' : ''}`;
   }
 
   return (

@@ -23,6 +23,7 @@ interface EpisodeWatchPageProps {
     episodeNumber: number;
     allContent: Content[];
     onSetView: (view: View, category?: string, params?: any) => void;
+    onGoBack: (fallbackView: View) => void;
     isAdmin: boolean;
     ads: Ad[];
     adsEnabled: boolean;
@@ -49,6 +50,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     seasonNumber,
     episodeNumber,
     onSetView,
+    onGoBack,
     isAdmin,
     ads,
     adsEnabled,
@@ -71,6 +73,10 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
     const selectedEpisode = useMemo(() => {
         if (!currentSeason?.episodes) return null;
+        
+        // Block access to upcoming seasons for non-admins
+        if (!isAdmin && (currentSeason.isUpcoming || currentSeason.status === 'coming_soon')) return null;
+
         if (episodeNumber > 0 && episodeNumber <= currentSeason.episodes.length) {
             const ep = currentSeason.episodes[episodeNumber - 1];
             
@@ -149,7 +155,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 </div>
                 <h1 className="text-2xl md:text-4xl font-black mb-4">هذه الحلقة غير متاحة حالياً</h1>
                 <p className="text-gray-400 max-w-md mx-auto mb-8">عذراً، الحلقة التي تحاول الوصول إليها مجدولة للنشر في وقت لاحق. يرجى العودة لاحقاً للمشاهدة.</p>
-                <button onClick={() => onSetView('detail', undefined, { season: seasonNumber })} className={`px-8 py-3 rounded-full font-bold ${bgAccent} text-black active:scale-95 transition-all shadow-lg`}>العودة للتفاصيل</button>
+                <button onClick={() => onGoBack('detail')} className={`px-8 py-3 rounded-full font-bold ${bgAccent} text-black active:scale-95 transition-all shadow-lg`}>العودة للتفاصيل</button>
             </div>
         );
     }
@@ -162,6 +168,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 seasonNumber={seasonNumber}
                 episodeNumber={episodeNumber}
                 description={selectedEpisode?.description || currentSeason?.description || content?.description} 
+                keywords="سينماتيكس, cinematix, cinematics, مشاهدة حلقة, مسلسل, مشاهدة اونلاين"
                 image={selectedEpisode?.thumbnail || currentSeason?.poster || content?.poster}
                 // Corrected: canonicalPath -> canonicalUrl
                 url={canonicalUrl}
@@ -170,7 +177,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
 
             <div className="sticky top-0 z-50 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 px-4 h-16 flex items-center justify-between shadow-lg">
                 <div className="flex items-center gap-4 w-full">
-                    <button onClick={() => onSetView('detail', undefined, { season: seasonNumber })} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+                    <button onClick={() => onGoBack('detail')} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
                         <ChevronRightIcon className="w-5 h-5 transform rotate-180 text-white" />
                     </button>
                     <div className="flex flex-col min-w-0 items-start">

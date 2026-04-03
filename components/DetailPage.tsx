@@ -32,6 +32,7 @@ interface DetailPageProps {
   myList?: string[];
   onToggleMyList: (contentId: string) => void;
   onSetView: (view: View, category?: string, params?: any) => void;
+  onGoBack: (fallbackView: View) => void;
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
@@ -73,6 +74,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   myList,
   onToggleMyList,
   onSetView,
+  onGoBack,
   isRamadanTheme,
   isEidTheme,
   isCosmicTealTheme,
@@ -180,20 +182,41 @@ const DetailPage: React.FC<DetailPageProps> = ({
                 targetSeason = content.seasons.find(s => s.seasonNumber === sNum);
             }
         }
-        if (!targetSeason) targetSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
+        if (!targetSeason) {
+            const searchParams = new URLSearchParams(window.location.search);
+            if (searchParams.get('targetSeason') === 'upcoming') {
+                targetSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
+            }
+        }
+        if (!targetSeason) {
+            targetSeason = [...content.seasons].filter(s => s.status !== 'coming_soon' && !s.isUpcoming).sort((a, b) => b.seasonNumber - a.seasonNumber)[0] || [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
+        }
 
         if (targetSeason) {
             setSelectedSeasonId(targetSeason.id);
             if (targetSeason.episodes && targetSeason.episodes.length > 0) {
                 const now = new Date();
-                const firstAvailable = targetSeason.episodes.find(ep => 
-                    isAdmin || !ep.isScheduled || !ep.scheduledAt || now >= new Date(ep.scheduledAt)
-                );
-                setSelectedEpisode(firstAvailable || targetSeason.episodes[0]);
+                const lastEpId = sessionStorage.getItem(`lastEpisode_${content.id}`);
+                let targetEp = null;
+                if (lastEpId) {
+                    targetEp = targetSeason.episodes.find(ep => ep.id.toString() === lastEpId);
+                }
+                if (!targetEp) {
+                    targetEp = targetSeason.episodes.find(ep => 
+                        isAdmin || !ep.isScheduled || !ep.scheduledAt || now >= new Date(ep.scheduledAt)
+                    ) || targetSeason.episodes[0];
+                }
+                setSelectedEpisode(targetEp);
             }
         }
     }
   }, [content?.id, isLoaded, initialSeasonNumber, locationPath, isEpisodic, isAdmin]);
+
+  useEffect(() => {
+      if (selectedEpisode && content?.id) {
+          sessionStorage.setItem(`lastEpisode_${content.id}`, selectedEpisode.id.toString());
+      }
+  }, [selectedEpisode, content?.id]);
 
   const currentSeason = useMemo(() => content?.seasons?.find(s => s.id === selectedSeasonId), [content?.seasons, selectedSeasonId]);
   
@@ -257,7 +280,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
     
     const seasonPart = (isEpisodic && currentSeason) ? ` - الموسم ${currentSeason.seasonNumber}` : "";
     const seoTitle = `${prefix} ${content.title}${seasonPart} | سينماتيكس Cinematix`;
-    const keywordsArray = [content.title, "سينماتيكس", "Cinematix", "مشاهدة اونلاين", `${prefix} ${content.title}`];
+    const keywordsArray = [content.title, "سينماتيكس", "Cinematix", "cinematics", "مشاهدة اونلاين", `${prefix} ${content.title}`];
     
     return { title: seoTitle, keywords: keywordsArray.join(', ') };
   }, [isLoaded, content, currentSeason, isEpisodic]);
@@ -429,6 +452,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
   };
 
   const handleEpisodeSelect = (episode: Episode, seasonNum?: number, episodeIndex?: number) => {
+      setSelectedEpisode(episode);
       const sNum = seasonNum ?? currentSeason?.seasonNumber ?? 1;
       const eNum = episodeIndex || currentSeason?.episodes.findIndex(e => e.id === episode.id) + 1;
       onSelectContent(content, sNum, eNum);
@@ -495,6 +519,15 @@ const DetailPage: React.FC<DetailPageProps> = ({
       transform: flipBackdrop ? 'scaleX(-1)' : 'none'
   } as React.CSSProperties;
 
+  const isSeasonUpcoming = currentSeason?.isUpcoming || currentSeason?.status === 'coming_soon' || false;
+  const effectiveIsSoon = isSoon || isSeasonUpcoming;
+
+  useEffect(() => {
+    if (effectiveIsSoon && activeTab === 'episodes') {
+      setActiveTab('details');
+    }
+  }, [effectiveIsSoon, activeTab]);
+
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white pb-0 relative overflow-x-hidden w-full">
       <Helmet>
@@ -516,7 +549,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
             <button 
                 onClick={(e) => {
                     e.preventDefault();
-                    onSetView(returnView || 'home');
+                    onGoBack(returnView || 'home');
                 }}
                 className="p-3 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10 active:scale-90 transition-all shadow-lg group"
                 aria-label="Back"
@@ -611,6 +644,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                             <div className="flex items-center justify-between">
                                                 <span className={`text-lg font-bold ${selectedSeasonId === season.id ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}>
                                                     {`الموسم ${season.seasonNumber}`}
+                                                    {(season.isUpcoming || season.status === 'coming_soon') && <span className="mr-2 text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded-full font-black animate-pulse">قريباً</span>}
                                                 </span>
                                                 {selectedSeasonId === season.id && <CheckIcon className={`w-4 h-4 ${activeSeasonHighlight}`} />}
                                             </div>
@@ -684,7 +718,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         <div className="flex items-center gap-4 w-full md:w-auto justify-center md:justify-start">
                             <ActionButtons 
                                 onWatch={() => { 
-                                    if (isSoon) {
+                                    if (effectiveIsSoon) {
                                         setActiveTab('details');
                                     } else {
                                         setActiveTab('episodes'); 
@@ -699,6 +733,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 isCosmicTealTheme={isCosmicTealTheme}
                                 isNetflixRedTheme={isNetflixRedTheme}
                                 content={content}
+                                isSoonOverride={effectiveIsSoon}
                             />
 
                             {showVideo && (
@@ -735,7 +770,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       <div ref={tabsRef} className="sticky top-16 md:top-20 z-40 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 shadow-md w-full">
           <div className="flex h-14 w-full flex-row items-center justify-between px-4 md:h-16 md:px-8">
               <div className="custom-scrollbar flex h-full items-center gap-6 overflow-x-auto no-scrollbar md:gap-8">
-                  {!isSoon && (
+                  {!effectiveIsSoon && (
                       <>
                         <button onClick={() => setActiveTab('episodes')} className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'episodes' ? activeTabClass : tabHoverClass}`}>{!isEpisodic ? 'المشاهدة' : (isLoaded ? `الحلقات (${episodes.length})` : 'الحلقات')}</button>
                         
@@ -770,7 +805,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
       </div>
 
       <div className="relative min-h-[400px] w-full bg-[var(--bg-body)]">
-          {activeTab === 'episodes' && !isSoon && (
+          {activeTab === 'episodes' && !effectiveIsSoon && (
               <div className="w-full px-4 pt-8 md:px-8 animate-fade-in-up">
                   {isEpisodic ? (
                       <div className="mb-10 grid grid-cols-1 gap-4 pb-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">

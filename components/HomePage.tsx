@@ -15,7 +15,7 @@ interface HomePageProps {
   pinnedContent: Content[];
   top10Content?: Content[]; 
   stories?: Story[]; 
-  onSelectContent: (content: Content) => void;
+  onSelectContent: (content: Content, seasonNumber?: number) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean; // تم الإضافة
   myList?: string[];
@@ -250,7 +250,12 @@ const HomePage: React.FC<HomePageProps> = (props) => {
 
   return (
     <div className="relative min-h-screen bg-[var(--bg-body)]">
-        <SEO title="الرئيسية" description="سينماتيكس - مشاهدة أفلام ومسلسلات اون لاين" type="website" />
+        <SEO 
+            title="الرئيسية" 
+            description="سينماتيكس (Cinematix) - مشاهدة أحدث الأفلام والمسلسلات العربية والأجنبية والتركية اون لاين بجودة عالية." 
+            keywords="سينماتيكس, cinematix, cinematics, افلام سينماتيكس, مسلسلات سينماتيكس, مشاهدة افلام, الرئيسية سينماتيكس"
+            type="website" 
+        />
         {renderContent()}
     </div>
   );

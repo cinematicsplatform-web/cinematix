@@ -6,6 +6,7 @@ import SEO from './SEO';
 
 interface AboutPageProps {
   onSetView: (view: View) => void;
+  onGoBack: (fallbackView: View) => void;
   returnView?: View;
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
@@ -13,7 +14,7 @@ interface AboutPageProps {
   isNetflixRedTheme?: boolean;
 }
 
-const AboutPage: React.FC<AboutPageProps> = ({ onSetView, returnView, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
+const AboutPage: React.FC<AboutPageProps> = ({ onSetView, onGoBack, returnView, isRamadanTheme, isEidTheme, isCosmicTealTheme, isNetflixRedTheme }) => {
   const accentColor = isRamadanTheme ? 'text-amber-500' : isEidTheme ? 'text-purple-500' : isCosmicTealTheme ? 'text-[#35F18B]' : isNetflixRedTheme ? 'text-[#E50914]' : 'text-[#00A7F8]';
   const bgAccent = isRamadanTheme ? 'bg-amber-500' : isEidTheme ? 'bg-purple-500' : isCosmicTealTheme ? 'bg-[#35F18B]' : isNetflixRedTheme ? 'bg-[#E50914]' : 'bg-[#00A7F8]';
 
@@ -38,7 +39,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onSetView, returnView, isRamadanT
         {/* Navigation Bar */}
         <div className="flex items-center justify-between mb-16">
             <button 
-                onClick={() => onSetView(returnView || 'home')} 
+                onClick={() => onGoBack(returnView || 'home')} 
                 className="p-3 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-white transition-all border border-white/10 shadow-lg group"
                 title="رجوع"
             >

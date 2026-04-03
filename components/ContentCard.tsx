@@ -21,6 +21,7 @@ interface ContentCardProps {
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
   isHorizontal?: boolean;
+  isSoonCarousel?: boolean;
 }
 
 const ContentCard: React.FC<ContentCardProps> = ({ 
@@ -37,7 +38,8 @@ const ContentCard: React.FC<ContentCardProps> = ({
     isEidTheme, 
     isCosmicTealTheme, 
     isNetflixRedTheme, 
-    isHorizontal
+    isHorizontal,
+    isSoonCarousel
 }) => {
   const isInMyList = !!myList?.includes(content.id);
 
@@ -49,8 +51,13 @@ const ContentCard: React.FC<ContentCardProps> = ({
 
   const isEpisodic = content.type === ContentType.Series || content.type === ContentType.Program;
 
+  // تحديد الموسم الأخير بناءً على نوع الكاروسيل:
+  // - في كاروسيل "قريباً": نعرض الموسم الأخير المضاف (حتى لو كان قريباً).
+  // - في باقي الكاروسيلات (مثل أحدث الإضافات): نعرض آخر موسم مفعل (ليس قريباً).
   const latestSeason = isEpisodic && content.seasons && content.seasons.length > 0
-    ? [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
+    ? isSoonCarousel
+        ? [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
+        : [...content.seasons].filter(season => season.status !== 'coming_soon' && !season.isUpcoming).sort((a, b) => b.seasonNumber - a.seasonNumber)[0] || [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
     : null;
   
   // --- منطق احتساب الحلقات المنشورة فقط ---
@@ -157,7 +164,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
       detailUrl = `/watch/movie/${slug}`;
   } else {
       const sNum = latestSeason?.seasonNumber || 1;
-      detailUrl = `/${content.type}/${slug}/الموسم${sNum}`;
+      detailUrl = `/${content.type}/${slug}/الموسم${sNum}${isSoonCarousel ? '?targetSeason=upcoming' : ''}`;
   }
 
   const getTypeText = (type: string) => {

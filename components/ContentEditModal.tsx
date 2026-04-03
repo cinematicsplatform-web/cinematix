@@ -13,6 +13,7 @@ import { normalizeText } from '@/utils/textUtils';
 import ActionButtons from './ActionButtons';
 import { StarIcon } from './icons/StarIcon';
 import { ClockIcon } from './icons/ClockIcon';
+import VideoPlayer from './VideoPlayer';
 
 // --- PREMIUM ICONS ---
 const CloseIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -833,6 +834,15 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         endNum: number | '';
         padZero: boolean;
     }>({ isOpen: false, seasonId: null, prefix: '', suffix: '.mp4', startNum: '', endNum: '', padZero: true });
+
+    // --- NEW: Video Preview State ---
+    const [previewVideoState, setPreviewVideoState] = useState<{
+        isOpen: boolean;
+        url: string;
+        title: string;
+        poster: string;
+    }>({ isOpen: false, url: '', title: '', poster: '' });
+
     const getDefaultFormData = (): Content => ({
         id: '', tmdbId: '', title: '', description: '', type: ContentType.Movie, poster: '', top10Poster: '', backdrop: '', horizontalPoster: '', mobileBackdropUrl: '',
         rating: 0, ageRating: '', categories: [], genres: [], releaseYear: new Date().getFullYear(), cast: [],
@@ -2109,6 +2119,75 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             })
         }));
     };
+
+    const handleSmartAddEpisode = (seasonId: number) => {
+        setFormData(prev => ({
+            ...prev,
+            seasons: (prev.seasons || []).map(s => {
+                if (s.id !== seasonId) return s;
+                
+                const episodes = s.episodes || [];
+                if (episodes.length === 0) return s;
+
+                let lastEpNum = 0;
+                let lastEpisode = episodes[0];
+                
+                episodes.forEach(ep => {
+                    const num = parseInt(ep.title.replace(/\D/g, '') || '0');
+                    if (num >= lastEpNum) {
+                        lastEpNum = num;
+                        lastEpisode = ep;
+                    }
+                });
+
+                const newEpNum = lastEpNum + 1;
+                
+                const newServers = (lastEpisode.servers || []).map(server => {
+                    const incrementUrl = (url: string) => {
+                        if (!url) return url;
+                        const numStr = lastEpNum.toString();
+                        const paddedNumStr = lastEpNum < 10 ? `0${lastEpNum}` : numStr;
+                        const regex = new RegExp(`\\b(${paddedNumStr}|${numStr})\\b`, 'g');
+                        const matches = [...url.matchAll(regex)];
+                        
+                        if (matches.length > 0) {
+                            const lastMatch = matches[matches.length - 1];
+                            const matchStr = lastMatch[0];
+                            const matchIndex = lastMatch.index!;
+                            const replacement = (matchStr.startsWith('0') && matchStr.length > 1) 
+                                ? (newEpNum < 10 ? `0${newEpNum}` : newEpNum.toString())
+                                : newEpNum.toString();
+                            return url.substring(0, matchIndex) + replacement + url.substring(matchIndex + matchStr.length);
+                        }
+                        return url;
+                    };
+
+                    return {
+                        ...server,
+                        id: Date.now() + Math.random(),
+                        url: incrementUrl(server.url),
+                        downloadUrl: incrementUrl(server.downloadUrl)
+                    };
+                });
+
+                return {
+                    ...s,
+                    episodes: [...episodes, {
+                        id: Date.now() + Math.random(),
+                        title: `الحلقة ${newEpNum}`,
+                        duration: '', 
+                        thumbnail: s.backdrop || prev.backdrop || '', 
+                        description: `شاهد أحداث الحلقة ${newEpNum} من الموسم ${s.seasonNumber}.`,
+                        progress: 0,
+                        servers: newServers,
+                        isScheduled: false,
+                        scheduledAt: ''
+                    }]
+                };
+            })
+        }));
+        addToast("تم إضافة حلقة ذكية بنجاح!", "success");
+    };
     
     const requestDeleteEpisode = (seasonId: number, episodeId: number, episodeTitle: string) => { 
         setDeleteEpisodeState({ isOpen: true, seasonId, episodeId, title: episodeTitle }); 
@@ -2854,7 +2933,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                         <div className="flex items-center gap-2">
                                                             <input onClick={e => e.stopPropagation()} value={season.title} onChange={e => handleUpdateSeason(season.id, 'title', e.target.value)} className="bg-transparent text-lg font-bold text-white border-none focus:ring-0 p-0 w-32"/>
                                                             <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full">{season.episodes.length} حلقة</span>
-                                                            {season.isUpcoming && <span className="text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded-full font-black animate-pulse">قريباً</span>}
+                                                            {(season.isUpcoming || season.status === 'coming_soon') && <span className="text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded-full font-black animate-pulse">قريباً</span>}
                                                         </div>
                                                         <div className="text-[10px] text-gray-500 mt-1">ID: {season.id}</div>
                                                     </div>
@@ -2870,6 +2949,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     <button type="button" onClick={(e) => { e.stopPropagation(); openBulkActionModal(season.id, 'add'); }} className="p-2 hover:bg-blue-600/10 text-blue-500 rounded font-bold text-[10px] flex items-center gap-1" title="إضافة حلقات متعددة"><StackIcon className="w-4 h-4"/> +</button>
                                                     <button type="button" onClick={(e) => { e.stopPropagation(); openBulkActionModal(season.id, 'delete'); }} className="p-2 hover:bg-red-600/10 text-red-500 rounded font-bold text-[10px] flex items-center gap-1" title="حذف حلقات متعددة"><StackIcon className="w-4 h-4"/> -</button>
                                                     
+                                                    {season.episodes && season.episodes.length > 0 && (
+                                                        <button type="button" onClick={(e) => {e.stopPropagation(); handleSmartAddEpisode(season.id)}} className="p-2 hover:bg-yellow-600/10 text-yellow-500 rounded font-bold text-[10px] flex items-center gap-1" title="إضافة حلقة ذكية">إضافة حلقة ذكية ⚡</button>
+                                                    )}
                                                     <button type="button" onClick={(e) => {e.stopPropagation(); handleAddEpisode(season.id)}} className="p-2 hover:bg-gray-800 text-blue-400 rounded" title="إضافة حلقة"><PlusIcon className="w-4 h-4"/></button>
                                                     <button type="button" onClick={(e) => { e.stopPropagation(); requestDeleteSeason(season.id, season.title || `الموسم ${season.seasonNumber}`); }} className="p-2 hover:bg-red-900/30 text-red-500 rounded" title="حذف الموسم"><TrashIcon className="w-4 h-4" /></button>
                                                 </div>
@@ -2987,18 +3069,35 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                         <ServerIcon className="w-4 h-4 md:w-3.5 md:h-3.5"/> سيرفرات ({ep.servers?.length || 0})
                                                                     </button>
                                                                     
-                                                                    <button 
-                                                                        type="button" 
-                                                                        onClick={() => openEpisodeScheduling(season.id, ep.id, ep.scheduledAt || '')}
-                                                                        className={`flex-1 md:flex-none p-3 md:p-2 rounded-xl transition-all border shadow-sm flex items-center justify-center ${ep.isScheduled ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20' : 'text-gray-400 bg-gray-800 border-transparent hover:bg-gray-700 hover:text-white'}`}
-                                                                        title="جدولة نشر الحلقة"
-                                                                    >
-                                                                        <CalendarIcon className="w-5 h-5"/>
-                                                                    </button>
+                                                                    <div className="flex flex-row gap-2 w-full">
+                                                                        <button 
+                                                                            type="button" 
+                                                                            onClick={() => openEpisodeScheduling(season.id, ep.id, ep.scheduledAt || '')}
+                                                                            className={`flex-1 p-3 md:p-2 rounded-xl transition-all border shadow-sm flex items-center justify-center ${ep.isScheduled ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20' : 'text-gray-400 bg-gray-800 border-transparent hover:bg-gray-700 hover:text-white'}`}
+                                                                            title="جدولة نشر الحلقة"
+                                                                        >
+                                                                            <CalendarIcon className="w-5 h-5"/>
+                                                                        </button>
 
-                                                                    <button type="button" onClick={() => requestDeleteEpisode(season.id, ep.id, ep.title || '')} className="p-3 md:p-2 text-red-500 bg-red-500/10 hover:bg-red-500 hover:text-red-white rounded-xl transition-all border border-red-500/20 shadow-sm" title="حذف الحلقة">
-                                                                        <TrashIcon className="w-5 h-5"/>
-                                                                    </button>
+                                                                        <button 
+                                                                            type="button" 
+                                                                            onClick={() => {
+                                                                                if (ep.servers && ep.servers.length > 0 && ep.servers[0].url) {
+                                                                                    setPreviewVideoState({ isOpen: true, url: ep.servers[0].url, title: ep.title || 'الحلقة', poster: formData.backdrop || formData.poster });
+                                                                                } else {
+                                                                                    addToast("لا توجد سيرفرات مضافة لهذه الحلقة للمعاينة.", "info");
+                                                                                }
+                                                                            }}
+                                                                            className="flex-1 p-3 md:p-2 rounded-xl transition-all border shadow-sm flex items-center justify-center text-green-400 bg-green-500/10 border-green-500/20 hover:bg-green-500 hover:text-white"
+                                                                            title="معاينة الحلقة"
+                                                                        >
+                                                                            <PlayIcon className="w-5 h-5"/>
+                                                                        </button>
+
+                                                                        <button type="button" onClick={() => requestDeleteEpisode(season.id, ep.id, ep.title || '')} className="flex-1 p-3 md:p-2 text-red-500 bg-red-500/10 hover:bg-red-500 hover:text-red-white rounded-xl transition-all border border-red-500/20 shadow-sm flex items-center justify-center" title="حذف الحلقة">
+                                                                            <TrashIcon className="w-5 h-5"/>
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -3036,6 +3135,23 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                           استيراد سيرفرات من Excel
                                       </button>
                                       <input type="file" className="hidden" ref={movieExcelInputRef} accept=".xlsx" onChange={handleMovieExcelImport}/>
+
+                                      <div className="h-10 w-px bg-gray-800 hidden md:block"></div>
+
+                                      <button 
+                                          type="button" 
+                                          onClick={() => {
+                                              if (formData.servers && formData.servers.length > 0 && formData.servers[0].url) {
+                                                  setPreviewVideoState({ isOpen: true, url: formData.servers[0].url, title: formData.title || 'الفيلم', poster: formData.backdrop || formData.poster });
+                                              } else {
+                                                  addToast("لا توجد سيرفرات مضافة للفيلم للمعاينة.", "info");
+                                              }
+                                          }}
+                                          className="px-10 py-4 bg-purple-600/20 border border-purple-500/30 text-purple-400 font-black rounded-2xl hover:bg-purple-600 hover:text-white transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3"
+                                      >
+                                          <PlayIcon className="w-5 h-5" />
+                                          معاينة الفيلم
+                                      </button>
                                  </div>
 
                                  <div className="pt-8 border-t border-gray-800 w-full max-w-xs mx-auto">
@@ -3333,6 +3449,30 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         addToast("تم تحديث رابط التريلر بنجاح!", "success");
                     }}
                 />
+            )}
+
+            {previewVideoState.isOpen && (
+                <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/95 p-4 md:p-8 backdrop-blur-md" onClick={() => setPreviewVideoState({ isOpen: false, url: '', title: '', poster: '' })}>
+                    <div className="w-full max-w-6xl bg-[#0a0c10] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl animate-fade-in-up flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-[#161b22]">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <PlayIcon className="w-5 h-5 text-[#00cba9]"/>
+                                معاينة: {previewVideoState.title}
+                            </h3>
+                            <button onClick={() => setPreviewVideoState({ isOpen: false, url: '', title: '', poster: '' })} className="text-gray-400 hover:text-white transition-colors bg-gray-800 hover:bg-red-500/20 p-2 rounded-lg">
+                                <CloseIcon className="w-5 h-5"/>
+                            </button>
+                        </div>
+                        <div className="w-full aspect-video bg-black relative">
+                            <VideoPlayer 
+                                manualSrc={previewVideoState.url} 
+                                poster={previewVideoState.poster} 
+                                title={previewVideoState.title} 
+                                onClose={() => setPreviewVideoState({ isOpen: false, url: '', title: '', poster: '' })} 
+                            />
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

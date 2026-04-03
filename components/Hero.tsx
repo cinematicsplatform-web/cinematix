@@ -8,7 +8,7 @@ import { ClockIcon } from './icons/ClockIcon';
 
 interface HeroProps {
   contents: Content[];
-  onWatchNow: (content: Content) => void;
+  onWatchNow: (content: Content, seasonNumber?: number, episodeNumber?: number, isSoon?: boolean) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean; // تم الإضافة
   myList?: string[];
@@ -21,6 +21,7 @@ interface HeroProps {
   hideDescription?: boolean;
   disableVideo?: boolean; // Prop to disable background video playback
   isLoading?: boolean;
+  isSoonCarousel?: boolean;
 }
 
 const Hero: React.FC<HeroProps> = ({ 
@@ -37,7 +38,8 @@ const Hero: React.FC<HeroProps> = ({
     isNetflixRedTheme,
     hideDescription = false,
     disableVideo = false,
-    isLoading
+    isLoading,
+    isSoonCarousel
 }) => {
     const [unboundedIndex, setUnboundedIndex] = useState(0);
     const [isDirectJump, setIsDirectJump] = useState(false);
@@ -300,9 +302,20 @@ const Hero: React.FC<HeroProps> = ({
         >
             {contents.map((content, index) => {
                 const isActive = index === activeIndex;
+                const isEpisodic = content.type === 'series' || content.type === 'program';
+                const latestSeason = isEpisodic && content.seasons && content.seasons.length > 0
+                    ? isSoonCarousel
+                        ? [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
+                        : [...content.seasons].filter(season => season.status !== 'coming_soon' && !season.isUpcoming).sort((a, b) => b.seasonNumber - a.seasonNumber)[0] || [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
+                    : null;
+
+                const displayBackdrop = latestSeason?.backdrop || content.backdrop;
+                const displayMobileBackdrop = latestSeason?.mobileImageUrl || content.mobileBackdropUrl || displayBackdrop;
+                const displayLogo = latestSeason?.logoUrl || content.logoUrl;
+
                 const posX = content.mobileCropPositionX ?? content.mobileCropPosition ?? 50;
                 const posY = content.mobileCropPositionY ?? 50;
-                const flipBackdrop = content.flipBackdrop || false;
+                const flipBackdrop = latestSeason?.flipBackdrop ?? content.flipBackdrop ?? false;
                 const imgStyle: React.CSSProperties = { 
                     '--mob-x': `${posX}%`, 
                     '--mob-y': `${posY}%`,
@@ -312,8 +325,9 @@ const Hero: React.FC<HeroProps> = ({
                 const cropClass = content.enableMobileCrop ? 'mobile-custom-crop' : '';
 
                 let embedUrl = '';
-                if (isActive && content.trailerUrl && !disableVideo) {
-                    const videoId = getVideoId(content.trailerUrl);
+                const trailerUrl = latestSeason?.trailerUrl || content.trailerUrl;
+                if (isActive && trailerUrl && !disableVideo) {
+                    const videoId = getVideoId(trailerUrl);
                     if (videoId) {
                         const origin = typeof window !== 'undefined' ? window.location.origin : '';
                         embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${origin}`;
@@ -358,7 +372,7 @@ const Hero: React.FC<HeroProps> = ({
 
                             <div className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${shouldShowVideo ? 'opacity-0' : 'opacity-100'}`}>
                                 <img 
-                                    src={content.backdrop} 
+                                    src={displayBackdrop} 
                                     alt={content.title} 
                                     className="absolute inset-0 w-full h-full object-cover z-10 bg-only-desktop object-top"
                                     style={{ transform: flipBackdrop ? 'scaleX(-1)' : 'none' }}
@@ -366,7 +380,7 @@ const Hero: React.FC<HeroProps> = ({
                                     loading={isActive ? "eager" : "lazy"}
                                 />
                                 <img 
-                                    src={content.mobileBackdropUrl || content.backdrop} 
+                                    src={displayMobileBackdrop} 
                                     alt={content.title} 
                                     className={`absolute inset-0 w-full h-full object-cover z-10 bg-only-mobile ${cropClass} object-top`}
                                     style={imgStyle}
@@ -388,8 +402,8 @@ const Hero: React.FC<HeroProps> = ({
                                 )}
                                 
                                 <div className={`transition-all duration-700 ease-in-out transform origin-center md:origin-right ${shouldShowVideo ? 'translate-y-4 scale-75 mb-1 md:mb-2' : 'translate-y-0 scale-100 mb-1 md:mb-6'}`}>
-                                    {content.isLogoEnabled && content.logoUrl ? (
-                                        <img src={content.logoUrl} alt={content.title} className="w-auto h-auto max-w-[190px] md:max-w-[380px] max-h-[165px] md:max-h-[245px] object-contain drop-shadow-2xl mx-auto md:mx-0" draggable={false} />
+                                    {content.isLogoEnabled && displayLogo ? (
+                                        <img src={displayLogo} alt={content.title} className="w-auto h-auto max-w-[190px] md:max-w-[380px] max-h-[165px] md:max-h-[245px] object-contain drop-shadow-2xl mx-auto md:mx-0" draggable={false} />
                                     ) : (
                                         <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white drop-shadow-lg leading-tight">{content.title}</h1>
                                     )}
@@ -445,7 +459,7 @@ const Hero: React.FC<HeroProps> = ({
                                     </div>
                                 )}
                                 <div className="flex items-center gap-4 w-full justify-center md:justify-start relative z-40 mt-1 md:mt-2">
-                                    <ActionButtons onWatch={() => onWatchNow(content)} onToggleMyList={() => onToggleMyList(content.id)} isInMyList={!!myList?.includes(content.id)} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} showMyList={isLoggedIn} content={content} />
+                                    <ActionButtons onWatch={() => onWatchNow(content, undefined, undefined, isSoonCarousel)} onToggleMyList={() => onToggleMyList(content.id)} isInMyList={!!myList?.includes(content.id)} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} showMyList={isLoggedIn} content={content} isSoonOverride={isSoonCarousel} />
                                     {shouldShowVideo && (
                                         <button onClick={toggleMute} className="p-3.5 md:p-6 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group origin-center cursor-pointer" title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}>
                                             <SpeakerIcon isMuted={isMuted} className="h-6 w-6 md:h-9 md:w-9 text-white group-hover:scale-110 transition-transform" />
