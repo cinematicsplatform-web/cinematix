@@ -6,6 +6,8 @@ import { ChevronRightIcon } from './icons/ChevronRightIcon';
 import { SearchIcon } from './icons/SearchIcon';
 import AdPlacement from './AdPlacement';
 
+import { normalizeText } from '../utils/textUtils';
+
 interface CategoryPageProps {
   categoryTitle: string;
   allContent: Content[];
@@ -120,22 +122,22 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
     }
     else {
         // --- Smart Broad Filtering (Matches Search Behavior) ---
-        const lowerTerm = categoryTitle.toLowerCase();
+        const normalizedTerm = normalizeText(categoryTitle);
         content = content
             .filter(c => 
                 c.categories.includes(categoryTitle as Category) || 
                 (c.genres && (c.genres as string[]).includes(categoryTitle)) ||
-                c.title.toLowerCase().includes(lowerTerm) ||
-                (c.cast && c.cast.some(actor => actor.toLowerCase().includes(lowerTerm))) ||
-                (c.director && c.director.toLowerCase().includes(lowerTerm))
+                normalizeText(c.title).includes(normalizedTerm) ||
+                (c.cast && c.cast.some(actor => normalizeText(actor).includes(normalizedTerm))) ||
+                (c.director && normalizeText(c.director).includes(normalizedTerm))
             )
             .sort((a, b) => b.createdAt ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : 0);
     }
 
     // --- Internal Page Search Filtering ---
     if (searchQuery.trim()) {
-        const lowerQuery = searchQuery.trim().toLowerCase();
-        content = content.filter(c => c.title.toLowerCase().includes(lowerQuery));
+        const normalizedQuery = normalizeText(searchQuery);
+        content = content.filter(c => normalizeText(c.title).includes(normalizedQuery));
     }
 
     return { displayTitle: title, filteredContent: content, showRank: isRanked };

@@ -5,6 +5,7 @@ import { db, generateSlug } from '../../firebase';
 import type { Content, Season, Episode, Server } from '../../types';
 import { ContentType } from '../../types';
 import { SearchIcon, TableCellsIcon, ArrowUpTrayIcon, ExcelIcon, RefreshIcon, TrashIcon } from './AdminIcons';
+import { normalizeText } from '../../utils/textUtils';
 
 const API_KEY = 'b8d66e320b334f4d56728d98a7e39697';
 const LANG = 'ar-SA';
@@ -90,11 +91,11 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
         if (!searchTerm.trim()) return;
         setIsInternalLoading(true);
         try {
-            const queryLower = searchTerm.toLowerCase();
+            const normalizedQuery = normalizeText(searchTerm);
             const snap = await db.collection("content").get();
             const results = snap.docs
                 .map(d => ({ ...d.data(), id: d.id } as Content))
-                .filter(c => c.title.toLowerCase().includes(queryLower));
+                .filter(c => normalizeText(c.title).includes(normalizedQuery));
             
             setPagedContent(results);
         } catch (e) {

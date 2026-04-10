@@ -6,6 +6,7 @@ import { CloseIcon } from '../icons/CloseIcon';
 import { SearchIcon } from '../icons/SearchIcon';
 import DeleteConfirmationModal from '../DeleteConfirmationModal';
 import ToggleSwitch from '../ToggleSwitch';
+import { normalizeText } from '../../utils/textUtils';
 
 // --- PREMIUM ICONS ---
 const RadarIcon = (props: any) => (
@@ -368,8 +369,8 @@ const ScheduleEditorView: React.FC<{
 
     const filteredSuggestions = useMemo(() => {
         if (!searchQuery.trim()) return [];
-        const query = searchQuery.toLowerCase();
-        return allContent.filter(c => c.title.toLowerCase().includes(query)).slice(0, 5);
+        const normalizedQuery = normalizeText(searchQuery);
+        return allContent.filter(c => normalizeText(c.title).includes(normalizedQuery)).slice(0, 5);
     }, [allContent, searchQuery]);
 
     const handleSelectContent = (content: Content) => {

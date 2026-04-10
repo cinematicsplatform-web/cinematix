@@ -20,7 +20,18 @@ export const getAccessToken = async (serviceAccountJson: string): Promise<string
 
 export const sendFCMv1Message = async (token: string, notification: any, accessToken: string, projectId: string) => {
     const url = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
-    const message = { message: { token: token, notification: { title: notification.title, body: notification.body, image: notification.image }, data: notification.data || {} } };
+    const message = { 
+        message: { 
+            token: token, 
+            data: {
+                title: notification.title || '',
+                body: notification.body || '',
+                image: notification.image || '',
+                url: notification.data?.url || '/',
+                broadcastId: notification.data?.broadcastId || ''
+            }
+        } 
+    };
     const response = await fetch(url, { method: 'POST', headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(message) });
     if (!response.ok) { const err = await response.json(); throw new Error(JSON.stringify(err)); }
     return response.json();
