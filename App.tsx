@@ -656,6 +656,7 @@ const App: React.FC = () => {
           }
           let path = REVERSE_VIEW_PATHS[newView];
           if (newView === 'category' && category) path = `/category/${category}`;
+          else if (newView === 'personProfile' && params?.name) path = `/person/${params.name}`;
           
           if (newView === 'detail' && selectedContent) {
               const slug = selectedContent.slug || selectedContent.id;
@@ -753,6 +754,7 @@ const App: React.FC = () => {
 
   const handlePersonClick = (name: string) => {
     if (view !== 'personProfile') setReturnView(view);
+    setSelectedPersonName(name);
     handleSetView('personProfile', undefined, { name });
   };
 

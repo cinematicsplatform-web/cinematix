@@ -5,6 +5,8 @@ import { SearchIcon } from './icons/SearchIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { PlayIcon } from './icons/PlayIcon';
 
+import { normalizeText } from '../utils/textUtils';
+
 interface SearchPageProps {
     allContent: Content[];
     onSelectContent: (content: Content, seasonNumber?: number) => void;
@@ -32,7 +34,7 @@ const DISCOVER_CATEGORIES = [
     { name: 'رعب', image: 'https://shahid.mbc.net/mediaObject/d53069d1-63a3-4e89-9f41-0ae1220b7eab?width=150&version=1&type=avif&q=80' },
     { name: 'تركي مدبلج', image: 'https://shahid.mbc.net/mediaObject/c7e6b36b-1b50-4a22-bbef-05288dd2d511' },
     { name: 'مسرح', image: 'https://shahid.mbc.net/mediaObject/Curation_2024/Explore/Items/THEATRE_AR/original/THEATRE_AR.png' },
-    { name: 'قريباً', image: 'https://shahid.mbc.net/mediaObject/Curation_2024/Explore/Items/SOON_AR/original/SOON_AR.png' },
+    { name: 'قريباً', image: 'https://shahid.mbc.net/mediaObject/Curation_2024/Explore/Items/SOON_AR/original/SOON_AR.png', view: 'soon' },
 ];
 
 const SearchResultCard: React.FC<{ content: any; onClick: () => void }> = ({ content, onClick }) => {
@@ -112,13 +114,13 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
 
     const { results, relatedTags } = useMemo(() => {
         if (!query.trim()) return { results: [], relatedTags: [] };
-        const lowerQuery = query.toLowerCase();
+        const normalizedQuery = normalizeText(query);
         
         const matchedParents = allContent.filter(c => 
-            c.title.toLowerCase().includes(lowerQuery) || 
-            (c.cast && c.cast.some(actor => actor.toLowerCase().includes(lowerQuery))) ||
-            (c.genres && c.genres.some(g => g.toLowerCase().includes(lowerQuery))) ||
-            (c.categories && c.categories.some(cat => cat.toLowerCase().includes(lowerQuery)))
+            normalizeText(c.title).includes(normalizedQuery) || 
+            (c.cast && c.cast.some(actor => normalizeText(actor).includes(normalizedQuery))) ||
+            (c.genres && c.genres.some(g => normalizeText(g).includes(normalizedQuery))) ||
+            (c.categories && c.categories.some(cat => normalizeText(cat).includes(normalizedQuery)))
         );
 
         const explodedResults: any[] = [];
@@ -147,10 +149,10 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
 
         const tags = new Set<string>();
         matchedParents.forEach(c => {
-            if (c.title.toLowerCase().includes(lowerQuery)) tags.add(c.title);
-            if (c.cast) c.cast.forEach(actor => { if (actor.toLowerCase().includes(lowerQuery)) tags.add(actor); });
-            if (c.genres) c.genres.forEach(g => { if (g.toLowerCase().includes(lowerQuery)) tags.add(g); });
-            if (c.categories) c.categories.forEach(cat => { if (cat.toLowerCase().includes(lowerQuery)) tags.add(cat); });
+            if (normalizeText(c.title).includes(normalizedQuery)) tags.add(c.title);
+            if (c.cast) c.cast.forEach(actor => { if (normalizeText(actor).includes(normalizedQuery)) tags.add(actor); });
+            if (c.genres) c.genres.forEach(g => { if (normalizeText(g).includes(normalizedQuery)) tags.add(g); });
+            if (c.categories) c.categories.forEach(cat => { if (normalizeText(cat).includes(normalizedQuery)) tags.add(cat); });
         });
 
         return { results: explodedResults, relatedTags: Array.from(tags).slice(0, 10) };

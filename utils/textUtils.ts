@@ -4,7 +4,8 @@ export const normalizeText = (text: string): string => {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, ' ') // Collapse spaces
+    .replace(/[\u064B-\u065F\u0670]/g, '') // Remove diacritics (tashkeel)
     .replace(/[أإآ]/g, 'ا') // Unify Alef
-    .replace(/[ة]/g, 'h') // User requested 'h' for normalization
-    .replace(/[ى]/g, 'ي'); // Unify Yaa
+    .replace(/ة/g, 'ه') // Unify Taa Marbuta to Haa
+    .replace(/ى/g, 'ي'); // Unify Alif Maqsura to Yaa
 };

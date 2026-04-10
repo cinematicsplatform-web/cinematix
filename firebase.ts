@@ -87,15 +87,22 @@ export const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
 export const Timestamp = firebase.firestore.Timestamp;
 
 export let messaging: firebase.messaging.Messaging | null = null;
-if (typeof window !== 'undefined') {
-    try {
-      if (firebase.messaging.isSupported()) {
-        messaging = firebase.messaging();
-      }
-    } catch (e) {
-      // SILENT
+
+const initMessaging = async () => {
+    if (typeof window !== 'undefined') {
+        try {
+            const supported = await firebase.messaging.isSupported();
+            if (supported) {
+                messaging = firebase.messaging();
+            }
+        } catch (e) {
+            // SILENT
+        }
     }
-}
+};
+
+// Initialize messaging
+initMessaging();
 
 const safeGetTimestamp = (timestamp: any): string => {
     if (timestamp && typeof timestamp.toDate === 'function') {
@@ -331,15 +338,27 @@ export const deleteUserFromFirestore = async (userId: string): Promise<void> => 
  * تم تحديثها لتسجيل التوكن في مجموعة عامة لضمان وصول الإشعارات للجميع (زوار وأعضاء)
  */
 export const requestNotificationPermission = async (userId?: string) => {
-    if (!messaging || typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return;
+    
     try {
+        const supported = await firebase.messaging.isSupported();
+        if (!supported) return;
+        
+        if (!messaging) {
+            messaging = firebase.messaging();
+        }
+        
         if (Notification.permission === 'denied') {
             return;
         }
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
+            await navigator.serviceWorker.register('/sw.js');
+            const registration = await navigator.serviceWorker.ready;
+            
             const token = await messaging.getToken({
-                vapidKey: 'BHy3zaLsQsTzR23TNBbBRyVzz2OjySYt4k62K8TEOk0Wceez6uao-THJIzAaRzkSN7czJPLfMfaWfsbRt_rN9VQ' 
+                vapidKey: 'BHy3zaLsQsTzR23TNBbBRyVzz2OjySYt4k62K8TEOk0Wceez6uao-THJIzAaRzkSN7czJPLfMfaWfsbRt_rN9VQ',
+                serviceWorkerRegistration: registration
             });
             
             if (token) {

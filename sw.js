@@ -1,4 +1,6 @@
 
+importScripts('/firebase-messaging-sw.js');
+
 // Caching for Offline and Performance
 const CACHE_NAME = 'cinematix-v5-static';
 

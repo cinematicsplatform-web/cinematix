@@ -7,7 +7,8 @@ export const config = {
   // - _next/image (image optimization files - if applicable)
   // - favicon.ico (favicon file)
   // - sw.js (service worker)
-  matcher: '/((?!api|_next/static|_next/image|favicon.ico|sw.js).*)',
+  // - firebase-messaging-sw.js (service worker)
+  matcher: '/((?!api|_next/static|_next/image|favicon.ico|sw.js|firebase-messaging-sw.js).*)',
 };
 
 export default function middleware(request: Request) {
