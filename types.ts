@@ -133,6 +133,7 @@ export interface Content {
   slug?: string; 
   isUpcoming?: boolean; 
   flipBackdrop?: boolean; 
+  views?: number;
 }
 
 export interface Person {
