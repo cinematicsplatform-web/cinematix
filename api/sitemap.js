@@ -61,14 +61,41 @@ module.exports = async (req, res) => {
       { url: '/', priority: '1.0', changefreq: 'daily' },
       { url: '/movies', priority: '0.9', changefreq: 'daily' },
       { url: '/series', priority: '0.9', changefreq: 'daily' },
-      { url: '/kids', priority: '0.8', changefreq: 'weekly' },
-      { url: '/ramadan', priority: '0.8', changefreq: 'weekly' },
+      { url: '/kids', priority: '0.9', changefreq: 'daily' },
+      { url: '/ramadan', priority: '0.9', changefreq: 'daily' },
       { url: '/soon', priority: '0.8', changefreq: 'weekly' },
-      { url: '/app-download', priority: '0.7', changefreq: 'monthly' }
+      { url: '/newly-added', priority: '0.9', changefreq: 'daily' },
+      { url: '/top-10', priority: '0.9', changefreq: 'daily' },
+      { url: '/search', priority: '0.7', changefreq: 'daily' },
+      { url: '/install-app', priority: '0.6', changefreq: 'monthly' },
+      { url: '/app-download', priority: '0.6', changefreq: 'monthly' }
     ];
 
     // جلب كافة المحتويات من Firestore مرتبة حسب آخر تحديث
     const snapshot = await db.collection('content').orderBy('updatedAt', 'desc').get();
+    
+    // استخراج جميع التصنيفات الفريدة من المحتوى
+    const categoriesSet = new Set();
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.categories && Array.isArray(data.categories)) {
+        data.categories.forEach(cat => categoriesSet.add(cat));
+      }
+      if (data.genres && Array.isArray(data.genres)) {
+        data.genres.forEach(g => categoriesSet.add(g));
+      }
+    });
+
+    categoriesSet.forEach(cat => {
+      if (cat) {
+        staticRoutes.push({
+          url: `/category/${encodeURIComponent(cat.toString())}`,
+          priority: '0.8',
+          changefreq: 'daily'
+        });
+      }
+    });
     
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 

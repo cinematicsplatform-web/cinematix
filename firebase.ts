@@ -353,7 +353,7 @@ export const requestNotificationPermission = async (userId?: string) => {
         }
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            await navigator.serviceWorker.register('/sw.js');
+            await navigator.serviceWorker.register('/firebase-messaging-sw.js');
             const registration = await navigator.serviceWorker.ready;
             
             const token = await messaging.getToken({

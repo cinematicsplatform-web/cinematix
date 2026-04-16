@@ -74,6 +74,8 @@ const VIEW_PATHS: Record<string, View> = {
     '/kids': 'kids',
     '/ramadan': 'ramadan',
     '/soon': 'soon',
+    '/newly-added': 'category',
+    '/top-10': 'category',
     '/admin': 'admin',
     '/login': 'login',
     '/register': 'register',
@@ -89,6 +91,7 @@ const VIEW_PATHS: Record<string, View> = {
     '/welcome': 'welcome',
     '/notifications': 'notifications',
     '/app-download': 'appDownload',
+    '/install-app': 'appDownload',
     '/people': 'people',
     '/person': 'personProfile',
     '/ad-gate': 'adGate',
@@ -207,6 +210,8 @@ const App: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>(() => {
       const path = decodeURIComponent(window.location.pathname);
       if (path.startsWith('/category/')) return path.split('/category/')[1];
+      if (path === '/newly-added') return 'newly-added';
+      if (path === '/top-10') return 'top-10';
       return '';
   });
 
@@ -655,8 +660,11 @@ const App: React.FC = () => {
               setDownloadParams(null);
           }
           let path = REVERSE_VIEW_PATHS[newView];
-          if (newView === 'category' && category) path = `/category/${category}`;
-          else if (newView === 'personProfile' && params?.name) path = `/person/${params.name}`;
+          if (newView === 'category' && category) {
+              if (category === 'newly-added') path = '/newly-added';
+              else if (category === 'top-10') path = '/top-10';
+              else path = `/category/${category}`;
+          } else if (newView === 'personProfile' && params?.name) path = `/person/${params.name}`;
           
           if (newView === 'detail' && selectedContent) {
               const slug = selectedContent.slug || selectedContent.id;

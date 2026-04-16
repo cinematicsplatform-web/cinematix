@@ -7,7 +7,7 @@ import './index.css';
 // Register Service Worker for PWA and Firebase Messaging
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(registration => {
+    navigator.serviceWorker.register('/firebase-messaging-sw.js').then(registration => {
       console.log('SW registered successfully:', registration.scope);
     }).catch(registrationError => {
       console.debug('SW registration failed:', registrationError);
