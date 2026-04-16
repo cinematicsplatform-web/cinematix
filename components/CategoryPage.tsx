@@ -5,6 +5,7 @@ import ContentCard from './ContentCard';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
 import { SearchIcon } from './icons/SearchIcon';
 import AdPlacement from './AdPlacement';
+import SEO from './SEO';
 
 import { normalizeText } from '../utils/textUtils';
 
@@ -120,6 +121,16 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
             .filter(c => c.categories.includes('رمضان'))
             .sort((a, b) => b.createdAt ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : 0);
     }
+    else if (categoryTitle === 'newly-added') {
+        title = 'أحدث الإضافات (الكل)';
+        content = content.sort((a, b) => b.createdAt ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : 0);
+    }
+    else if (categoryTitle === 'top-10') {
+        title = 'الأكثر مشاهدة TOP 10';
+        isRanked = true;
+        // In a real scenario we use actual view counts. Here we sort by views.
+        content = content.sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 50);
+    }
     else {
         // --- Smart Broad Filtering (Matches Search Behavior) ---
         const normalizedTerm = normalizeText(categoryTitle);
@@ -155,6 +166,12 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[var(--bg-body)] text-white animate-fade-in-up">
+      <SEO 
+          title={`${displayTitle} - سينماتيكس`} 
+          description={`تصفح وشاهد أفضل ${displayTitle} على سينماتيكس. نوفر لك قائمة متجددة باستمرار لأحدث العروض المميزة بجودة عالية.`}
+          keywords={`سينماتيكس, افلام, مسلسلات, ${displayTitle}`}
+          url={`/category/${encodeURIComponent(categoryTitle)}`}
+      />
       
       {/* Sticky Header Section */}
       <div className="sticky top-0 z-50 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 pb-4 pt-6 px-4 md:px-8 shadow-lg w-full">

@@ -96,7 +96,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
     const displayBackdrop = currentSeason?.backdrop || content?.backdrop || '';
     const displayDescription = currentSeason?.description || content?.description || '';
 
-    const canonicalUrl = isEpisodic ? `/${content.type}/${content?.slug || content?.id}` : `/watch/movie/${content?.slug || content?.id}`;
+    const canonicalUrl = isEpisodic ? `/watch/${content?.slug || content?.id}/الموسم${seasonNumber}/الحلقة${episodeNumber}` : `/watch/movie/${content?.slug || content?.id}`;
 
     const activeServers = useMemo(() => {
         const servers = selectedEpisode?.servers || [];
@@ -172,7 +172,6 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 image={selectedEpisode?.thumbnail || currentSeason?.poster || content?.poster}
                 // Corrected: canonicalPath -> canonicalUrl
                 url={canonicalUrl}
-                noIndex={true} 
             />
 
             <div className="sticky top-0 z-50 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 px-4 h-16 flex items-center justify-between shadow-lg">

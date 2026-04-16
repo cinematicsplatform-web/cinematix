@@ -4,6 +4,7 @@ import { ContentType } from '../types';
 import { SearchIcon } from './icons/SearchIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { PlayIcon } from './icons/PlayIcon';
+import SEO from './SEO';
 
 import { normalizeText } from '../utils/textUtils';
 
@@ -170,6 +171,11 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
 
     return (
         <div className="min-h-screen flex flex-col bg-[var(--bg-body)] animate-fade-in pb-20">
+            <SEO 
+                title="البحث - سينماتيكس"
+                description="ابحث عن أفلامك ومسلسلاتك المفضلة على سينماتيكس واستمتع بالمشاهدة الحصرية."
+                url="/search"
+            />
             <div className="relative flex flex-col w-full h-full">
                 {/* Header */}
                 <div className="bg-[var(--bg-card)] border-b border-white/5 shadow-xl z-20">
