@@ -280,6 +280,23 @@ const ServersManagementTab: React.FC<ServersManagementTabProps> = ({ addToast, o
         if (!formattedDomain.startsWith('http')) formattedDomain = 'https://' + formattedDomain;
         if (!formattedDomain.endsWith('/')) formattedDomain += '/';
 
+        // Check for duplicates
+        const normalizedName = name.trim().toLowerCase();
+        const checkClean = formattedDomain.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase();
+
+        const duplicateMatched = servers.find(gs => {
+            if (editingId && gs.id === editingId) return false;
+            const isNameMatch = gs.name.trim().toLowerCase() === normalizedName;
+            const gsClean = gs.baseDomain.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase();
+            const isDomainMatch = gsClean === checkClean;
+            return isNameMatch || isDomainMatch;
+        });
+
+        if (duplicateMatched) {
+            addToast(`عذراً، هذا السيرفر أو النطاق مضاف بالفعل مسبقاً باسم: "${duplicateMatched.name}" وبنطاق "${duplicateMatched.baseDomain}"`, "error");
+            return;
+        }
+
         setSubmitting(true);
         try {
             if (editingId) {
@@ -368,6 +385,38 @@ const ServersManagementTab: React.FC<ServersManagementTabProps> = ({ addToast, o
                                         </button>
                                     </div>
                                 )}
+
+                                {/* Live duplicate detector block */}
+                                {(() => {
+                                    if (!name.trim() && !baseDomain.trim()) return null;
+                                    const normalizedName = name.trim().toLowerCase();
+                                    let domainToCheck = baseDomain.trim();
+                                    if (domainToCheck) {
+                                        if (!domainToCheck.startsWith('http')) domainToCheck = 'https://' + domainToCheck;
+                                        if (!domainToCheck.endsWith('/')) domainToCheck += '/';
+                                    }
+                                    const matched = servers.find(gs => {
+                                        if (editingId && gs.id === editingId) return false;
+                                        const isNameMatch = normalizedName ? gs.name.trim().toLowerCase() === normalizedName : false;
+                                        const gsClean = gs.baseDomain.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase();
+                                        const checkClean = domainToCheck ? domainToCheck.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase() : '';
+                                        const isDomainMatch = domainToCheck && domainToCheck !== 'https://' ? gsClean === checkClean : false;
+                                        return isNameMatch || isDomainMatch;
+                                    });
+
+                                    if (!matched) return null;
+                                    return (
+                                        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 p-4 rounded-xl text-xs flex flex-col gap-2 font-bold animate-pulse mt-3 col-span-2">
+                                            <span className="flex items-center gap-1.5">
+                                                <AlertTriangle className="w-4.5 h-4.5 text-amber-400 shrink-0" />
+                                                <span>تنبيه: هذا السيرفر مضاف بالفعل بالأسفل!</span>
+                                            </span>
+                                            <p className="text-[11px] text-gray-300">
+                                                موجود مسبقاً باسم: <span className="text-white font-black">"{matched.name}"</span> وبدومين أساسي: <code className="text-emerald-400 bg-emerald-500/10 px-1 py-0.5 rounded font-mono">{matched.baseDomain}</code>
+                                            </p>
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
                             <div className="flex gap-2 pt-2">

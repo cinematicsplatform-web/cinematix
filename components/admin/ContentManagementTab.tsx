@@ -7,6 +7,22 @@ import { ContentType } from '../../types';
 import { SearchIcon, TableCellsIcon, ArrowUpTrayIcon, ExcelIcon, RefreshIcon, TrashIcon } from './AdminIcons';
 import { normalizeText } from '../../utils/textUtils';
 import { BouncingDotsLoader } from '../BouncingDotsLoader';
+import { 
+    Filter, 
+    Calendar, 
+    Film, 
+    Tv, 
+    Play, 
+    Moon, 
+    Link, 
+    Download, 
+    SlidersHorizontal, 
+    AlertCircle, 
+    Info, 
+    ChevronDown,
+    XCircle,
+    RotateCcw
+} from 'lucide-react';
 
 const API_KEY = 'b8d66e320b334f4d56728d98a7e39697';
 const LANG = 'ar-SA';
@@ -40,80 +56,184 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
     refreshKey
 }) => { 
     const [searchTerm, setSearchTerm] = useState(''); 
-    const [pagedContent, setPagedContent] = useState<Content[]>([]);
+    const [allContent, setAllContent] = useState<Content[] | null>(null);
     const [isInternalLoading, setIsInternalLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const [totalContentCount, setTotalContentCount] = useState(0);
-    
+    const [localRefreshKey, setLocalRefreshKey] = useState(0);
+
+    // Filter states
+    const [activeFilter, setActiveFilter] = useState<'all' | 'arabic-movies' | 'arabic-series' | 'ramadan' | 'no-watch-links' | 'no-download-links'>('all');
+    const [selectedYear, setSelectedYear] = useState<string>('all');
+    const [selectedType, setSelectedType] = useState<string>('all');
+    const [sortBy, setSortBy] = useState<'recently-updated' | 'newest' | 'oldest' | 'rating' | 'alphabetical'>('recently-updated');
+
     const itemsPerPage = 20;
     const pagesPerGroup = 10;
-    const currentGroup = Math.floor((currentPage - 1) / pagesPerGroup);
     const excelInputRef = useRef<HTMLInputElement>(null); 
     const [processingExcel, setProcessingExcel] = useState(false); 
     const [progress, setProgress] = useState(''); 
 
-    const fetchMetadata = useCallback(async () => {
-        try {
-            const snap = await db.collection("content").get();
-            setTotalContentCount(snap.size);
-        } catch (e) { console.error(e); }
-    }, []);
-
-    const fetchPage = useCallback(async (page: number) => {
-        setIsInternalLoading(true);
-        try {
-            const query = db.collection("content").orderBy("updatedAt", "desc");
-            const offset = (page - 1) * itemsPerPage;
-            
-            let finalQuery;
-            if (offset > 0) {
-                const skipSnapshot = await query.limit(offset).get();
-                const lastVisible = skipSnapshot.docs[skipSnapshot.docs.length - 1];
-                if (lastVisible) {
-                    finalQuery = query.startAfter(lastVisible).limit(itemsPerPage);
-                } else {
-                    finalQuery = query.limit(itemsPerPage);
-                }
-            } else {
-                finalQuery = query.limit(itemsPerPage);
-            }
-
-            const snap = await finalQuery.get();
-            const docs = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Content[];
-            setPagedContent(docs);
-        } catch (e) {
-            console.error(e);
-            addToast("خطأ في جلب الصفحة", "error");
+    // Helper to evaluate watch/download linkspresence
+    const hasWatchLinks = (c: Content) => {
+        if (c.type === 'movie' || c.type === 'program' || c.type === 'play' || c.type === 'concert') {
+            return !!(c.servers && c.servers.some(s => s.url && s.url.trim() !== ''));
+        } else if (c.type === 'series') {
+            return !!(c.seasons && c.seasons.some(s => s.episodes && s.episodes.some(ep => ep.servers && ep.servers.some(srv => srv.url && srv.url.trim() !== ''))));
         }
-        setIsInternalLoading(false);
-    }, [itemsPerPage, addToast]);
+        return false;
+    };
 
-    const handleGlobalSearch = useCallback(async () => {
-        if (!searchTerm.trim()) return;
-        setIsInternalLoading(true);
-        try {
-            const normalizedQuery = normalizeText(searchTerm);
-            const snap = await db.collection("content").get();
-            const results = snap.docs
-                .map(d => ({ ...d.data(), id: d.id } as Content))
-                .filter(c => normalizeText(c.title).includes(normalizedQuery));
-            
-            setPagedContent(results);
-        } catch (e) {
-            console.error(e);
+    const hasDownloadLinks = (c: Content) => {
+        if (c.type === 'movie' || c.type === 'program' || c.type === 'play' || c.type === 'concert') {
+            return !!(c.servers && c.servers.some(s => s.downloadUrl && s.downloadUrl.trim() !== ''));
+        } else if (c.type === 'series') {
+            return !!(c.seasons && c.seasons.some(s => s.episodes && s.episodes.some(ep => ep.servers && ep.servers.some(srv => srv.downloadUrl && srv.downloadUrl.trim() !== ''))));
         }
-        setIsInternalLoading(false);
-    }, [searchTerm]);
+        return false;
+    };
 
-    // إعادة الجلب عند تغيير الصفحة، مصطلح البحث، أو مفتاح التحديث
+    // Load entire database once on mount/refresh to build smart localized indexing/filters
     useEffect(() => {
-        fetchMetadata();
-        if (searchTerm.trim() === '') {
-            fetchPage(currentPage);
-        } else {
-            handleGlobalSearch();
+        const loadAll = async () => {
+            setIsInternalLoading(true);
+            try {
+                const snap = await db.collection("content").get();
+                const docs = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Content[];
+                setAllContent(docs);
+            } catch (e) {
+                console.error("Error fetching content:", e);
+                addToast("خطأ في جلب البيانات من السيرفر", "error");
+            }
+            setIsInternalLoading(false);
+        };
+        loadAll();
+    }, [refreshKey, localRefreshKey, addToast]);
+
+    const uniqueYears = React.useMemo(() => {
+        if (!allContent) return [];
+        const yearsSet = new Set<number>();
+        allContent.forEach(c => {
+            if (c.releaseYear) {
+                yearsSet.add(c.releaseYear);
+            }
+        });
+        return Array.from(yearsSet).sort((a, b) => b - a).map(String);
+    }, [allContent]);
+
+    const filterCounts = React.useMemo(() => {
+        const counts = {
+            all: 0,
+            'arabic-movies': 0,
+            'arabic-series': 0,
+            ramadan: 0,
+            'no-watch-links': 0,
+            'no-download-links': 0,
+        };
+        if (!allContent) return counts;
+
+        counts.all = allContent.length;
+        allContent.forEach(c => {
+            if (c.type === 'movie' && c.categories && c.categories.includes('افلام عربية')) {
+                counts['arabic-movies']++;
+            }
+            if (c.type === 'series' && c.categories && c.categories.includes('مسلسلات عربية')) {
+                counts['arabic-series']++;
+            }
+            if (c.categories && (
+                c.categories.includes('رمضان') || 
+                c.categories.includes('حصرياً لرمضان') || 
+                c.categories.includes('برامج رمضان') || 
+                c.categories.includes('مسلسلات رمضان')
+            )) {
+                counts.ramadan++;
+            }
+            if (!hasWatchLinks(c)) {
+                counts['no-watch-links']++;
+            }
+            if (!hasDownloadLinks(c)) {
+                counts['no-download-links']++;
+            }
+        });
+        return counts;
+    }, [allContent]);
+
+    const processedFilteredContent = React.useMemo(() => {
+        if (!allContent) return [];
+
+        let result = [...allContent];
+
+        // 1. Title Search Indexing
+        if (searchTerm.trim() !== '') {
+            const normalizedQuery = normalizeText(searchTerm);
+            result = result.filter(c => normalizeText(c.title).includes(normalizedQuery));
         }
-    }, [currentPage, searchTerm, refreshKey, fetchPage, handleGlobalSearch, fetchMetadata]);
+
+        // 2. Tab Filter Presets
+        if (activeFilter === 'arabic-movies') {
+            result = result.filter(c => c.type === 'movie' && c.categories && c.categories.includes('افلام عربية'));
+        } else if (activeFilter === 'arabic-series') {
+            result = result.filter(c => c.type === 'series' && c.categories && c.categories.includes('مسلسلات عربية'));
+        } else if (activeFilter === 'ramadan') {
+            result = result.filter(c => c.categories && (
+                c.categories.includes('رمضان') || 
+                c.categories.includes('حصرياً لرمضان') || 
+                c.categories.includes('برامج رمضان') || 
+                c.categories.includes('مسلسلات رمضان')
+            ));
+        } else if (activeFilter === 'no-watch-links') {
+            result = result.filter(c => !hasWatchLinks(c));
+        } else if (activeFilter === 'no-download-links') {
+            result = result.filter(c => !hasDownloadLinks(c));
+        }
+
+        // 3. Year Filter
+        if (selectedYear !== 'all') {
+            const yr = parseInt(selectedYear);
+            result = result.filter(c => c.releaseYear === yr);
+        }
+
+        // 4. Content Type Filter
+        if (selectedType !== 'all') {
+            result = result.filter(c => c.type === selectedType);
+        }
+
+        // 5. Intelligent Multi-Criteria Sort sorting
+        result.sort((a, b) => {
+            if (sortBy === 'recently-updated') {
+                const timeA = new Date(a.updatedAt || a.createdAt).getTime();
+                const timeB = new Date(b.updatedAt || b.createdAt).getTime();
+                return timeB - timeA;
+            } else if (sortBy === 'newest') {
+                return (b.releaseYear || 0) - (a.releaseYear || 0);
+            } else if (sortBy === 'oldest') {
+                return (a.releaseYear || 0) - (b.releaseYear || 0);
+            } else if (sortBy === 'rating') {
+                return (b.rating || 0) - (a.rating || 0);
+            } else if (sortBy === 'alphabetical') {
+                return a.title.localeCompare(b.title, 'ar');
+            }
+            return 0;
+        });
+
+        return result;
+    }, [allContent, searchTerm, activeFilter, selectedYear, selectedType, sortBy]);
+
+    const totalItems = processedFilteredContent.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+    // Self-correcting Page Limits
+    useEffect(() => {
+        if (currentPage > totalPages && totalPages > 0) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const pagedItems = React.useMemo(() => {
+        return processedFilteredContent.slice(startIndex, startIndex + itemsPerPage);
+    }, [processedFilteredContent, startIndex, itemsPerPage]);
+
+    const currentGroup = Math.floor((currentPage - 1) / pagesPerGroup);
 
     const generateExcelTemplate = () => { const moviesHeader = ["TMDB_ID", "Title", "Description", "Year", "Rating", "Genres", "Poster_URL", "Backdrop_URL", "Logo_URL", "Watch_Server_1", "Watch_Server_2", "Watch_Server_3", "Watch_Server_4", "Download_Link"]; const episodesHeader = ["Series_TMDB_ID", "Series_Name", "Season_Number", "Episode_Number", "Episode_Title", "Watch_Server_1", "Watch_Server_2", "Download_Link"]; const wb = XLSX.utils.book_new(); const wsMovies = XLSX.utils.aoa_to_sheet([moviesHeader]); const wsEpisodes = XLSX.utils.aoa_to_sheet([episodesHeader]); XLSX.utils.book_append_sheet(wb, wsMovies, "Movies"); XLSX.utils.book_append_sheet(wb, wsEpisodes, "Episodes"); XLSX.writeFile(wb, "cinematix_import_template.xlsx"); }; 
     const fetchTMDBData = async (id: string, type: 'movie' | 'tv') => { if (!id) return null; try { const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&language=${LANG}&append_to_response=images,credits`); if (!res.ok) return null; return await res.json(); } catch (e) { console.error("TMDB Fetch Error:", e); return null; } }; 
@@ -279,7 +399,8 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                 } 
                 addToast('تم استيراد البيانات من Excel بنجاح!', 'success'); 
                 onBulkSuccess(); 
-                fetchPage(1); 
+                setLocalRefreshKey(prev => prev + 1);
+                setCurrentPage(1);
             } catch (err) { 
                 console.error("Excel Import Error:", err); 
                 addToast('حدث خطأ أثناء معالجة ملف Excel.', 'error'); 
@@ -292,7 +413,6 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
         reader.readAsArrayBuffer(file); 
     }; 
     
-    const totalPages = Math.ceil(totalContentCount / itemsPerPage);
     const pageNumbersInGroup = Array.from(
         { length: Math.min(pagesPerGroup, totalPages - currentGroup * pagesPerGroup) },
         (_, i) => currentGroup * pagesPerGroup + i + 1
@@ -307,7 +427,7 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                 <div className="relative w-full md:w-auto md:min-w-[350px]">
                     <input 
                         type="text" 
-                        placeholder="ابحث في كامل قاعدة البيانات..." 
+                        placeholder="ابحث بالاسم في كامل قاعدة البيانات..." 
                         value={searchTerm} 
                         onChange={(e) => {
                             setSearchTerm(e.target.value);
@@ -324,24 +444,259 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                     <button onClick={onNew} className="flex-1 md:flex-none bg-gradient-to-r from-[#00A7F8] to-[#00FFB0] text-black font-extrabold py-3 px-8 rounded-xl hover:shadow-[0_0_20px_rgba(0,167,248,0.4)] transition-all transform hover:scale-105 whitespace-nowrap">+ إضافة محتوى</button>
                 </div>
             </div>
-            {processingExcel && (<div className="mb-6 bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 animate-pulse shadow-lg"><div className="flex justify-between mb-3 text-sm text-[#00A7F8] font-bold"><span>جاري الاستيرار...</span><span>{progress}</span></div><div className="w-full bg-gray-800 rounded-full h-3"><div className="bg-[#00A7F8] h-3 rounded-full w-2/3 transition-all duration-500 shadow-[0_0_10px_#00A7F8]"></div></div><p className="text-xs text-gray-500 mt-3 text-center">الرجاء عدم إغلاق الصفحة حتى تكتمل العملية.</p></div>)}
+
+            {/* لوحة الفلاتر الذكية والشاملة */}
+            <div className="bg-[#111827] border border-gray-800 rounded-3xl p-6 mb-8 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-[#00A7F8]/5 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#00FFB0]/5 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div className="relative z-10">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-gray-800/85 pb-4">
+                        <div className="flex items-center gap-3">
+                            <Filter className="w-5 h-5 text-[#00A7F8]" />
+                            <h2 className="text-white font-bold text-base md:text-lg">الفلترة الذكية والتصنيف</h2>
+                        </div>
+                        <span className="text-xs bg-gray-800/80 text-gray-300 px-3 py-1 rounded-full font-bold border border-gray-700/55 self-start sm:self-center">
+                            إجمالي عناصر النظام: {allContent?.length || 0}
+                        </span>
+                    </div>
+
+                    {/* أولاً: التبويبات السريعة للفلترة والأعداد */}
+                    <div className="flex gap-2 pb-4 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap md:flex-wrap items-center">
+                        <button
+                            type="button"
+                            onClick={() => { setActiveFilter('all'); setCurrentPage(1); }}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all border cursor-pointer ${
+                                activeFilter === 'all'
+                                    ? 'bg-gradient-to-r from-[#00A7F8] to-[#00A7F8]/80 text-white border-transparent shadow-lg shadow-[#00A7F8]/20'
+                                    : 'bg-[#1f2937]/50 text-gray-400 border-gray-800 hover:text-white hover:bg-[#1f2937]'
+                            }`}
+                        >
+                            <span>الكل</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${activeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-800 text-gray-400'}`}>
+                                {filterCounts.all}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => { setActiveFilter('arabic-movies'); setCurrentPage(1); }}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all border cursor-pointer ${
+                                activeFilter === 'arabic-movies'
+                                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-transparent shadow-lg shadow-blue-500/20'
+                                    : 'bg-[#1f2937]/50 text-blue-400 border-gray-800 hover:text-blue-300 hover:bg-[#1f2937]'
+                            }`}
+                        >
+                            <Film className="w-4 h-4" />
+                            <span>أفلام عربية</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${activeFilter === 'arabic-movies' ? 'bg-white/20 text-white' : 'bg-gray-800 text-blue-400'}`}>
+                                {filterCounts['arabic-movies']}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => { setActiveFilter('arabic-series'); setCurrentPage(1); }}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all border cursor-pointer ${
+                                activeFilter === 'arabic-series'
+                                    ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-transparent shadow-lg shadow-purple-500/20'
+                                    : 'bg-[#1f2937]/50 text-purple-400 border-gray-800 hover:text-purple-300 hover:bg-[#1f2937]'
+                            }`}
+                        >
+                            <Tv className="w-4 h-4" />
+                            <span>مسلسلات عربية</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${activeFilter === 'arabic-series' ? 'bg-white/20 text-white' : 'bg-gray-800 text-purple-400'}`}>
+                                {filterCounts['arabic-series']}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => { setActiveFilter('ramadan'); setCurrentPage(1); }}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all border cursor-pointer ${
+                                activeFilter === 'ramadan'
+                                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white border-transparent shadow-lg shadow-amber-500/20'
+                                    : 'bg-[#1f2937]/50 text-amber-500 border-gray-800 hover:text-amber-400 hover:bg-[#1f2937]'
+                            }`}
+                        >
+                            <Moon className="w-4 h-4" />
+                            <span>محتوى رمضان</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${activeFilter === 'ramadan' ? 'bg-white/20 text-white' : 'bg-gray-800 text-amber-400'}`}>
+                                {filterCounts.ramadan}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => { setActiveFilter('no-watch-links'); setCurrentPage(1); }}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all border cursor-pointer ${
+                                activeFilter === 'no-watch-links'
+                                    ? 'bg-gradient-to-r from-rose-500 to-rose-600 text-white border-transparent shadow-lg shadow-rose-500/20'
+                                    : 'bg-[#1f2937]/50 text-rose-400 border-gray-800 hover:text-rose-300 hover:bg-[#1f2937]'
+                            }`}
+                        >
+                            <Play className="w-4 h-4 rotate-180" />
+                            <span>أعمال بدون روابط مشاهدة</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${activeFilter === 'no-watch-links' ? 'bg-white/20 text-white' : 'bg-gray-800 text-rose-400'}`}>
+                                {filterCounts['no-watch-links']}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => { setActiveFilter('no-download-links'); setCurrentPage(1); }}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all border cursor-pointer ${
+                                activeFilter === 'no-download-links'
+                                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white border-transparent shadow-lg shadow-red-600/20'
+                                    : 'bg-[#1f2937]/50 text-red-500 border-gray-800 hover:text-red-300 hover:bg-[#1f2937]'
+                            }`}
+                        >
+                            <Download className="w-4 h-4" />
+                            <span>أعمال بدون روابط تحميل</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${activeFilter === 'no-download-links' ? 'bg-white/20 text-white' : 'bg-gray-800 text-red-400'}`}>
+                                {filterCounts['no-download-links']}
+                            </span>
+                        </button>
+                    </div>
+
+                    {/* ثانياً: الفلترة الدقيقة (النوع، السنة، والترتيب الذكي) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-800/50">
+                        {/* فلتر نوع المحتوى */}
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs text-gray-400 font-bold flex items-center gap-1.5">
+                                <SlidersHorizontal className="w-3.5 h-3.5 text-[#00A7F8]" />
+                                نوع العمل
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={selectedType}
+                                    onChange={(e) => { setSelectedType(e.target.value); setCurrentPage(1); }}
+                                    className="w-full bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl px-4 py-2.5 pl-10 text-xs md:text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-[#00A7F8] appearance-none cursor-pointer"
+                                >
+                                    <option value="all">كل الأنواع والأشكال</option>
+                                    <option value="movie">أفلام</option>
+                                    <option value="series">مسلسلات</option>
+                                    <option value="program">برامج تلفزيونية</option>
+                                    <option value="play">مسرحيات</option>
+                                    <option value="concert">حفلات</option>
+                                </select>
+                                <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4 pointer-events-none" />
+                            </div>
+                        </div>
+
+                        {/* فلتر السنة */}
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs text-gray-400 font-bold flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-[#00A7F8]" />
+                                سنة الإنتاج والصدور
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={selectedYear}
+                                    onChange={(e) => { setSelectedYear(e.target.value); setCurrentPage(1); }}
+                                    className="w-full bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl px-4 py-2.5 pl-10 text-xs md:text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-[#00A7F8] appearance-none cursor-pointer"
+                                >
+                                    <option value="all">كل السنين والأعوام</option>
+                                    {uniqueYears.map((yr) => (
+                                        <option key={yr} value={yr}>{yr}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4 pointer-events-none" />
+                            </div>
+                        </div>
+
+                        {/* الترتيب الذكي والشامل */}
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs text-gray-400 font-bold flex items-center gap-1.5">
+                                <RotateCcw className="rotate-180 w-3.5 h-3.5 text-[#00A7F8]" />
+                                ترتيب وعرض حسب
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => { setSortBy(e.target.value as any); setCurrentPage(1); }}
+                                    className="w-full bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl px-4 py-2.5 pl-10 text-xs md:text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-[#00A7F8] appearance-none cursor-pointer"
+                                >
+                                    <option value="recently-updated">الأحدث تحديثاً وتعديلاً</option>
+                                    <option value="newest">الأحدث إنتاجاً (سنة تنازلية)</option>
+                                    <option value="oldest">الأقدم إنتاجاً (سنة تصاعدية)</option>
+                                    <option value="rating">الأعلى تقييماً وتصنيفاً</option>
+                                    <option value="alphabetical">الترتيب الأبجدي (أ - ي)</option>
+                                </select>
+                                <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4 pointer-events-none" />
+                            </div>
+                        </div>
+
+                        {/* زر إعادة ضبط كل الفلاتر */}
+                        <div className="flex items-end">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setActiveFilter('all');
+                                    setSelectedYear('all');
+                                    setSelectedType('all');
+                                    setSortBy('recently-updated');
+                                    setSearchTerm('');
+                                    setCurrentPage(1);
+                                }}
+                                className="w-full flex items-center justify-center gap-2 bg-[#1f2937]/85 hover:bg-gray-800 text-gray-300 hover:text-white px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold border border-gray-800 transition-colors cursor-pointer"
+                            >
+                                <XCircle className="w-4 h-4 text-gray-400" />
+                                <span>إعادة ضبط الفلاتر</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* ملخص الفلاتر النشطة الحالية */}
+                    {(activeFilter !== 'all' || selectedYear !== 'all' || selectedType !== 'all' || searchTerm.trim() !== '') && (
+                        <div className="mt-4 flex flex-wrap items-center gap-2 bg-gray-900/40 p-3 rounded-xl border border-gray-800/40">
+                            <span className="text-xs text-gray-400">الفلاتر النشطة:</span>
+                            {activeFilter !== 'all' && (
+                                <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-1 rounded-md font-bold">
+                                    التصفية: {activeFilter === 'arabic-movies' ? 'أفلام عربية' : activeFilter === 'arabic-series' ? 'مسلسلات عربية' : activeFilter === 'ramadan' ? 'رمضان' : activeFilter === 'no-watch-links' ? 'بدون روابط مشاهدة' : 'بدون روابط تحميل'}
+                                </span>
+                            )}
+                            {selectedType !== 'all' && (
+                                <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-1 rounded-md font-bold">
+                                    النوع: {selectedType === 'movie' ? 'أفلام' : selectedType === 'series' ? 'مسلسلات' : selectedType === 'program' ? 'برامج' : selectedType === 'play' ? 'مسرحيات' : 'حفلات'}
+                                </span>
+                            )}
+                            {selectedYear !== 'all' && (
+                                <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-1 rounded-md font-bold">
+                                    العام: {selectedYear}
+                                </span>
+                            )}
+                            {searchTerm.trim() !== '' && (
+                                <span className="text-[10px] bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-1 rounded-md font-bold">
+                                    البحث: "{searchTerm}"
+                                </span>
+                            )}
+                            <span className="mr-auto text-[11px] text-[#00A7F8] font-bold">
+                                وجدنا {totalItems} عنصر مطابق
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {processingExcel && (<div className="mb-6 bg-[#1f2937] p-6 rounded-2xl border border-gray-700/50 animate-pulse shadow-lg"><div className="flex justify-between mb-3 text-sm text-[#00A7F8] font-bold"><span>جاري الاستيراد...</span><span>{progress}</span></div><div className="w-full bg-gray-800 rounded-full h-3"><div className="bg-[#00A7F8] h-3 rounded-full w-2/3 transition-all duration-500 shadow-[0_0_10px_#00A7F8]"></div></div><p className="text-xs text-gray-500 mt-3 text-center">الرجاء عدم إغلاق الصفحة حتى تكتمل العملية.</p></div>)}
             
             {isInternalLoading ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-6">
                     <BouncingDotsLoader size="lg" delayMs={300} />
-                    <span className="text-gray-500 font-black tracking-widest uppercase text-xs">جاري سحب البيانات...</span>
+                    <span className="text-gray-500 font-black tracking-widest uppercase text-xs">جاري سحب المحتوى والفلترة الذكية...</span>
                 </div> 
             ) : (
                 <>
-                    {pagedContent.length === 0 && (
-                        <div className="text-center py-20 text-gray-500 border-2 border-dashed border-gray-800 rounded-3xl mb-8 flex flex-col items-center justify-center">
+                    {totalItems === 0 && (
+                        <div className="text-center py-20 text-gray-500 border-2 border-dashed border-gray-800 rounded-3xl mb-8 flex flex-col items-center justify-center bg-gray-900/10">
                             <span className="text-4xl mb-4 opacity-50">📂</span>
-                            لا يوجد محتوى مطابق لبحثك.
+                            لا يوجد محتوى مطابق لبحثك أو الفلاتر المحددة.
                         </div>
                     )}
 
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3 mb-10">
-                        {pagedContent.map((c:any) => {
+                        {pagedItems.map((c:any) => {
                             const meta = getTypeMeta(c.type);
                             return (
                                 <div key={c.id} className="group relative aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer bg-gray-800 border border-gray-700/50 shadow-lg hover:shadow-[0_0_25px_rgba(0,167,248,0.2)] transition-all duration-300 hover:scale-[1.02]">
@@ -353,8 +708,8 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                                     </div>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300"></div>
                                     <div className="absolute bottom-0 left-0 w-full p-4 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-                                        <h3 className="text-white font-bold text-lg leading-tight line-clamp-1 mb-1 drop-shadow-md">{c.title}</h3>
-                                        <div className="flex items-center justify-between text-xs text-gray-300 mb-3">
+                                        <h3 className="text-white font-bold text-lg leading-tight line-clamp-1 mb-1 drop-shadow-md text-right" dir="rtl">{c.title}</h3>
+                                        <div className="flex items-center justify-between text-xs text-gray-300 mb-3 flex-row-reverse">
                                             <span className="font-mono">{c.releaseYear}</span>
                                             <span className={`font-bold ${c.visibility === 'general' ? 'text-green-400' : 'text-yellow-400'}`}>
                                                 {c.visibility === 'general' ? 'عام' : 'مقيد'}
@@ -370,15 +725,15 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                         })}
                     </div>
 
-                    {searchTerm.trim() === '' && totalPages > 1 && (
+                    {totalPages > 1 && (
                         <div className="flex flex-col items-center gap-6 bg-[#1f2937] p-8 rounded-[2.5rem] border border-gray-700/50 shadow-xl mb-12">
                             <div className="flex items-center justify-center gap-2 flex-wrap">
                                 {hasPrevGroup && (
                                     <button 
                                         onClick={() => setCurrentPage(currentGroup * pagesPerGroup)}
-                                        className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-400 font-black rounded-xl hover:bg-gray-700 transition-all border border-gray-700"
+                                        className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-400 font-black rounded-xl hover:bg-gray-700 transition-all border border-gray-700 cursor-pointer"
                                     >
-                                        <span className="text-xl rotate-180">«</span>
+                                        <span className="text-sm rotate-180">«</span>
                                         <span className="text-xs">المجموعة السابقة</span>
                                     </button>
                                 )}
@@ -387,7 +742,7 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                                     <button
                                         key={num}
                                         onClick={() => setCurrentPage(num)}
-                                        className={`w-12 h-12 rounded-xl font-black text-sm transition-all border ${currentPage === num ? 'bg-[var(--color-accent)] text-black border-transparent shadow-[0_0_20px_var(--shadow-color)]' : 'bg-gray-900 border-gray-700 text-gray-500 hover:text-white hover:border-gray-500'}`}
+                                        className={`w-12 h-12 rounded-xl font-black text-sm transition-all border cursor-pointer ${currentPage === num ? 'bg-[var(--color-accent)] text-black border-transparent shadow-[0_0_20px_var(--shadow-color)]' : 'bg-gray-900 border-gray-700 text-gray-500 hover:text-white hover:border-gray-500'}`}
                                     >
                                         {num}
                                     </button>
@@ -396,17 +751,19 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                                 {hasNextGroup && (
                                     <button 
                                         onClick={() => setCurrentPage((currentGroup + 1) * pagesPerGroup + 1)}
-                                        className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-400 font-black rounded-xl hover:bg-gray-700 transition-all border border-gray-700"
+                                        className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-400 font-black rounded-xl hover:bg-gray-700 transition-all border border-gray-700 cursor-pointer"
                                     >
                                         <span className="text-xs">المجموعة التالية</span>
-                                        <span className="text-xl">»</span>
+                                        <span className="text-sm">»</span>
                                     </button>
                                 )}
                             </div>
-                            <div className="flex items-center gap-4 text-xs font-bold text-gray-500">
+                            <div className="flex items-center gap-4 text-xs font-bold text-gray-500 flex-row-reverse" dir="rtl">
                                 <span>الصفحة {currentPage} من {totalPages}</span>
                                 <span className="w-1 h-1 bg-gray-700 rounded-full"></span>
-                                <span>إجمالي العناصر: {totalContentCount}</span>
+                                <span>المطابقة: {totalItems} عنصر</span>
+                                <span className="w-1 h-1 bg-gray-700 rounded-full"></span>
+                                <span>الإجمالي الكلي: {allContent?.length || 0}</span>
                             </div>
                         </div>
                     )}

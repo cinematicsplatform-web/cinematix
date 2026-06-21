@@ -27,7 +27,7 @@ const Top10ManagerTab: React.FC<any> = ({ allContent, pinnedState, setPinnedItem
     let filtered = allContent.filter((c:any) => !pinnedIds.has(c.id)); 
     if (selectedPage === 'movies') filtered = filtered.filter((c:any) => c.type === ContentType.Movie); 
     else if (selectedPage === 'series') filtered = filtered.filter((c:any) => c.type === ContentType.Series); 
-    else if (selectedPage === 'kids') filtered = filtered.filter((c:any) => c.categories.includes('افلام أنميشن') || c.visibility === 'kids' || c.genres.includes('أطفال')); 
+    else if (selectedPage === 'kids') filtered = filtered.filter((c:any) => c.categories.includes('أفلام أنيميشن') || c.categories.includes('مسلسلات أنيميشن') || c.categories.includes('افلام أنميشن') || c.visibility === 'kids' || c.genres.includes('أطفال')); 
     else if (selectedPage === 'ramadan') filtered = filtered.filter((c:any) => c.categories.includes('رمضان')); 
     else if (selectedPage === 'soon') filtered = filtered.filter((c:any) => c.categories.includes('قريباً')); 
     return filtered.filter((c:any) => (c.title || '').toLowerCase().includes(searchTerm.toLowerCase())); 

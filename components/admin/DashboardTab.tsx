@@ -118,7 +118,7 @@ const DashboardTab: React.FC<{stats: {totalMovies: number, totalSeries: number, 
         { id: 'turkish_series', label: 'مسلسلات تركي', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' },
         { id: 'foreign_movies', label: 'أفلام أجنبي', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' },
         { id: 'foreign_series', label: 'مسلسلات أجنبي', color: 'bg-pink-500/10 text-pink-400 border-pink-500/30' },
-        { id: 'animation', label: 'أفلام أنميشن', color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' },
+        { id: 'animation', label: 'أفلام أنيميشن', color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' },
     ];
 
     const currentCategoryLabel = categoryButtons.find(b => b.id === radarType)?.label || 'الكل';
