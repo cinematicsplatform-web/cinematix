@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import Hls from 'hls.js';
 import { PlayIcon } from './icons/PlayIcon';
 import { SpeakerIcon } from './icons/SpeakerIcon';
 import { ExpandIcon } from './icons/ExpandIcon';
@@ -146,6 +147,54 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
     const videoExtensions = ['.mp4', '.m3u8', '.ogg', '.webm', '.ts', '.mov']; 
     return videoExtensions.some(ext => cleanUrl.endsWith(ext));
   }, [activeSource]);
+
+  // Handle HLS (.m3u8) Playback setup and cleanup
+  useEffect(() => {
+    let hls: Hls | null = null;
+    const videoElement = videoRef.current;
+
+    if (activeSource && isDirectVideo && activeSource.toLowerCase().includes('.m3u8') && videoElement) {
+      if (Hls.isSupported()) {
+        hls = new Hls({
+          maxMaxBufferLength: 10,
+          enableWorker: true,
+          lowLatencyMode: true,
+        });
+        hls.loadSource(activeSource);
+        hls.attachMedia(videoElement);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (videoElement.duration) {
+            setDuration(videoElement.duration);
+          }
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls?.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls?.recoverMediaError();
+                break;
+              default:
+                break;
+            }
+          }
+        });
+      } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native fallback (Safari/iOS)
+        videoElement.src = activeSource;
+      }
+    }
+
+    return () => {
+      if (hls) {
+        hls.destroy();
+      }
+    };
+  }, [activeSource, isDirectVideo]);
 
   const skip = (seconds: number) => {
     if (isSettingsOpen) return;
@@ -457,7 +506,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ poster, manualSrc, tmdbId, ty
                             onPause={() => setIsPlaying(false)}
                             playsInline
                         >
-                            <source src={activeSource} type={activeSource.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'} />
+                            {!activeSource.toLowerCase().includes('.m3u8') && (
+                                <source src={activeSource} type="video/mp4" />
+                            )}
                         </video>
 
                         <div className={`absolute inset-0 z-50 flex flex-col justify-between transition-opacity duration-300 pointer-events-none ${showControls || isSettingsOpen ? 'opacity-100' : 'opacity-0'}`} 

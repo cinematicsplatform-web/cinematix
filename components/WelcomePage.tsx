@@ -29,7 +29,8 @@ const WelcomePage: React.FC<WelcomePageProps> = ({
     const kidsPosters = useMemo(() => {
         const uniqueKids = allContent
             .filter(c => 
-                c.categories.includes('افلام أنميشن') || 
+                (c.categories as string[]).includes('أفلام أنيميشن') || 
+                (c.categories as string[]).includes('افلام أنميشن') || 
                 c.genres.includes('أطفال') || 
                 c.visibility === 'kids'
             )

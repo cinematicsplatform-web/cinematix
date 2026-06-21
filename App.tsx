@@ -1155,7 +1155,7 @@ const App: React.FC = () => {
 
   const isMaintenanceActive = siteSettings.is_maintenance_mode_enabled && currentUser?.role !== UserRole.Admin;
 
-  const showGlobalHeader = (headerAllowedViews.includes(view) || (siteSettings.activeTheme === 'shahid' && view !== 'admin' && view !== 'watch' && view !== 'adGate' && view !== 'maintenance' && view !== 'onboarding')) && !isDetailMobile && !isChoosingProfile && !isTv && !isMaintenanceActive;
+  const showGlobalHeader = (headerAllowedViews.includes(view) || (siteSettings.activeTheme === 'shahid' && view !== 'admin' && view !== 'watch' && view !== 'adGate' && view !== 'maintenance' && view !== 'onboarding')) && view !== 'search' && view !== 'category' && view !== 'login' && view !== 'register' && view !== 'welcome' && !isDetailMobile && !isChoosingProfile && !isTv && !isMaintenanceActive;
   
   const showGlobalFooter = !fullScreenViews.includes(view) && !isTv && !isMaintenanceActive;
   

@@ -35,7 +35,7 @@ export const carouselsByPage: Record<string, CarouselRow[]> = {
     { id: 'h5', title: 'افلام تركية', contentIds: [] },
     { id: 'h6', title: 'افلام اجنبية', contentIds: [] },
     { id: 'h7', title: 'افلام هندية', contentIds: [] },
-    { id: 'h8', title: 'افلام أنميشن', contentIds: [] },
+    { id: 'h8', title: 'أفلام أنيميشن', contentIds: [] },
     { id: 'h9', title: 'قريباً', contentIds: [] },
   ],
   movies: [
@@ -43,7 +43,7 @@ export const carouselsByPage: Record<string, CarouselRow[]> = {
     { id: 'm2', title: 'أفلام تركية', contentIds: [] },
     { id: 'm3', title: 'أفلام أجنبية', contentIds: [] },
     { id: 'm5', title: 'أفلام هندية', contentIds: [] },
-    { id: 'm6', title: 'افلام أنميشن', contentIds: [] },
+    { id: 'm6', title: 'أفلام أنيميشن', contentIds: [] },
     { id: 'm4', title: 'الأكثر مشاهدة هذا الأسبوع', contentIds: [] },
   ],
   series: [
@@ -55,7 +55,7 @@ export const carouselsByPage: Record<string, CarouselRow[]> = {
   kids: [
     { id: 'k1', title: 'مغامرات شيقة', contentIds: [] },
     { id: 'k2', title: 'ضحك ولعب', contentIds: [] },
-    { id: 'k4', title: 'افلام أنميشن', contentIds: [] },
+    { id: 'k4', title: 'أفلام أنيميشن', contentIds: [] },
     { id: 'k3', title: 'كل برامج الأطفال', contentIds: [] },
   ],
   ramadan: [
