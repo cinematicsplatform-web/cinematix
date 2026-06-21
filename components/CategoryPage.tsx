@@ -100,13 +100,29 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
     else if (categoryTitle === 'top-rated-kids') {
         title = 'أفضل محتوى للأطفال';
         content = content
-            .filter(c => c.categories.includes('افلام أنميشن') || c.visibility === 'kids')
+            .filter(c => 
+                (c.categories as string[]).includes('أفلام أنيميشن') || 
+                (c.categories as string[]).includes('افلام أنميشن') || 
+                (c.categories as string[]).includes('افلام انميشن') || 
+                (c.categories as string[]).includes('مسلسلات أنيميشن') || 
+                (c.categories as string[]).includes('مسلسلات أنميشن') || 
+                (c.categories as string[]).includes('مسلسلات انميشن') || 
+                c.visibility === 'kids'
+            )
             .sort((a, b) => b.rating - a.rating);
     }
     else if (categoryTitle === 'new-kids') {
         title = 'جديد الأطفال';
         content = content
-            .filter(c => c.categories.includes('افلام أنميشن') || c.visibility === 'kids')
+            .filter(c => 
+                (c.categories as string[]).includes('أفلام أنيميشن') || 
+                (c.categories as string[]).includes('افلام أنميشن') || 
+                (c.categories as string[]).includes('افلام انميشن') || 
+                (c.categories as string[]).includes('مسلسلات أنيميشن') || 
+                (c.categories as string[]).includes('مسلسلات أنميشن') || 
+                (c.categories as string[]).includes('مسلسلات انميشن') || 
+                c.visibility === 'kids'
+            )
             .sort((a, b) => b.createdAt ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : 0);
     }
     else if (categoryTitle === 'top-rated-ramadan') {

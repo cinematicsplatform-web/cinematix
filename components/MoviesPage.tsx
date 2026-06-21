@@ -99,7 +99,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
     const turkishMovies = limit(allMovies.filter(c => c.categories.includes('افلام تركية')));
     const foreignMovies = limit(allMovies.filter(c => c.categories.includes('افلام اجنبية')));
     const indianMovies = limit(allMovies.filter(c => c.categories.includes('افلام هندية')));
-    const animationMovies = limit(allMovies.filter(c => c.categories.includes('افلام أنميشن')));
+    const animationMovies = limit(allMovies.filter(c => (c.categories as string[]).includes('أفلام أنيميشن') || (c.categories as string[]).includes('افلام أنميشن')));
 
     const top10Source = (top10Content && top10Content.length > 0) ? top10Content : pinnedContent;
 
@@ -117,7 +117,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
       { id: 'm3', title: 'أفلام تركية', contents: turkishMovies, isNew: false, categoryKey: 'افلام تركية' },
       { id: 'm4', title: 'أفلام أجنبية', contents: foreignMovies, isNew: false, categoryKey: 'افلام اجنبية' },
       { id: 'm5', title: 'أفلام هندية', contents: indianMovies, isNew: false, categoryKey: 'افلام هندية' },
-      { id: 'm6', title: 'أفلام أنميشن', contents: animationMovies, isNew: false, categoryKey: 'افلام أنميشن' },
+      { id: 'm6', title: 'أفلام أنيميشن', contents: animationMovies, isNew: false, categoryKey: 'أفلام أنيميشن' },
     ]
     .filter(Boolean)
     .filter(carousel => (carousel as any).contents.length > 0);

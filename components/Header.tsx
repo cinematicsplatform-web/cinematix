@@ -74,9 +74,9 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
             : 'bg-gradient-to-b from-black/80 to-transparent'}
       `}
     >
-      <div className="w-full px-4 md:px-8 flex items-center justify-between h-16 md:h-20 gap-2">
+      <div className="w-full px-4 md:px-8 flex items-center justify-between h-16 md:h-20 gap-6">
         
-        <div className="flex items-center gap-4 md:gap-8 lg:flex-1">
+        <div className="flex items-center gap-6 md:gap-10 lg:flex-1">
           <button 
             className="lg:hidden text-white p-1 hover:bg-white/10 rounded-lg transition-colors"
             onClick={() => setIsMobileMenuOpen(true)}
@@ -93,7 +93,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
           </h1>
           
           {!isShahidTheme && (
-            <nav className="hidden lg:flex items-center gap-6">
+            <nav className="hidden lg:flex items-center gap-8">
               {menuItems.map((item) => {
                 if (item.loggedIn && !isLoggedIn) return null;
                 return (
@@ -101,11 +101,8 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                     key={item.name} 
                     href="#" 
                     onClick={(e) => { e.preventDefault(); onSetView(item.view); }} 
-                    className={`font-bold hover-text-accent transition-all duration-200 text-md flex items-center gap-2 target-nav-link ${isCosmicTealTheme ? 'text-gray-200 hover:text-[#35F18B]' : isNetflixRedTheme ? 'text-gray-300 hover:text-[#E50914]' : 'text-white'}`}
+                    className={`font-bold hover-text-accent transition-all duration-200 text-md flex items-center target-nav-link ${isCosmicTealTheme ? 'text-gray-200 hover:text-[#35F18B]' : isNetflixRedTheme ? 'text-gray-300 hover:text-[#E50914]' : 'text-white'}`}
                   >
-                    {item.view === 'kids' && (
-                        <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f423/512.webp" alt="kids" className="w-5 h-5" />
-                    )}
                     {item.name}
                   </a>
                 )
@@ -122,9 +119,29 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                 { name: 'الرئيسية', view: 'home' },
                 { name: 'مسلسلات', view: 'series' },
                 { name: 'أفلام', view: 'movies' },
-                { name: 'تصفح', view: 'programs' }
+                { name: 'رمضان', view: 'ramadan' },
+                { name: 'الأطفال', view: 'kids', isKids: true },
+                { name: 'تصفح', view: 'programs' },
+                { name: 'قريباً', view: 'soon' }
               ].map((item, index) => {
                 const isActive = currentView === item.view;
+                if (item.isKids) {
+                  return (
+                    <a 
+                      key={index} 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); onSetView('kids'); }} 
+                      className={`font-semibold text-sm transition-all py-1.5 px-4 rounded-full flex items-center gap-1.5 duration-300 ${
+                        isActive 
+                          ? 'bg-neutral-800/80 text-white font-bold border border-white/10 hover:bg-white hover:text-black hover:font-bold' 
+                          : 'text-gray-300 hover:bg-white hover:text-black hover:font-bold'
+                      }`}
+                    >
+                      <span>الأطفال</span>
+                      <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f423/512.webp" alt="kids" className="w-4 h-4" />
+                    </a>
+                  );
+                }
                 return (
                   <a 
                     key={index} 
@@ -140,19 +157,6 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                   </a>
                 );
               })}
-
-              <a 
-                href="#" 
-                onClick={(e) => { e.preventDefault(); onSetView('kids'); }} 
-                className={`font-semibold text-sm transition-all py-1.5 px-4 rounded-full flex items-center gap-1.5 duration-300 ${
-                  currentView === 'kids' 
-                    ? 'bg-neutral-800/80 text-white font-bold border border-white/10 hover:bg-white hover:text-black hover:font-bold' 
-                    : 'text-gray-300 hover:bg-white hover:text-black hover:font-bold'
-                }`}
-              >
-                <span>الأطفال</span>
-                <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f423/512.webp" alt="kids" className="w-4 h-4" />
-              </a>
 
               {/* Separator */}
               <span className="text-white/20 text-sm">|</span>
@@ -172,7 +176,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
           </div>
         )}
 
-        <div className="flex items-center gap-3 md:gap-4 lg:flex-1 lg:justify-end">
+        <div className="flex items-center gap-5 md:gap-6 lg:flex-1 lg:justify-end">
           
           {/* Mute button or standard search icon */}
           {isShahidTheme ? (
@@ -399,9 +403,6 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
                       : 'text-gray-300 hover:bg-white/5 hover:text-white'
                   }`}
                 >
-                  {item.view === 'kids' && (
-                      <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f423/512.webp" alt="kids" className="w-5 h-5" />
-                  )}
                   {item.name}
                 </a>
               )

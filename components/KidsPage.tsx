@@ -48,7 +48,15 @@ const KidsPage: React.FC<KidsPageProps> = ({
 }) => {
 
   const animationContent = useMemo(() =>
-    allContent.filter(c => c.categories.includes('افلام أنميشن') || c.visibility === 'kids')
+    allContent.filter(c => 
+      (c.categories as string[]).includes('أفلام أنيميشن') || 
+      (c.categories as string[]).includes('افلام أنميشن') || 
+      (c.categories as string[]).includes('افلام انميشن') || 
+      (c.categories as string[]).includes('مسلسلات أنيميشن') || 
+      (c.categories as string[]).includes('مسلسلات أنميشن') || 
+      (c.categories as string[]).includes('مسلسلات انميشن') || 
+      c.visibility === 'kids'
+    )
   , [allContent]);
   
   const heroContent = useMemo(() => {
@@ -93,7 +101,17 @@ const KidsPage: React.FC<KidsPageProps> = ({
     const recentKids = limit([...animationContent]
         .sort((a, b) => getEffectiveUpdateDate(b) - getEffectiveUpdateDate(a)));
 
-    const allAnimationMovies = limit(animationContent.filter(c => c.categories.includes('افلام أنميشن')));
+    const allAnimationMovies = limit(animationContent.filter(c => 
+      (c.categories as string[]).includes('أفلام أنيميشن') || 
+      (c.categories as string[]).includes('افلام أنميشن') || 
+      (c.categories as string[]).includes('افلام انميشن')
+    ));
+
+    const allAnimationSeries = limit(animationContent.filter(c => 
+      (c.categories as string[]).includes('مسلسلات أنيميشن') || 
+      (c.categories as string[]).includes('مسلسلات أنميشن') || 
+      (c.categories as string[]).includes('مسلسلات انميشن')
+    ));
 
     const top10Source = (top10Content && top10Content.length > 0) ? top10Content : [];
     
@@ -107,7 +125,8 @@ const KidsPage: React.FC<KidsPageProps> = ({
     const definedCarousels = [
       top10Source.length > 0 ? top10Carousel : null,
       { id: 'k2', title: 'أحدث الإضافات', contents: recentKids, isNew: true, categoryKey: 'new-kids' }, 
-      { id: 'k3', title: 'افلام أنميشن', contents: allAnimationMovies, isNew: false, categoryKey: 'افلام أنميشن' },
+      { id: 'k3', title: 'أفلام أنيميشن', contents: allAnimationMovies, isNew: false, categoryKey: 'أفلام أنيميشن' },
+      { id: 'k_anim_series', title: 'مسلسلات أنيميشن', contents: allAnimationSeries, isNew: false, categoryKey: 'مسلسلات أنيميشن' },
     ].filter(Boolean).filter(carousel => (carousel as any).contents.length > 0); 
 
     return definedCarousels;
@@ -141,8 +160,8 @@ const KidsPage: React.FC<KidsPageProps> = ({
     <div className="min-h-screen bg-[var(--bg-body)] text-white"> 
       <SEO 
         title="أطفال و أنمي" 
-        description="عالم من المرح والتعليم، أفلام كرتون ومسلسلات أنميشن للأطفال على سينماتيكس (Cinematix)."
-        keywords="اطفال سينماتيكس, انمي سينماتيكس, cinematix kids, cinematics kids, افلام كرتون, مسلسلات انميشن, محتوى اطفال"
+        description="عالم من المرح والتعليم، أفلام كرتون ومسلسلات أنيميشن للأطفال على سينماتيكس (Cinematix)."
+        keywords="اطفال سينماتيكس, انمي سينماتيكس, cinematix kids, cinematics kids, افلام كرتون, مسلسلات أنيميشن, محتوى اطفال"
         type="website"
       />
 

@@ -54,7 +54,12 @@ const HomePage: React.FC<HomePageProps> = (props) => {
       if (!isKidMode) return props.allContent;
       return props.allContent.filter(c => 
           c.visibility === 'kids' || 
-          c.categories.includes('افلام أنميشن') || 
+          (c.categories as string[]).includes('أفلام أنيميشن') || 
+          (c.categories as string[]).includes('افلام أنميشن') || 
+          (c.categories as string[]).includes('افلام انميشن') || 
+          (c.categories as string[]).includes('مسلسلات أنيميشن') || 
+          (c.categories as string[]).includes('مسلسلات أنميشن') || 
+          (c.categories as string[]).includes('مسلسلات انميشن') || 
           c.genres.includes('أطفال') || 
           c.genres.includes('عائلي')
       );
@@ -69,7 +74,12 @@ const HomePage: React.FC<HomePageProps> = (props) => {
       if (!isKidMode) return props.pinnedContent;
       return props.pinnedContent.filter(c => 
           c.visibility === 'kids' || 
-          c.categories.includes('افلام أنميشن') || 
+          (c.categories as string[]).includes('أفلام أنيميشن') || 
+          (c.categories as string[]).includes('افلام أنميشن') || 
+          (c.categories as string[]).includes('افلام انميشن') || 
+          (c.categories as string[]).includes('مسلسلات أنيميشن') || 
+          (c.categories as string[]).includes('مسلسلات أنميشن') || 
+          (c.categories as string[]).includes('مسلسلات انميشن') || 
           c.genres.includes('أطفال') || 
           c.genres.includes('عائلي')
       );
@@ -116,14 +126,14 @@ const HomePage: React.FC<HomePageProps> = (props) => {
 
     if (isKidMode) {
         const recentKids = getLatest([...safeContent]);
-        const animationMovies = getLatest(safeContent.filter(c => c.categories.includes('افلام أنميشن')));
+        const animationMovies = getLatest(safeContent.filter(c => (c.categories as string[]).includes('أفلام أنيميشن') || (c.categories as string[]).includes('افلام أنميشن')));
         const familyContent = getLatest(safeContent.filter(c => c.genres.includes('عائلي')));
         const kidsSeries = getLatest(safeContent.filter(c => c.type === ContentType.Series));
 
         const animationTitle = (
             <div className="flex items-center gap-3">
                 <div className={`w-1.5 h-6 md:h-8 rounded-full shadow-[0_0_10px_rgba(0,167,248,0.6)] ${isRamadan ? 'bg-[#FFD700]' : 'bg-gradient-to-b from-[#00A7F8] to-[#00FFB0]'}`}></div>
-                <div className="flex items-center gap-2"><span>افلام أنميشن</span><img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f423/512.webp" alt="chick" className="w-5 h-5" /></div>
+                <div className="flex items-center gap-2"><span>أفلام أنيميشن</span><img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f423/512.webp" alt="chick" className="w-5 h-5" /></div>
             </div>
         );
 
@@ -148,7 +158,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     const turkishMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && c.categories.includes('افلام تركية')));
     const foreignMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && c.categories.includes('افلام اجنبية')));
     const indianMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && c.categories.includes('افلام هندية')));
-    const animationMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && c.categories.includes('افلام أنميشن')));
+    const animationMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && ((c.categories as string[]).includes('أفلام أنيميشن') || (c.categories as string[]).includes('افلام أنميشن'))));
     const tvPrograms = getLatest(props.allContent.filter(c => c.type === ContentType.Program || c.categories.includes('برامج تلفزيونية')));
     const plays = getLatest(props.allContent.filter(c => c.type === ContentType.Play || c.categories.includes('مسرحيات')));
     const concerts = getLatest(props.allContent.filter(c => c.type === ContentType.Concert || c.categories.includes('حفلات')));

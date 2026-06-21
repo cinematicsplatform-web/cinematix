@@ -598,16 +598,17 @@ const DetailPage: React.FC<DetailPageProps> = ({
             <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/80 via-20% to-transparent z-10"></div>
         </div>
 
+        {isShahidTheme && showVideo && (
+            <button 
+                onClick={toggleMute} 
+                className="pointer-events-auto absolute left-4 md:left-8 lg:left-14 top-[18%] md:top-[22%] transform -translate-y-1/2 bg-white/10 border border-white/10 hover:bg-white text-white hover:text-black backdrop-blur-md rounded-full w-[48px] h-[48px] md:w-[64px] md:h-[64px] flex items-center justify-center p-0 transition-all cursor-pointer z-50 group origin-center" 
+                title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
+            >
+                <SpeakerIcon isMuted={isMuted} className="h-5 w-5 md:h-7 md:w-7 text-white group-hover:text-black group-hover:scale-110 transition-transform transition-colors duration-200" />
+            </button>
+        )}
+
         <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 pb-4 md:pb-6 flex flex-col justify-end items-start z-20">
-            {isShahidTheme && showVideo && (
-                <button 
-                    onClick={toggleMute} 
-                    className="pointer-events-auto absolute left-4 md:left-8 lg:left-14 top-[18%] md:top-[22%] transform -translate-y-1/2 bg-white/10 border border-white/10 hover:bg-white text-white hover:text-black backdrop-blur-md rounded-full w-[48px] h-[48px] md:w-[64px] md:h-[64px] flex items-center justify-center p-0 transition-all cursor-pointer z-50 group origin-center" 
-                    title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
-                >
-                    <SpeakerIcon isMuted={isMuted} className="h-5 w-5 md:h-7 md:w-7 text-white group-hover:text-black group-hover:scale-110 transition-transform transition-colors duration-200" />
-                </button>
-            )}
             <div className="max-w-4xl w-full flex flex-col items-center md:items-start text-center md:text-right pointer-events-auto">
                 
                 {isLoaded ? (

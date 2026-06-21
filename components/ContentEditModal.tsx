@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Content, Server, Season, Episode, Category, Genre, GlobalServer } from '@/types';
 import { ContentType, genres } from '@/types';
-import { db, generateSlug, getPeople, savePerson, getServers, getAllContent } from '@/firebase'; 
+import { db, generateSlug, getPeople, savePerson, getServers, getAllContent, addServer } from '@/firebase';  
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import ToggleSwitch from './ToggleSwitch';
 import * as XLSX from 'xlsx';
@@ -632,9 +632,20 @@ interface ServerManagementModalProps {
     episode: Episode;
     onClose: () => void;
     onSave: (servers: Server[]) => void;
+    globalServers: GlobalServer[];
+    onRefreshGlobalServers: () => Promise<void>;
+    addToast: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
 
-const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, onClose, onSave }) => {
+const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ 
+    episode, 
+    onClose, 
+    onSave,
+    globalServers,
+    onRefreshGlobalServers,
+    addToast
+}) => {
+    const isMovieMode = episode.title === 'الفيلم';
     const [servers, setServers] = useState<Server[]>(() => {
         const existing = [...(episode.servers || [])];
         if (existing.length === 0) {
@@ -646,6 +657,12 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
     const [isUqloadModalOpen, setIsUqloadModalOpen] = useState(false);
     const [isDailymotionModalOpen, setIsDailymotionModalOpen] = useState(false);
     const [isVkModalOpen, setIsVkModalOpen] = useState(false);
+
+    // إضافة خادم جديد يدوياً
+    const [isNewServerFormOpen, setIsNewServerFormOpen] = useState(false);
+    const [newServerName, setNewServerName] = useState('');
+    const [newServerDomain, setNewServerDomain] = useState('');
+    const [isSavingNewServer, setIsSavingNewServer] = useState(false);
 
     const handleServerChange = (index: number, field: keyof Server, value: string | boolean) => {
         const updatedServers = [...servers];
@@ -678,92 +695,534 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({ episode, 
         onClose();
     };
 
+    const handleAddGlobalServerDirectly = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newServerName.trim()) {
+            addToast("يرجى إدخال اسم خادم البث.", "error");
+            return;
+        }
+
+        let domain = newServerDomain.trim();
+        if (!domain) {
+            domain = "https://";
+        } else {
+            if (!domain.startsWith('http://') && !domain.startsWith('https://')) {
+                domain = 'https://' + domain;
+            }
+            if (!domain.endsWith('/')) {
+                domain += '/';
+            }
+        }
+
+        // Check for duplicates in globalServers
+        const normalizedName = newServerName.trim().toLowerCase();
+        const checkClean = domain && domain !== 'https://' 
+            ? domain.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase() 
+            : '';
+
+        const duplicateMatched = globalServers.find(gs => {
+            const isNameMatch = gs.name.trim().toLowerCase() === normalizedName;
+            const gsClean = gs.baseDomain.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase();
+            const isDomainMatch = checkClean ? gsClean === checkClean : false;
+            return isNameMatch || isDomainMatch;
+        });
+
+        if (duplicateMatched) {
+            addToast(`هذا السيرفر مضاف بالفعل باسم: "${duplicateMatched.name}". تم اختياره واعتماده تلقائياً!`, "info");
+            
+            // Auto-select / auto-fill this server into the active row
+            const updatedServers = [...servers];
+            const emptyIndex = updatedServers.findIndex(s => !s.url && !s.downloadUrl);
+            if (emptyIndex !== -1) {
+                updatedServers[emptyIndex] = { ...updatedServers[emptyIndex], name: duplicateMatched.name };
+            } else {
+                updatedServers.push({
+                    id: Date.now() + updatedServers.length,
+                    name: duplicateMatched.name,
+                    url: '',
+                    downloadUrl: '',
+                    isActive: true
+                });
+            }
+            setServers(updatedServers);
+            setNewServerName('');
+            setNewServerDomain('');
+            setIsNewServerFormOpen(false);
+            return;
+        }
+
+        setIsSavingNewServer(true);
+        try {
+            await addServer({
+                name: newServerName.trim(),
+                baseDomain: domain
+            });
+            await onRefreshGlobalServers();
+            addToast(`تم إضافة السيرفر "${newServerName}" بنجاح كخادم رسمي باللوحة 🚀`, "success");
+            setNewServerName('');
+            setNewServerDomain('');
+            setIsNewServerFormOpen(false);
+        } catch (error) {
+            console.error(error);
+            addToast("حدث خطأ أثناء إضافة السيرفر الجديد.", "error");
+        } finally {
+            setIsSavingNewServer(false);
+        }
+    };
+
     return (
-        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={onClose}>
-            <div className={`w-full max-w-3xl overflow-hidden rounded-2xl border border-gray-800 bg-[#0f1014] text-white shadow-2xl animate-fade-in-up`} onClick={e => e.stopPropagation()}>
-                <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-800 bg-[#161b22] px-4 md:px-6 py-4 gap-4">
-                    <h3 className="flex items-center gap-2 text-lg font-bold text-white">
-                         <ServerIcon className="w-5 h-5 text-[var(--color-accent)]"/>
-                         إدارة السيرفرات: <span className="text-[var(--color-accent)] text-sm">{episode.title}</span>
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <button onClick={() => setIsVkModalOpen(true)} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-4 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
-                             <span>VK</span>
-                        </button>
-                        <button onClick={() => setIsDailymotionModalOpen(true)} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
-                            <span className="w-4 h-4 flex items-center justify-center font-black">d</span>
-                            <span>Daily</span>
-                        </button>
-                        <button onClick={() => setIsUqloadModalOpen(true)} className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-600/20 hover:border-blue-500/40">
-                            <SearchIcon className="w-4 h-4"/>
-                            <span>Uqload</span>
-                        </button>
-                        <button onClick={onClose} className="mr-auto md:ml-2 md:mr-0 text-gray-400 hover:text-white"><CloseIcon className="w-5 h-5"/></button>
-                    </div>
-                </div>
+        <div className="fixed inset-0 z-[220] bg-[#07080b]/98 backdrop-blur-md overflow-y-auto font-['Cairo'] text-right flex flex-col p-4 md:p-8" dir="rtl" onClick={onClose}>
+            <div className={`w-full ${isMovieMode ? 'max-w-4xl' : 'max-w-6xl'} mx-auto flex-1 bg-[#10121a] border border-gray-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-2 md:my-4 animate-fade-in`} onClick={e => e.stopPropagation()}>
                 
-                <div className="custom-scrollbar max-h-[60vh] overflow-y-auto p-4 md:p-6 space-y-4 bg-[#0a0a0a]">
-                    {servers.map((server, index) => (
-                          <div key={index} className="relative group/s rounded-xl border border-gray-800 bg-[#161b22] p-4 md:p-5 space-y-4 hover:border-gray-700 transition-colors">
-                            <button 
-                                onClick={() => handleRemoveServer(index)}
-                                className="absolute -top-2 -left-2 z-20 rounded-full bg-red-600 p-1.5 text-white opacity-100 md:opacity-0 shadow-lg transition-opacity md:group-hover/s:opacity-100"
-                                title="حذف السيرفر"
-                            >
-                                <CloseIcon className="h-3 w-3" />
+                {/* Header Section */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-gray-800 bg-[#161b22] px-6 py-5 gap-4">
+                    <div>
+                        <h3 className="flex items-center gap-3 text-xl font-black text-white">
+                             <div className="p-2 bg-blue-500/10 rounded-xl text-blue-400">
+                                 <ServerIcon className="w-6 h-6"/>
+                             </div>
+                             <div className="flex flex-col">
+                                 <span>{isMovieMode ? 'إدارة السيرفرات: ' : 'إدارة وسائط وروابط التشغيل'}</span>
+                                 <span className="text-[var(--color-accent)] text-xs font-mono mt-0.5">{episode.title}</span>
+                             </div>
+                        </h3>
+                    </div>
+                    
+                    {!isMovieMode ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                            {/* أزرار السيرفرات السحابية */}
+                            <button onClick={() => setIsVkModalOpen(true)} className="flex items-center justify-center gap-1.5 rounded-xl bg-blue-600/10 border border-blue-500/20 px-4 py-2 text-xs font-bold text-blue-400 transition-all hover:bg-blue-600/20 hover:border-blue-500/40">
+                                 <span className="font-sans font-black">VK Video</span>
+                            </button>
+                            <button onClick={() => setIsDailymotionModalOpen(true)} className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-600/10 border border-purple-500/20 px-4 py-2 text-xs font-bold text-purple-400 transition-all hover:bg-purple-600/20 hover:border-purple-500/40">
+                                <span className="font-sans font-black">Dailymotion</span>
+                            </button>
+                            <button onClick={() => setIsUqloadModalOpen(true)} className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600/10 border border-emerald-500/20 px-4 py-2 text-xs font-bold text-emerald-400 transition-all hover:bg-emerald-600/20 hover:border-emerald-500/40">
+                                <SearchIcon className="w-4 h-4"/>
+                                <span>Uqload</span>
                             </button>
 
-                            <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                              <div className="flex w-full items-center gap-3 sm:w-auto">
-                                  <span className="flex h-6 w-6 items-center justify-center rounded bg-black/30 font-mono text-xs text-gray-500">{index + 1}</span>
-                                  <input 
+                            <div className="h-6 w-px bg-gray-800 mx-2"></div>
+                            
+                            {/* زر إضافة خادم بث رسمي */}
+                            <button 
+                                type="button" 
+                                onClick={() => setIsNewServerFormOpen(!isNewServerFormOpen)} 
+                                className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all ${isNewServerFormOpen ? 'bg-amber-500 text-black' : 'bg-amber-500/10 border border-amber-500/20 text-amber-500 hover:bg-amber-500/20'}`}
+                            >
+                                <span>➕ تسجيل خادم بث رسمي</span>
+                            </button>
+
+                            <button onClick={onClose} className="mr-auto lg:mr-4 text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-800 p-2 rounded-xl transition-all"><CloseIcon className="w-5 h-5"/></button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-end mr-auto">
+                            <button onClick={onClose} className="text-gray-400 hover:text-white bg-[#1b1e2a] hover:bg-[#25293a] p-2.5 rounded-xl transition-all"><CloseIcon className="w-5 h-5"/></button>
+                        </div>
+                    )}
+                </div>
+
+                {/* New Server Collapsible Form */}
+                {!isMovieMode && isNewServerFormOpen && (
+                    <form onSubmit={handleAddGlobalServerDirectly} className="bg-[#1a1d27] border-b border-gray-800 p-6 animate-fade-in-down">
+                        <div className="max-w-3xl mx-auto space-y-4">
+                            <div className="border-l-4 border-amber-500 pl-4 pr-1">
+                                <h4 className="text-sm font-bold text-amber-500">تسجيل سيرفر بث رسمي جديد بقاعدة البيانات</h4>
+                                <p className="text-[11px] text-gray-400 mt-0.5">عند إضافة السيرفر هنا، سيظهر كخيار دائم في القوائم المنسدلة لجميع الحلقات، مما يوفر عناء كتابة اسمه يدوياً في كل مرة.</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="mb-1.5 block text-xs font-bold text-gray-400">اسم السيرفر (مثال: Uqload, MyServer...)</label>
+                                    <input 
+                                        type="text"
+                                        required
+                                        value={newServerName}
+                                        onChange={e => setNewServerName(e.target.value)}
+                                        placeholder="اكتب اسم السيرفر هنا..."
+                                        className="w-full rounded-xl border border-gray-700 bg-black px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-all font-bold"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1.5 block text-xs font-bold text-gray-400">رابط / دومين السيرفر الأساسي (اختياري)</label>
+                                    <input 
+                                        type="text"
+                                        value={newServerDomain}
+                                        onChange={e => setNewServerDomain(e.target.value)}
+                                        placeholder="مثال: https://uqload.co/ (يستخدم للروابط التلقائية)"
+                                        className="w-full rounded-xl border border-gray-700 bg-black px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-all text-left font-mono"
+                                        dir="ltr"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Live duplicate detector block */}
+                            {(() => {
+                                if (!newServerName.trim() && !newServerDomain.trim()) return null;
+                                const normalized = newServerName.trim().toLowerCase();
+                                let domainToCheck = newServerDomain.trim();
+                                if (domainToCheck) {
+                                    if (!domainToCheck.startsWith('http://') && !domainToCheck.startsWith('https://')) {
+                                        domainToCheck = 'https://' + domainToCheck;
+                                    }
+                                    if (!domainToCheck.endsWith('/')) {
+                                        domainToCheck += '/';
+                                    }
+                                }
+                                const matched = globalServers.find(gs => {
+                                    const isNameMatch = normalized ? gs.name.trim().toLowerCase() === normalized : false;
+                                    const gsClean = gs.baseDomain.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase();
+                                    const checkClean = domainToCheck ? domainToCheck.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase() : '';
+                                    const isDomainMatch = domainToCheck && domainToCheck !== 'https://' ? gsClean === checkClean : false;
+                                    return isNameMatch || isDomainMatch;
+                                });
+
+                                if (!matched) return null;
+                                return (
+                                    <div className="bg-amber-500/10 border border-amber-500/25 text-amber-400 p-4 rounded-2xl text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 animate-pulse font-bold mt-2">
+                                        <div className="flex flex-col gap-1 text-right">
+                                            <span className="flex items-center gap-1.5 font-bold text-amber-400">
+                                                <svg className="w-5 h-5 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                                تنبيه: هذا السيرفر مضاف بالفعل بقاعدة البيانات!
+                                            </span>
+                                            <p className="text-[11px] text-gray-300 font-normal mt-0.5">
+                                                موجود مسبقاً باسم <span className="text-white font-bold">"{matched.name}"</span> وبدومين <code className="text-emerald-400 bg-emerald-500/15 px-1 py-0.5 rounded font-mono font-bold">{matched.baseDomain}</code>
+                                            </p>
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {
+                                                const updatedServers = [...servers];
+                                                const emptyIndex = updatedServers.findIndex(s => !s.url && !s.downloadUrl);
+                                                if (emptyIndex !== -1) {
+                                                    updatedServers[emptyIndex] = { ...updatedServers[emptyIndex], name: matched.name };
+                                                } else {
+                                                    updatedServers.push({
+                                                        id: Date.now() + updatedServers.length,
+                                                        name: matched.name,
+                                                        url: '',
+                                                        downloadUrl: '',
+                                                        isActive: true
+                                                    });
+                                                }
+                                                setServers(updatedServers);
+                                                setNewServerName('');
+                                                setNewServerDomain('');
+                                                setIsNewServerFormOpen(false);
+                                                addToast(`تم اختيار السيرفر "${matched.name}" وتحديده بنجاح!`, "info");
+                                            }}
+                                            className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-xl text-[11px] transition-all shrink-0 cursor-pointer shadow-md select-none w-full sm:w-auto text-center"
+                                        >
+                                            اعتماده واختياره مباشرة 🔗
+                                        </button>
+                                    </div>
+                                );
+                            })()}
+
+                            <div className="flex gap-2 justify-end pt-2">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsNewServerFormOpen(false)} 
+                                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs font-bold rounded-xl text-gray-400"
+                                >
+                                    إلغاء
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    disabled={isSavingNewServer}
+                                    className="px-6 py-2 bg-amber-500 hover:bg-amber-400 disabled:bg-amber-800 text-xs font-bold rounded-xl text-black flex items-center gap-2 shadow-lg"
+                                >
+                                    {isSavingNewServer ? 'جاري الحفظ...' : 'تسجيل الخادم الآن 💾'}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                )}
+                
+                {/* Main Content List / Canvas */}
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 bg-[#07080c]">
+                    <div className="text-gray-400 text-xs flex justify-between items-center mb-2 px-1">
+                        <span>{isMovieMode ? 'قائمة السيرفرات وروابط الفيديو المضافة لهذا الفيلم:' : 'قائمة السيرفرات وروابط الفيديو المضافة لهذه الحلقة:'}</span>
+                        <span className="font-mono bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full text-[10px]">المجموع: {servers.length}</span>
+                    </div>
+
+                    {servers.map((server, index) => isMovieMode ? (
+                        <div key={index} className="relative rounded-2xl border border-gray-800 bg-[#12141d] p-5 space-y-4 transition-colors shadow-lg animate-fade-in-up">
+                            {/* Delete Row Button */}
+                            <button 
+                                type="button"
+                                onClick={() => handleRemoveServer(index)}
+                                className="absolute top-4 left-4 text-gray-500 hover:text-red-500 transition-colors cursor-pointer p-1 rounded-lg hover:bg-gray-800"
+                                title="حذف السيرفر"
+                            >
+                                <CloseIcon className="h-4 w-4" />
+                            </button>
+
+                            {/* Name and State Selection */}
+                            <div className="flex flex-wrap items-center gap-3">
+                                <span className="flex h-6 w-6 items-center justify-center rounded bg-black border border-gray-800 font-mono text-xs font-bold text-gray-400">
+                                    {index + 1}
+                                </span>
+                                
+                                <input 
+                                    type="text"
                                     value={server.name} 
                                     onChange={(e) => handleServerChange(index, 'name', e.target.value)} 
                                     placeholder="اسم السيرفر" 
-                                    className={`w-full rounded-lg border border-gray-700 bg-black px-3 py-2 text-sm text-white focus:outline-none ${FOCUS_RING} sm:w-48`}
-                                  />
+                                    className="rounded-lg border border-gray-800 bg-black px-3 py-1.5 text-xs text-white focus:outline-none focus:border-green-500 font-bold w-44"
+                                />
+
+                                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={server.isActive} 
+                                        onChange={(e) => handleServerChange(index, 'isActive', e.target.checked)} 
+                                        className="h-4 w-4 accent-green-500 rounded bg-black border-gray-800 cursor-pointer"
+                                    />
+                                    <span className="text-xs font-bold text-gray-400">نشط</span>
+                                </label>
+                            </div>
+
+                            {/* Links Inputs */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="mb-1 block text-[10px] font-bold text-gray-500 uppercase tracking-wider">رابط المشاهدة (WATCH)</label>
+                                    <input 
+                                        type="text"
+                                        value={server.url} 
+                                        onChange={(e) => handleServerChange(index, 'url', e.target.value)} 
+                                        placeholder="رابط كامل للمشاهدة أو امتداد البث..." 
+                                        className="w-full rounded-xl border border-gray-800 bg-black px-4 py-2.5 text-xs text-white focus:outline-none focus:border-green-500 font-mono text-left dir-ltr placeholder:text-right"
+                                        dir="ltr"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-[10px] font-bold text-gray-500 uppercase tracking-wider">رابط التحميل (DOWNLOAD)</label>
+                                    <input 
+                                        type="text"
+                                        value={server.downloadUrl} 
+                                        onChange={(e) => handleServerChange(index, 'downloadUrl', e.target.value)} 
+                                        placeholder="رابط التحميل المباشر للزوار..." 
+                                        className="w-full rounded-xl border border-gray-800 bg-black px-4 py-2.5 text-xs text-white focus:outline-none focus:border-green-500 font-mono text-left dir-ltr placeholder:text-right"
+                                        dir="ltr"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Smart domain extraction support for quick save */}
+                            {(() => {
+                                const isFullUrl = server.url && (server.url.includes('.mp4') || server.url.includes('.m3u8') || server.url.includes('?') || (server.url.match(/\//g) || []).length > 3);
+                                if (!isFullUrl) return null;
+                                try {
+                                    const urlObj = new URL(server.url.startsWith('http') ? server.url : 'https://' + server.url);
+                                    const host = urlObj.hostname.replace('www.', '');
+                                    const domainOnly = `${urlObj.protocol}//${urlObj.host}/`;
+                                    const rawName = host.split('.')[0];
+                                    const serverNameDefault = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+                                    
+                                    const isAlreadyRegistered = globalServers.some(gs => gs.baseDomain.includes(host) || gs.name.toLowerCase() === serverNameDefault.toLowerCase());
+                                    
+                                    return (
+                                        <div className="bg-[#1e2a38] border border-blue-500/30 text-blue-300 p-3 rounded-lg text-[11px] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-1 font-bold animate-pulse">
+                                            <div className="flex items-center gap-2">
+                                                <span className="p-1 px-2 rounded-lg bg-blue-500/20 text-blue-400 text-[9px] font-black uppercase">ذكاء المحرك ⚡</span>
+                                                <span>مستضيف مكشوف: <b className="font-mono text-emerald-400">{host}</b></span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => {
+                                                        handleServerChange(index, 'name', serverNameDefault);
+                                                        addToast(`تم اعتماد اسم السيرفر: "${serverNameDefault}"`, "info");
+                                                    }} 
+                                                    className="px-2.5 py-1 bg-blue-600/30 hover:bg-blue-600/55 text-blue-200 rounded-lg transition-colors text-[10px]"
+                                                >
+                                                    اعتماد الاسم ({serverNameDefault})
+                                                </button>
+                                                {!isAlreadyRegistered && (
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={async () => {
+                                                            try {
+                                                                await addServer({ name: serverNameDefault, baseDomain: domainOnly });
+                                                                await onRefreshGlobalServers();
+                                                                handleServerChange(index, 'name', serverNameDefault);
+                                                                addToast(`تم حفظ "${serverNameDefault}" كخادم رسمي دائم!`, "success");
+                                                            } catch (e) {
+                                                                addToast("حدث خطأ في التسجيل.", "error");
+                                                            }
+                                                        }} 
+                                                        className="px-2.5 py-1 bg-emerald-600/30 hover:bg-emerald-600/55 text-emerald-200 rounded-lg transition-colors text-[10px] flex items-center gap-1"
+                                                    >
+                                                        💾 حفظ كخادم رسمي دائم
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                } catch {
+                                    return null;
+                                }
+                            })()}
+                        </div>
+                    ) : (
+                          <div key={index} className="relative group/s rounded-2xl border border-gray-800 bg-[#12141d] p-5 space-y-5 hover:border-gray-700 transition-colors shadow-lg">
+                            {/* زر الحذف */}
+                            <button 
+                                onClick={() => handleRemoveServer(index)}
+                                className="absolute -top-3 -left-3 z-20 rounded-full bg-red-600 hover:bg-red-500 p-2 text-white shadow-lg transition-transform hover:scale-110"
+                                title="حذف السيرفر من الحلقة"
+                            >
+                                <CloseIcon className="h-4 w-4" />
+                            </button>
+
+                            <div className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
+                              {/* Selection part */}
+                              <div className="flex flex-col sm:flex-row w-full items-start sm:items-center gap-3 lg:w-auto">
+                                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 font-mono text-xs font-bold text-blue-400">{index + 1}</span>
+                                  
+                                  {/* قائمة السيرفرات المسجلة بقاعدة البيانات */}
+                                  <div className="flex flex-col gap-1 w-full sm:w-auto">
+                                      <span className="text-[10px] text-gray-500 font-bold block">السيرفرات المسجلة:</span>
+                                      <select
+                                          value={globalServers.find(gs => gs.name.toLowerCase() === server.name.toLowerCase())?.id || ''}
+                                          onChange={(e) => {
+                                              const selectedId = e.target.value;
+                                              const matched = globalServers.find(gs => gs.id === selectedId);
+                                              if (matched) {
+                                                  handleServerChange(index, 'name', matched.name);
+                                              }
+                                          }}
+                                          className="rounded-xl border border-gray-800 bg-black px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-blue-500 w-full sm:w-52"
+                                      >
+                                          <option value="">-- اختر خادم مسجل --</option>
+                                          {globalServers.map(gs => (
+                                              <option key={gs.id} value={gs.id}>{gs.name}</option>
+                                          ))}
+                                      </select>
+                                  </div>
+
+                                  {/* اسم السيرفر المخصص */}
+                                  <div className="flex flex-col gap-1 w-full sm:w-auto">
+                                      <span className="text-[10px] text-gray-500 font-bold block">اسم السيرفر المكتوب:</span>
+                                      <input 
+                                        value={server.name} 
+                                        onChange={(e) => handleServerChange(index, 'name', e.target.value)} 
+                                        placeholder="مثال: Google Drive" 
+                                        className="w-full rounded-xl border border-gray-800 bg-black px-3 py-2 text-xs font-black text-white focus:outline-none focus:border-blue-500 sm:w-48"
+                                      />
+                                  </div>
                               </div>
-                              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-700 bg-black px-3 py-1.5 text-sm transition-colors hover:border-[var(--color-accent)]">
+
+                              {/* مفتاح تنشيط السيرفر */}
+                              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-800 bg-black hover:bg-gray-900/50 px-4 py-2 text-sm transition-colors hover:border-[var(--color-accent)] self-end lg:self-auto">
                                 <input type="checkbox" checked={server.isActive} onChange={(e) => handleServerChange(index, 'isActive', e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)] rounded"/> 
-                                <span className={server.isActive ? "text-[var(--color-accent)] font-bold text-xs" : "text-gray-400 text-xs"}>نشط</span>
+                                <span className={server.isActive ? "text-[var(--color-accent)] font-bold text-xs" : "text-gray-400 text-xs"}>{server.isActive ? "نشط ومتاح للزوار" : "معطل مؤقتاً"}</span>
                               </label>
                             </div>
                             
+                            {/* حقول الروابط */}
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div>
-                                    <label className="mb-1 block text-[10px] font-bold text-gray-500 uppercase">رابط المشاهدة (Watch)</label>
+                                    <label className="mb-1.5 block text-[10px] font-bold text-gray-500 uppercase tracking-wider">رابط المشاهدة المباشر أو الـ Embed (Watch URL)</label>
                                     <input 
                                         value={server.url} 
                                         onChange={(e) => handleServerChange(index, 'url', e.target.value)} 
-                                        placeholder="رابط المشاهدة (mp4, m3u8, embed...)" 
-                                        className={`w-full rounded-lg border border-gray-700 bg-black px-3 py-2 text-sm text-white focus:outline-none ${FOCUS_RING} dir-ltr placeholder:text-right text-left`}
+                                        placeholder="مثال: https://uqload.co/embed-xyz.html" 
+                                        className="w-full rounded-xl border border-gray-800 bg-black px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono text-left dir-ltr placeholder:text-right"
                                     />
                                 </div>
                                 <div>
-                                    <label className="mb-1 block text-[10px] font-bold text-gray-500 uppercase">رابط التحميل (Download)</label>
+                                    <label className="mb-1.5 block text-[10px] font-bold text-gray-500 uppercase tracking-wider">رابط التحميل المباشر للزوار (Download URL)</label>
                                     <input 
                                         value={server.downloadUrl} 
                                         onChange={(e) => handleServerChange(index, 'downloadUrl', e.target.value)} 
-                                        placeholder="رابط التحميل المباشر" 
-                                        className={`w-full rounded-lg border border-gray-700 bg-black px-3 py-2 text-sm text-white focus:outline-none ${FOCUS_RING} dir-ltr placeholder:text-right text-left`}
+                                        placeholder="مثال: https://myhost.com/download/file.mp4" 
+                                        className="w-full rounded-xl border border-gray-800 bg-black px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono text-left dir-ltr placeholder:text-right"
                                     />
                                 </div>
                             </div>
+
+                            {/* المحرك الذكي لكشف الروابط الكاملة واستخراج الدومين */}
+                            {(() => {
+                                const isFullUrl = server.url && (server.url.includes('.mp4') || server.url.includes('.m3u8') || server.url.includes('?') || (server.url.match(/\//g) || []).length > 3);
+                                if (!isFullUrl) return null;
+                                try {
+                                    const urlObj = new URL(server.url.startsWith('http') ? server.url : 'https://' + server.url);
+                                    const host = urlObj.hostname.replace('www.', '');
+                                    const domainOnly = `${urlObj.protocol}//${urlObj.host}/`;
+                                    const rawName = host.split('.')[0];
+                                    const serverNameDefault = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+                                    
+                                    // هل مسجل مسبقاً؟
+                                    const isAlreadyRegistered = globalServers.some(gs => gs.baseDomain.includes(host) || gs.name.toLowerCase() === serverNameDefault.toLowerCase());
+                                    
+                                    return (
+                                        <div className="bg-[#1e2a38] border border-blue-500/30 text-blue-300 p-4 rounded-xl text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-1 font-bold animate-pulse">
+                                            <div className="flex items-center gap-2">
+                                                <span className="p-1 px-2 rounded-lg bg-blue-500/20 text-blue-400 text-[10px] font-black uppercase">ذكاء المحرك ⚡</span>
+                                                <span>تم كشف رابط كامل للمستضيف: <b className="font-mono text-emerald-400 underline">{host}</b></span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => {
+                                                        handleServerChange(index, 'name', serverNameDefault);
+                                                        addToast(`تم اعتماد اسم السيرفر: "${serverNameDefault}"`, "info");
+                                                    }} 
+                                                    className="px-3 py-1.5 bg-blue-600/30 hover:bg-blue-600/55 text-blue-200 rounded-lg transition-colors text-[11px]"
+                                                >
+                                                    استخراج الاسم ليكون اسم السيرفر ({serverNameDefault})
+                                                </button>
+                                                {!isAlreadyRegistered && (
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={async () => {
+                                                            try {
+                                                                await addServer({ name: serverNameDefault, baseDomain: domainOnly });
+                                                                await onRefreshGlobalServers();
+                                                                handleServerChange(index, 'name', serverNameDefault);
+                                                                addToast(`تم حفظ "${serverNameDefault}" كخادم رسمي دائم في الإدارة بنجاح!`, "success");
+                                                            } catch (e) {
+                                                                addToast("حدث خطأ أثناء ترحيل الخادم بقاعدة البيانات.", "error");
+                                                            }
+                                                        }} 
+                                                        className="px-3 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/55 text-emerald-200 rounded-lg transition-colors text-[11px] flex items-center gap-1.5"
+                                                    >
+                                                        💾 تسجيل كخادم رسمي دائم باللوحة
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                } catch {
+                                    return null;
+                                }
+                            })()}
                         </div>
                     ))}
                     
                     <button 
                         type="button"
                         onClick={handleAddServer}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-700 bg-[#161b22]/50 py-4 font-bold text-gray-400 transition-all hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 hover:text-[var(--color-accent)]"
+                        className={`flex w-full items-center justify-center gap-2 border border-dashed border-gray-800 bg-[#12141c]/30 hover:bg-[#12141c]/50 transition-all font-bold cursor-pointer ${isMovieMode ? 'rounded-xl py-3.5 text-xs text-gray-400 hover:border-green-500/50 hover:text-green-400' : 'rounded-2xl border-2 py-5 text-gray-400 hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 hover:text-[var(--color-accent)] text-sm'}`}
                     >
                         <PlusIcon className="h-5 w-5" />
-                        <span>إضافة سيرفر جديد</span>
+                        <span>{isMovieMode ? 'إضافة سيرفر جديد' : 'إضافة سيرفر وروابط إضافية 🎬'}</span>
                     </button>
                 </div>
-                <div className="flex justify-end gap-3 border-t border-gray-800 bg-[#161b22] p-4 md:p-6">
-                    <button type="button" onClick={onClose} className="rounded-lg bg-gray-700 px-6 py-2 text-sm font-bold text-white transition-colors hover:bg-gray-600">إلغاء</button>
-                    <button type="button" onClick={handleSaveServers} className="rounded-lg bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] px-8 py-2 text-sm font-bold text-black shadow-lg transition-all hover:scale-105 hover:shadow-[0_0_20px_var(--shadow-color)]">حفظ التغييرات</button>
+
+                {/* Footer Section */}
+                <div className="flex justify-end gap-3 border-t border-gray-800 bg-[#13151f] p-5 md:p-6">
+                    <button type="button" onClick={onClose} className="rounded-xl bg-gray-800 hover:bg-gray-700 px-6 py-3 text-sm font-bold text-gray-300 transition-colors bg-opacity-50">إلغاء</button>
+                    <button 
+                        type="button" 
+                        onClick={handleSaveServers} 
+                        className={`rounded-xl px-10 py-3 text-sm font-bold text-black transition-all cursor-pointer ${isMovieMode ? 'bg-[#00cba9] hover:bg-[#00bda0]' : 'bg-gradient-to-r from-blue-500 to-[#00cba9]'} shadow-lg hover:brightness-110 active:scale-95`}
+                    >
+                        {isMovieMode ? 'حفظ التغييرات' : 'حفظ واعتماد الروابط للحلقة 🚀'}
+                    </button>
                 </div>
             </div>
 
@@ -838,6 +1297,12 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         padZero: boolean;
         padTwoZeros: boolean;
     }>({ isOpen: false, seasonId: null, serverId: '', seriesSlug: '', prefix: '', suffix: '.mp4', startNum: '', endNum: '', padZero: true, padTwoZeros: false });
+
+    // --- Auto-Link Modal: New Server Registration States ---
+    const [autoLinkNewServerOpen, setAutoLinkNewServerOpen] = useState(false);
+    const [autoLinkNewServerName, setAutoLinkNewServerName] = useState('');
+    const [autoLinkNewServerDomain, setAutoLinkNewServerDomain] = useState('');
+    const [autoLinkNewServerSaving, setAutoLinkNewServerSaving] = useState(false);
 
     const [globalServers, setGlobalServers] = useState<GlobalServer[]>([]);
     const [allContentList, setAllContentList] = useState<Content[]>([]);
@@ -921,6 +1386,29 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         episodeId: number | null;
         title: string;
     }>({ isOpen: false, seasonId: null, episodeId: null, title: '' });
+
+    const [clearSeasonServersState, setClearSeasonServersState] = useState<{
+        isOpen: boolean;
+        seasonId: number | null;
+        title: string;
+    }>({ isOpen: false, seasonId: null, title: '' });
+
+    // --- BULK EPISODE IMAGE STATE ---
+    const [bulkImageState, setBulkImageState] = useState<{
+        isOpen: boolean;
+        seasonId: number | null;
+        imageUrl: string;
+        applyRange: 'all' | 'range';
+        fromEpisodes: number | '';
+        toEpisodes: number | '';
+    }>({
+        isOpen: false,
+        seasonId: null,
+        imageUrl: '',
+        applyRange: 'all',
+        fromEpisodes: '',
+        toEpisodes: ''
+    });
 
     const [tmdbIdInput, setTmdbIdInput] = useState(content?.id && !isNaN(Number(content.id)) ? content.id : '');
     const [fetchLoading, setFetchLoading] = useState(false);
@@ -1186,6 +1674,65 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
         addToast(type === 'add' ? `تم إضافة الحلقات من ${sFrom} إلى ${eTo} بنجاح.` : `تم حذف الحلقات من ${sFrom} إلى ${eTo} بنجاح.`, "success");
         setBulkActionState(prev => ({ ...prev, isOpen: false }));
+    };
+
+    // --- BULK EPISODE IMAGES FUNCTIONS ---
+    const openBulkImageModal = (seasonId: number) => {
+        const season = formData.seasons?.find(s => s.id === seasonId);
+        const totalEps = season?.episodes?.length || 1;
+        setBulkImageState({
+            isOpen: true,
+            seasonId,
+            imageUrl: season?.backdrop || formData.backdrop || formData.poster || '',
+            applyRange: 'all',
+            fromEpisodes: 1,
+            toEpisodes: totalEps
+        });
+    };
+
+    const executeApplyBulkImage = () => {
+        const { seasonId, imageUrl, applyRange, fromEpisodes, toEpisodes } = bulkImageState;
+        if (!seasonId) return;
+
+        if (!imageUrl.trim()) {
+            addToast("يرجى إدخال رابط الصورة بشكل صحيح.", "error");
+            return;
+        }
+
+        const sFrom = typeof fromEpisodes === 'number' ? fromEpisodes : 1;
+        const eTo = typeof toEpisodes === 'number' ? toEpisodes : 1;
+
+        if (applyRange === 'range' && eTo < sFrom) {
+            addToast("رقم الحلقة النهائية يجب أن يكون أكبر من أو يساوي الحلقة الابتدائية.", "error");
+            return;
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            seasons: (prev.seasons || []).map(season => {
+                if (season.id !== seasonId) return season;
+
+                const updatedEpisodes = (season.episodes || []).map((ep) => {
+                    const epNum = extractEpisodeNumber(ep.title);
+                    let shouldApply = false;
+                    if (applyRange === 'all') {
+                        shouldApply = true;
+                    } else {
+                        shouldApply = epNum >= sFrom && epNum <= eTo;
+                    }
+
+                    if (shouldApply) {
+                        return { ...ep, thumbnail: imageUrl.trim() };
+                    }
+                    return ep;
+                });
+
+                return { ...season, episodes: updatedEpisodes };
+            })
+        }));
+
+        addToast("تم تحديث صور الحلقات المحددة بنجاح!", "success");
+        setBulkImageState(prev => ({ ...prev, isOpen: false }));
     };
 
     // --- NEW: Auto-Link Generation Functions ---
@@ -1751,8 +2298,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 return g.name; 
             }) || [];
 
-            if (mappedGenres.includes('أطفال') && !autoCategory.includes('أنميشن')) {
-                autoCategory = 'افلام أنميشن';
+            if (mappedGenres.includes('أطفال') && !autoCategory.includes('أنيميشن')) {
+                autoCategory = (currentType === ContentType.Series) ? 'مسلسلات أنيميشن' : 'أفلام أنيميشن';
             }
 
             const castNames: string[] = [];
@@ -1884,9 +2431,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const filteredCategories = useMemo<Category[]>(() => {
         const commonCats: Category[] = ['قريباً'];
         if (formData.type === ContentType.Movie) {
-            return ['افلام عربية', 'افلام تركية', 'افلام اجنبية', 'افلام هندية', 'افلام أنميشن', 'افلام العيد', ...commonCats];
+            return ['افلام عربية', 'افلام تركية', 'افلام اجنبية', 'افلام هندية', 'أفلام أنيميشن', 'افلام العيد', ...commonCats];
         } else if (formData.type === ContentType.Series) {
-            return ['مسلسلات عربية', 'مسلسلات تركية', 'مسلسلات اجنبية', 'رمضان', 'حصرياً لرمضان', 'مسلسلات رمضان', ...commonCats];
+            return ['مسلسلات عربية', 'مسلسلات تركية', 'مسلسلات اجنبية', 'مسلسلات أنيميشن', 'رمضان', 'حصرياً لرمضان', 'مسلسلات رمضان', ...commonCats];
         } else if (formData.type === ContentType.Program) {
             return ['برامج تلفزيونية', 'برامج رمضان', ...commonCats];
         } else if (formData.type === ContentType.Concert) {
@@ -2009,6 +2556,27 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
     const requestDeleteSeason = (seasonId: number, seasonTitle: string) => { setDeleteSeasonState({ isOpen: true, seasonId, title: seasonTitle }); };
     const executeDeleteSeason = () => { if (deleteSeasonState.seasonId) setFormData(prev => ({ ...prev, seasons: (prev.seasons || []).filter(s => s.id !== deleteSeasonState.seasonId) })); setDeleteSeasonState(prev => ({ ...prev, isOpen: false })); };
+    
+    const requestClearSeasonServers = (seasonId: number, seasonTitle: string) => { setClearSeasonServersState({ isOpen: true, seasonId, title: seasonTitle }); };
+    const executeClearSeasonServers = () => {
+        if (clearSeasonServersState.seasonId) {
+            setFormData(prev => ({
+                ...prev,
+                seasons: (prev.seasons || []).map(s => {
+                    if (s.id !== clearSeasonServersState.seasonId) return s;
+                    return {
+                        ...s,
+                        episodes: (s.episodes || []).map(ep => ({
+                            ...ep,
+                            servers: []
+                        }))
+                    };
+                })
+            }));
+            addToast(`تم تفريغ كافة السيرفرات والروابط للموسم "${clearSeasonServersState.title}" بنجاح.`, "success");
+        }
+        setClearSeasonServersState({ isOpen: false, seasonId: null, title: '' });
+    };
     
     const handleMovieExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -3016,6 +3584,12 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     {/* زر توليد الروابط التلقائية */}
                                                     <button type="button" onClick={(e) => { e.stopPropagation(); openAutoLinkModal(season.id); }} className="p-2 hover:bg-green-600/10 text-green-500 rounded font-bold text-[10px] flex items-center gap-1" title="توليد روابط تلقائية"><LinkIcon className="w-4 h-4"/> روابط</button>
 
+                                                    {/* زر تحديث صور الحلقات دفعة واحدة */}
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); openBulkImageModal(season.id); }} className="p-2 hover:bg-purple-600/10 text-purple-400 rounded font-bold text-[10px] flex items-center gap-1 bg-purple-500/5 border border-purple-500/15" title="تحديث صور كافة الحلقات أو نطاق محدد دفعة واحدة"><PhotoIcon className="w-3.5 h-3.5 text-purple-400"/> صور الحلقات</button>
+
+                                                    {/* زر تفريغ الروابط والسيرفرات للموسم */}
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); requestClearSeasonServers(season.id, season.title || `الموسم ${season.seasonNumber}`); }} className="p-2 hover:bg-amber-500/10 text-amber-500 rounded font-bold text-[10px] flex items-center gap-1 bg-amber-500/5 border border-amber-500/15" title="تفريغ كافة الروابط والسيرفرات لهذا الموسم"><TrashIcon className="w-3.5 h-3.5 text-amber-500"/> تفريغ الروابط</button>
+
                                                     <button type="button" onClick={(e) => { e.stopPropagation(); openBulkActionModal(season.id, 'add'); }} className="p-2 hover:bg-blue-600/10 text-blue-500 rounded font-bold text-[10px] flex items-center gap-1" title="إضافة حلقات متعددة"><StackIcon className="w-4 h-4"/> +</button>
                                                     <button type="button" onClick={(e) => { e.stopPropagation(); openBulkActionModal(season.id, 'delete'); }} className="p-2 hover:bg-red-600/10 text-red-500 rounded font-bold text-[10px] flex items-center gap-1" title="حذف حلقات متعددة"><StackIcon className="w-4 h-4"/> -</button>
                                                     
@@ -3703,10 +4277,43 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 />
             )}
             {isTitleModalOpen && <TitleGalleryModal isOpen={isTitleModalOpen} onClose={() => setIsTitleModalOpen(false)} tmdbId={formData.tmdbId || formData.id || ''} type={formData.type} onSelect={(title) => setFormData(prev => ({...prev, title}))} />}
-            {editingServersForEpisode && <ServerManagementModal episode={editingServersForEpisode} onClose={() => setEditingServersForEpisode(null)} onSave={handleUpdateEpisodeServers} />}
-            {isManagingMovieServers && <ServerManagementModal episode={{id: 0, title: 'الفيلم', progress: 0, servers: formData.servers || []}} onClose={() => setIsManagingMovieServers(false)} onSave={handleUpdateMovieServers} />}
+            {editingServersForEpisode && (
+                <ServerManagementModal 
+                    episode={editingServersForEpisode} 
+                    onClose={() => setEditingServersForEpisode(null)} 
+                    onSave={handleUpdateEpisodeServers} 
+                    globalServers={globalServers}
+                    onRefreshGlobalServers={async () => {
+                        try {
+                            const data = await getServers();
+                            setGlobalServers(data);
+                        } catch (err) {
+                            console.error("Failed to refresh global servers:", err);
+                        }
+                    }}
+                    addToast={addToast}
+                />
+            )}
+            {isManagingMovieServers && (
+                <ServerManagementModal 
+                    episode={{id: 0, title: 'الفيلم', progress: 0, servers: formData.servers || []}} 
+                    onClose={() => setIsManagingMovieServers(false)} 
+                    onSave={handleUpdateMovieServers} 
+                    globalServers={globalServers}
+                    onRefreshGlobalServers={async () => {
+                        try {
+                            const data = await getServers();
+                            setGlobalServers(data);
+                        } catch (err) {
+                            console.error("Failed to refresh global servers:", err);
+                        }
+                    }}
+                    addToast={addToast}
+                />
+            )}
             <DeleteConfirmationModal isOpen={deleteSeasonState.isOpen} onClose={() => setDeleteSeasonState({ isOpen: false, seasonId: null, title: '' })} onConfirm={executeDeleteSeason} title="حذف الموسم" message={`هل أنت متأكد من حذف ${deleteSeasonState.title}؟`} />
             <DeleteConfirmationModal isOpen={deleteEpisodeState.isOpen} onClose={() => setDeleteEpisodeState({ isOpen: false, seasonId: null, episodeId: null, title: '' })} onConfirm={executeDeleteEpisode} title="حذف الحلقة" message={`هل أنت متأكد من حذف ${deleteEpisodeState.title}؟`} />
+            <DeleteConfirmationModal isOpen={clearSeasonServersState.isOpen} onClose={() => setClearSeasonServersState({ isOpen: false, seasonId: null, title: '' })} onConfirm={executeClearSeasonServers} title="تفريغ روابط وسيرفرات الموسم" message={`هل أنت متأكد من تفريغ وحذف جميع الروابط والسيرفرات لكافة حلقات "${clearSeasonServersState.title}"؟ لا يمكن التراجع عن هذا الإجراء.`} />
             
             {/* BULK ACTION MODAL */}
             {bulkActionState.isOpen && (
@@ -3749,87 +4356,318 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
             {/* NEW: AUTO-LINK GENERATION MODAL */}
             {autoLinkState.isOpen && (
-                <div className="fixed inset-0 z-[320] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setAutoLinkState(prev => ({ ...prev, isOpen: false }))}>
-                    <div className="w-full max-w-lg bg-[#0f1014] border border-green-500/30 rounded-2xl p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
-                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                <LinkIcon className="w-6 h-6 text-green-500"/>
-                                توليد روابط الحلقات تلقائياً
+                <div className="fixed inset-0 z-[320] bg-[#07080b]/98 backdrop-blur-md overflow-y-auto font-['Cairo'] text-right flex flex-col p-4 md:p-8" dir="rtl" onClick={() => setAutoLinkState(prev => ({ ...prev, isOpen: false }))}>
+                    <div className="w-full max-w-4xl mx-auto flex-1 bg-[#10121a] border border-green-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-2 md:my-4 animate-fade-in" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between border-b border-gray-800 bg-[#161b22] px-6 py-5">
+                            <h3 className="text-lg md:text-xl font-black text-white flex items-center gap-3">
+                                <div className="p-2 bg-green-500/10 rounded-xl text-green-400">
+                                    <LinkIcon className="w-6 h-6"/>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span>توليد روابط الحلقات تلقائياً للموسم</span>
+                                    <span className="text-gray-400 text-xs mt-0.5">قم بتكوين قالب الروابط لتوليد روابط لجميع الحلقات بضغطة زر واحدة</span>
+                                </div>
                             </h3>
-                            <button onClick={() => setAutoLinkState(prev => ({ ...prev, isOpen: false }))} className="text-gray-400 hover:text-white"><CloseIcon className="w-5 h-5"/></button>
+                            <button onClick={() => setAutoLinkState(prev => ({ ...prev, isOpen: false }))} className="text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-800 p-2 rounded-xl transition-all"><CloseIcon className="w-5 h-5"/></button>
                         </div>
                         
-                        <div className="space-y-4">
-                            <div className="bg-[#161b22] p-4 rounded-xl border border-gray-800 space-y-4">
-                                <div>
-                                    <label className={labelClass}>سيرفر البث (الدومين النشط)</label>
-                                    <select
-                                        value={autoLinkState.serverId}
-                                        onChange={e => setAutoLinkState(prev => ({...prev, serverId: e.target.value}))}
-                                        className={`${inputClass} focus:ring-green-500 focus:border-green-500 text-sm`}
-                                    >
-                                        <option value="">-- اختر السيرفر --</option>
-                                        {globalServers.map(server => (
-                                            <option key={server.id} value={server.id}>
-                                                {server.name} ({server.baseDomain})
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {globalServers.length === 0 && (
-                                        <p className="text-[10px] text-red-500 mt-1.5 font-bold">لا توجد سيرفرات بث مسجلة! يرجى إضافة سيرفر من لوحة الإدارة أولاً.</p>
+                        <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-black text-green-400/90 border-b border-gray-800 pb-2">بيانات الخادم والمسار</h4>
+                                    
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <label className={`${labelClass} !mb-0`}>سيرفر البث (الدومين النشط)</label>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => {
+                                                    setAutoLinkNewServerOpen(!autoLinkNewServerOpen);
+                                                    setAutoLinkNewServerName('');
+                                                    setAutoLinkNewServerDomain('');
+                                                }}
+                                                className="text-[10px] font-bold text-green-400 hover:text-green-300 hover:underline flex items-center gap-1 select-none"
+                                            >
+                                                {autoLinkNewServerOpen ? '✕ إغلاق الإضافة السريعة' : '➕ إضافة خادم بث رسمي سريعا'}
+                                            </button>
+                                        </div>
+                                        <select
+                                            value={autoLinkState.serverId}
+                                            onChange={e => setAutoLinkState(prev => ({...prev, serverId: e.target.value}))}
+                                            className={`${inputClass} focus:ring-green-500 focus:border-green-500 text-sm`}
+                                        >
+                                            <option value="">-- اختر السيرفر --</option>
+                                            {globalServers.map(server => (
+                                                <option key={server.id} value={server.id}>
+                                                    {server.name} ({server.baseDomain})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {globalServers.length === 0 && (
+                                            <p className="text-[10px] text-red-500 mt-1.5 font-bold">لا توجد سيرفرات بث مسجلة! يرجى إضافة سيرفر من لوحة الإدارة أو تكوينه بالأسفل.</p>
+                                        )}
+                                    </div>
+
+                                    {autoLinkNewServerOpen && (
+                                        <div className="bg-[#171a25] border border-green-500/20 p-4 rounded-2xl space-y-3 animate-fade-in-down">
+                                            <div className="flex items-center justify-between border-b border-gray-800 pb-2">
+                                                <span className="text-xs font-black text-green-400">تسجيل خادم بث رسمي جديد</span>
+                                                <span className="text-[10px] text-gray-500 font-bold">توفيراً للوقت</span>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <div>
+                                                    <label className="mb-1 block text-[10px] font-bold text-gray-400">اسم السيرفر الجديد</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={autoLinkNewServerName} 
+                                                        onChange={e => setAutoLinkNewServerName(e.target.value)} 
+                                                        placeholder="مثال: Uqload" 
+                                                        className="w-full rounded-lg border border-gray-800 bg-black px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500 font-bold"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-1 block text-[10px] font-bold text-gray-400 font-['Cairo']">رابط / دومين السيرفر (أو الصق رابط فيديو كامل)</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={autoLinkNewServerDomain} 
+                                                        onChange={e => setAutoLinkNewServerDomain(e.target.value)} 
+                                                        placeholder="مثال: https://uqload.co/ أو الصق رابط كامل هنا..." 
+                                                        className="w-full rounded-lg border border-gray-800 bg-black px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500 font-mono text-left dir-ltr"
+                                                        dir="ltr"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* المحرك الذكي لكشف الروابط التلقائية واستخراج الدومين */}
+                                            {(() => {
+                                                const urlVal = autoLinkNewServerDomain.trim();
+                                                const isFullUrl = urlVal && (urlVal.includes('.mp4') || urlVal.includes('.m3u8') || urlVal.includes('?') || (urlVal.match(/\//g) || []).length > 3);
+                                                if (!isFullUrl) return null;
+                                                
+                                                try {
+                                                    const urlObj = new URL(urlVal.startsWith('http') ? urlVal : 'https://' + urlVal);
+                                                    const host = urlObj.hostname.replace('www.', '');
+                                                    const domainOnly = `${urlObj.protocol}//${urlObj.host}/`;
+                                                    const rawName = host.split('.')[0];
+                                                    const serverNameDefault = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+                                                    
+                                                    return (
+                                                        <div className="bg-amber-500/10 border border-amber-500/25 text-amber-400 p-3 rounded-xl text-[11px] flex flex-col gap-2 font-bold my-1 animate-pulse">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                                </svg>
+                                                                <span>تم كشف رابط كامل! هل تريد استخراج رابط الخادم؟</span>
+                                                            </div>
+                                                            <div className="flex justify-end gap-1.5">
+                                                                <button 
+                                                                    type="button" 
+                                                                    onClick={() => {
+                                                                        setAutoLinkNewServerDomain(domainOnly);
+                                                                        if (!autoLinkNewServerName.trim()) {
+                                                                            setAutoLinkNewServerName(serverNameDefault);
+                                                                        }
+                                                                        addToast(`تم استخراج رابط الخادم: ${domainOnly}`, "info");
+                                                                    }}
+                                                                    className="px-2.5 py-1 bg-amber-500 text-black font-black hover:bg-amber-400 rounded-lg text-[10px] shadow-sm cursor-pointer select-none"
+                                                                >
+                                                                    استخرج رابط الخادم ليكون الدومين الأساسي ⚡
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } catch {
+                                                    return null;
+                                                }
+                                            })()}
+
+                                            {/* كاشف السيرفرات المكررة مع توفير اختيار سريع */}
+                                            {(() => {
+                                                if (!autoLinkNewServerName.trim() && !autoLinkNewServerDomain.trim()) return null;
+                                                const normalized = autoLinkNewServerName.trim().toLowerCase();
+                                                let checkDomain = autoLinkNewServerDomain.trim();
+                                                if (checkDomain) {
+                                                    if (!checkDomain.startsWith('http://') && !checkDomain.startsWith('https://')) {
+                                                        checkDomain = 'https://' + checkDomain;
+                                                    }
+                                                    if (!checkDomain.endsWith('/')) {
+                                                        checkDomain += '/';
+                                                    }
+                                                }
+                                                const checkClean = checkDomain ? checkDomain.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase() : '';
+
+                                                const matched = globalServers.find(gs => {
+                                                    const isNameMatch = normalized ? gs.name.trim().toLowerCase() === normalized : false;
+                                                    const gsClean = gs.baseDomain.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase();
+                                                    const isDomainMatch = checkClean ? gsClean === checkClean : false;
+                                                    return isNameMatch || isDomainMatch;
+                                                });
+
+                                                if (!matched) return null;
+                                                return (
+                                                    <div className="bg-amber-500/10 border border-amber-500/25 text-amber-400 p-3 rounded-xl text-[11px] flex flex-col gap-2 font-bold my-1">
+                                                        <div className="flex flex-col gap-0.5 text-right">
+                                                            <span>⚠️ هذا الخادم مضاف مسبقاً بقاعدة البيانات!</span>
+                                                            <p className="text-[10px] text-gray-300 font-normal">
+                                                                موجود باسم: <span className="text-white font-bold">"{matched.name}"</span> ودومين: <code className="text-emerald-400 font-mono font-bold font-xs bg-emerald-500/5 px-1 py-0.5 rounded">{matched.baseDomain}</code>
+                                                            </p>
+                                                        </div>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => {
+                                                                setAutoLinkState(prev => ({ ...prev, serverId: matched.id }));
+                                                                setAutoLinkNewServerName('');
+                                                                setAutoLinkNewServerDomain('');
+                                                                setAutoLinkNewServerOpen(false);
+                                                                addToast(`تم اختيار السيرفر "${matched.name}" وتحديده بنجاح!`, "info");
+                                                            }}
+                                                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-lg text-[10px] text-center shadow-sm select-none cursor-pointer"
+                                                        >
+                                                            اعتماده واختياره مباشرة 🔗
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            <div className="flex gap-2 justify-end pt-1">
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setAutoLinkNewServerOpen(false)}
+                                                    className="px-3 py-1.5 text-[10px] font-bold text-gray-400 hover:text-white bg-gray-800 rounded-lg transition-colors cursor-pointer"
+                                                >
+                                                    إلغاء
+                                                </button>
+                                                <button 
+                                                    type="button" 
+                                                    disabled={autoLinkNewServerSaving}
+                                                    onClick={async () => {
+                                                        if (!autoLinkNewServerName.trim()) {
+                                                            addToast("يرجى إدخال اسم السيرفر.", "error");
+                                                            return;
+                                                        }
+
+                                                        let domain = autoLinkNewServerDomain.trim();
+                                                        if (!domain) {
+                                                            domain = "https://";
+                                                        } else {
+                                                            if (!domain.startsWith('http://') && !domain.startsWith('https://')) {
+                                                                domain = 'https://' + domain;
+                                                            }
+                                                            if (!domain.endsWith('/')) {
+                                                                domain += '/';
+                                                            }
+                                                        }
+
+                                                        // Check if still somehow there's a duplicate
+                                                        const nameNorm = autoLinkNewServerName.trim().toLowerCase();
+                                                        const cleanD = domain.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase();
+                                                        const alreadyExist = globalServers.find(gs => {
+                                                            const isNM = gs.name.trim().toLowerCase() === nameNorm;
+                                                            const gsC = gs.baseDomain.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase();
+                                                            const isDM = cleanD && cleanD !== 'https://' ? gsC === cleanD : false;
+                                                            return isNM || isDM;
+                                                        });
+
+                                                        if (alreadyExist) {
+                                                            setAutoLinkState(prev => ({ ...prev, serverId: alreadyExist.id }));
+                                                            setAutoLinkNewServerName('');
+                                                            setAutoLinkNewServerDomain('');
+                                                            setAutoLinkNewServerOpen(false);
+                                                            addToast(`هذا السيرفر مضاف مسبقاً باسم "${alreadyExist.name}". تم اختياره تلقائياً!`, "info");
+                                                            return;
+                                                        }
+
+                                                        setAutoLinkNewServerSaving(true);
+                                                        try {
+                                                            await addServer({
+                                                                name: autoLinkNewServerName.trim(),
+                                                                baseDomain: domain
+                                                            });
+                                                            const serversData = await getServers();
+                                                            setGlobalServers(serversData);
+
+                                                            const newlyAdded = serversData.find(s => s.name.trim().toLowerCase() === autoLinkNewServerName.trim().toLowerCase());
+                                                            if (newlyAdded) {
+                                                                setAutoLinkState(prev => ({ ...prev, serverId: newlyAdded.id }));
+                                                            }
+
+                                                            addToast(`تم إضافة خادم البث "${autoLinkNewServerName}" بنجاح واختياره!`, "success");
+                                                            setAutoLinkNewServerName('');
+                                                            setAutoLinkNewServerDomain('');
+                                                            setAutoLinkNewServerOpen(false);
+                                                        } catch (err) {
+                                                            addToast("حدث خطأ أثناء إضافة خادم البث الجديد.", "error");
+                                                        } finally {
+                                                            setAutoLinkNewServerSaving(false);
+                                                        }
+                                                    }}
+                                                    className="px-3 py-1.5 text-[10px] font-black text-black bg-green-500 hover:bg-green-400 disabled:opacity-50 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                                                >
+                                                    {autoLinkNewServerSaving ? 'جاري الإضافة...' : '➕ حفظ وتحديد الخادم'}
+                                                </button>
+                                            </div>
+                                        </div>
                                     )}
+                                    
+                                    <div>
+                                        <label className={labelClass}>مسار / اسم السلسلة متبوعاً بشرطة مائلة (Series Slug)</label>
+                                        <input 
+                                            type="text" 
+                                            value={autoLinkState.seriesSlug} 
+                                            onChange={e => setAutoLinkState(prev => ({...prev, seriesSlug: e.target.value}))} 
+                                            className={`${inputClass} font-mono focus:ring-green-500 focus:border-green-500 text-left`}
+                                            dir="ltr"
+                                            placeholder="مثال: Baba-w-Mama-Giran/" 
+                                        />
+                                        <p className="text-[10px] text-gray-500 mt-1.5 font-bold">تلميح: اسم المجلد على السيرفر (مثال: `Baba-w-Mama-Giran/` أو `series/El-Set-Monaliza/` )</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className={labelClass}>صيغة / امتداد الفيديو (Suffix)</label>
+                                        <input 
+                                            type="text" 
+                                            value={autoLinkState.suffix} 
+                                            onChange={e => setAutoLinkState(prev => ({...prev, suffix: e.target.value}))} 
+                                            className={`${inputClass} dir-ltr focus:ring-green-500 focus:border-green-500 text-left`} 
+                                            placeholder="مثال: .mp4" 
+                                            dir="ltr"
+                                        />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className={labelClass}>مسار / اسم السلسلة متبوعاً بشرطة مائلة (Series Slug)</label>
-                                    <input 
-                                        type="text" 
-                                        value={autoLinkState.seriesSlug} 
-                                        onChange={e => setAutoLinkState(prev => ({...prev, seriesSlug: e.target.value}))} 
-                                        className={`${inputClass} font-mono focus:ring-green-500 focus:border-green-500 text-left`}
-                                        dir="ltr"
-                                        placeholder="مثال: Baba-w-Mama-Giran/" 
-                                    />
-                                    <p className="text-[10px] text-gray-500 mt-1.5 font-bold">تلميح: اسم المجلد على السيرفر (مثال: `Baba-w-Mama-Giran/` أو `series/El-Set-Monaliza/` )</p>
-                                </div>
-                                <div>
-                                    <label className={labelClass}>صيغة / امتداد الفيديو (Suffix)</label>
-                                    <input 
-                                        type="text" 
-                                        value={autoLinkState.suffix} 
-                                        onChange={e => setAutoLinkState(prev => ({...prev, suffix: e.target.value}))} 
-                                        className={`${inputClass} dir-ltr focus:ring-green-500 focus:border-green-500 text-left`} 
-                                        placeholder="مثال: .mp4" 
-                                        dir="ltr"
-                                    />
+
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-black text-green-400/90 border-b border-gray-800 pb-2">خيارات ترقيم الحلقات</h4>
+                                    
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
+                                            <label className={labelClass}>من الحلقة</label>
+                                            <input type="number" min="1" value={autoLinkState.startNum} onChange={e => setAutoLinkState(prev => ({...prev, startNum: e.target.value === '' ? '' : parseInt(e.target.value)}))} className={`${inputClass} focus:ring-green-500 focus:border-green-500`} placeholder="رقم البداية" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className={labelClass}>إلى الحلقة</label>
+                                            <input type="number" min="1" value={autoLinkState.endNum} onChange={e => setAutoLinkState(prev => ({...prev, endNum: e.target.value === '' ? '' : parseInt(e.target.value)}))} className={`${inputClass} focus:ring-green-500 focus:border-green-500`} placeholder="رقم النهاية" />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between bg-[#161b22] p-4 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
+                                            <span className="text-xs font-bold text-gray-300">إضافة صفر للأرقام الفردية (01, 02 بدل 1, 2)</span>
+                                            <ToggleSwitch checked={autoLinkState.padZero} onChange={val => setAutoLinkState(prev => ({...prev, padZero: val, padTwoZeros: val ? false : prev.padTwoZeros}))} label={autoLinkState.padZero ? "مفعل" : "معطل"} />
+                                        </div>
+                                        <div className="flex items-center justify-between bg-[#161b22] p-4 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
+                                            <span className="text-xs font-bold text-gray-300">إضافة صفرين للأرقام الفردية (001, 002, 010 بدل 1, 2, 10)</span>
+                                            <ToggleSwitch checked={autoLinkState.padTwoZeros} onChange={val => setAutoLinkState(prev => ({...prev, padTwoZeros: val, padZero: val ? false : prev.padZero}))} label={autoLinkState.padTwoZeros ? "مفعل" : "معطل"} />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="flex gap-4">
-                                <div className="flex-1">
-                                    <label className={labelClass}>من الحلقة</label>
-                                    <input type="number" min="1" value={autoLinkState.startNum} onChange={e => setAutoLinkState(prev => ({...prev, startNum: e.target.value === '' ? '' : parseInt(e.target.value)}))} className={`${inputClass} focus:ring-green-500 focus:border-green-500`} placeholder="رقم البداية" />
-                                </div>
-                                <div className="flex-1">
-                                    <label className={labelClass}>إلى الحلقة</label>
-                                    <input type="number" min="1" value={autoLinkState.endNum} onChange={e => setAutoLinkState(prev => ({...prev, endNum: e.target.value === '' ? '' : parseInt(e.target.value)}))} className={`${inputClass} focus:ring-green-500 focus:border-green-500`} placeholder="رقم النهاية" />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between bg-[#161b22] p-4 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
-                                    <span className="text-xs font-bold text-gray-300">إضافة صفر للأرقام الفردية (01, 02 بدل 1, 2)</span>
-                                    <ToggleSwitch checked={autoLinkState.padZero} onChange={val => setAutoLinkState(prev => ({...prev, padZero: val, padTwoZeros: val ? false : prev.padTwoZeros}))} label={autoLinkState.padZero ? "مفعل" : "معطل"} />
-                                </div>
-                                <div className="flex items-center justify-between bg-[#161b22] p-4 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
-                                    <span className="text-xs font-bold text-gray-300">إضافة صفرين للأرقام الفردية (001, 002, 010 بدل 1, 2, 10)</span>
-                                    <ToggleSwitch checked={autoLinkState.padTwoZeros} onChange={val => setAutoLinkState(prev => ({...prev, padTwoZeros: val, padZero: val ? false : prev.padZero}))} label={autoLinkState.padTwoZeros ? "مفعل" : "معطل"} />
-                                </div>
-                            </div>
-
-                            <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl mt-2 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/5 rounded-bl-full pointer-events-none"></div>
+                            <div className="bg-green-500/10 border border-green-500/20 p-5 rounded-2xl relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-bl-full pointer-events-none"></div>
                                 <span className="text-[10px] text-green-500 font-bold uppercase block mb-2">معاينة للرابط (الحلقة الأولى):</span>
-                                <div className="text-xs text-white font-mono break-all dir-ltr text-left bg-black/50 p-3 rounded-lg border border-green-500/20 shadow-inner">
+                                <div className="text-xs md:text-sm text-white font-mono break-all dir-ltr text-left bg-black/50 p-4 rounded-xl border border-green-500/20 shadow-inner">
                                     {(() => {
                                         const matchedServer = globalServers.find(s => s.id === autoLinkState.serverId);
                                         const base = matchedServer ? matchedServer.baseDomain : 'https://[SERVER_DOMAIN]/';
@@ -3851,11 +4689,98 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             </div>
                         </div>
 
-                        <div className="flex gap-3 mt-6 pt-4 border-t border-gray-800">
-                            <button onClick={() => setAutoLinkState(prev => ({ ...prev, isOpen: false }))} className="flex-1 rounded-lg bg-gray-800 py-2.5 text-sm font-bold text-gray-300 hover:bg-gray-700">إلغاء</button>
-                            <button onClick={executeAutoLinkGeneration} className="flex-1 rounded-lg py-2.5 text-sm font-bold text-black bg-green-500 hover:bg-green-400 shadow-lg shadow-green-500/20 transform hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                                <LinkIcon className="w-4 h-4" />
+                        <div className="flex gap-4 p-6 border-t border-gray-800 bg-[#161b22]/50 justify-end">
+                            <button onClick={() => setAutoLinkState(prev => ({ ...prev, isOpen: false }))} className="px-6 py-3 rounded-xl bg-gray-800 text-sm font-bold text-gray-300 hover:bg-gray-700 transition-all">إلغاء</button>
+                            <button onClick={executeAutoLinkGeneration} className="px-6 py-3 rounded-xl text-sm font-bold text-black bg-green-500 hover:bg-green-400 shadow-lg shadow-green-500/20 transform hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                                <LinkIcon className="w-5 h-5" />
                                 توليد واعتماد الروابط
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* BULK EPISODE IMAGE MODAL */}
+            {bulkImageState.isOpen && (
+                <div className="fixed inset-0 z-[330] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setBulkImageState(prev => ({ ...prev, isOpen: false }))}>
+                    <div className="w-full max-w-lg bg-[#0f1014] border border-purple-500/30 rounded-2xl p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
+                            <h3 className="text-lg font-black text-white flex items-center gap-2 font-['Cairo']">
+                                <PhotoIcon className="w-6 h-6 text-purple-400"/>
+                                تحديث صور الحلقات دفعة واحدة
+                            </h3>
+                            <button onClick={() => setBulkImageState(prev => ({ ...prev, isOpen: false }))} className="text-gray-400 hover:text-white"><CloseIcon className="w-5 h-5"/></button>
+                        </div>
+
+                        <div className="space-y-4 font-['Cairo']">
+                            <div>
+                                <label className={labelClass}>رابط الصورة للمشغل/الحلقات</label>
+                                <input 
+                                    type="text" 
+                                    value={bulkImageState.imageUrl} 
+                                    onChange={e => setBulkImageState(prev => ({ ...prev, imageUrl: e.target.value }))} 
+                                    className={`${inputClass} text-left font-mono focus:ring-purple-500 focus:border-purple-500`}
+                                    dir="ltr"
+                                    placeholder="https://example.com/image.jpg"
+                                />
+                                <p className="text-[10px] text-gray-500 mt-1.5 font-bold">تلميح: يمكنك مسح الرابط الحالي وإدخال رابط صورة المشغل المطلوب تطبيقه دفعة واحدة.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className={labelClass}>نطاق التطبيق</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setBulkImageState(prev => ({ ...prev, applyRange: 'all' }))}
+                                        className={`p-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-1 ${bulkImageState.applyRange === 'all' ? 'bg-purple-500/10 border-purple-500 text-purple-400' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-700'}`}
+                                    >
+                                        <span>جميع الحلقات</span>
+                                        <span className="text-[9px] text-gray-500">تطبيق على كافة الحلقات بلا استثناء</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setBulkImageState(prev => ({ ...prev, applyRange: 'range' }))}
+                                        className={`p-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-1 ${bulkImageState.applyRange === 'range' ? 'bg-purple-500/10 border-purple-500 text-purple-400' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-700'}`}
+                                    >
+                                        <span>نطاق محدد</span>
+                                        <span className="text-[9px] text-gray-500">تحديد حلقة ابتدائية ونهائية بالتحديد</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {bulkImageState.applyRange === 'range' && (
+                                <div className="flex gap-4 animate-fade-in-down">
+                                    <div className="flex-1">
+                                        <label className={labelClass}>من الحلقة رقم</label>
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            value={bulkImageState.fromEpisodes} 
+                                            onChange={e => setBulkImageState(prev => ({ ...prev, fromEpisodes: e.target.value === '' ? '' : parseInt(e.target.value) }))} 
+                                            className={`${inputClass} focus:ring-purple-500 focus:border-purple-500`} 
+                                            placeholder="رقم البداية" 
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className={labelClass}>إلى الحلقة رقم</label>
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            value={bulkImageState.toEpisodes} 
+                                            onChange={e => setBulkImageState(prev => ({ ...prev, toEpisodes: e.target.value === '' ? '' : parseInt(e.target.value) }))} 
+                                            className={`${inputClass} focus:ring-purple-500 focus:border-purple-500`} 
+                                            placeholder="رقم النهاية" 
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex gap-3 mt-6 pt-4 border-t border-gray-800 font-['Cairo']">
+                            <button onClick={() => setBulkImageState(prev => ({ ...prev, isOpen: false }))} className="flex-1 rounded-lg bg-gray-800 py-2.5 text-sm font-bold text-gray-300 hover:bg-gray-700">إلغاء</button>
+                            <button onClick={executeApplyBulkImage} className="flex-1 rounded-lg py-2.5 text-sm font-bold text-white bg-purple-600 hover:bg-purple-500 shadow-lg shadow-purple-500/20 transform hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                                <PhotoIcon className="w-4 h-4" />
+                                تطبيق على الحلقات
                             </button>
                         </div>
                     </div>
