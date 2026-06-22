@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { Content, Server, Season, Episode, Category, Genre, GlobalServer } from '@/types';
+import type { Content, Server, Season, Episode, Category, Genre, GlobalServer, AutoLinkConfig } from '@/types';
 import { ContentType, genres } from '@/types';
 import { db, generateSlug, getPeople, savePerson, getServers, getAllContent, addServer } from '@/firebase';  
 import DeleteConfirmationModal from './DeleteConfirmationModal';
@@ -772,456 +772,214 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-[220] bg-[#07080b]/98 backdrop-blur-md overflow-y-auto font-['Cairo'] text-right flex flex-col p-4 md:p-8" dir="rtl" onClick={onClose}>
-            <div className={`w-full ${isMovieMode ? 'max-w-4xl' : 'max-w-6xl'} mx-auto flex-1 bg-[#10121a] border border-gray-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-2 md:my-4 animate-fade-in`} onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-4xl mx-auto flex-1 bg-[#10121a] border border-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col my-2 md:my-4 animate-fade-in" onClick={e => e.stopPropagation()}>
                 
                 {/* Header Section */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-gray-800 bg-[#161b22] px-6 py-5 gap-4">
-                    <div>
-                        <h3 className="flex items-center gap-3 text-xl font-black text-white">
-                             <div className="p-2 bg-blue-500/10 rounded-xl text-blue-400">
-                                 <ServerIcon className="w-6 h-6"/>
-                             </div>
-                             <div className="flex flex-col">
-                                 <span>{isMovieMode ? 'إدارة السيرفرات: ' : 'إدارة وسائط وروابط التشغيل'}</span>
-                                 <span className="text-[var(--color-accent)] text-xs font-mono mt-0.5">{episode.title}</span>
-                             </div>
+                <div className="flex flex-row items-center justify-between border-b border-gray-800 bg-[#131622] px-6 py-4 gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-1.5 bg-[#121c2c] rounded-lg text-sky-400">
+                            <ServerIcon className="w-5 h-5"/>
+                        </div>
+                        <h3 className="text-sm md:text-base font-black text-white">
+                            <span>إدارة السيرفرات: </span>
+                            <span className="text-[#00e5c9]">{episode.title}</span>
                         </h3>
                     </div>
                     
-                    {!isMovieMode ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                            {/* أزرار السيرفرات السحابية */}
-                            <button onClick={() => setIsVkModalOpen(true)} className="flex items-center justify-center gap-1.5 rounded-xl bg-blue-600/10 border border-blue-500/20 px-4 py-2 text-xs font-bold text-blue-400 transition-all hover:bg-blue-600/20 hover:border-blue-500/40">
-                                 <span className="font-sans font-black">VK Video</span>
-                            </button>
-                            <button onClick={() => setIsDailymotionModalOpen(true)} className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-600/10 border border-purple-500/20 px-4 py-2 text-xs font-bold text-purple-400 transition-all hover:bg-purple-600/20 hover:border-purple-500/40">
-                                <span className="font-sans font-black">Dailymotion</span>
-                            </button>
-                            <button onClick={() => setIsUqloadModalOpen(true)} className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600/10 border border-emerald-500/20 px-4 py-2 text-xs font-bold text-emerald-400 transition-all hover:bg-emerald-600/20 hover:border-emerald-500/40">
-                                <SearchIcon className="w-4 h-4"/>
-                                <span>Uqload</span>
-                            </button>
+                    <div className="flex items-center gap-2">
+                        {/* VK and Dailymotion and Uqload buttons inside header */}
+                        <button 
+                            type="button" 
+                            onClick={() => setIsUqloadModalOpen(true)} 
+                            className="flex items-center gap-1.5 rounded-lg bg-[#121c2c] border border-blue-500/20 px-2.5 py-1 text-[10px] font-bold text-blue-400 transition-all hover:bg-[#18263a] cursor-pointer"
+                        >
+                            <span>Uqload</span>
+                            <SearchIcon className="w-3 h-3"/>
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={() => setIsDailymotionModalOpen(true)} 
+                            className="flex items-center gap-1.5 rounded-lg bg-[#19152b] border border-purple-500/20 px-2.5 py-1 text-[10px] font-bold text-purple-400 transition-all hover:bg-[#251f3d] cursor-pointer"
+                        >
+                            <span className="font-sans">Daily</span>
+                            <span>📺</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={() => setIsVkModalOpen(true)} 
+                            className="flex items-center gap-1.5 rounded-lg bg-[#111c33] border border-blue-500/20 px-2.5 py-1 text-[10px] font-sans font-black text-blue-400 transition-all hover:bg-[#162747] cursor-pointer"
+                        >
+                            <span>VK</span>
+                        </button>
 
-                            <div className="h-6 w-px bg-gray-800 mx-2"></div>
-                            
-                            {/* زر إضافة خادم بث رسمي */}
-                            <button 
-                                type="button" 
-                                onClick={() => setIsNewServerFormOpen(!isNewServerFormOpen)} 
-                                className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all ${isNewServerFormOpen ? 'bg-amber-500 text-black' : 'bg-amber-500/10 border border-amber-500/20 text-amber-500 hover:bg-amber-500/20'}`}
-                            >
-                                <span>➕ تسجيل خادم بث رسمي</span>
-                            </button>
+                        <div className="h-4 w-px bg-gray-800 mx-1"></div>
 
-                            <button onClick={onClose} className="mr-auto lg:mr-4 text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-800 p-2 rounded-xl transition-all"><CloseIcon className="w-5 h-5"/></button>
-                        </div>
-                    ) : (
-                        <div className="flex items-center justify-end mr-auto">
-                            <button onClick={onClose} className="text-gray-400 hover:text-white bg-[#1b1e2a] hover:bg-[#25293a] p-2.5 rounded-xl transition-all"><CloseIcon className="w-5 h-5"/></button>
-                        </div>
-                    )}
+                        <button 
+                            type="button" 
+                            onClick={onClose} 
+                            className="text-gray-400 hover:text-white bg-[#1b1e2a] hover:bg-[#25293a] p-1.5 rounded-lg transition-all cursor-pointer"
+                        >
+                            <CloseIcon className="w-4 h-4"/>
+                        </button>
+                    </div>
                 </div>
 
-                {/* New Server Collapsible Form */}
-                {!isMovieMode && isNewServerFormOpen && (
-                    <form onSubmit={handleAddGlobalServerDirectly} className="bg-[#1a1d27] border-b border-gray-800 p-6 animate-fade-in-down">
-                        <div className="max-w-3xl mx-auto space-y-4">
-                            <div className="border-l-4 border-amber-500 pl-4 pr-1">
-                                <h4 className="text-sm font-bold text-amber-500">تسجيل سيرفر بث رسمي جديد بقاعدة البيانات</h4>
-                                <p className="text-[11px] text-gray-400 mt-0.5">عند إضافة السيرفر هنا، سيظهر كخيار دائم في القوائم المنسدلة لجميع الحلقات، مما يوفر عناء كتابة اسمه يدوياً في كل مرة.</p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="mb-1.5 block text-xs font-bold text-gray-400">اسم السيرفر (مثال: Uqload, MyServer...)</label>
-                                    <input 
-                                        type="text"
-                                        required
-                                        value={newServerName}
-                                        onChange={e => setNewServerName(e.target.value)}
-                                        placeholder="اكتب اسم السيرفر هنا..."
-                                        className="w-full rounded-xl border border-gray-700 bg-black px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-all font-bold"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="mb-1.5 block text-xs font-bold text-gray-400">رابط / دومين السيرفر الأساسي (اختياري)</label>
-                                    <input 
-                                        type="text"
-                                        value={newServerDomain}
-                                        onChange={e => setNewServerDomain(e.target.value)}
-                                        placeholder="مثال: https://uqload.co/ (يستخدم للروابط التلقائية)"
-                                        className="w-full rounded-xl border border-gray-700 bg-black px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-all text-left font-mono"
-                                        dir="ltr"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Live duplicate detector block */}
-                            {(() => {
-                                if (!newServerName.trim() && !newServerDomain.trim()) return null;
-                                const normalized = newServerName.trim().toLowerCase();
-                                let domainToCheck = newServerDomain.trim();
-                                if (domainToCheck) {
-                                    if (!domainToCheck.startsWith('http://') && !domainToCheck.startsWith('https://')) {
-                                        domainToCheck = 'https://' + domainToCheck;
-                                    }
-                                    if (!domainToCheck.endsWith('/')) {
-                                        domainToCheck += '/';
-                                    }
-                                }
-                                const matched = globalServers.find(gs => {
-                                    const isNameMatch = normalized ? gs.name.trim().toLowerCase() === normalized : false;
-                                    const gsClean = gs.baseDomain.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase();
-                                    const checkClean = domainToCheck ? domainToCheck.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase() : '';
-                                    const isDomainMatch = domainToCheck && domainToCheck !== 'https://' ? gsClean === checkClean : false;
-                                    return isNameMatch || isDomainMatch;
-                                });
-
-                                if (!matched) return null;
-                                return (
-                                    <div className="bg-amber-500/10 border border-amber-500/25 text-amber-400 p-4 rounded-2xl text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 animate-pulse font-bold mt-2">
-                                        <div className="flex flex-col gap-1 text-right">
-                                            <span className="flex items-center gap-1.5 font-bold text-amber-400">
-                                                <svg className="w-5 h-5 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                </svg>
-                                                تنبيه: هذا السيرفر مضاف بالفعل بقاعدة البيانات!
-                                            </span>
-                                            <p className="text-[11px] text-gray-300 font-normal mt-0.5">
-                                                موجود مسبقاً باسم <span className="text-white font-bold">"{matched.name}"</span> وبدومين <code className="text-emerald-400 bg-emerald-500/15 px-1 py-0.5 rounded font-mono font-bold">{matched.baseDomain}</code>
-                                            </p>
-                                        </div>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => {
-                                                const updatedServers = [...servers];
-                                                const emptyIndex = updatedServers.findIndex(s => !s.url && !s.downloadUrl);
-                                                if (emptyIndex !== -1) {
-                                                    updatedServers[emptyIndex] = { ...updatedServers[emptyIndex], name: matched.name };
-                                                } else {
-                                                    updatedServers.push({
-                                                        id: Date.now() + updatedServers.length,
-                                                        name: matched.name,
-                                                        url: '',
-                                                        downloadUrl: '',
-                                                        isActive: true
-                                                    });
-                                                }
-                                                setServers(updatedServers);
-                                                setNewServerName('');
-                                                setNewServerDomain('');
-                                                setIsNewServerFormOpen(false);
-                                                addToast(`تم اختيار السيرفر "${matched.name}" وتحديده بنجاح!`, "info");
-                                            }}
-                                            className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-xl text-[11px] transition-all shrink-0 cursor-pointer shadow-md select-none w-full sm:w-auto text-center"
-                                        >
-                                            اعتماده واختياره مباشرة 🔗
-                                        </button>
-                                    </div>
-                                );
-                            })()}
-
-                            <div className="flex gap-2 justify-end pt-2">
-                                <button 
-                                    type="button" 
-                                    onClick={() => setIsNewServerFormOpen(false)} 
-                                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs font-bold rounded-xl text-gray-400"
-                                >
-                                    إلغاء
-                                </button>
-                                <button 
-                                    type="submit" 
-                                    disabled={isSavingNewServer}
-                                    className="px-6 py-2 bg-amber-500 hover:bg-amber-400 disabled:bg-amber-800 text-xs font-bold rounded-xl text-black flex items-center gap-2 shadow-lg"
-                                >
-                                    {isSavingNewServer ? 'جاري الحفظ...' : 'تسجيل الخادم الآن 💾'}
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                )}
-                
                 {/* Main Content List / Canvas */}
-                <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 bg-[#07080c]">
-                    <div className="text-gray-400 text-xs flex justify-between items-center mb-2 px-1">
-                        <span>{isMovieMode ? 'قائمة السيرفرات وروابط الفيديو المضافة لهذا الفيلم:' : 'قائمة السيرفرات وروابط الفيديو المضافة لهذه الحلقة:'}</span>
-                        <span className="font-mono bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full text-[10px]">المجموع: {servers.length}</span>
-                    </div>
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4 bg-[#07080c]">
+                    {servers.map((server, index) => {
+                        return (
+                            <div key={index} className="relative rounded-2xl border border-[#1f2538] bg-[#11131c] p-5 space-y-4 transition-colors shadow-lg animate-fade-in-up">
+                                {/* Delete Row Button */}
+                                {servers.length > 1 && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => handleRemoveServer(index)}
+                                        className="absolute top-4 left-4 text-gray-500 hover:text-red-500 transition-colors cursor-pointer p-1 rounded-lg hover:bg-gray-800"
+                                        title="حذف السيرفر"
+                                    >
+                                        <CloseIcon className="h-4 w-4" />
+                                    </button>
+                                )}
 
-                    {servers.map((server, index) => isMovieMode ? (
-                        <div key={index} className="relative rounded-2xl border border-gray-800 bg-[#12141d] p-5 space-y-4 transition-colors shadow-lg animate-fade-in-up">
-                            {/* Delete Row Button */}
-                            <button 
-                                type="button"
-                                onClick={() => handleRemoveServer(index)}
-                                className="absolute top-4 left-4 text-gray-500 hover:text-red-500 transition-colors cursor-pointer p-1 rounded-lg hover:bg-gray-800"
-                                title="حذف السيرفر"
-                            >
-                                <CloseIcon className="h-4 w-4" />
-                            </button>
+                                {/* Name and State Selection */}
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="flex h-6 w-6 items-center justify-center rounded bg-[#07090e] border border-gray-800 font-mono text-[10px] font-bold text-gray-400">
+                                            {index + 1}
+                                        </span>
+                                        
+                                        <input 
+                                            type="text"
+                                            value={server.name} 
+                                            onChange={(e) => handleServerChange(index, 'name', e.target.value)} 
+                                            placeholder="اسم السيرفر" 
+                                            className="rounded-lg border border-gray-850 bg-[#07090e] px-4 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-bold w-44 text-center"
+                                        />
+                                    </div>
 
-                            {/* Name and State Selection */}
-                            <div className="flex flex-wrap items-center gap-3">
-                                <span className="flex h-6 w-6 items-center justify-center rounded bg-black border border-gray-800 font-mono text-xs font-bold text-gray-400">
-                                    {index + 1}
-                                </span>
-                                
-                                <input 
-                                    type="text"
-                                    value={server.name} 
-                                    onChange={(e) => handleServerChange(index, 'name', e.target.value)} 
-                                    placeholder="اسم السيرفر" 
-                                    className="rounded-lg border border-gray-800 bg-black px-3 py-1.5 text-xs text-white focus:outline-none focus:border-green-500 font-bold w-44"
-                                />
-
-                                <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={server.isActive} 
-                                        onChange={(e) => handleServerChange(index, 'isActive', e.target.checked)} 
-                                        className="h-4 w-4 accent-green-500 rounded bg-black border-gray-800 cursor-pointer"
-                                    />
-                                    <span className="text-xs font-bold text-gray-400">نشط</span>
-                                </label>
-                            </div>
-
-                            {/* Links Inputs */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="mb-1 block text-[10px] font-bold text-gray-500 uppercase tracking-wider">رابط المشاهدة (WATCH)</label>
-                                    <input 
-                                        type="text"
-                                        value={server.url} 
-                                        onChange={(e) => handleServerChange(index, 'url', e.target.value)} 
-                                        placeholder="رابط كامل للمشاهدة أو امتداد البث..." 
-                                        className="w-full rounded-xl border border-gray-800 bg-black px-4 py-2.5 text-xs text-white focus:outline-none focus:border-green-500 font-mono text-left dir-ltr placeholder:text-right"
-                                        dir="ltr"
-                                    />
+                                    <div className="flex items-center">
+                                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={server.isActive} 
+                                                onChange={(e) => handleServerChange(index, 'isActive', e.target.checked)} 
+                                                className="h-4 w-4 accent-[#00e5c9] rounded bg-[#07090e] border-gray-800 cursor-pointer"
+                                            />
+                                            <span className="text-xs font-bold text-[#2196f3] select-none">نشط</span>
+                                        </label>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="mb-1 block text-[10px] font-bold text-gray-500 uppercase tracking-wider">رابط التحميل (DOWNLOAD)</label>
-                                    <input 
-                                        type="text"
-                                        value={server.downloadUrl} 
-                                        onChange={(e) => handleServerChange(index, 'downloadUrl', e.target.value)} 
-                                        placeholder="رابط التحميل المباشر للزوار..." 
-                                        className="w-full rounded-xl border border-gray-800 bg-black px-4 py-2.5 text-xs text-white focus:outline-none focus:border-green-500 font-mono text-left dir-ltr placeholder:text-right"
-                                        dir="ltr"
-                                    />
-                                </div>
-                            </div>
 
-                            {/* Smart domain extraction support for quick save */}
-                            {(() => {
-                                const isFullUrl = server.url && (server.url.includes('.mp4') || server.url.includes('.m3u8') || server.url.includes('?') || (server.url.match(/\//g) || []).length > 3);
-                                if (!isFullUrl) return null;
-                                try {
-                                    const urlObj = new URL(server.url.startsWith('http') ? server.url : 'https://' + server.url);
-                                    const host = urlObj.hostname.replace('www.', '');
-                                    const domainOnly = `${urlObj.protocol}//${urlObj.host}/`;
-                                    const rawName = host.split('.')[0];
-                                    const serverNameDefault = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-                                    
-                                    const isAlreadyRegistered = globalServers.some(gs => gs.baseDomain.includes(host) || gs.name.toLowerCase() === serverNameDefault.toLowerCase());
-                                    
-                                    return (
-                                        <div className="bg-[#1e2a38] border border-blue-500/30 text-blue-300 p-3 rounded-lg text-[11px] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-1 font-bold animate-pulse">
-                                            <div className="flex items-center gap-2">
-                                                <span className="p-1 px-2 rounded-lg bg-blue-500/20 text-blue-400 text-[9px] font-black uppercase">ذكاء المحرك ⚡</span>
-                                                <span>مستضيف مكشوف: <b className="font-mono text-emerald-400">{host}</b></span>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => {
-                                                        handleServerChange(index, 'name', serverNameDefault);
-                                                        addToast(`تم اعتماد اسم السيرفر: "${serverNameDefault}"`, "info");
-                                                    }} 
-                                                    className="px-2.5 py-1 bg-blue-600/30 hover:bg-blue-600/55 text-blue-200 rounded-lg transition-colors text-[10px]"
-                                                >
-                                                    اعتماد الاسم ({serverNameDefault})
-                                                </button>
-                                                {!isAlreadyRegistered && (
+                                {/* Links Inputs */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="mb-1.5 block text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center">رابط المشاهدة (WATCH)</label>
+                                        <input 
+                                            type="text"
+                                            value={server.url} 
+                                            onChange={(e) => handleServerChange(index, 'url', e.target.value)} 
+                                            placeholder="رابط كامل للمشاهدة أو امتداد البث..." 
+                                            className="w-full rounded-xl border border-gray-800 bg-[#07090e] px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono text-center placeholder:text-center"
+                                            dir="ltr"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1.5 block text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center">رابط التحميل (DOWNLOAD)</label>
+                                        <input 
+                                            type="text"
+                                            value={server.downloadUrl} 
+                                            onChange={(e) => handleServerChange(index, 'downloadUrl', e.target.value)} 
+                                            placeholder="رابط التحميل المباشر للزوار..." 
+                                            className="w-full rounded-xl border border-gray-800 bg-[#07090e] px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono text-center placeholder:text-center"
+                                            dir="ltr"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Smart domain extraction support for quick save */}
+                                {(() => {
+                                    const isFullUrl = server.url && (server.url.includes('.mp4') || server.url.includes('.m3u8') || server.url.includes('?') || (server.url.match(/\//g) || []).length > 3);
+                                    if (!isFullUrl) return null;
+                                    try {
+                                        const urlObj = new URL(server.url.startsWith('http') ? server.url : 'https://' + server.url);
+                                        const host = urlObj.hostname.replace('www.', '');
+                                        const domainOnly = `${urlObj.protocol}//${urlObj.host}/`;
+                                        const rawName = host.split('.')[0];
+                                        const serverNameDefault = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+                                        
+                                        const isAlreadyRegistered = globalServers.some(gs => gs.baseDomain.includes(host) || gs.name.toLowerCase() === serverNameDefault.toLowerCase());
+                                        
+                                        return (
+                                            <div className="bg-[#121c2a] border border-blue-500/20 text-blue-300 p-3 rounded-lg text-[10px] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mt-1 font-bold animate-pulse">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="p-1 px-2 rounded bg-blue-500/10 text-blue-400 text-[8px] font-mono">ذكاء المحرك ⚡</span>
+                                                    <span>مستضيف مكشوف: <b className="font-mono text-emerald-400">{host}</b></span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
                                                     <button 
                                                         type="button" 
-                                                        onClick={async () => {
-                                                            try {
-                                                                await addServer({ name: serverNameDefault, baseDomain: domainOnly });
-                                                                await onRefreshGlobalServers();
-                                                                handleServerChange(index, 'name', serverNameDefault);
-                                                                addToast(`تم حفظ "${serverNameDefault}" كخادم رسمي دائم!`, "success");
-                                                            } catch (e) {
-                                                                addToast("حدث خطأ في التسجيل.", "error");
-                                                            }
+                                                        onClick={() => {
+                                                            handleServerChange(index, 'name', serverNameDefault);
+                                                            addToast(`تم اعتماد اسم السيرفر: "${serverNameDefault}"`, "info");
                                                         }} 
-                                                        className="px-2.5 py-1 bg-emerald-600/30 hover:bg-emerald-600/55 text-emerald-200 rounded-lg transition-colors text-[10px] flex items-center gap-1"
+                                                        className="px-2 py-0.5 bg-blue-500/10 hover:bg-blue-500/30 text-blue-400 rounded transition-colors text-[9px]"
                                                     >
-                                                        💾 حفظ كخادم رسمي دائم
+                                                        اعتماد الاسم ({serverNameDefault})
                                                     </button>
-                                                )}
+                                                    {!isAlreadyRegistered && (
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await addServer({ name: serverNameDefault, baseDomain: domainOnly });
+                                                                    await onRefreshGlobalServers();
+                                                                    handleServerChange(index, 'name', serverNameDefault);
+                                                                    addToast(`تم حفظ "${serverNameDefault}" كخادم رسمي دائم!`, "success");
+                                                                } catch (e) {
+                                                                    addToast("حدث خطأ في التسجيل.", "error");
+                                                                }
+                                                            }} 
+                                                            className="px-2 py-0.5 bg-emerald-500/10 hover:bg-emerald-500/30 text-emerald-450 rounded transition-colors text-[9px] flex items-center gap-1"
+                                                        >
+                                                            💾 حفظ كخادم دائم
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    );
-                                } catch {
-                                    return null;
-                                }
-                            })()}
-                        </div>
-                    ) : (
-                          <div key={index} className="relative group/s rounded-2xl border border-gray-800 bg-[#12141d] p-5 space-y-5 hover:border-gray-700 transition-colors shadow-lg">
-                            {/* زر الحذف */}
-                            <button 
-                                onClick={() => handleRemoveServer(index)}
-                                className="absolute -top-3 -left-3 z-20 rounded-full bg-red-600 hover:bg-red-500 p-2 text-white shadow-lg transition-transform hover:scale-110"
-                                title="حذف السيرفر من الحلقة"
-                            >
-                                <CloseIcon className="h-4 w-4" />
-                            </button>
-
-                            <div className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
-                              {/* Selection part */}
-                              <div className="flex flex-col sm:flex-row w-full items-start sm:items-center gap-3 lg:w-auto">
-                                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 font-mono text-xs font-bold text-blue-400">{index + 1}</span>
-                                  
-                                  {/* قائمة السيرفرات المسجلة بقاعدة البيانات */}
-                                  <div className="flex flex-col gap-1 w-full sm:w-auto">
-                                      <span className="text-[10px] text-gray-500 font-bold block">السيرفرات المسجلة:</span>
-                                      <select
-                                          value={globalServers.find(gs => gs.name.toLowerCase() === server.name.toLowerCase())?.id || ''}
-                                          onChange={(e) => {
-                                              const selectedId = e.target.value;
-                                              const matched = globalServers.find(gs => gs.id === selectedId);
-                                              if (matched) {
-                                                  handleServerChange(index, 'name', matched.name);
-                                              }
-                                          }}
-                                          className="rounded-xl border border-gray-800 bg-black px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-blue-500 w-full sm:w-52"
-                                      >
-                                          <option value="">-- اختر خادم مسجل --</option>
-                                          {globalServers.map(gs => (
-                                              <option key={gs.id} value={gs.id}>{gs.name}</option>
-                                          ))}
-                                      </select>
-                                  </div>
-
-                                  {/* اسم السيرفر المخصص */}
-                                  <div className="flex flex-col gap-1 w-full sm:w-auto">
-                                      <span className="text-[10px] text-gray-500 font-bold block">اسم السيرفر المكتوب:</span>
-                                      <input 
-                                        value={server.name} 
-                                        onChange={(e) => handleServerChange(index, 'name', e.target.value)} 
-                                        placeholder="مثال: Google Drive" 
-                                        className="w-full rounded-xl border border-gray-800 bg-black px-3 py-2 text-xs font-black text-white focus:outline-none focus:border-blue-500 sm:w-48"
-                                      />
-                                  </div>
-                              </div>
-
-                              {/* مفتاح تنشيط السيرفر */}
-                              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-800 bg-black hover:bg-gray-900/50 px-4 py-2 text-sm transition-colors hover:border-[var(--color-accent)] self-end lg:self-auto">
-                                <input type="checkbox" checked={server.isActive} onChange={(e) => handleServerChange(index, 'isActive', e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)] rounded"/> 
-                                <span className={server.isActive ? "text-[var(--color-accent)] font-bold text-xs" : "text-gray-400 text-xs"}>{server.isActive ? "نشط ومتاح للزوار" : "معطل مؤقتاً"}</span>
-                              </label>
+                                        );
+                                    } catch {
+                                        return null;
+                                    }
+                                })()}
                             </div>
-                            
-                            {/* حقول الروابط */}
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div>
-                                    <label className="mb-1.5 block text-[10px] font-bold text-gray-500 uppercase tracking-wider">رابط المشاهدة المباشر أو الـ Embed (Watch URL)</label>
-                                    <input 
-                                        value={server.url} 
-                                        onChange={(e) => handleServerChange(index, 'url', e.target.value)} 
-                                        placeholder="مثال: https://uqload.co/embed-xyz.html" 
-                                        className="w-full rounded-xl border border-gray-800 bg-black px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono text-left dir-ltr placeholder:text-right"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="mb-1.5 block text-[10px] font-bold text-gray-500 uppercase tracking-wider">رابط التحميل المباشر للزوار (Download URL)</label>
-                                    <input 
-                                        value={server.downloadUrl} 
-                                        onChange={(e) => handleServerChange(index, 'downloadUrl', e.target.value)} 
-                                        placeholder="مثال: https://myhost.com/download/file.mp4" 
-                                        className="w-full rounded-xl border border-gray-800 bg-black px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono text-left dir-ltr placeholder:text-right"
-                                    />
-                                </div>
-                            </div>
+                        );
+                    })}
 
-                            {/* المحرك الذكي لكشف الروابط الكاملة واستخراج الدومين */}
-                            {(() => {
-                                const isFullUrl = server.url && (server.url.includes('.mp4') || server.url.includes('.m3u8') || server.url.includes('?') || (server.url.match(/\//g) || []).length > 3);
-                                if (!isFullUrl) return null;
-                                try {
-                                    const urlObj = new URL(server.url.startsWith('http') ? server.url : 'https://' + server.url);
-                                    const host = urlObj.hostname.replace('www.', '');
-                                    const domainOnly = `${urlObj.protocol}//${urlObj.host}/`;
-                                    const rawName = host.split('.')[0];
-                                    const serverNameDefault = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-                                    
-                                    // هل مسجل مسبقاً؟
-                                    const isAlreadyRegistered = globalServers.some(gs => gs.baseDomain.includes(host) || gs.name.toLowerCase() === serverNameDefault.toLowerCase());
-                                    
-                                    return (
-                                        <div className="bg-[#1e2a38] border border-blue-500/30 text-blue-300 p-4 rounded-xl text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-1 font-bold animate-pulse">
-                                            <div className="flex items-center gap-2">
-                                                <span className="p-1 px-2 rounded-lg bg-blue-500/20 text-blue-400 text-[10px] font-black uppercase">ذكاء المحرك ⚡</span>
-                                                <span>تم كشف رابط كامل للمستضيف: <b className="font-mono text-emerald-400 underline">{host}</b></span>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => {
-                                                        handleServerChange(index, 'name', serverNameDefault);
-                                                        addToast(`تم اعتماد اسم السيرفر: "${serverNameDefault}"`, "info");
-                                                    }} 
-                                                    className="px-3 py-1.5 bg-blue-600/30 hover:bg-blue-600/55 text-blue-200 rounded-lg transition-colors text-[11px]"
-                                                >
-                                                    استخراج الاسم ليكون اسم السيرفر ({serverNameDefault})
-                                                </button>
-                                                {!isAlreadyRegistered && (
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={async () => {
-                                                            try {
-                                                                await addServer({ name: serverNameDefault, baseDomain: domainOnly });
-                                                                await onRefreshGlobalServers();
-                                                                handleServerChange(index, 'name', serverNameDefault);
-                                                                addToast(`تم حفظ "${serverNameDefault}" كخادم رسمي دائم في الإدارة بنجاح!`, "success");
-                                                            } catch (e) {
-                                                                addToast("حدث خطأ أثناء ترحيل الخادم بقاعدة البيانات.", "error");
-                                                            }
-                                                        }} 
-                                                        className="px-3 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/55 text-emerald-200 rounded-lg transition-colors text-[11px] flex items-center gap-1.5"
-                                                    >
-                                                        💾 تسجيل كخادم رسمي دائم باللوحة
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                } catch {
-                                    return null;
-                                }
-                            })()}
-                        </div>
-                    ))}
-                    
                     <button 
                         type="button"
                         onClick={handleAddServer}
-                        className={`flex w-full items-center justify-center gap-2 border border-dashed border-gray-800 bg-[#12141c]/30 hover:bg-[#12141c]/50 transition-all font-bold cursor-pointer ${isMovieMode ? 'rounded-xl py-3.5 text-xs text-gray-400 hover:border-green-500/50 hover:text-green-400' : 'rounded-2xl border-2 py-5 text-gray-400 hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 hover:text-[var(--color-accent)] text-sm'}`}
+                        className="flex w-full items-center justify-center gap-2 border border-dashed border-[#1f2538] bg-[#11131c]/50 hover:bg-[#11131c]/80 transition-all font-bold cursor-pointer rounded-xl py-3.5 text-xs text-gray-400 hover:border-green-500/50 hover:text-[#00e5c9]"
                     >
-                        <PlusIcon className="h-5 w-5" />
-                        <span>{isMovieMode ? 'إضافة سيرفر جديد' : 'إضافة سيرفر وروابط إضافية 🎬'}</span>
+                        <PlusIcon className="h-4 w-4" />
+                        <span>إضافة سيرفر جديد</span>
                     </button>
                 </div>
 
                 {/* Footer Section */}
-                <div className="flex justify-end gap-3 border-t border-gray-800 bg-[#13151f] p-5 md:p-6">
-                    <button type="button" onClick={onClose} className="rounded-xl bg-gray-800 hover:bg-gray-700 px-6 py-3 text-sm font-bold text-gray-300 transition-colors bg-opacity-50">إلغاء</button>
+                <div className="flex justify-end gap-3 border-t border-gray-800 bg-[#0e1017] p-5">
+                    <button 
+                        type="button" 
+                        onClick={onClose} 
+                        className="rounded-lg bg-[#242a3a] hover:bg-[#2e3549] px-6 py-2.5 text-xs font-bold text-gray-300 transition-colors cursor-pointer"
+                    >
+                        إلغاء
+                    </button>
                     <button 
                         type="button" 
                         onClick={handleSaveServers} 
-                        className={`rounded-xl px-10 py-3 text-sm font-bold text-black transition-all cursor-pointer ${isMovieMode ? 'bg-[#00cba9] hover:bg-[#00bda0]' : 'bg-gradient-to-r from-blue-500 to-[#00cba9]'} shadow-lg hover:brightness-110 active:scale-95`}
+                        className="rounded-lg bg-[#00e5c9] hover:bg-[#00cba9] px-10 py-2.5 text-xs font-bold text-black transition-all cursor-pointer shadow-lg active:scale-95"
                     >
-                        {isMovieMode ? 'حفظ التغييرات' : 'حفظ واعتماد الروابط للحلقة 🚀'}
+                        حفظ التغييرات
                     </button>
                 </div>
             </div>
@@ -3893,10 +3651,104 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                             }
                                                         }));
                                                     }}
-                                                    className={`${inputClass} font-mono text-left focus:ring-green-500`}
-                                                    dir="ltr"
-                                                    placeholder="مثال: series/Al-Ikhwa-Giran/"
-                                                />
+                                                     className={`${inputClass} font-mono text-left focus:ring-green-500`}
+                                                     dir="ltr"
+                                                     placeholder="مثال: series/Al-Ikhwa-Giran/"
+                                                 />
+
+                                                 {/* Smart URL Detector & Extractor */}
+                                                 {(() => {
+                                                     const val = formData.autoLinkConfig?.seriesSlug || '';
+                                                     const isUrl = val.startsWith('http://') || val.startsWith('https://') || val.includes('://');
+                                                     if (!isUrl) return null;
+
+                                                     try {
+                                                         const urlObj = new URL(val.startsWith('http') ? val : 'https://' + val);
+                                                         const hostname = urlObj.hostname;
+                                                         const pathname = urlObj.pathname;
+                                                         const segments = pathname.split('/').filter(Boolean);
+                                                         
+                                                         let extractedSlug = '';
+                                                         let extractedSuffix = '.mp4';
+                                                         let hasFileSegment = false;
+                                                         let detectedServerId = '';
+                                                         let detectedServerName = '';
+
+                                                         if (segments.length > 0) {
+                                                             const lastSegment = segments[segments.length - 1];
+                                                             const dotIndex = lastSegment.lastIndexOf('.');
+                                                             if (dotIndex !== -1) {
+                                                                 hasFileSegment = true;
+                                                                 extractedSuffix = lastSegment.substring(dotIndex);
+                                                                 const slugSegments = segments.slice(0, -1);
+                                                                 extractedSlug = slugSegments.join('/') + '/';
+                                                             } else {
+                                                                 extractedSlug = segments.join('/') + '/';
+                                                             }
+                                                         }
+
+                                                         // Clean up extractedSlug to have no leading slash and end with a slash if not empty
+                                                         if (extractedSlug && !extractedSlug.endsWith('/')) {
+                                                             extractedSlug += '/';
+                                                         }
+
+                                                         // Try to match a registered server by base domain
+                                                         const matchedServer = globalServers.find(gs => {
+                                                             try {
+                                                                 const gsUrl = new URL(gs.baseDomain.startsWith('http') ? gs.baseDomain : 'https://' + gs.baseDomain);
+                                                                 return gsUrl.hostname.replace('www.', '').toLowerCase() === hostname.replace('www.', '').toLowerCase();
+                                                             } catch {
+                                                                 return false;
+                                                             }
+                                                         });
+
+                                                         if (matchedServer) {
+                                                             detectedServerId = matchedServer.id;
+                                                             detectedServerName = matchedServer.name;
+                                                         }
+
+                                                         return (
+                                                             <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl text-xs flex flex-col gap-2 mt-2 font-bold animate-fade-in text-right" dir="rtl">
+                                                                 <div className="flex items-center gap-1.5 text-amber-500">
+                                                                     <span className="animate-pulse">⚡ ذكاء المحرك: تم كشف رابط كامل!</span>
+                                                                 </div>
+                                                                 <div className="text-[11px] text-gray-300 space-y-1 font-normal text-right" dir="rtl">
+                                                                     {extractedSlug && (
+                                                                         <div>• المسار المستخلص: <span className="text-amber-400 font-mono font-bold" dir="ltr">{extractedSlug}</span></div>
+                                                                     )}
+                                                                     {hasFileSegment && (
+                                                                         <div>• الامتداد المستخلص: <span className="text-amber-400 font-mono font-bold" dir="ltr">{extractedSuffix}</span></div>
+                                                                     )}
+                                                                     {detectedServerName && (
+                                                                         <div>• السيرفر المطابق بقاعدة البيانات: <span className="text-emerald-400 font-bold">{detectedServerName}</span></div>
+                                                                     )}
+                                                                 </div>
+                                                                 <button
+                                                                     type="button"
+                                                                     onClick={() => {
+                                                                         setFormData(prev => {
+                                                                             const currentConfig: AutoLinkConfig = prev.autoLinkConfig || { serverId: '', seriesSlug: '', suffix: '.mp4', padZero: true, padTwoZeros: false };
+                                                                             const updatedConfig = { ...currentConfig };
+                                                                             if (extractedSlug) updatedConfig.seriesSlug = extractedSlug;
+                                                                             if (hasFileSegment) updatedConfig.suffix = extractedSuffix;
+                                                                             if (detectedServerId) updatedConfig.serverId = detectedServerId;
+                                                                             return {
+                                                                                 ...prev,
+                                                                                 autoLinkConfig: updatedConfig
+                                                                             };
+                                                                         });
+                                                                         addToast("تم استخراج المسار والامتداد (وتحديد السيرفر إن وجد) بنجاح 🚀", "success");
+                                                                     }}
+                                                                     className="mt-2 w-full py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-lg text-[11px] transition-all cursor-pointer text-center flex items-center justify-center gap-1 shadow-md"
+                                                                 >
+                                                                     <span>استخرج المسار من الرابط 🔗</span>
+                                                                 </button>
+                                                             </div>
+                                                         );
+                                                     } catch {
+                                                         return null;
+                                                     }
+                                                 })()}
                                                 <span className="text-[10px] text-gray-500 mt-1.5 block">
                                                     هو اسم مجلد المسلسل على خادم الفيديو الخاص بك. يفضل إنهاؤه بشرطة مائلة `/`.
                                                 </span>
@@ -4621,6 +4473,97 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             dir="ltr"
                                             placeholder="مثال: Baba-w-Mama-Giran/" 
                                         />
+                                        
+                                        {/* Smart URL Detector & Extractor */}
+                                        {(() => {
+                                            const val = autoLinkState.seriesSlug || '';
+                                            const isUrl = val.startsWith('http://') || val.startsWith('https://') || val.includes('://');
+                                            if (!isUrl) return null;
+
+                                            try {
+                                                const urlObj = new URL(val.startsWith('http') ? val : 'https://' + val);
+                                                const hostname = urlObj.hostname;
+                                                const pathname = urlObj.pathname;
+                                                const segments = pathname.split('/').filter(Boolean);
+                                                
+                                                let extractedSlug = '';
+                                                let extractedSuffix = '.mp4';
+                                                let hasFileSegment = false;
+                                                let detectedServerId = '';
+                                                let detectedServerName = '';
+
+                                                if (segments.length > 0) {
+                                                    const lastSegment = segments[segments.length - 1];
+                                                    const dotIndex = lastSegment.lastIndexOf('.');
+                                                    if (dotIndex !== -1) {
+                                                        hasFileSegment = true;
+                                                        extractedSuffix = lastSegment.substring(dotIndex);
+                                                        const slugSegments = segments.slice(0, -1);
+                                                        extractedSlug = slugSegments.join('/') + '/';
+                                                    } else {
+                                                        extractedSlug = segments.join('/') + '/';
+                                                    }
+                                                }
+
+                                                // Clean up extractedSlug to have no leading slash and end with a slash if not empty
+                                                if (extractedSlug && !extractedSlug.endsWith('/')) {
+                                                    extractedSlug += '/';
+                                                }
+
+                                                // Try to match a registered server by base domain
+                                                const matchedServer = globalServers.find(gs => {
+                                                    try {
+                                                        const gsUrl = new URL(gs.baseDomain.startsWith('http') ? gs.baseDomain : 'https://' + gs.baseDomain);
+                                                        return gsUrl.hostname.replace('www.', '').toLowerCase() === hostname.replace('www.', '').toLowerCase();
+                                                    } catch {
+                                                        return false;
+                                                    }
+                                                });
+
+                                                if (matchedServer) {
+                                                    detectedServerId = matchedServer.id;
+                                                    detectedServerName = matchedServer.name;
+                                                }
+
+                                                return (
+                                                    <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl text-xs flex flex-col gap-2 mt-2 font-bold animate-fade-in">
+                                                        <div className="flex items-center gap-1.5 text-amber-500">
+                                                            <span className="animate-pulse">⚡ ذكاء المحرك: تم كشف رابط كامل!</span>
+                                                        </div>
+                                                        <div className="text-[11px] text-gray-300 space-y-1 font-normal text-right" dir="rtl">
+                                                            {extractedSlug && (
+                                                                <div>• المسار المستخلص: <span className="text-amber-400 font-mono font-bold" dir="ltr">{extractedSlug}</span></div>
+                                                            )}
+                                                            {hasFileSegment && (
+                                                                <div>• الامتداد المستخلص: <span className="text-amber-400 font-mono font-bold" dir="ltr">{extractedSuffix}</span></div>
+                                                            )}
+                                                            {detectedServerName && (
+                                                                <div>• السيرفر المطابق بقاعدة البيانات: <span className="text-emerald-400 font-bold">{detectedServerName}</span></div>
+                                                            )}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setAutoLinkState(prev => {
+                                                                    const updated = { ...prev };
+                                                                    if (extractedSlug) updated.seriesSlug = extractedSlug;
+                                                                    if (hasFileSegment) updated.suffix = extractedSuffix;
+                                                                    if (detectedServerId) updated.serverId = detectedServerId;
+                                                                    return updated;
+                                                                });
+                                                                addToast("تم استخراج المسار والامتداد (وتحديد السيرفر إن وجد) بنجاح 🚀", "success");
+                                                            }}
+                                                            className="mt-2 w-full py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-lg text-[11px] transition-all cursor-pointer text-center flex items-center justify-center gap-1 shadow-md"
+                                                        >
+                                                            <span>استخرج المسار من الرابط 🔗</span>
+                                                        </button>
+                                                    </div>
+                                                );
+                                            } catch {
+                                                return null;
+                                            }
+                                        })()}
+
                                         <p className="text-[10px] text-gray-500 mt-1.5 font-bold">تلميح: اسم المجلد على السيرفر (مثال: `Baba-w-Mama-Giran/` أو `series/El-Set-Monaliza/` )</p>
                                     </div>
                                     
