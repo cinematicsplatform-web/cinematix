@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "GlobalServer": {
+      "title": "Global Server Configuration",
+      "description": "Base domains for streaming servers to dynamically resolve episodic video URLs.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "baseDomain": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "baseDomain"]
+    },
+    "ContentRequest": {
+      "title": "Content Request",
+      "description": "User requests for content that is not available on the platform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "movieName": { "type": "string" },
+        "year": { "type": "string" },
+        "type": { "type": "string", "enum": ["movie", "series"] },
+        "notes": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "requestId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "rejected", "requested", "uploaded"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "status"]
+    },
+    "Report": {
+      "title": "Content Report",
+      "description": "User reports for broken links or other errors in movie or series content.",
+      "type": "object",
+      "properties": {
+        "reportId": { "type": "string" },
+        "contentId": { "type": "string" },
+        "contentType": { "type": "string", "enum": ["movie", "series"] },
+        "episodeId": { "type": "string" },
+        "contentTitle": { "type": "string" },
+        "reason": { "type": "string" },
+        "reportType": { "type": "string" },
+        "description": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "resolved", "ignored"] }
+      },
+      "required": ["contentId", "contentType", "contentTitle", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/servers/{serverId}": {
+      "schema": "GlobalServer",
+      "description": "Collection of global video servers and their base domains."
+    },
+    "/requests/{requestId}": {
+      "schema": "ContentRequest",
+      "description": "Requests made by users or external apps for content."
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Reports submitted by users regarding broken content or streaming issues."
+    }
+  }
+}
