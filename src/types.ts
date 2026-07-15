@@ -144,6 +144,13 @@ export interface Content {
   autoLinkConfig?: AutoLinkConfig;
   dynamicLinkConfig?: DynamicLinkConfig;
   relatedContentIds?: string[];
+  imageGallery?: {
+    poster?: string[];
+    backdrop?: string[];
+    logo?: string[];
+    horizontalPoster?: string[];
+    verticalBackdrop?: string[];
+  };
 }
 
 export interface LinkDomainGroup {
