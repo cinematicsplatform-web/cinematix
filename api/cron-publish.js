@@ -96,7 +96,14 @@ module.exports = async (req, res) => {
                 payload.notification.imageUrl = String(image);
               }
 
-              await admin.messaging().send(payload);
+              // Isolated FCM call to prevent failure from halting the flow
+              try {
+                await admin.messaging().send(payload);
+                logs.push(`Successfully sent FCM push notification for ${content.title}`);
+              } catch (fcmErr) {
+                console.error(`FCM sending failed for ${content.title}, continuing with in-app logs:`, fcmErr);
+                logs.push(`FCM push notification failed for ${content.title}: ${fcmErr.message}`);
+              }
 
               // Log in-app notifications for each user
               const batch = db.batch();
@@ -128,10 +135,10 @@ module.exports = async (req, res) => {
               });
 
               await batch.commit();
-              logs.push(`Sent FCM and in-app notifications for standalone content: ${content.title}`);
+              logs.push(`Committed in-app notifications for standalone content: ${content.title}`);
             } catch (err) {
-              console.error(`Failed to send notification for ${content.title}:`, err);
-              logs.push(`Failed to send notification for ${content.title}: ${err.message}`);
+              console.error(`Failed to record notifications for ${content.title}:`, err);
+              logs.push(`Failed to record notifications for ${content.title}: ${err.message}`);
             }
           }
         }
@@ -147,7 +154,16 @@ module.exports = async (req, res) => {
               if (schedDate <= now) {
                 ep.isScheduled = false; // Now live!
                 hasChanges = true;
-                if (ep.notifyOnPublish !== false && !ep.notificationSent) {
+                
+                // Determine if we should notify for this scheduled episode:
+                // If either content-level auto-episode settings are enabled, or the individual episode has notification enabled
+                const shouldNotifyEp = (
+                  ep.notifyOnPublish !== false || 
+                  content.autoScheduledEpisodeNotification === true || 
+                  content.autoEpisodeNotification === true
+                );
+
+                if (shouldNotifyEp && !ep.notificationSent) {
                   ep.notificationSent = true;
                 }
               }
@@ -174,6 +190,7 @@ module.exports = async (req, res) => {
               const origSeason = content.seasons.find(s => s.id === season.id);
               const origEp = origSeason?.episodes.find(e => e.id === ep.id);
               
+              // Only trigger if we marked it as notificationSent just now
               if (ep.notificationSent && (!origEp || !origEp.notificationSent)) {
                 try {
                   const broadcastId = String(Date.now());
@@ -213,7 +230,14 @@ module.exports = async (req, res) => {
                     payload.notification.imageUrl = String(image);
                   }
 
-                  await admin.messaging().send(payload);
+                  // Isolated FCM call to prevent failure from halting the flow
+                  try {
+                    await admin.messaging().send(payload);
+                    logs.push(`Successfully sent FCM push notification for ${content.title} ep ${epNum}`);
+                  } catch (fcmErr) {
+                    console.error(`FCM sending failed for scheduled episode:`, fcmErr);
+                    logs.push(`FCM push notification failed for series ${content.title} ep ${epNum}: ${fcmErr.message}`);
+                  }
 
                   // Log in-app notifications
                   const batch = db.batch();
@@ -245,10 +269,10 @@ module.exports = async (req, res) => {
                   });
 
                   await batch.commit();
-                  logs.push(`Sent FCM and in-app notifications for series: ${content.title}, Season ${season.seasonNumber}, Ep ${epNum}`);
+                  logs.push(`Sent in-app notifications for series: ${content.title}, Season ${season.seasonNumber}, Ep ${epNum}`);
                 } catch (err) {
-                  console.error(`Failed to send episode notification for ${content.title}:`, err);
-                  logs.push(`Failed to send episode notification for ${content.title}: ${err.message}`);
+                  console.error(`Failed to write notifications for ${content.title}:`, err);
+                  logs.push(`Failed to write notifications for ${content.title}: ${err.message}`);
                 }
               }
             }

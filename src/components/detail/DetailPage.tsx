@@ -852,7 +852,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 </div>
 
                                 <div className="relative z-10 mx-auto aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl video-player-wrapper">
-                                        <VideoPlayer key={playerKey} tmdbId={content.id} type={content.type} manualSrc={selectedServer?.url} poster={displayBackdrop} />
+                                        <VideoPlayer key={playerKey} tmdbId={content.tmdbId || content.id} type={content.type} manualSrc={selectedServer?.url} poster={displayBackdrop} />
                                 </div>
 
                                 <div className="relative mt-6 flex flex-col items-center gap-2 animate-fade-in-up">

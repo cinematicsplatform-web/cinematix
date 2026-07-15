@@ -1314,10 +1314,47 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         autoScheduledEpisodeNotification: false,
         notificationSent: false,
         flipBackdrop: false,
+        imageGallery: {
+            poster: [],
+            backdrop: [],
+            logo: [],
+            horizontalPoster: [],
+            verticalBackdrop: []
+        },
         ...content,
     });
 
     const [formData, setFormData] = useState<Content>(getDefaultFormData());
+
+    useEffect(() => {
+        setFormData(prev => {
+            const gallery = { ...(prev.imageGallery || {}) };
+            let changed = false;
+
+            const checkAndAdd = (key: 'poster' | 'backdrop' | 'logo' | 'horizontalPoster' | 'verticalBackdrop', val: string | undefined) => {
+                if (!val || !val.trim() || val.startsWith('data:')) return;
+                const cleanVal = val.trim();
+                const list = gallery[key] || [];
+                if (!list.includes(cleanVal)) {
+                    gallery[key] = [...list, cleanVal];
+                    changed = true;
+                }
+            };
+
+            checkAndAdd('poster', formData.poster);
+            checkAndAdd('backdrop', formData.backdrop);
+            checkAndAdd('logo', formData.logoUrl);
+            checkAndAdd('horizontalPoster', formData.horizontalPoster);
+            checkAndAdd('verticalBackdrop', formData.top10Poster);
+            checkAndAdd('verticalBackdrop', formData.mobileBackdropUrl);
+
+            if (!changed) return prev;
+            return {
+                ...prev,
+                imageGallery: gallery
+            };
+        });
+    }, [formData.poster, formData.backdrop, formData.logoUrl, formData.horizontalPoster, formData.top10Poster, formData.mobileBackdropUrl]);
 
     useEffect(() => {
         if (!allUsers || allUsers.length === 0) {
@@ -1452,7 +1489,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         toEpisodes: ''
     });
 
-    const [tmdbIdInput, setTmdbIdInput] = useState(content?.id && !isNaN(Number(content.id)) ? content.id : '');
+    const [tmdbIdInput, setTmdbIdInput] = useState(content?.tmdbId || (content?.id && !isNaN(Number(content.id)) ? content.id : ''));
     const [fetchLoading, setFetchLoading] = useState(false);
     const [updateLoading, setUpdateLoading] = useState(false); 
     const [enableAutoLinks, setEnableAutoLinks] = useState(false);
@@ -1524,7 +1561,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
         setFormData(initData);
         setSlugManuallyEdited(!!content?.slug);
-        setTmdbIdInput(content?.id && !isNaN(Number(content.id)) ? content.id : '');
+        setTmdbIdInput(content?.tmdbId || (content?.id && !isNaN(Number(content.id)) ? content.id : ''));
         setShowSchedulingUI(initData.isScheduled || false);
 
         if (initData.tmdbId && !initData.title) {
@@ -2641,7 +2678,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
             setFormData(prev => ({
                 ...prev,
-                id: String(targetId),
+                id: isNewContent ? db.collection("content").doc().id : (prev.id || String(targetId)),
                 tmdbId: String(targetId), 
                 title,
                 description,
@@ -2770,8 +2807,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             mobileBackdropUrl: mobileBackdrop,
             seasons: seasons,
             slug: finalSlug,
-            id: formData.id || String(Date.now()),
-            tmdbId: formData.tmdbId || formData.id, 
+            id: formData.id || db.collection("content").doc().id,
+            tmdbId: formData.tmdbId || '', 
             createdAt: formData.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             isScheduled: isScheduled,
@@ -3837,6 +3874,228 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
     };
 
+    const renderGalleryHistoryTab = () => {
+        const gallery = formData.imageGallery || {};
+        
+        const copyToClipboard = (url: string) => {
+            navigator.clipboard.writeText(url);
+            addToast("تم نسخ رابط الصورة إلى الحافظة بنجاح!", "success");
+        };
+
+        const deleteFromGallery = (key: keyof NonNullable<Content['imageGallery']>, url: string) => {
+            setFormData(prev => {
+                const updatedGallery = { ...(prev.imageGallery || {}) };
+                const currentList = updatedGallery[key] || [];
+                updatedGallery[key] = currentList.filter(item => item !== url);
+                return {
+                    ...prev,
+                    imageGallery: updatedGallery
+                };
+            });
+            addToast("تم حذف الصورة من المعرض المخزن.", "info");
+        };
+
+        const categoriesList: {
+            key: 'poster' | 'backdrop' | 'logo' | 'horizontalPoster' | 'verticalBackdrop';
+            title: string;
+            description: string;
+            aspect: 'poster' | 'backdrop' | 'logo' | 'square';
+            actions: (url: string) => React.ReactNode;
+        }[] = [
+            {
+                key: 'poster',
+                title: 'البوستر العمودي (Poster)',
+                description: 'البوسترات العمودية الرسمية التي تظهر في القوائم والصفحة الرئيسية للعمل.',
+                aspect: 'poster',
+                actions: (url) => (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setFormData(prev => ({ ...prev, poster: url }));
+                            addToast("تم تطبيق الصورة كالبوستر العمودي للعمل.", "success");
+                        }}
+                        className="w-full text-center py-2 bg-[var(--color-accent)] text-black text-xs font-bold rounded-lg hover:bg-white transition-all shadow-md"
+                    >
+                        استخدام كبوستر
+                    </button>
+                )
+            },
+            {
+                key: 'backdrop',
+                title: 'خلفية عريضة (Backdrop)',
+                description: 'الخلفيات الأفقية العريضة التي تظهر في خلفية صفحة التفاصيل وعلى شاشات التلفزيون.',
+                aspect: 'backdrop',
+                actions: (url) => (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setFormData(prev => ({ ...prev, backdrop: url }));
+                            addToast("تم تطبيق الصورة كخلفية عريضة للعمل.", "success");
+                        }}
+                        className="w-full text-center py-2 bg-[var(--color-accent)] text-black text-xs font-bold rounded-lg hover:bg-white transition-all shadow-md"
+                    >
+                        استخدام كخلفية عريضة
+                    </button>
+                )
+            },
+            {
+                key: 'logo',
+                title: 'اللوجو (شعار شفاف)',
+                description: 'شعار العمل الشفاف (PNG) لعرضه فوق البانرات والخلفيات بشكل أنيق.',
+                aspect: 'logo',
+                actions: (url) => (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setFormData(prev => ({ ...prev, logoUrl: url }));
+                            addToast("تم تطبيق الصورة كشعار للعمل.", "success");
+                        }}
+                        className="w-full text-center py-2 bg-[var(--color-accent)] text-black text-xs font-bold rounded-lg hover:bg-white transition-all shadow-md"
+                    >
+                        استخدام كشعار شفاف
+                    </button>
+                )
+            },
+            {
+                key: 'horizontalPoster',
+                title: 'بوستر عريض (Horizontal)',
+                description: 'البوسترات الأفقية البديلة للعمل الفني المستخدمة في الكاروسيل ومناطق العرض الخاصة.',
+                aspect: 'backdrop',
+                actions: (url) => (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setFormData(prev => ({ ...prev, horizontalPoster: url }));
+                            addToast("تم تطبيق الصورة كبوستر عريض للعمل.", "success");
+                        }}
+                        className="w-full text-center py-2 bg-[var(--color-accent)] text-black text-xs font-bold rounded-lg hover:bg-white transition-all shadow-md"
+                    >
+                        استخدام كبوستر عريض
+                    </button>
+                )
+            },
+            {
+                key: 'verticalBackdrop',
+                title: 'خلفية عمودية (Top 10 / Mobile Backdrop)',
+                description: 'الصور العمودية عالية الطول لتصميم قائمة التوب 10 أو الخلفيات المتجاوبة لصفحة الجوال.',
+                aspect: 'poster',
+                actions: (url) => (
+                    <div className="flex gap-2 w-full">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setFormData(prev => ({ ...prev, top10Poster: url }));
+                                addToast("تم تطبيق الصورة كبوستر التوب 10 للعمل.", "success");
+                            }}
+                            className="flex-1 text-center py-1.5 bg-blue-600 text-white text-[10px] font-bold rounded-lg hover:bg-blue-500 transition-all shadow-md"
+                        >
+                            توب 10
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setFormData(prev => ({ ...prev, mobileBackdropUrl: url }));
+                                addToast("تم تطبيق الصورة كخلفية جوال للعمل.", "success");
+                            }}
+                            className="flex-1 text-center py-1.5 bg-purple-600 text-white text-[10px] font-bold rounded-lg hover:bg-purple-500 transition-all shadow-md"
+                        >
+                            خلفية جوال
+                        </button>
+                    </div>
+                )
+            }
+        ];
+
+        return (
+            <div className={`${sectionBoxClass} animate-fade-in-up space-y-8 font-['Cairo']`}>
+                <div className="border-b border-gray-800 pb-5">
+                    <h3 className="text-xl font-black text-white flex items-center gap-3">
+                        <PhotoIcon className="w-7 h-7 text-[var(--color-accent)]" />
+                        معرض صور العمل المخزنة (Image History Gallery)
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+                        يقوم النظام تلقائياً بالاحتفاظ بكافة روابط الصور التي تقوم بإضافتها أو تعديلها في حقول العمل للرجوع إليها في أي وقت.
+                    </p>
+                </div>
+
+                {categoriesList.map((category) => {
+                    const list = gallery[category.key] || [];
+                    return (
+                        <div key={category.key} className="bg-[#161a22]/40 rounded-2xl p-6 border border-gray-800/60 space-y-4">
+                            <div>
+                                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-accent)]"></span>
+                                    {category.title}
+                                    <span className="text-[10px] bg-[#1a1f29] text-gray-400 border border-gray-800 px-2 py-0.5 rounded-full">
+                                        {list.length} صور محفوظة
+                                    </span>
+                                </h4>
+                                <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">{category.description}</p>
+                            </div>
+
+                            {list.length === 0 ? (
+                                <div className="text-center py-10 bg-black/10 rounded-xl border border-dashed border-gray-800 text-xs text-gray-500">
+                                    لا توجد صور محفوظة في هذا القسم حتى الآن. بمجرد إضافة روابط في "الصور والميديا" سيتم تجميعها هنا تلقائياً.
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                                    {list.map((url, idx) => (
+                                        <div 
+                                            key={idx} 
+                                            className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-800 bg-gray-900/40 transition-all hover:border-[var(--color-accent)] hover:shadow-lg hover:shadow-[var(--color-accent)]/5"
+                                        >
+                                            <div className="relative flex-1 bg-black/50 overflow-hidden flex items-center justify-center">
+                                                {category.aspect === 'poster' && (
+                                                    <div className="aspect-[2/3] w-full">
+                                                        <img src={url} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" alt="" />
+                                                    </div>
+                                                )}
+                                                {category.aspect === 'backdrop' && (
+                                                    <div className="aspect-video w-full">
+                                                        <img src={url} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" alt="" />
+                                                    </div>
+                                                )}
+                                                {category.aspect === 'logo' && (
+                                                    <div className="h-20 w-full p-4 flex items-center justify-center bg-[url('https://www.transparenttextures.com/patterns/checkerboard.png')] bg-repeat">
+                                                        <img src={url} className="h-full object-contain transition-transform duration-500 group-hover:scale-105" alt="" />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Action buttons overlays */}
+                                            <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => copyToClipboard(url)}
+                                                    className="p-1.5 bg-black/80 rounded-lg text-gray-300 hover:text-white border border-white/10 backdrop-blur-md transition-all hover:scale-105"
+                                                    title="نسخ الرابط"
+                                                >
+                                                    <LinkIcon className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => deleteFromGallery(category.key, url)}
+                                                    className="p-1.5 bg-red-600/90 rounded-lg text-white backdrop-blur-md transition-all hover:scale-105"
+                                                    title="حذف من المعرض المحفوظ"
+                                                >
+                                                    <TrashIcon className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+
+                                            <div className="p-3 bg-[#0c0e12] border-t border-gray-800 flex flex-col justify-end">
+                                                {category.actions(url)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
     const renderNotificationsTab = () => {
         const episodesList: { seasonNumber: number; seasonId: number; episode: Episode }[] = [];
         if (formData.seasons) {
@@ -4345,6 +4604,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         <BellIcon className="w-5 h-5"/>
                         <span>إعدادات الإشعارات</span>
                     </button>
+
+                    <button 
+                        onClick={() => { setActiveTab('gallery-history'); setIsSidebarOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'gallery-history' ? 'bg-[#1a1f29] text-white border-r-2 border-[var(--color-accent)]' : 'text-gray-400 hover:bg-[#161b22] hover:text-white'}`}
+                    >
+                        <PhotoIcon className="w-5 h-5"/>
+                        <span>معرض الصور المخزنة</span>
+                    </button>
                 </nav>
 
                 <div className="h-20 border-t border-gray-800 flex items-center px-4 bg-black/10">
@@ -4397,7 +4664,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         ...(isEpisodic ? [{ id: 'seasons', label: 'المواسم والحلقات', icon: LayersIcon }] : []),
                         ...(isStandalone ? [{ id: 'servers', label: 'السيرفرات', icon: ServerIcon }] : []),
                         { id: 'preview', label: 'معاينة مباشرة', icon: EyeIcon },
-                        { id: 'notifications-config', label: 'إعدادات الإشعارات', icon: BellIcon }
+                        { id: 'notifications-config', label: 'إعدادات الإشعارات', icon: BellIcon },
+                        { id: 'gallery-history', label: 'معرض الصور المخزنة', icon: PhotoIcon }
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -5502,6 +5770,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         {activeTab === 'preview' && renderLivePreview()}
 
                         {activeTab === 'notifications-config' && renderNotificationsTab()}
+
+                        {activeTab === 'gallery-history' && renderGalleryHistoryTab()}
 
                     </div>
                 </div>

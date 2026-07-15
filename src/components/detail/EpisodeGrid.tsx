@@ -211,10 +211,14 @@ const EpisodeGrid: React.FC<EpisodeGridProps> = ({
                 </p>
               </div>
               {ep.publishDate && (
-                <div className="text-[10px] text-gray-500 font-bold mt-auto pt-1 flex items-center gap-1 dir-rtl justify-start">
-                  <span>تاريخ النشر:</span>
-                  <span>{ep.publishDate}</span>
-                </div>
+                <>
+                  {/* خط أفقي فاصل بين وصف الحلقة وتاريخ النشر */}
+                  <hr className="border-t border-gray-400/40 my-2 w-full" />
+                  <div className="text-[10px] text-gray-500 font-bold mt-auto pt-1 flex items-center gap-1 dir-rtl justify-start">
+                    <span>تاريخ النشر:</span>
+                    <span>{ep.publishDate}</span>
+                  </div>
+                </>
               )}
             </div>
           </a>
