@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { createPortal } from 'react-dom';
-import { isItemVisible } from '../../firebase';
+import { isItemVisible, incrementContentViewCount } from '../../firebase';
 import type { Content, Ad, Episode, Server, AdPlacement, Season, View, Person } from '../../types';
 import { ContentType } from '../../types';
 import VideoPlayer from './VideoPlayer';
@@ -96,6 +96,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   const [activeTab, setActiveTab] = useState<'episodes' | 'trailer' | 'details' | 'related'>(isSoon ? 'details' : 'episodes');
   const tabsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (content?.id) {
+        incrementContentViewCount(content.id);
+    }
+  }, [content?.id]);
 
   useEffect(() => {
     if (isSoon) {

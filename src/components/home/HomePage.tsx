@@ -140,9 +140,11 @@ const HomePage: React.FC<HomePageProps> = (props) => {
         const top10Source = (props.top10Content && props.top10Content.length > 0) ? props.top10Content : safePinnedContent;
         const pinnedCarousel = { id: 'h_pinned_top_kids', title: 'أفضل 10 للأطفال', contents: top10Source, showRanking: true };
         let kidsList = [];
+        kidsList.push(
+            { id: 'k_new', title: 'أحدث الإضافات', contents: recentKids, isNew: true, categoryKey: 'new-kids' }
+        );
         if (pinnedCarousel.contents.length > 0 && props.siteSettings.showTop10Home) kidsList.push(pinnedCarousel);
         kidsList.push(
-            { id: 'k_new', title: 'أحدث الإضافات', contents: recentKids, isNew: true, categoryKey: 'new-kids' },
             { id: 'k_anim', title: animationTitle, contents: animationMovies, specialRoute: 'kids' },
             { id: 'k_series', title: 'مسلسلات كرتون', contents: kidsSeries },
             { id: 'k_family', title: 'أفلام عائلية', contents: familyContent }
@@ -191,9 +193,9 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     const ramadanCarousel = { id: 'h_ramadan', title: ramadanTitle, contents: ramadanContent, specialRoute: 'ramadan' };
 
     let finalList = [];
-    if (pinnedCarousel.contents.length > 0 && props.siteSettings.showTop10Home) finalList.push(pinnedCarousel);
     if (props.siteSettings.isShowRamadanCarousel) finalList.push(ramadanCarousel);
     finalList.push({ id: 'h2', title: 'أحدث الإضافات', contents: recentAdditions, isNew: true, categoryKey: 'new-content' });
+    if (pinnedCarousel.contents.length > 0 && props.siteSettings.showTop10Home) finalList.push(pinnedCarousel);
     finalList.push(...restCarousels);
     return finalList.filter(carousel => carousel.contents.length > 0);
   }, [props.allContent, props.pinnedContent, props.top10Content, props.siteSettings.isShowRamadanCarousel, props.siteSettings.showTop10Home, isRamadan, isKidMode, safeContent, safePinnedContent, isMobile]);

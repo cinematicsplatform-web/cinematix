@@ -30,6 +30,7 @@ import StartupAdTab from './StartupAdTab';
 import PromoBannersTab from './PromoBannersTab';
 import ManageStories from '../home/ManageStories';
 import ServersManagementTab from './ServersManagementTab';
+import MostViewedTab from './MostViewedTab';
 
 // Import Icons
 import { 
@@ -51,7 +52,7 @@ const KeyboardIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-type AdminTab = 'dashboard' | 'content' | 'servers_domains' | 'content_radar' | 'top_content' | 'top10' | 'stories' | 'people' | 'users' | 'requests' | 'reports' | 'ads' | 'startup_ad' | 'promo_banners' | 'themes' | 'settings' | 'analytics' | 'notifications' | 'alerts' | 'app_config' | 'shortcuts';
+type AdminTab = 'dashboard' | 'content' | 'most_viewed' | 'servers_domains' | 'content_radar' | 'top_content' | 'top10' | 'stories' | 'people' | 'users' | 'requests' | 'reports' | 'ads' | 'startup_ad' | 'promo_banners' | 'themes' | 'settings' | 'analytics' | 'notifications' | 'alerts' | 'app_config' | 'shortcuts';
 
 interface RadarAlert {
     id: string;
@@ -508,6 +509,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const renderTabContent = () => {
         switch(activeTab) {
             case 'content': return <ContentManagementTab onEdit={openContentModalForEdit} onNew={openContentModalForNew} onRequestDelete={confirmDeleteContent} addToast={props.addToast} onBulkSuccess={() => { props.onContentChanged(); setContentRefreshKey(prev => prev + 1); }} refreshKey={contentRefreshKey} />;
+            case 'most_viewed': return <MostViewedTab onEdit={openContentModalForEdit} addToast={props.addToast} />;
             case 'servers_domains': return <ServersManagementTab addToast={props.addToast} onServersChanged={props.onContentChanged} />;
             case 'users': return <UserManagementTab users={props.allUsers} onAddAdmin={props.onAddAdmin} onRequestDelete={confirmDeleteUser} addToast={props.addToast} />;
             case 'requests': return <RequestsTab addToast={props.addToast} onRequestDelete={confirmDeleteRequest} />;
@@ -554,6 +556,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const navItems: {id: AdminTab, label: string, icon: any}[] = [
         { id: 'dashboard', label: 'نظرة عامة', icon: HomeIcon },
         { id: 'content', label: 'المحتوى', icon: FilmIcon },
+        { id: 'most_viewed', label: 'الأكثر مشاهدة', icon: ChartBarIcon },
         { id: 'servers_domains', label: 'إدارة السيرفرات والدومينات', icon: ServerIcon },
         { id: 'content_radar', label: 'رادار البث', icon: MapIcon }, 
         { id: 'top_content', label: 'المثبت (Hero)', icon: StarIcon },

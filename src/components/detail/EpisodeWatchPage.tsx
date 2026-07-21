@@ -255,7 +255,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                     {isFullyReady ? (
                         <VideoPlayer 
                             key={playerKey}
-                            tmdbId={content.id} 
+                            tmdbId={content.tmdbId || content.id} 
                             type={content.type} 
                             season={seasonNumber} 
                             episode={episodeNumber} 

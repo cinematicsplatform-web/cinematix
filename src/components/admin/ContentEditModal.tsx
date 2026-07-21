@@ -1280,12 +1280,30 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [allContentList, setAllContentList] = useState<Content[]>([]);
     const [relatedSearchQuery, setRelatedSearchQuery] = useState('');
 
+    const [dynamicGenres, setDynamicGenres] = useState<string[]>([]);
+
+    const allAvailableGenres = useMemo(() => {
+        const contentGenres = content?.genres || [];
+        const combined = [...genres, ...dynamicGenres, ...contentGenres];
+        return Array.from(new Set(combined.filter(Boolean)));
+    }, [dynamicGenres, content]);
+
     useEffect(() => {
         getServers().then(setGlobalServers).catch(err => {
             console.error("Failed to load global servers in ContentEditModal:", err);
         });
         getAllContent(true).then(setAllContentList).catch(err => {
             console.error("Failed to load all content in ContentEditModal:", err);
+        });
+
+        // Fetch dynamic genres from Firestore
+        db.collection('settings').doc('genres').get().then((docSnap) => {
+            if (docSnap.exists) {
+                const list = docSnap.data()?.list || [];
+                setDynamicGenres(list);
+            }
+        }).catch(err => {
+            console.error("Failed to fetch dynamic genres in ContentEditModal:", err);
         });
     }, []);
 
@@ -2676,6 +2694,29 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 });
             }
 
+            // Save newly fetched genres to dynamic list if not already there
+            const fetchedGenres = mappedGenres.filter(Boolean);
+            const newGenresToPersist: string[] = [];
+            fetchedGenres.forEach((g: string) => {
+                const isStatic = (genres as readonly string[]).includes(g as any);
+                const isDynamic = dynamicGenres.includes(g);
+                if (!isStatic && !isDynamic) {
+                    newGenresToPersist.push(g);
+                }
+            });
+
+            if (newGenresToPersist.length > 0) {
+                const updatedDynamic = Array.from(new Set([...dynamicGenres, ...newGenresToPersist]));
+                setDynamicGenres(updatedDynamic);
+                db.collection('settings').doc('genres').set({
+                    list: updatedDynamic
+                }, { merge: true }).then(() => {
+                    console.log("Dynamically saved new genres from TMDB:", newGenresToPersist);
+                }).catch(err => {
+                    console.error("Failed to save dynamic genres from TMDB:", err);
+                });
+            }
+
             setFormData(prev => ({
                 ...prev,
                 id: isNewContent ? db.collection("content").doc().id : (prev.id || String(targetId)),
@@ -2710,6 +2751,32 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         } finally {
             setFetchLoading(false);
             setUpdateLoading(false);
+        }
+    };
+
+    const [isRefreshingRating, setIsRefreshingRating] = useState(false);
+
+    const handleRefreshRating = async () => {
+        const targetId = formData.tmdbId || tmdbIdInput;
+        if (!targetId) {
+            addToast("يرجى إدخال كود TMDB أولاً لجلب التقييم.", "error");
+            return;
+        }
+        setIsRefreshingRating(true);
+        try {
+            const typePath = (formData.type === ContentType.Movie || formData.type === ContentType.Play || formData.type === ContentType.Concert) ? 'movie' : 'tv';
+            const url = `https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=ar-SA`;
+            const res = await fetchTMDB(url);
+            if (!res.ok) throw new Error("فشل جلب البيانات من TMDB. تأكد من صحة الكود.");
+            const details = await res.json();
+            const rating = details.vote_average ? Number((details.vote_average / 2).toFixed(1)) : 0;
+            setFormData(prev => ({ ...prev, rating }));
+            addToast(`تم تحديث التقييم بنجاح من TMDB! ★ ${rating}`, "success");
+        } catch (e: any) {
+            console.error(e);
+            addToast(e.message || "حدث خطأ أثناء تحديث التقييم.", "error");
+        } finally {
+            setIsRefreshingRating(false);
         }
     };
 
@@ -2762,13 +2829,13 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         });
     };
      
-    const handleGenreChange = (genre: Genre) => {
+    const handleGenreChange = (genre: string) => {
         setFormData(prev => {
             const currentGenres = prev.genres || [];
-            const newGenres = currentGenres.includes(genre)
+            const newGenres = currentGenres.includes(genre as any)
                 ? currentGenres.filter(g => g !== genre)
                 : [...currentGenres, genre];
-            return { ...prev, genres: newGenres };
+            return { ...prev, genres: newGenres as any };
         });
     };
 
@@ -4774,7 +4841,35 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div><label className={labelClass}>سنة الإنتاج</label><input type="number" name="releaseYear" value={formData.releaseYear} onChange={handleChange} className={inputClass} /></div>
-                                            <div><label className={labelClass}>التقييم (10/x)</label><input type="number" step="0.1" name="rating" value={formData.rating} onChange={handleChange} className={inputClass + " text-yellow-400 font-bold"} /></div>
+                                            <div>
+                                                <label className={labelClass}>التقييم (10/x)</label>
+                                                <div className="flex items-stretch gap-2">
+                                                    <input 
+                                                        type="number" 
+                                                        step="0.1" 
+                                                        name="rating" 
+                                                        value={formData.rating} 
+                                                        onChange={handleChange} 
+                                                        className={inputClass + " flex-1 text-yellow-400 font-bold"} 
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleRefreshRating}
+                                                        disabled={isRefreshingRating}
+                                                        className="flex items-center justify-center rounded-lg bg-gray-800 px-3 text-yellow-400 shadow-md transition-all hover:bg-gray-700 border border-gray-700 hover:text-yellow-300"
+                                                        title="تحديث التقييم من TMDB"
+                                                    >
+                                                        {isRefreshingRating ? (
+                                                            <svg className="animate-spin h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                            </svg>
+                                                        ) : (
+                                                            <RefreshIcon className="w-5 h-5" />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -4809,10 +4904,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 <div className={`${sectionBoxClass} lg:col-span-9 h-full flex flex-col`}>
                                     <h4 className="text-sm font-bold text-gray-500 mb-6 uppercase border-b border-gray-800 pb-2">تفاصيل إضافية</h4>
                                     <div className="space-y-6 flex-1">
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
                                             <div><label className={labelClass}>المخرج</label><input type="text" name="director" value={formData.director || ''} onChange={handleChange} className={inputClass} /></div>
                                             <div><label className={labelClass}>الكاتب</label><input type="text" name="writer" value={formData.writer || ''} onChange={handleChange} className={inputClass} /></div>
                                             <div><label className={labelClass}>التصنيف العمري</label><input type="text" name="ageRating" value={formData.ageRating} onChange={handleChange} className={inputClass} placeholder="+13" /></div>
+                                            <div><label className={labelClass}>عدد المشاهدات</label><input type="number" name="views" value={formData.views || 0} onChange={handleChange} className={inputClass + " text-blue-400 font-bold"} placeholder="0" /></div>
                                             {isStandalone && <div><label className={labelClass}>المدة</label><input type="text" name="duration" value={formData.duration || ''} onChange={handleChange} className={inputClass} placeholder="1h 30m" /></div>}
                                         </div>
                                         
@@ -4890,9 +4986,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                     <div>
                                         <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">النوع الفني</h3>
                                         <div className="flex flex-wrap gap-2">
-                                            {genres.map((g: Genre) => (
-                                                <button key={g} type="button" onClick={() => handleGenreChange(g)} className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-bold transition-all duration-200 ${formData.genres.includes(g) ? 'bg-white text-black border-white' : `${INPUT_BG} border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white`}`}>
-                                                    {g} {formData.genres.includes(g) && <CheckSmallIcon />}
+                                            {allAvailableGenres.map((g: string) => (
+                                                <button key={g} type="button" onClick={() => handleGenreChange(g)} className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-bold transition-all duration-200 ${formData.genres.includes(g as any) ? 'bg-white text-black border-white' : `${INPUT_BG} border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white`}`}>
+                                                    {g} {formData.genres.includes(g as any) && <CheckSmallIcon />}
                                                 </button>
                                             ))}
                                         </div>
