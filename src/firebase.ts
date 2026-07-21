@@ -410,6 +410,17 @@ export const getAllContent = async (isAdmin: boolean = false): Promise<Content[]
     }
 };
 
+export const incrementContentViewCount = async (contentId: string): Promise<void> => {
+    if (!contentId) return;
+    try {
+        await db.collection('content').doc(contentId).update({
+            views: firebase.firestore.FieldValue.increment(1)
+        });
+    } catch (e) {
+        console.error("[Cinematix] Error incrementing view count:", e);
+    }
+};
+
 export const getUsers = async (): Promise<User[]> => {
     try {
         const querySnapshot = await db.collection("users").get();
