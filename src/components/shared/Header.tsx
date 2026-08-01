@@ -35,11 +35,12 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      setIsScrolled(window.scrollY > 0);
     };
-    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
-        window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
@@ -66,12 +67,10 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
   return (
     <header 
       className={`
-        fixed top-0 right-0 left-0 z-50 transition-all duration-500 ease-in-out
+        fixed top-0 right-0 left-0 z-50 transition-all duration-200 ease-out
         ${isScrolled 
-            ? (isShahidTheme 
-                ? 'bg-[#0b0f19]/90 border-b border-white/10 backdrop-blur-3xl shadow-lg' 
-                : 'bg-black/10 backdrop-blur-3xl') 
-            : 'bg-gradient-to-b from-black/80 to-transparent'}
+            ? 'bg-[#0b0f19]/90 backdrop-blur-xl border-b border-white/10 shadow-2xl' 
+            : 'bg-gradient-to-b from-black/80 via-black/40 to-transparent'}
       `}
     >
       <div className="w-full px-4 md:px-8 flex items-center justify-between h-16 md:h-20 gap-6">
@@ -113,7 +112,7 @@ const Header: React.FC<HeaderProps> = ({ onSetView, currentUser, activeProfile, 
 
         {isShahidTheme && (
           <div className="hidden lg:flex items-center justify-center flex-none">
-            <div className="flex items-center bg-[#131a26]/40 border border-white/10 backdrop-blur-md rounded-full px-4 py-1 gap-2 border-r border-[#1994e5]/10 shadow-2xl">
+            <div className="flex items-center bg-[#131a26] border border-white/15 rounded-full px-4 py-1 gap-2 border-r border-[#1994e5]/20 shadow-2xl">
               {/* Highlight active with dark background capsule pill */}
               {[
                 { name: 'الرئيسية', view: 'home' },

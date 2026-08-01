@@ -1,6 +1,7 @@
 
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import type { Content, Ad, View } from '@/types';
+import type { Content, Ad, View, HomeSection } from '@/types';
+import { resolveDynamicCarousels } from '@/utils/sectionUtils';
 import Hero from '../home/Hero';
 import ContentCarousel from '../shared/ContentCarousel';
 import AdPlacement from '../ads/AdPlacement';
@@ -10,6 +11,7 @@ import { BouncingDotsLoader } from '../shared/BouncingDotsLoader';
 interface SoonPageProps {
   allContent: Content[];
   pinnedContent: Content[];
+  homeSections?: HomeSection[];
   onSelectContent: (content: Content, seasonNumber?: number, episodeNumber?: number, isSoon?: boolean) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean; // تم الإضافة
@@ -29,6 +31,7 @@ interface SoonPageProps {
 const SoonPage: React.FC<SoonPageProps> = ({ 
   allContent, 
   pinnedContent, 
+  homeSections,
   onSelectContent, 
   isLoggedIn, 
   isAdmin = false,
@@ -41,7 +44,8 @@ const SoonPage: React.FC<SoonPageProps> = ({
   isEidTheme, 
   isCosmicTealTheme, 
   isNetflixRedTheme,
-  isShahidTheme
+  isShahidTheme,
+  onNavigate
 }) => {
   
   const { allSoonContent, soonAndRamadan, soonOnly } = useMemo(() => {
@@ -90,13 +94,32 @@ const SoonPage: React.FC<SoonPageProps> = ({
     const sortedSoonRamadan = [...soonAndRamadan].sort((a, b) => getEffectiveUpdateDate(b) - getEffectiveUpdateDate(a));
     const sortedSoonOnly = [...soonOnly].sort((a, b) => getEffectiveUpdateDate(b) - getEffectiveUpdateDate(a));
     
-    const definedCarousels = [
+    const baseList = [
       { id: 's1', title: 'قريباً في رمضان', contents: sortedSoonRamadan, isRestricted: false, isSoonCarousel: true },
       { id: 's2', title: 'قريباً', contents: sortedSoonOnly, isRestricted: false, isSoonCarousel: true }, 
     ].filter(carousel => carousel.contents.length > 0);
 
-    return definedCarousels;
-  }, [soonAndRamadan, soonOnly]);
+    return resolveDynamicCarousels('soon', homeSections, allContent, baseList);
+  }, [soonAndRamadan, soonOnly, homeSections, allContent]);
+
+  const handleSeeAll = (carousel: any) => {
+      if (!onNavigate) return;
+      if (typeof carousel === 'string') {
+        onNavigate('category', carousel);
+      } else if (carousel?.specialRoute) {
+        onNavigate(carousel.specialRoute as View);
+      } else if (carousel?.categoryKey) {
+        onNavigate('category', carousel.categoryKey);
+      } else if (carousel?.sectionId) {
+        onNavigate('category', `section:${carousel.sectionId}`);
+      } else if (carousel?.id) {
+        onNavigate('category', `section:${carousel.id}`);
+      } else if (typeof carousel?.title === 'string') {
+        onNavigate('category', carousel.title);
+      } else {
+        onNavigate('soon');
+      }
+  };
 
   const [showEmptyMessage, setShowEmptyMessage] = useState(false);
   
@@ -186,6 +209,7 @@ const SoonPage: React.FC<SoonPageProps> = ({
                 isCosmicTealTheme={isCosmicTealTheme}
                 isNetflixRedTheme={isNetflixRedTheme}
                 isSoonCarousel={carousel.isSoonCarousel}
+                onSeeAll={() => handleSeeAll(carousel)}
                 />
             );
         })}

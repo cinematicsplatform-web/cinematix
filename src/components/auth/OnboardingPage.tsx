@@ -97,9 +97,10 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ onFinish, onSetView, ac
     { name: 'مسلسلات تركية', image: 'https://shahid.mbc.net/mediaObject/982a0f09-8e13-4334-b2c7-10c470667964?height=120&width=120&version=1&type=avif&q=80' },
     { name: 'مسلسلات مصرية', image: 'https://shahid.mbc.net/mediaObject/7e4265bf-dc72-4d5c-a68c-368bafc388a7?height=120&width=120&version=1&type=avif&q=80' },
     { name: 'مسلسلات اجنبية', image: 'https://shahid.mbc.net/mediaObject/5c412598-1555-4dec-ab9a-aa6737d3c575?height=120&width=120&version=1&type=avif&q=80' },
-    { name: 'مسلسلات خليجية', image: 'https://shahid.mbc.net/mediaObject/d37f35d3-ac91-473e-a621-55f8ff8b6b67?height=120&width=120&version=1&type=avif&q=80' },
+    { name: 'مسلسلات آسيوية', image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=300&q=80' },
     { name: 'افلام عربية', image: 'https://shahid.mbc.net/mediaObject/1b602d47-8d03-4891-903d-af20aa5c0fc0?height=120&width=120&version=1&type=avif&q=80' },
     { name: 'افلام اجنبية', image: 'https://shahid.mbc.net/mediaObject/07058ba8-5a90-4421-9cca-181ba9a83edf?height=120&width=120&version=1&type=avif&q=80' },
+    { name: 'أفلام آسيوية', image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=300&q=80' },
   ];
 
   const topContent = useMemo(() => {

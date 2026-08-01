@@ -1,7 +1,8 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import type { Content, Category, Ad, SiteSettings, View, Profile, Story, PromotionalBanner } from '@/types';
+import type { Content, Category, Ad, SiteSettings, View, Profile, Story, PromotionalBanner, HomeSection } from '@/types';
 import { ContentType, UserRole } from '@/types'; 
+import { resolveDynamicCarousels } from '@/utils/sectionUtils';
 import Hero from './Hero';
 import ContentCarousel from '../shared/ContentCarousel';
 import AdPlacement from '../ads/AdPlacement';
@@ -17,6 +18,7 @@ interface HomePageProps {
   top10Content?: Content[]; 
   stories?: Story[]; 
   promoBanners?: PromotionalBanner[];
+  homeSections?: HomeSection[];
   onSelectContent: (content: Content, seasonNumber?: number) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean; // تم الإضافة
@@ -36,11 +38,15 @@ interface HomePageProps {
 const HomePage: React.FC<HomePageProps> = (props) => {
   const isKidMode = props.activeProfile?.isKid || false;
 
-  const isRamadan = props.isRamadanTheme ?? props.siteSettings.isRamadanModeEnabled;
-  const isEid = props.isEidTheme ?? props.siteSettings.activeTheme === 'eid';
-  const isCosmicTeal = props.isCosmicTealTheme ?? props.siteSettings.activeTheme === 'cosmic-teal';
-  const isNetflixRed = props.isNetflixRedTheme ?? props.siteSettings.activeTheme === 'netflix-red';
-  const isShahid = props.siteSettings.activeTheme === 'shahid';
+  const isRamadan = Boolean(props.isRamadanTheme || props.siteSettings?.activeTheme === 'ramadan' || props.siteSettings?.isRamadanModeEnabled);
+  const isEid = Boolean(props.isEidTheme || props.siteSettings?.activeTheme === 'eid');
+  const isCosmicTeal = Boolean(props.isCosmicTealTheme || props.siteSettings?.activeTheme === 'cosmic-teal');
+  const isNetflixRed = Boolean(props.isNetflixRedTheme || props.siteSettings?.activeTheme === 'netflix-red');
+  const isShahid = props.siteSettings?.activeTheme === 'shahid';
+
+  const isShoutBarEnabled = props.siteSettings?.shoutBar?.isVisible === true || (props.siteSettings?.shoutBar?.isVisible as any) === 'true';
+  const hasShoutBarText = Boolean(props.siteSettings?.shoutBar?.text && props.siteSettings.shoutBar.text.trim() !== '');
+  const shouldShowShoutBar = isShoutBarEnabled && hasShoutBarText;
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -156,10 +162,12 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     const arabicSeries = getLatest(props.allContent.filter(c => c.type === ContentType.Series && c.categories.includes('مسلسلات عربية')));
     const turkishSeries = getLatest(props.allContent.filter(c => c.type === ContentType.Series && c.categories.includes('مسلسلات تركية')));
     const foreignSeries = getLatest(props.allContent.filter(c => c.type === ContentType.Series && c.categories.includes('مسلسلات اجنبية')));
+    const asianSeries = getLatest(props.allContent.filter(c => c.type === ContentType.Series && c.categories.includes('مسلسلات آسيوية')));
     const arabicMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && c.categories.includes('افلام عربية')));
     const turkishMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && c.categories.includes('افلام تركية')));
     const foreignMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && c.categories.includes('افلام اجنبية')));
     const indianMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && c.categories.includes('افلام هندية')));
+    const asianMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && c.categories.includes('أفلام آسيوية')));
     const animationMovies = getLatest(props.allContent.filter(c => c.type === ContentType.Movie && ((c.categories as string[]).includes('أفلام أنيميشن') || (c.categories as string[]).includes('افلام أنميشن'))));
     const tvPrograms = getLatest(props.allContent.filter(c => c.type === ContentType.Program || c.categories.includes('برامج تلفزيونية')));
     const plays = getLatest(props.allContent.filter(c => c.type === ContentType.Play || c.categories.includes('مسرحيات')));
@@ -178,10 +186,12 @@ const HomePage: React.FC<HomePageProps> = (props) => {
       { id: 'h3', title: 'مسلسلات عربية', contents: arabicSeries, categoryKey: 'مسلسلات عربية' },
       { id: 'h4', title: 'مسلسلات تركية', contents: turkishSeries, categoryKey: 'مسلسلات تركية' },
       { id: 'h5', title: 'مسلسلات أجنبية', contents: foreignSeries, categoryKey: 'مسلسلات اجنبية' },
+      { id: 'h_asian_series', title: 'مسلسلات آسيوية', contents: asianSeries, categoryKey: 'مسلسلات آسيوية' },
       { id: 'h6', title: 'افلام عربية', contents: arabicMovies, categoryKey: 'افلام عربية' },
       { id: 'h7', title: 'افلام تركية', contents: turkishMovies, categoryKey: 'افلام تركية' },
       { id: 'h8', title: 'أفلام أجنبية', contents: foreignMovies, categoryKey: 'افلام اجنبية' },
       { id: 'h9', title: 'افلام هندية', contents: indianMovies, categoryKey: 'افلام هندية' },
+      { id: 'h_asian_movies', title: 'أفلام آسيوية', contents: asianMovies, categoryKey: 'أفلام آسيوية' },
       { id: 'h11', title: 'البرامج التلفزيونية', contents: tvPrograms, specialRoute: 'programs' },
       { id: 'h12', title: 'حفلات', contents: concerts, categoryKey: 'حفلات' },
       { id: 'h13', title: 'مسرحيات', contents: plays, categoryKey: 'مسرحيات' },
@@ -197,13 +207,25 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     finalList.push({ id: 'h2', title: 'أحدث الإضافات', contents: recentAdditions, isNew: true, categoryKey: 'new-content' });
     if (pinnedCarousel.contents.length > 0 && props.siteSettings.showTop10Home) finalList.push(pinnedCarousel);
     finalList.push(...restCarousels);
-    return finalList.filter(carousel => carousel.contents.length > 0);
-  }, [props.allContent, props.pinnedContent, props.top10Content, props.siteSettings.isShowRamadanCarousel, props.siteSettings.showTop10Home, isRamadan, isKidMode, safeContent, safePinnedContent, isMobile]);
+
+    const baseList = finalList.filter(carousel => carousel.contents.length > 0);
+    return resolveDynamicCarousels('home', props.homeSections, props.allContent, baseList);
+  }, [props.allContent, props.pinnedContent, props.top10Content, props.homeSections, props.siteSettings.isShowRamadanCarousel, props.siteSettings.showTop10Home, isRamadan, isKidMode, safeContent, safePinnedContent, isMobile]);
 
   const handleSeeAll = (carousel: any) => {
-      if (carousel.specialRoute) props.onNavigate(carousel.specialRoute as View);
-      else if (carousel.categoryKey) props.onNavigate('category', carousel.categoryKey);
-      else props.onNavigate('movies'); 
+      if (carousel.specialRoute) {
+        props.onNavigate(carousel.specialRoute as View);
+      } else if (carousel.categoryKey) {
+        props.onNavigate('category', carousel.categoryKey);
+      } else if (carousel.sectionId) {
+        props.onNavigate('category', `section:${carousel.sectionId}`);
+      } else if (carousel.id) {
+        props.onNavigate('category', `section:${carousel.id}`);
+      } else if (typeof carousel.title === 'string') {
+        props.onNavigate('category', carousel.title);
+      } else {
+        props.onNavigate('movies'); 
+      }
   };
 
   const renderContent = () => {
@@ -225,7 +247,17 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     }
 
     if (props.allContent.length === 0) {
-        return <div className="min-h-screen flex flex-col items-center justify-center text-gray-500 animate-fade-in"><p className="text-xl font-bold">لا يوجد محتوى متاح حالياً</p></div>;
+        return (
+            <div className="min-h-[70vh] flex flex-col items-center justify-center text-gray-400 animate-fade-in p-6 text-center space-y-4">
+                <p className="text-xl font-bold text-white">لا يوجد محتوى متاح حالياً</p>
+                <button 
+                    onClick={() => window.location.reload()} 
+                    className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-extrabold rounded-xl transition-all text-sm shadow-lg active:scale-95 cursor-pointer"
+                >
+                    تحديث الصفحة
+                </button>
+            </div>
+        );
     }
 
     return (
@@ -235,9 +267,9 @@ const HomePage: React.FC<HomePageProps> = (props) => {
               <div className={`w-full h-px mt-0 mb-2 md:my-4 ${isRamadan ? 'bg-gradient-to-r from-transparent via-[#FFD700]/50 to-transparent opacity-80' : isEid ? 'bg-gradient-to-r from-transparent via-purple-500/50 to-transparent opacity-80' : isCosmicTeal ? 'bg-gradient-to-r from-transparent via-[#35F18B]/50 to-transparent opacity-80' : isNetflixRed ? 'bg-gradient-to-r from-transparent via-[#E50914]/50 to-transparent opacity-80' : 'bg-gradient-to-r from-transparent via-white/10 to-transparent'}`}></div>
               
               <div className="pt-2">
-                {props.siteSettings.shoutBar.isVisible && (
+                {shouldShowShoutBar && (
                     <div className="px-4 md:px-12 lg:px-16">
-                        < ShoutBarComponent text={props.siteSettings.shoutBar.text} isRamadanTheme={isRamadan} isEidTheme={isEid} isCosmicTealTheme={isCosmicTeal} isNetflixRedTheme={isNetflixRed} />
+                        <ShoutBarComponent text={props.siteSettings.shoutBar.text} isRamadanTheme={isRamadan} isEidTheme={isEid} isCosmicTealTheme={isCosmicTeal} isNetflixRedTheme={isNetflixRed} />
                     </div>
                 )}
                 {!isKidMode && activeStories.length > 0 && (
@@ -255,7 +287,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
 
                     return (
                         <React.Fragment key={(carousel as any).id}>
-                            <ContentCarousel title={(carousel as any).title} contents={(carousel as any).contents} onSelectContent={props.onSelectContent} isLoggedIn={false} isAdmin={props.isAdmin} onToggleMyList={props.onToggleMyList} isNew={(carousel as any).isNew} onSeeAll={() => handleSeeAll(carousel)} isRamadanTheme={isRamadan} isEidTheme={isEid} isCosmicTealTheme={isCosmicTeal} isNetflixRedTheme={isNetflixRed} showRanking={(carousel as any).showRanking} displayType={(carousel as any).displayType} />
+                            <ContentCarousel title={(carousel as any).title} contents={(carousel as any).contents} onSelectContent={props.onSelectContent} isLoggedIn={false} isAdmin={props.isAdmin} onToggleMyList={props.onToggleMyList} isNew={(carousel as any).isNew} onSeeAll={() => handleSeeAll(carousel)} isRamadanTheme={isRamadan} isEidTheme={isEid} isCosmicTealTheme={isCosmicTeal} isNetflixRedTheme={isNetflixRed} showRanking={(carousel as any).showRanking} rankStyle={props.siteSettings?.top10NumberStyle} displayType={(carousel as any).displayType} />
                             
                             {inlineBanner && (
                                 <InlinePromoBanner {...inlineBanner} allContent={props.allContent} onSelectContent={props.onSelectContent} />

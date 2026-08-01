@@ -87,7 +87,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onSetV
                 : 'ring-[#00A7F8]';
 
   // THEME AWARE BACKGROUND
-  const themedBg = "bg-[var(--bg-body)]/95 backdrop-blur-[20px]";
+  const themedBg = "bg-[var(--bg-body)] border-t border-white/15";
 
   return (
     <div className={`fixed bottom-0 left-0 right-0 z-[1000] md:hidden pb-safe transition-all duration-500 ${themedBg} border-t border-white/10 shadow-[0_-8px_25px_rgba(0,0,0,0.6)]`}>

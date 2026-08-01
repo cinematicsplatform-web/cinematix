@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import type { Content, SiteSettings, Ad, View } from '@/types';
+import type { Content, SiteSettings, Ad, View, HomeSection } from '@/types';
+import { resolveDynamicCarousels } from '@/utils/sectionUtils';
 import Hero from '../home/Hero';
 import ContentCarousel from '../shared/ContentCarousel';
 import AdPlacement from '../ads/AdPlacement';
@@ -11,6 +12,7 @@ interface RamadanPageProps {
   allContent: Content[];
   pinnedContent: Content[];
   top10Content?: Content[];
+  homeSections?: HomeSection[];
   onSelectContent: (content: Content, seasonNumber?: number) => void;
   siteSettings: SiteSettings;
   isLoggedIn: boolean;
@@ -92,6 +94,7 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
     allContent, 
     pinnedContent, 
     top10Content,
+    homeSections,
     onSelectContent, 
     siteSettings, 
     isLoggedIn, 
@@ -212,13 +215,29 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
             contents: ramadanPrograms,
             categoryKey: 'برامج رمضان'
         }
-    ].filter(c => c.contents.length > 0);
+    ];
 
-    return definedCarousels;
-  }, [allRamadanContent, pinnedContent, top10Content]);
+    const baseList = definedCarousels.filter(c => c.contents.length > 0);
 
-  const handleSeeAll = (categoryKey: string) => {
-      onNavigate('category', categoryKey);
+    return resolveDynamicCarousels('ramadan', homeSections, allContent, baseList);
+  }, [allRamadanContent, pinnedContent, top10Content, homeSections, allContent]);
+
+  const handleSeeAll = (carousel: any) => {
+      if (typeof carousel === 'string') {
+        onNavigate('category', carousel);
+      } else if (carousel?.specialRoute) {
+        onNavigate(carousel.specialRoute as View);
+      } else if (carousel?.categoryKey) {
+        onNavigate('category', carousel.categoryKey);
+      } else if (carousel?.sectionId) {
+        onNavigate('category', `section:${carousel.sectionId}`);
+      } else if (carousel?.id) {
+        onNavigate('category', `section:${carousel.id}`);
+      } else if (typeof carousel?.title === 'string') {
+        onNavigate('category', carousel.title);
+      } else {
+        onNavigate('ramadan');
+      }
   };
 
   if (isLoading && allRamadanContent.length === 0) {
@@ -293,7 +312,8 @@ const RamadanPage: React.FC<RamadanPageProps> = ({
                         isNew={carousel.isNew}
                         isRestricted={false} 
                         showRanking={carousel.showRanking}
-                        onSeeAll={() => carousel.categoryKey && handleSeeAll(carousel.categoryKey)}
+                        rankStyle={siteSettings?.top10NumberStyle}
+                        onSeeAll={() => handleSeeAll(carousel)}
                         isRamadanTheme={true}
                     />
                 </React.Fragment>

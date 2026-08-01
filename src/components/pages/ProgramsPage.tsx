@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { Content, Ad, View, Profile } from '@/types';
+import type { Content, Ad, View, Profile, HomeSection } from '@/types';
 import { ContentType } from '@/types';
+import { resolveDynamicCarousels } from '@/utils/sectionUtils';
 import ContentCarousel from '../shared/ContentCarousel';
 import AdPlacement from '../ads/AdPlacement';
 import SEO from '../shared/SeoMeta';
@@ -8,6 +9,7 @@ import AdZone from '../ads/AdZone';
 
 interface ProgramsPageProps {
   allContent: Content[];
+  homeSections?: HomeSection[];
   onSelectContent: (content: Content, seasonNumber?: number) => void;
   isLoggedIn: boolean;
   myList?: string[];
@@ -25,6 +27,7 @@ interface ProgramsPageProps {
 
 const ProgramsPage: React.FC<ProgramsPageProps> = ({ 
   allContent, 
+  homeSections,
   onSelectContent, 
   isLoggedIn, 
   myList, 
@@ -83,11 +86,23 @@ const ProgramsPage: React.FC<ProgramsPageProps> = ({
       { id: 'p_concerts', title: 'حفلات', contents: concerts, categoryKey: 'حفلات' },
     ].filter(carousel => carousel.contents.length > 0);
 
-    return definedCarousels;
-  }, [relevantContent]);
+    return resolveDynamicCarousels('programs' as any, homeSections, allContent, definedCarousels);
+  }, [relevantContent, homeSections, allContent]);
 
   const handleSeeAll = (carousel: any) => {
-      if (carousel.categoryKey) onNavigate('category', carousel.categoryKey);
+      if (typeof carousel === 'string') {
+        onNavigate('category', carousel);
+      } else if (carousel?.specialRoute) {
+        onNavigate(carousel.specialRoute as View);
+      } else if (carousel?.categoryKey) {
+        onNavigate('category', carousel.categoryKey);
+      } else if (carousel?.sectionId) {
+        onNavigate('category', `section:${carousel.sectionId}`);
+      } else if (carousel?.id) {
+        onNavigate('category', `section:${carousel.id}`);
+      } else if (typeof carousel?.title === 'string') {
+        onNavigate('category', carousel.title);
+      }
   };
 
   if (isLoading && relevantContent.length === 0) {

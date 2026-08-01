@@ -50,6 +50,7 @@ const Hero: React.FC<HeroProps> = ({
     const [isPaused, setIsPaused] = useState(false);
     const [isInView, setIsInView] = useState(true); 
     const [videoEnded, setVideoEnded] = useState(false);
+    const [isVideoReady, setIsVideoReady] = useState(false);
     
     const [isDragging, setIsDragging] = useState(false);
     const [startPos, setStartPos] = useState(0);
@@ -59,6 +60,7 @@ const Hero: React.FC<HeroProps> = ({
     
     const containerRef = useRef<HTMLDivElement>(null);
     const activeIframeRef = useRef<HTMLIFrameElement>(null);
+    const activeVideoRef = useRef<HTMLVideoElement>(null);
     const forceStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     
     const hasTransitionedRef = useRef<boolean>(false);
@@ -118,15 +120,21 @@ const Hero: React.FC<HeroProps> = ({
         return () => window.removeEventListener('message', handleMessage);
     }, [handleNext]);
 
+    const activeLatestSeason = activeContent?.seasons && activeContent.seasons.length > 0
+        ? activeContent.seasons[activeContent.seasons.length - 1]
+        : null;
+    const activeTrailerUrl = activeLatestSeason?.trailerUrl || activeContent?.trailerUrl;
+
     useEffect(() => {
         setShowVideo(false);
         setVideoEnded(false);
+        setIsVideoReady(false);
         setIsMuted(true);
         setIsPaused(false);
         setIsDirectJump(false);
         hasTransitionedRef.current = false;
 
-        if (!activeContent || !activeContent.trailerUrl || isMobile || disableVideo) return;
+        if (!activeContent || !activeTrailerUrl || isMobile || disableVideo) return;
 
         const trailerTimer = setTimeout(() => {
             setShowVideo(true);
@@ -135,22 +143,33 @@ const Hero: React.FC<HeroProps> = ({
         return () => {
             clearTimeout(trailerTimer);
         };
-    }, [activeContent?.id, isMobile, disableVideo]);
+    }, [activeContent?.id, activeTrailerUrl, isMobile, disableVideo]);
 
     useEffect(() => {
-        if (!showVideo || !activeIframeRef.current) return;
+        if (!showVideo) return;
 
-        const win = activeIframeRef.current.contentWindow;
-        if (!win) return;
-
-        try {
-            if (isInView) {
-                win.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
-                win.postMessage(JSON.stringify({ event: 'command', func: isMuted ? 'mute' : 'unMute', args: '' }), '*');
-            } else {
-                win.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
+        if (activeIframeRef.current) {
+            const win = activeIframeRef.current.contentWindow;
+            if (win) {
+                try {
+                    if (isInView) {
+                        win.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
+                        win.postMessage(JSON.stringify({ event: 'command', func: isMuted ? 'mute' : 'unMute', args: '' }), '*');
+                    } else {
+                        win.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
+                    }
+                } catch (e) {}
             }
-        } catch (e) {}
+        }
+
+        if (activeVideoRef.current) {
+            activeVideoRef.current.muted = isMuted;
+            if (isInView) {
+                activeVideoRef.current.play().catch(() => {});
+            } else {
+                activeVideoRef.current.pause();
+            }
+        }
     }, [isInView, showVideo, isMuted]);
 
     useEffect(() => {
@@ -173,19 +192,6 @@ const Hero: React.FC<HeroProps> = ({
     }, [showVideo, isInView, handleNext]);
 
     useEffect(() => {
-        if (showVideo && activeIframeRef.current) {
-            const command = isMuted ? 'mute' : 'unMute';
-            try {
-                activeIframeRef.current.contentWindow?.postMessage(JSON.stringify({
-                    event: 'command',
-                    func: command,
-                    args: ''
-                }), '*');
-            } catch (e) {}
-        }
-    }, [isMuted, showVideo]);
-
-    useEffect(() => {
         if (!hasMultiple || isDragging || isPaused || showVideo) return;
 
         const timer = setTimeout(() => {
@@ -203,6 +209,13 @@ const Hero: React.FC<HeroProps> = ({
             if (url.includes('embed/')) return url.split('embed/')[1].split('?')[0];
             return null;
         } catch (e) { return null; }
+    };
+
+    const isDirectVideoUrl = (url: string | undefined): boolean => {
+        if (!url) return false;
+        const cleanUrl = url.split('?')[0].toLowerCase();
+        const videoExtensions = ['.mp4', '.m3u8', '.ogg', '.webm', '.ts', '.mov'];
+        return videoExtensions.some(ext => cleanUrl.endsWith(ext)) || url.toLowerCase().includes('.mp4');
     };
 
     const handleManualSlide = useCallback((targetIndex: number) => {
@@ -339,15 +352,21 @@ const Hero: React.FC<HeroProps> = ({
                 const cropClass = content.enableMobileCrop ? 'mobile-custom-crop' : '';
 
                 let embedUrl = '';
+                let isDirectVideo = false;
                 const trailerUrl = latestSeason?.trailerUrl || content.trailerUrl;
                 if (isActive && trailerUrl && !disableVideo) {
                     const videoId = getVideoId(trailerUrl);
                     if (videoId) {
                         const origin = typeof window !== 'undefined' ? window.location.origin : '';
                         embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${origin}`;
+                    } else if (isDirectVideoUrl(trailerUrl)) {
+                        isDirectVideo = true;
+                    } else if (trailerUrl.startsWith('http://') || trailerUrl.startsWith('https://')) {
+                        embedUrl = trailerUrl;
                     }
                 }
-                const shouldShowVideo = isActive && showVideo && embedUrl && !isMobile && !disableVideo;
+                const shouldShowVideo = isActive && showVideo && (embedUrl || isDirectVideo) && !isMobile && !disableVideo;
+                const isVideoActiveReady = shouldShowVideo && (!isDirectVideo || isVideoReady);
 
                 let offset = (index - unboundedIndex) % len;
                 if (offset < 0) offset += len; 
@@ -369,17 +388,40 @@ const Hero: React.FC<HeroProps> = ({
                         <div className="absolute inset-0 w-full h-full">
                             {shouldShowVideo && (
                                 <div className="absolute inset-0 w-full h-full overflow-hidden z-0 animate-fade-in-up pointer-events-none"> 
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
-                                        <iframe 
-                                            ref={activeIframeRef}
-                                            src={embedUrl} 
-                                            className="w-full h-full pointer-events-none" 
-                                            tabIndex={-1} 
-                                            allow="autoplay; encrypted-media; picture-in-picture" 
-                                            title={`Trailer for ${content.title}`}
-                                            frameBorder="0"
-                                            style={{ pointerEvents: 'none' }} 
-                                        ></iframe>
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none flex items-center justify-center">
+                                        {isDirectVideo ? (
+                                            <video 
+                                                ref={activeVideoRef}
+                                                src={trailerUrl} 
+                                                poster={displayBackdrop}
+                                                preload="auto"
+                                                autoPlay 
+                                                loop 
+                                                muted={isMuted} 
+                                                playsInline 
+                                                className={`w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${isVideoReady ? 'opacity-100' : 'opacity-0'}`}
+                                                onCanPlay={() => setIsVideoReady(true)}
+                                                onPlaying={() => setIsVideoReady(true)}
+                                                onLoadedData={() => setIsVideoReady(true)}
+                                                onEnded={() => {
+                                                    if (!hasTransitionedRef.current) {
+                                                        hasTransitionedRef.current = true;
+                                                        handleNext();
+                                                    }
+                                                }}
+                                            />
+                                        ) : (
+                                            <iframe 
+                                                ref={activeIframeRef}
+                                                src={embedUrl} 
+                                                className="w-full aspect-video pointer-events-none" 
+                                                tabIndex={-1} 
+                                                allow="autoplay; encrypted-media; picture-in-picture" 
+                                                title={`Trailer for ${content.title}`}
+                                                frameBorder="0"
+                                                style={{ pointerEvents: 'none' }} 
+                                            ></iframe>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -389,7 +431,7 @@ const Hero: React.FC<HeroProps> = ({
                                     e.stopPropagation();
                                     handleItemClick(content);
                                 }}
-                                className={`absolute inset-0 w-full h-full transition-opacity duration-1000 cursor-pointer z-10 ${shouldShowVideo ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'}`}
+                                className={`absolute inset-0 w-full h-full transition-opacity duration-1000 cursor-pointer z-10 ${isVideoActiveReady ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'}`}
                             >
                                 <img 
                                     src={displayBackdrop} 
@@ -414,7 +456,7 @@ const Hero: React.FC<HeroProps> = ({
                         </div>
 
                         <div className={`absolute inset-0 z-30 flex flex-col justify-end md:justify-end px-4 md:px-12 pb-4 md:pb-32 text-white pointer-events-none transition-opacity duration-500 ease-in-out ${textOpacityClass}`}>
-                            {isShahidTheme && shouldShowVideo && (
+                            {isShahidTheme && isVideoActiveReady && (
                                 <button 
                                     onClick={toggleMute} 
                                     className="pointer-events-auto absolute left-4 md:left-8 lg:left-14 top-[18%] md:top-[22%] transform -translate-y-1/2 bg-white/10 border border-white/10 hover:bg-white text-white hover:text-black backdrop-blur-md rounded-full w-[48px] h-[48px] md:w-[64px] md:h-[64px] flex items-center justify-center p-0 transition-all cursor-pointer z-50 group origin-center" 
@@ -435,7 +477,7 @@ const Hero: React.FC<HeroProps> = ({
                                         e.stopPropagation();
                                         handleItemClick(content);
                                     }}
-                                    className={`transition-all duration-700 ease-in-out transform origin-center md:origin-right cursor-pointer hover:scale-[1.01] active:scale-95 duration-200 ${shouldShowVideo ? 'translate-y-4 scale-75 mb-1 md:mb-2' : 'translate-y-0 scale-100 mb-1 md:mb-6'}`}
+                                    className={`transition-all duration-700 ease-in-out transform origin-center md:origin-right cursor-pointer hover:scale-[1.01] active:scale-95 duration-200 ${isVideoActiveReady ? 'translate-y-4 scale-75 mb-1 md:mb-2' : 'translate-y-0 scale-100 mb-1 md:mb-6'}`}
                                     title="شاهد الآن"
                                 >
                                     {content.isLogoEnabled && displayLogo ? (
@@ -445,7 +487,7 @@ const Hero: React.FC<HeroProps> = ({
                                     )}
                                 </div>
 
-                                <div className={`flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-xs md:text-base font-medium text-gray-200 transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'mb-1 md:mb-2 opacity-80' : 'mb-1 md:mb-3 opacity-100'}`}>
+                                <div className={`flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-xs md:text-base font-medium text-gray-200 transition-all duration-700 ease-in-out w-full ${isVideoActiveReady ? 'mb-1 md:mb-2 opacity-80' : 'mb-1 md:mb-3 opacity-100'}`}>
                                     <div className="flex items-center gap-1.5 text-yellow-400 bg-black/40 backdrop-blur-md px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/10">
                                         <StarIcon className="w-3 h-3 md:w-4 md:h-4" />
                                         <span className="font-bold text-white">{(Number(content.rating) || 0).toFixed(1)}</span>
@@ -490,13 +532,13 @@ const Hero: React.FC<HeroProps> = ({
                                 </div>
 
                                 {!hideDescription && (
-                                    <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${shouldShowVideo ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-2 md:mb-4'}`}>
+                                    <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${isVideoActiveReady ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-2 md:mb-4'}`}>
                                         <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-2 md:line-clamp-3 leading-relaxed mx-auto md:mx-0 font-medium">{content.description}</p>
                                     </div>
                                 )}
                                 <div className="flex items-center gap-4 w-full justify-center md:justify-start relative z-40 mt-1 md:mt-2">
                                     <ActionButtons onWatch={() => onWatchNow(content, undefined, undefined, isSoonCarousel)} onToggleMyList={() => onToggleMyList(content.id)} isInMyList={!!myList?.includes(content.id)} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isShahidTheme={isShahidTheme} showMyList={isLoggedIn} content={content} isSoonOverride={isSoonCarousel} />
-                                    {shouldShowVideo && !isShahidTheme && (
+                                    {isVideoActiveReady && !isShahidTheme && (
                                         <button onClick={toggleMute} className="p-3.5 md:p-6 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group origin-center cursor-pointer" title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}>
                                             <SpeakerIcon isMuted={isMuted} className="h-6 w-6 md:h-9 md:w-9 text-white group-hover:scale-110 transition-transform" />
                                         </button>

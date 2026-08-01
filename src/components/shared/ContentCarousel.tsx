@@ -4,6 +4,9 @@ import type { Content, SectionDisplayType } from '@/types';
 import ContentCard from './ContentCard';
 import HybridCard from './HybridCard';
 import SkeletonCard from './SkeletonCard';
+import Top10Carousel from './Top10Carousel';
+import ShahidFeaturedCarousel from './ShahidFeaturedCarousel';
+import { RankNumberStyle } from './RankNumber';
 import { ChevronLeftIcon } from '../icons/ChevronLeftIcon';
 import { ChevronRightIcon } from '../icons/ChevronRight';
 
@@ -20,6 +23,7 @@ interface ContentCarouselProps {
   containerClassName?: string;
   onSeeAll?: () => void;
   showRanking?: boolean;
+  rankStyle?: RankNumberStyle;
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
@@ -43,6 +47,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
     containerClassName,
     onSeeAll,
     showRanking,
+    rankStyle,
     isRamadanTheme,
     isEidTheme,
     isCosmicTealTheme,
@@ -54,6 +59,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
 }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+    const [pushAmount, setPushAmount] = useState<number>(0);
     const [isHovered, setIsHovered] = useState(false);
     
     const [canScrollLeft, setCanScrollLeft] = useState(true);
@@ -84,14 +90,38 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
         }
     };
 
-    const handleCardExpand = useCallback((index: number | null) => {
+    const handleCardExpand = useCallback((index: number | null, push: number = 0) => {
         setExpandedIndex(index);
+        setPushAmount(push);
     }, []);
 
-  const isHybrid = displayType === 'hybrid';
+    if (showRanking || displayType === 'top10_ranking') {
+        return (
+            <Top10Carousel
+                title={title}
+                contents={contents}
+                onSelectContent={onSelectContent}
+                isLoggedIn={isLoggedIn}
+                isAdmin={isAdmin}
+                myList={myList}
+                onToggleMyList={onToggleMyList}
+                containerClassName={containerClassName}
+                onSeeAll={onSeeAll}
+                isRamadanTheme={isRamadanTheme}
+                isEidTheme={isEidTheme}
+                isCosmicTealTheme={isCosmicTealTheme}
+                isNetflixRedTheme={isNetflixRedTheme}
+                isLoading={isLoading}
+                isSoonCarousel={isSoonCarousel}
+                rankStyle={rankStyle}
+            />
+        );
+    }
+
+  const isHybrid = displayType === 'hybrid' || displayType === 'shahid_featured';
   const isHorizontalCard = isHorizontal || displayType === 'horizontal_card';
   const gapClass = isHorizontalCard ? 'gap-1.5' : 'gap-2';
-  const paddingClass = 'pb-2 pt-2';
+  const paddingClass = 'py-6 md:py-8 -my-3 md:-my-4';
 
   if (isLoading) {
       return (
@@ -115,6 +145,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
         onMouseLeave={() => {
             setIsHovered(false);
             setExpandedIndex(null);
+            setPushAmount(0);
         }}
     >
       {title && (
@@ -177,6 +208,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
         >
           {contents.map((content, index) => {
               if (isHybrid) {
+                  const shiftX = (expandedIndex !== null && pushAmount > 0) ? pushAmount : 0;
                   return (
                       <HybridCard 
                           key={content.id}
@@ -184,6 +216,7 @@ const ContentCarousel: React.FC<ContentCarouselProps> = ({
                           index={index}
                           totalItems={contents.length}
                           expandedIndex={expandedIndex}
+                          shiftX={shiftX}
                           onSetExpandedIndex={handleCardExpand}
                           onSelectContent={(content) => onSelectContent(content, undefined, undefined, isSoonCarousel)}
                           isLoggedIn={isLoggedIn}

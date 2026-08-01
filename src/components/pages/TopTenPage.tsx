@@ -3,6 +3,7 @@ import React from 'react';
 import type { Content, Ad, View } from '@/types';
 import Hero from '../home/Hero';
 import ContentCarousel from '../shared/ContentCarousel';
+import Top10Carousel from '../shared/Top10Carousel';
 import AdPlacement from '../ads/AdPlacement';
 import SEO from '../shared/SeoMeta';
 
@@ -86,14 +87,13 @@ const TopTenPage: React.FC<TopTenPageProps> = ({
                 <div className="flex flex-col gap-10">
                     {/* General Top 10 */}
                     {top10General.length > 0 && (
-                        <ContentCarousel 
+                        <Top10Carousel 
                             title="أفضل 10 أعمال في سينماتيكس"
                             contents={top10General}
                             onSelectContent={onSelectContent}
                             isLoggedIn={isLoggedIn}
                             myList={myList}
                             onToggleMyList={onToggleMyList}
-                            showRanking={true}
                             isRamadanTheme={isRamadanTheme}
                             isEidTheme={isEidTheme}
                             isCosmicTealTheme={isCosmicTealTheme}
@@ -105,14 +105,13 @@ const TopTenPage: React.FC<TopTenPageProps> = ({
 
                     {/* Series Top 10 - Hidden if empty */}
                     {top10Series.length > 0 && (
-                        <ContentCarousel 
+                        <Top10Carousel 
                             title="أفضل 10 مسلسلات"
                             contents={top10Series}
                             onSelectContent={onSelectContent}
                             isLoggedIn={isLoggedIn}
                             myList={myList}
                             onToggleMyList={onToggleMyList}
-                            showRanking={true}
                             isRamadanTheme={isRamadanTheme}
                             isEidTheme={isEidTheme}
                             isCosmicTealTheme={isCosmicTealTheme}
@@ -122,14 +121,13 @@ const TopTenPage: React.FC<TopTenPageProps> = ({
 
                     {/* Movies Top 10 - Hidden if empty */}
                     {top10Movies.length > 0 && (
-                        <ContentCarousel 
+                        <Top10Carousel 
                             title="أفضل 10 أفلام"
                             contents={top10Movies}
                             onSelectContent={onSelectContent}
                             isLoggedIn={isLoggedIn}
                             myList={myList}
                             onToggleMyList={onToggleMyList}
-                            showRanking={true}
                             isRamadanTheme={isRamadanTheme}
                             isEidTheme={isEidTheme}
                             isCosmicTealTheme={isCosmicTealTheme}
@@ -139,14 +137,13 @@ const TopTenPage: React.FC<TopTenPageProps> = ({
 
                     {/* Ramadan Top 10 - Hidden if empty */}
                     {top10Ramadan.length > 0 && (
-                        <ContentCarousel 
+                        <Top10Carousel 
                             title="أفضل 10 أعمال رمضانية"
                             contents={top10Ramadan}
                             onSelectContent={onSelectContent}
                             isLoggedIn={isLoggedIn}
                             myList={myList}
                             onToggleMyList={onToggleMyList}
-                            showRanking={true}
                             isRamadanTheme={isRamadanTheme}
                             isEidTheme={isEidTheme}
                             isCosmicTealTheme={isCosmicTealTheme}
@@ -156,14 +153,13 @@ const TopTenPage: React.FC<TopTenPageProps> = ({
 
                     {/* Kids Top 10 - Hidden if empty */}
                     {top10Kids.length > 0 && (
-                        <ContentCarousel 
+                        <Top10Carousel 
                             title="أفضل 10 أعمال للأطفال"
                             contents={top10Kids}
                             onSelectContent={onSelectContent}
                             isLoggedIn={isLoggedIn}
                             myList={myList}
                             onToggleMyList={onToggleMyList}
-                            showRanking={true}
                             isRamadanTheme={isRamadanTheme}
                             isEidTheme={isEidTheme}
                             isCosmicTealTheme={isCosmicTealTheme}

@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import type { Content, Ad, View, SiteSettings } from '@/types';
+import type { Content, Ad, View, SiteSettings, HomeSection } from '@/types';
 import { ContentType } from '@/types';
+import { resolveDynamicCarousels } from '@/utils/sectionUtils';
 import Hero from '../home/Hero';
 import ContentCarousel from '../shared/ContentCarousel';
 import AdPlacement from '../ads/AdPlacement';
@@ -13,6 +14,7 @@ interface MoviesPageProps {
   allContent: Content[];
   pinnedContent: Content[];
   top10Content?: Content[];
+  homeSections?: HomeSection[];
   onSelectContent: (content: Content, seasonNumber?: number) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean; // تم الإضافة
@@ -34,6 +36,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
   allContent, 
   pinnedContent, 
   top10Content,
+  homeSections,
   onSelectContent, 
   isLoggedIn, 
   isAdmin = false,
@@ -99,6 +102,7 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
     const turkishMovies = limit(allMovies.filter(c => c.categories.includes('افلام تركية')));
     const foreignMovies = limit(allMovies.filter(c => c.categories.includes('افلام اجنبية')));
     const indianMovies = limit(allMovies.filter(c => c.categories.includes('افلام هندية')));
+    const asianMovies = limit(allMovies.filter(c => c.categories.includes('أفلام آسيوية')));
     const animationMovies = limit(allMovies.filter(c => (c.categories as string[]).includes('أفلام أنيميشن') || (c.categories as string[]).includes('افلام أنميشن')));
 
     const top10Source = (top10Content && top10Content.length > 0) ? top10Content : pinnedContent;
@@ -117,16 +121,33 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
       { id: 'm3', title: 'أفلام تركية', contents: turkishMovies, isNew: false, categoryKey: 'افلام تركية' },
       { id: 'm4', title: 'أفلام أجنبية', contents: foreignMovies, isNew: false, categoryKey: 'افلام اجنبية' },
       { id: 'm5', title: 'أفلام هندية', contents: indianMovies, isNew: false, categoryKey: 'افلام هندية' },
+      { id: 'm_asian', title: 'أفلام آسيوية', contents: asianMovies, isNew: false, categoryKey: 'أفلام آسيوية' },
       { id: 'm6', title: 'أفلام أنيميشن', contents: animationMovies, isNew: false, categoryKey: 'أفلام أنيميشن' },
-    ]
+    ];
+
+    const baseList = definedCarousels
     .filter(Boolean)
     .filter(carousel => (carousel as any).contents.length > 0);
 
-    return definedCarousels;
-  }, [allMovies, pinnedContent, top10Content, siteSettings?.showTop10Movies]);
+    return resolveDynamicCarousels('movies', homeSections, allContent, baseList);
+  }, [allMovies, pinnedContent, top10Content, siteSettings?.showTop10Movies, homeSections, allContent]);
 
-  const handleSeeAll = (categoryKey: string) => {
-      onNavigate('category', categoryKey);
+  const handleSeeAll = (carousel: any) => {
+      if (typeof carousel === 'string') {
+        onNavigate('category', carousel);
+      } else if (carousel?.specialRoute) {
+        onNavigate(carousel.specialRoute as View);
+      } else if (carousel?.categoryKey) {
+        onNavigate('category', carousel.categoryKey);
+      } else if (carousel?.sectionId) {
+        onNavigate('category', `section:${carousel.sectionId}`);
+      } else if (carousel?.id) {
+        onNavigate('category', `section:${carousel.id}`);
+      } else if (typeof carousel?.title === 'string') {
+        onNavigate('category', carousel.title);
+      } else {
+        onNavigate('movies');
+      }
   };
 
   if (isLoading && allMovies.length === 0) {
@@ -209,12 +230,13 @@ const MoviesPage: React.FC<MoviesPageProps> = ({
                                 myList={myList}
                                 onToggleMyList={onToggleMyList}
                                 isNew={(carousel as any).isNew}
-                                onSeeAll={(carousel as any).categoryKey ? () => handleSeeAll((carousel as any).categoryKey) : undefined}
+                                onSeeAll={() => handleSeeAll(carousel)}
                                 isRamadanTheme={isRamadanTheme}
                                 isEidTheme={isEidTheme}
                                 isCosmicTealTheme={isCosmicTealTheme}
                                 isNetflixRedTheme={isNetflixRedTheme}
                                 showRanking={(carousel as any).showRanking}
+                                rankStyle={siteSettings?.top10NumberStyle}
                             />
                             {inlineBanner && (
                                 <InlinePromoBanner {...inlineBanner} allContent={allContent} onSelectContent={onSelectContent} />

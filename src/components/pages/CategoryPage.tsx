@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { Content, Category, View, Ad, Genre } from '../../types';
+import type { Content, Category, View, Ad, Genre, HomeSection } from '../../types';
 import { ContentType } from '../../types';
 import ContentCard from '../shared/ContentCard';
 import { ChevronRightIcon } from '../icons/ChevronRight';
@@ -8,10 +8,12 @@ import AdPlacement from '../ads/AdPlacement';
 import SEO from '../shared/SeoMeta';
 
 import { normalizeText } from '../../utils/textUtils';
+import { resolveSectionItems } from '../../utils/sectionUtils';
 
 interface CategoryPageProps {
   categoryTitle: string;
   allContent: Content[];
+  homeSections?: HomeSection[];
   onSelectContent: (content: Content) => void;
   isLoggedIn: boolean;
   myList?: string[];
@@ -31,6 +33,7 @@ interface CategoryPageProps {
 const CategoryPage: React.FC<CategoryPageProps> = ({ 
     categoryTitle, 
     allContent, 
+    homeSections = [],
     onSelectContent, 
     isLoggedIn, 
     myList, 
@@ -54,8 +57,24 @@ const CategoryPage: React.FC<CategoryPageProps> = ({
     let content = [...allContent];
     let isRanked = false;
 
+    // Check if categoryTitle matches a HomeSection
+    let matchedSection: HomeSection | undefined;
+    if (categoryTitle.startsWith('section:')) {
+      const secId = categoryTitle.replace('section:', '');
+      matchedSection = homeSections.find(s => s.id === secId);
+    } else if (homeSections && homeSections.length > 0) {
+      matchedSection = homeSections.find(s => s.id === categoryTitle || s.title === categoryTitle);
+    }
+
+    if (matchedSection) {
+      title = matchedSection.title || categoryTitle;
+      content = resolveSectionItems(matchedSection, allContent, true);
+      if (matchedSection.displayType === 'top10_ranking' || matchedSection.showRanking) {
+        isRanked = true;
+      }
+    }
     // --- People Filtering ---
-    if (categoryTitle.startsWith('person:')) {
+    else if (categoryTitle.startsWith('person:')) {
       const personName = categoryTitle.replace('person:', '');
       title = `أعمال ${personName}`;
       content = content.filter(c => 

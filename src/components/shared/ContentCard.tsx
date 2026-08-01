@@ -6,6 +6,7 @@ import { PlayIcon } from '../icons/PlayIcon';
 import { PlusIcon } from '../icons/PlusIcon';
 import { CheckIcon } from '../icons/CheckIcon';
 import { isItemVisible } from '../../firebase';
+import { RankNumber, RankNumberStyle } from './RankNumber';
 
 interface ContentCardProps {
   content: Content;
@@ -17,6 +18,7 @@ interface ContentCardProps {
   showLatestBadge?: boolean;
   isGridItem?: boolean;
   rank?: number;
+  rankStyle?: RankNumberStyle;
   isRamadanTheme?: boolean;
   isEidTheme?: boolean;
   isCosmicTealTheme?: boolean;
@@ -25,6 +27,10 @@ interface ContentCardProps {
   isSoonCarousel?: boolean;
 }
 
+/**
+ * مكون الرقم المطور بتدرج معدني (Metallic Gradient Stroke) وزوايا حادة سينمائية
+ * مستوحي من تصميم التطبيق الاندرويد (Shahid Pro Max / Netflix)
+ */
 const ContentCard: React.FC<ContentCardProps> = ({ 
     content, 
     onSelectContent, 
@@ -35,6 +41,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
     showLatestBadge, 
     isGridItem, 
     rank, 
+    rankStyle = 'netflix',
     isRamadanTheme, 
     isEidTheme, 
     isCosmicTealTheme, 
@@ -173,6 +180,16 @@ const ContentCard: React.FC<ContentCardProps> = ({
       }
   };
 
+  const isTop3 = rank && rank <= 3;
+  let top3BorderClass = '';
+  if (rank === 1) top3BorderClass = 'border-[1.5px] border-[#FFD700]/70 shadow-[0_0_12px_rgba(255,215,0,0.25)]';
+  else if (rank === 2) top3BorderClass = 'border-[1.5px] border-[#E0E0E0]/70 shadow-[0_0_12px_rgba(255,255,255,0.2)]';
+  else if (rank === 3) top3BorderClass = 'border-[1.5px] border-[#E5AA70]/70 shadow-[0_0_12px_rgba(229,170,112,0.25)]';
+
+  const rankPaddingClass = rank 
+    ? (rank >= 10 ? 'pl-[48%]' : 'pl-[37.5%]')
+    : '';
+
   return (
     <a 
         href={detailUrl}
@@ -181,14 +198,18 @@ const ContentCard: React.FC<ContentCardProps> = ({
           onSelectContent(content); 
         }} 
         aria-label={`مشاهدة ${content.title}`}
-        className={`relative ${widthClass} block no-underline text-inherit cursor-pointer group transition-transform duration-300 ease-out transform hover:scale-105 hover:z-50 origin-center`}
+        className={`relative ${widthClass} ${rankPaddingClass} block no-underline text-inherit cursor-pointer group poster-card-hover origin-center`}
     >
-      <div className="relative rounded-xl overflow-hidden transition-colors duration-300">
+      {rank && rank <= 10 && (
+        <RankNumber rank={rank} style={rankStyle} />
+      )}
+
+      <div className={`relative z-10 rounded-xl overflow-hidden transition-colors duration-300 ${top3BorderClass}`}>
         <div className={`${aspectRatioClass} w-full relative`}>
             <img 
                 src={displayPoster} 
                 alt={content.title} 
-                className={`w-full h-full object-cover transition-transform duration-500 ${content.enableMobileCrop && !isHorizontal ? 'mobile-custom-crop' : ''}`} 
+                className={`w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110 ${content.enableMobileCrop && !isHorizontal ? 'mobile-custom-crop' : ''}`} 
                 style={cropStyle}
                 loading="lazy"
             />
@@ -215,17 +236,6 @@ const ContentCard: React.FC<ContentCardProps> = ({
                             <span className="text-white font-bold">{displayYear}</span>
                         </div>
                     )}
-                </div>
-            )}
-
-            {rank && rank <= 10 && (
-                <div className="absolute top-0 left-0 z-40 w-[20%] md:w-[22%] pointer-events-none">
-                    <div className="relative w-full h-full">
-                        <img src="https://shahid.mbc.net/staticFiles/production/static/images/top10.svg" alt="Top 10" className="w-full h-auto" draggable={false} />
-                        <div className="absolute inset-x-0 top-0 h-[74%] flex items-center justify-center translate-y-[22%] pt-[2%]">
-                            <span className="rank-font text-white select-none" style={{ fontSize: 'clamp(22px, 4.6vw, 44px)', lineHeight: '1', letterSpacing: '-1px', textShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>{rank}</span>
-                        </div>
-                    </div>
                 </div>
             )}
 

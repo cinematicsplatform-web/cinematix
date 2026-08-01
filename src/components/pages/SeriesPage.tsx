@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import type { Content, Ad, View, SiteSettings } from '@/types';
+import type { Content, Ad, View, SiteSettings, HomeSection } from '@/types';
 import { ContentType } from '@/types';
+import { resolveDynamicCarousels } from '@/utils/sectionUtils';
 import Hero from '../home/Hero';
 import ContentCarousel from '../shared/ContentCarousel';
 import AdPlacement from '../ads/AdPlacement';
@@ -13,6 +14,7 @@ interface SeriesPageProps {
   allContent: Content[];
   pinnedContent: Content[];
   top10Content?: Content[]; 
+  homeSections?: HomeSection[];
   onSelectContent: (content: Content, seasonNumber?: number) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean; // تم الإضافة
@@ -34,6 +36,7 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
   allContent, 
   pinnedContent,
   top10Content,
+  homeSections,
   onSelectContent, 
   isLoggedIn, 
   isAdmin = false,
@@ -101,6 +104,7 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
     const arabicSeries = limit(allSeries.filter(c => c.categories.includes('مسلسلات عربية')));
     const turkishSeries = limit(allSeries.filter(c => c.categories.includes('مسلسلات تركية')));
     const foreignSeries = limit(allSeries.filter(c => c.categories.includes('مسلسلات اجنبية')));
+    const asianSeries = limit(allSeries.filter(c => c.categories.includes('مسلسلات آسيوية')));
 
     const ramadanSeriesContent = limit(allSeries.filter(c => c.categories.includes('رمضان') || c.categories.includes('مسلسلات رمضان')));
 
@@ -132,15 +136,32 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
       { id: 's2', title: 'مسلسلات عربية', contents: arabicSeries, isNew: false, categoryKey: 'مسلسلات عربية' },
       { id: 's3', title: 'مسلسلات تركية', contents: turkishSeries, isNew: false, categoryKey: 'مسلسلات تركية' },
       { id: 's4', title: 'مسلسلات أجنبية', contents: foreignSeries, isNew: false, categoryKey: 'مسلسلات اجنبية' },
-    ]
+      { id: 's5', title: 'مسلسلات آسيوية', contents: asianSeries, isNew: false, categoryKey: 'مسلسلات آسيوية' },
+    ];
+
+    const baseList = definedCarousels
     .filter(Boolean)
     .filter(carousel => (carousel as any).contents.length > 0);
 
-    return definedCarousels;
-  }, [allSeries, siteSettings?.isShowRamadanCarousel, siteSettings?.showTop10Series, isRamadanTheme, pinnedContent, top10Content]); 
+    return resolveDynamicCarousels('series', homeSections, allContent, baseList);
+  }, [allSeries, siteSettings?.isShowRamadanCarousel, siteSettings?.showTop10Series, isRamadanTheme, pinnedContent, top10Content, homeSections, allContent]); 
 
-  const handleSeeAll = (categoryKey: string) => {
-      onNavigate('category', categoryKey);
+  const handleSeeAll = (carousel: any) => {
+      if (typeof carousel === 'string') {
+        onNavigate('category', carousel);
+      } else if (carousel?.specialRoute) {
+        onNavigate(carousel.specialRoute as View);
+      } else if (carousel?.categoryKey) {
+        onNavigate('category', carousel.categoryKey);
+      } else if (carousel?.sectionId) {
+        onNavigate('category', `section:${carousel.sectionId}`);
+      } else if (carousel?.id) {
+        onNavigate('category', `section:${carousel.id}`);
+      } else if (typeof carousel?.title === 'string') {
+        onNavigate('category', carousel.title);
+      } else {
+        onNavigate('series');
+      }
   };
 
   if (isLoading && allSeries.length === 0) {
@@ -223,12 +244,13 @@ const SeriesPage: React.FC<SeriesPageProps> = ({
                                 myList={myList}
                                 onToggleMyList={onToggleMyList}
                                 isNew={(carousel as any).isNew}
-                                onSeeAll={(carousel as any).categoryKey ? () => handleSeeAll((carousel as any).categoryKey) : undefined}
+                                onSeeAll={() => handleSeeAll(carousel)}
                                 isRamadanTheme={isRamadanTheme}
                                 isEidTheme={isEidTheme}
                                 isCosmicTealTheme={isCosmicTealTheme}
                                 isNetflixRedTheme={isNetflixRedTheme}
                                 showRanking={(carousel as any).showRanking}
+                                rankStyle={siteSettings?.top10NumberStyle}
                             />
                             {inlineBanner && (
                                 <InlinePromoBanner {...inlineBanner} allContent={allContent} onSelectContent={onSelectContent} />

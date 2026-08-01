@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffe
 import { Helmet } from 'react-helmet-async';
 import { createPortal } from 'react-dom';
 import { isItemVisible, incrementContentViewCount } from '../../firebase';
-import type { Content, Ad, Episode, Server, AdPlacement, Season, View, Person } from '../../types';
+import type { Content, Ad, Episode, Server, AdPlacement, Season, View, Person, TrailerItem } from '../../types';
 import { ContentType } from '../../types';
 import VideoPlayer from './VideoPlayer';
+import { checkIsDirectVideo, formatVideoSource } from '../../playerConfig';
 import EpisodeGrid from './EpisodeGrid';
 import ContentCarousel from '../shared/ContentCarousel';
 import ActionButtons from './ActionButtons';
@@ -116,6 +117,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   const [showVideo, setShowVideo] = useState(false);
   const [videoEnded, setVideoEnded] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isDownloadErrorOpen, setIsDownloadErrorOpen] = useState(false);
@@ -135,6 +137,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
    
   const heroRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const forceStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hasTransitionedRef = useRef<boolean>(false);
@@ -178,47 +181,59 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
 
-  useEffect(() => {
-    if (isLoaded && isEpisodic && content.seasons && content.seasons.length > 0) {
-        let targetSeason = null;
-        if (initialSeasonNumber) {
-            targetSeason = content.seasons.find(s => s.seasonNumber === initialSeasonNumber);
-        }
-        if (!targetSeason) {
-            const path = decodeURIComponent(locationPath || window.location.pathname);
-            const seasonMatch = path.match(/\/(?:الموسم|season|series|program)\/.*?(?:\/(\d+))?$/i);
-            if (seasonMatch && seasonMatch[1]) {
-                const sNum = parseInt(seasonMatch[1]);
-                targetSeason = content.seasons.find(s => s.seasonNumber === sNum);
-            }
-        }
-        if (!targetSeason) {
-            const searchParams = new URLSearchParams(window.location.search);
-            if (searchParams.get('targetSeason') === 'upcoming') {
-                targetSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
-            }
-        }
-        if (!targetSeason) {
-            targetSeason = [...content.seasons].filter(s => s.status !== 'coming_soon' && !s.isUpcoming).sort((a, b) => b.seasonNumber - a.seasonNumber)[0] || [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
-        }
-
-        if (targetSeason) {
-            setSelectedSeasonId(targetSeason.id);
-            if (targetSeason.episodes && targetSeason.episodes.length > 0) {
-                const now = new Date();
-                const lastEpId = sessionStorage.getItem(`lastEpisode_${content.id}`);
-                let targetEp = null;
-                if (lastEpId) {
-                    targetEp = targetSeason.episodes.find(ep => ep.id.toString() === lastEpId);
-                }
-                if (!targetEp) {
-                    targetEp = targetSeason.episodes.find(ep => isItemVisible(ep)) || targetSeason.episodes[0];
-                }
-                setSelectedEpisode(targetEp);
-            }
+  const defaultSeason = useMemo(() => {
+    if (!content?.seasons || content.seasons.length === 0) return undefined;
+    let targetSeason = null;
+    if (initialSeasonNumber) {
+        targetSeason = content.seasons.find(s => s.seasonNumber === initialSeasonNumber);
+    }
+    if (!targetSeason) {
+        const path = decodeURIComponent(locationPath || window.location.pathname);
+        const seasonMatch = path.match(/\/(?:الموسم|season|series|program)\/.*?(?:\/(\d+))?$/i);
+        if (seasonMatch && seasonMatch[1]) {
+            const sNum = parseInt(seasonMatch[1]);
+            targetSeason = content.seasons.find(s => s.seasonNumber === sNum);
         }
     }
-  }, [content?.id, isLoaded, initialSeasonNumber, locationPath, isEpisodic, isAdmin]);
+    if (!targetSeason) {
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.get('targetSeason') === 'upcoming') {
+            targetSeason = [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
+        }
+    }
+    if (!targetSeason) {
+        targetSeason = [...content.seasons].filter(s => s.status !== 'coming_soon' && !s.isUpcoming).sort((a, b) => b.seasonNumber - a.seasonNumber)[0] || [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0];
+    }
+    return targetSeason;
+  }, [content?.seasons, initialSeasonNumber, locationPath]);
+
+  const currentSeason = useMemo(() => {
+    if (selectedSeasonId !== null) {
+        const found = content?.seasons?.find(s => s.id === selectedSeasonId);
+        if (found) return found;
+    }
+    return defaultSeason;
+  }, [content?.seasons, selectedSeasonId, defaultSeason]);
+
+  useEffect(() => {
+    setSelectedSeasonId(null);
+  }, [content?.id]);
+
+  useEffect(() => {
+    if (isLoaded && isEpisodic && currentSeason) {
+        if (currentSeason.episodes && currentSeason.episodes.length > 0) {
+            const lastEpId = sessionStorage.getItem(`lastEpisode_${content.id}`);
+            let targetEp = null;
+            if (lastEpId) {
+                targetEp = currentSeason.episodes.find(ep => ep.id.toString() === lastEpId);
+            }
+            if (!targetEp) {
+                targetEp = currentSeason.episodes.find(ep => isItemVisible(ep)) || currentSeason.episodes[0];
+            }
+            setSelectedEpisode(targetEp);
+        }
+    }
+  }, [content?.id, isLoaded, isEpisodic, currentSeason]);
 
   useEffect(() => {
       if (selectedEpisode && content?.id) {
@@ -226,8 +241,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
       }
   }, [selectedEpisode, content?.id]);
 
-  const currentSeason = useMemo(() => content?.seasons?.find(s => s.id === selectedSeasonId), [content?.seasons, selectedSeasonId]);
-  
   const episodes = useMemo(() => {
     const rawEpisodes = currentSeason?.episodes || [];
     return rawEpisodes.filter(ep => isItemVisible(ep));
@@ -334,42 +347,99 @@ const DetailPage: React.FC<DetailPageProps> = ({
       } catch (e) { return null; }
   };
 
+  const isDirectVideoUrl = (url: string | undefined): boolean => {
+      return checkIsDirectVideo(url);
+  };
+
+  const [selectedTrailerIndex, setSelectedTrailerIndex] = useState(0);
+
+  const availableTrailers = useMemo(() => {
+      const mainTrailers = isEpisodic ? currentSeason?.trailers : content?.trailers;
+      if (mainTrailers && mainTrailers.length > 0) {
+          return mainTrailers.filter(t => t.url && t.url.trim().length > 0);
+      }
+      const singleUrl = isEpisodic ? currentSeason?.trailerUrl : content?.trailerUrl;
+      if (singleUrl && singleUrl.trim()) {
+          return [{ title: 'الإعلان التشويقي الرسمي', url: singleUrl }];
+      }
+      return [];
+  }, [isEpisodic, currentSeason, content]);
+
+  const currentTrailerObj = availableTrailers[selectedTrailerIndex] || availableTrailers[0];
+  const trailerUrl = currentTrailerObj?.url || (isEpisodic ? currentSeason?.trailerUrl : content?.trailerUrl);
+
   const trailerVideoId = useMemo(() => {
-    if (isEpisodic) {
-        return getVideoId(currentSeason?.trailerUrl);
-    }
-    return getVideoId(content?.trailerUrl);
-  }, [isEpisodic, currentSeason?.trailerUrl, content?.trailerUrl]);
+      return getVideoId(trailerUrl);
+  }, [trailerUrl]);
+
+  const isMp4Trailer = useMemo(() => {
+      return checkIsDirectVideo(trailerUrl);
+  }, [trailerUrl]);
+
+  const hasTrailer = useMemo(() => {
+      return availableTrailers.length > 0 || !!(trailerVideoId || isMp4Trailer || (trailerUrl && (trailerUrl.startsWith('http://') || trailerUrl.startsWith('https://'))));
+  }, [availableTrailers, trailerVideoId, isMp4Trailer, trailerUrl]);
 
   const heroEmbedUrl = useMemo(() => {
-      if (!trailerVideoId) return '';
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      return `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${origin}`;
-  }, [trailerVideoId]);
+      if (trailerVideoId) {
+          const origin = typeof window !== 'undefined' ? window.location.origin : '';
+          return `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=0&playsinline=1&enablejsapi=1&origin=${origin}`;
+      }
+      if (trailerUrl && !isMp4Trailer) {
+          return trailerUrl;
+      }
+      return '';
+  }, [trailerVideoId, trailerUrl, isMp4Trailer]);
 
-  const modalEmbedUrl = trailerVideoId ? `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=0&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1` : '';
+  const modalEmbedUrl = useMemo(() => {
+      if (trailerVideoId) {
+          return `https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&mute=0&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1`;
+      }
+      if (trailerUrl && !isMp4Trailer) {
+          return trailerUrl;
+      }
+      return '';
+  }, [trailerVideoId, trailerUrl, isMp4Trailer]);
+
+  const isVideoActiveReady = useMemo(() => {
+      return showVideo && (!isMp4Trailer || isVideoReady);
+  }, [showVideo, isMp4Trailer, isVideoReady]);
 
   useEffect(() => {
       setShowVideo(false);
       setVideoEnded(false);
+      setIsVideoReady(false);
       setIsMuted(true);
-      if (!trailerVideoId || isMobile) return;
+      if (!hasTrailer || isMobile) return;
       const timer = setTimeout(() => { setShowVideo(true); }, 2000); 
       return () => clearTimeout(timer);
-  }, [content?.id, trailerVideoId, isMobile, selectedSeasonId]);
+  }, [content?.id, hasTrailer, isMobile, selectedSeasonId]);
 
   useEffect(() => {
-    if (!showVideo || !iframeRef.current) return;
-    const win = iframeRef.current.contentWindow;
-    if (!win) return;
-    try {
-        if (isInView) {
-            win.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
-            win.postMessage(JSON.stringify({ event: 'command', func: isMuted ? 'mute' : 'unMute', args: '' }), '*');
-        } else {
-            win.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
+    if (!showVideo) return;
+
+    if (iframeRef.current) {
+        const win = iframeRef.current.contentWindow;
+        if (win) {
+            try {
+                if (isInView) {
+                    win.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
+                    win.postMessage(JSON.stringify({ event: 'command', func: isMuted ? 'mute' : 'unMute', args: '' }), '*');
+                } else {
+                    win.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
+                }
+            } catch (e) {}
         }
-    } catch (e) {}
+    }
+
+    if (videoRef.current) {
+        videoRef.current.muted = isMuted;
+        if (isInView) {
+            videoRef.current.play().catch(() => {});
+        } else {
+            videoRef.current.pause();
+        }
+    }
   }, [isInView, showVideo, isMuted]);
 
   useEffect(() => {
@@ -562,7 +632,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
         <div className="absolute inset-0 bg-black overflow-hidden">
             {isLoaded ? (
-                <div key={`season-backdrop-${selectedSeasonId}`} className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}>
+                <div key={`season-backdrop-${selectedSeasonId}`} className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${isVideoActiveReady ? 'opacity-0' : 'opacity-100'}`}>
                     <img 
                         src={displayBackdrop} 
                         alt={content.title} 
@@ -580,17 +650,40 @@ const DetailPage: React.FC<DetailPageProps> = ({
                 <div className="absolute inset-0 bg-[#161b22] skeleton-shimmer"></div>
             )}
             
-            {showVideo && !videoEnded && heroEmbedUrl && !isMobile && isLoaded && (
+            {showVideo && !videoEnded && hasTrailer && !isMobile && isLoaded && (
                 <div key={`season-ad-container-${selectedSeasonId}`} className="absolute inset-0 w-full h-full overflow-hidden animate-fade-in-up pointer-events-none">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video pointer-events-none">
-                        <iframe 
-                            ref={iframeRef} 
-                            src={heroEmbedUrl} 
-                            className="w-full h-full pointer-events-none" 
-                            allow="autoplay; encrypted-media; picture-in-picture" 
-                            title="Trailer"
-                            frameBorder="0"
-                        ></iframe>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none flex items-center justify-center">
+                        {isMp4Trailer ? (
+                            <video
+                                ref={videoRef}
+                                src={trailerUrl}
+                                poster={displayBackdrop}
+                                preload="auto"
+                                autoPlay
+                                loop
+                                muted={isMuted}
+                                playsInline
+                                className={`w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${isMp4Trailer && !isVideoReady ? 'opacity-0' : 'opacity-100'}`}
+                                onCanPlay={() => setIsVideoReady(true)}
+                                onPlaying={() => setIsVideoReady(true)}
+                                onLoadedData={() => setIsVideoReady(true)}
+                                onEnded={() => {
+                                    if (!hasTransitionedRef.current) {
+                                        hasTransitionedRef.current = true;
+                                        handleNext();
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <iframe 
+                                ref={iframeRef} 
+                                src={heroEmbedUrl} 
+                                className="w-full aspect-video pointer-events-none" 
+                                allow="autoplay; encrypted-media; picture-in-picture" 
+                                title="Trailer"
+                                frameBorder="0"
+                            ></iframe>
+                        )}
                     </div>
                 </div>
             )}
@@ -598,7 +691,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
             <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/80 via-20% to-transparent z-10"></div>
         </div>
 
-        {isShahidTheme && showVideo && (
+        {isShahidTheme && isVideoActiveReady && (
             <button 
                 onClick={toggleMute} 
                 className="pointer-events-auto absolute left-4 md:left-8 lg:left-14 top-[18%] md:top-[22%] transform -translate-y-1/2 bg-white/10 border border-white/10 hover:bg-white text-white hover:text-black backdrop-blur-md rounded-full w-[48px] h-[48px] md:w-[64px] md:h-[64px] flex items-center justify-center p-0 transition-all cursor-pointer z-50 group origin-center" 
@@ -617,7 +710,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             <img 
                                 src={displayLogo} 
                                 alt={content.title} 
-                                className={`w-auto h-auto max-w-[190px] md:max-w-[435px] max-h-[190px] md:max-h-[300px] mb-3 object-contain drop-shadow-2xl transition-transform duration-700 mx-auto md:mx-0 ${showVideo ? 'scale-90 origin-bottom-right' : 'scale-100'}`}
+                                className={`w-auto h-auto max-w-[190px] md:max-w-[435px] max-h-[190px] md:max-h-[300px] mb-3 object-contain drop-shadow-2xl transition-transform duration-700 mx-auto md:mx-0 ${isVideoActiveReady ? 'scale-90 origin-bottom-right' : 'scale-100'}`}
                             />
                         ) : (
                             <div className="h-12 md:h-20 mb-3"></div>
@@ -714,7 +807,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     )}
                 </div>
 
-                <div className="overflow-hidden transition-all duration-700 ease-in-out w-full opacity-100 max-h-40 mb-3 md:mb-4">
+                <div className={`overflow-hidden transition-all duration-700 ease-in-out w-full ${isVideoActiveReady ? 'opacity-0 max-h-0 mb-0' : 'opacity-100 max-h-40 mb-3 md:mb-4'}`}>
                     {isLoaded ? (
                         <p className="text-gray-300 text-xs sm:text-sm md:text-lg line-clamp-3 leading-relaxed mx-auto md:mx-0 font-medium text-center md:text-right">{displayDescription}</p>
                     ) : (
@@ -749,7 +842,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 isSoonOverride={effectiveIsSoon}
                             />
 
-                            {showVideo && !isShahidTheme && (
+                            {isVideoActiveReady && !isShahidTheme && (
                                 <button 
                                     onClick={toggleMute} 
                                     className="p-3.5 md:p-6 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group origin-center" 
@@ -759,7 +852,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 </button>
                             )}
                             
-                            {trailerVideoId && (showVideo || videoEnded) && !isShahidTheme && (
+                            {hasTrailer && (showVideo || videoEnded) && !isShahidTheme && (
                                 <button 
                                     onClick={() => { setActiveTab('trailer'); tabsRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
                                     className="p-3.5 md:p-6 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/20 transition-all z-50 group origin-center"
@@ -780,14 +873,14 @@ const DetailPage: React.FC<DetailPageProps> = ({
         </div>
       </div>
 
-      <div ref={tabsRef} className="sticky top-16 md:top-20 z-40 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 shadow-md w-full">
+      <div ref={tabsRef} className="sticky top-16 md:top-20 z-40 bg-[var(--bg-body)] border-b border-white/15 shadow-md w-full">
           <div className="flex h-14 w-full flex-row items-center justify-between px-4 md:h-16 md:px-8">
               <div className="custom-scrollbar flex h-full items-center gap-6 overflow-x-auto no-scrollbar md:gap-8">
                   {!effectiveIsSoon && (
                       <>
-                        <button onClick={() => setActiveTab('episodes')} className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'episodes' ? activeTabClass : tabHoverClass}`}>{!isEpisodic ? 'المشاهدة' : (isLoaded ? `الحلقات (${episodes.length})` : 'الحلقات')}</button>
+                        <button onClick={() => setActiveTab('episodes')} className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'episodes' ? activeTabClass : tabHoverClass}`}>{!isEpisodic ? 'المشاهدة' : (isLoaded && episodes.length > 0 ? `الحلقات (${episodes.length})` : 'الحلقات')}</button>
                         
-                        {trailerVideoId && (
+                        {hasTrailer && (
                             <button 
                                 onClick={() => setActiveTab('trailer')}
                                 className={`py-4 px-2 border-b-[3px] font-bold transition-all duration-300 text-sm md:text-lg whitespace-nowrap ${activeTab === 'trailer' ? activeTabClass : tabHoverClass}`}
@@ -849,7 +942,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                             <span className="ml-2 whitespace-nowrap text-sm font-black text-gray-400">سيرفر المشاهدة:</span>
                                             {activeServers.length > 0 ? activeServers.map((server, idx) => (
                                                 <button key={server.id} onClick={() => setSelectedServer(server)} className={`flex-shrink-0 border px-8 py-3 rounded-2xl font-black text-sm transition-all target-server-btn ${selectedServer?.id === server.id ? `scale-105 border-transparent ${bgAccent} text-black shadow-[0_0_20px_var(--shadow-color)]` : 'border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-800'}`}>
-                                                    سيرفر {idx + 1}
+                                                    {server.name && server.name.trim() !== '' ? server.name : `سيرفر ${idx + 1}`}
                                                 </button>
                                             )) : (
                                                 <span className="text-xs text-gray-600">جاري تحميل السيرفرات...</span>
@@ -858,7 +951,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 </div>
 
                                 <div className="relative z-10 mx-auto aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl video-player-wrapper">
-                                        <VideoPlayer key={playerKey} tmdbId={content.tmdbId || content.id} type={content.type} manualSrc={selectedServer?.url} poster={displayBackdrop} />
+                                        <VideoPlayer key={playerKey} contentId={content.id} tmdbId={content.tmdbId || content.id} type={content.type} manualSrc={selectedServer?.url} poster={displayBackdrop} title={content.title} />
                                 </div>
 
                                 <div className="relative mt-6 flex flex-col items-center gap-2 animate-fade-in-up">
@@ -911,17 +1004,34 @@ const DetailPage: React.FC<DetailPageProps> = ({
               </div>
           )}
 
-          {activeTab === 'trailer' && trailerVideoId && (
+          {activeTab === 'trailer' && hasTrailer && (
               <div className="w-full px-4 py-8 md:px-8 animate-fade-in-up">
-                  <div className="mx-auto w-full max-w-5xl">
+                  <div className="mx-auto w-full max-w-5xl space-y-4">
+                      {availableTrailers.length > 1 && (
+                          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
+                              <span className="text-xs text-gray-400 font-bold ml-2 whitespace-nowrap shrink-0">اختر الإعلان:</span>
+                              {availableTrailers.map((tr, idx) => (
+                                  <button
+                                      key={idx}
+                                      onClick={() => setSelectedTrailerIndex(idx)}
+                                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border whitespace-nowrap shrink-0 ${
+                                          selectedTrailerIndex === idx
+                                              ? `${bgAccent} text-black border-transparent shadow-md scale-105`
+                                              : 'bg-gray-800/60 text-gray-300 border-gray-700 hover:bg-gray-800'
+                                      }`}
+                                  >
+                                      {tr.title || `الإعلان ${idx + 1}`}
+                                  </button>
+                              ))}
+                          </div>
+                      )}
                       <div className="aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl video-player-wrapper">
-                          <iframe 
-                              src={modalEmbedUrl} 
-                              className="h-full w-full" 
-                              allow="autoplay; encrypted-media; picture-in-picture; fullscreen" 
-                              allowFullScreen
-                              title="Official Trailer"
-                          ></iframe>
+                          <VideoPlayer 
+                              key={`trailer_player_${selectedTrailerIndex}_${trailerUrl}`}
+                              manualSrc={trailerUrl} 
+                              poster={currentTrailerObj?.thumbnail || displayBackdrop} 
+                              title={`${content.title} - ${currentTrailerObj?.title || 'الإعلان التشويقي'}`} 
+                          />
                       </div>
                   </div>
               </div>

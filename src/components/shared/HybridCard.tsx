@@ -1,17 +1,18 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { Content } from '@/types';
 import { PlayIcon } from '../icons/PlayIcon';
 import { PlusIcon } from '../icons/PlusIcon';
 import { CheckIcon } from '../icons/CheckIcon';
 import { SpeakerIcon } from '../icons/SpeakerIcon';
+import { CloseIcon } from '../icons/CloseIcon';
 
 interface HybridCardProps {
     content: Content;
     index: number;
     totalItems: number;
     expandedIndex: number | null;
-    onSetExpandedIndex: (index: number | null) => void;
+    shiftX?: number;
+    onSetExpandedIndex: (index: number | null, pushAmount?: number) => void;
     onSelectContent: (content: Content) => void;
     isLoggedIn: boolean;
     myList?: string[];
@@ -28,6 +29,7 @@ const HybridCard: React.FC<HybridCardProps> = ({
     index,
     totalItems,
     expandedIndex,
+    shiftX = 0,
     onSetExpandedIndex,
     onSelectContent,
     isLoggedIn,
@@ -39,20 +41,18 @@ const HybridCard: React.FC<HybridCardProps> = ({
     isNetflixRedTheme,
     isSoonCarousel
 }) => {
+    const isExpanded = expandedIndex === index;
     const [showVideo, setShowVideo] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     
     const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const videoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
-    
+    const cardRef = useRef<HTMLDivElement>(null);
+
     const isInMyList = !!myList?.includes(content.id);
-    const isExpanded = expandedIndex === index;
     const isEpisodic = content.type === 'series' || content.type === 'program';
 
-    // تحديد الموسم الأخير بناءً على نوع الكاروسيل:
-    // - في كاروسيل "قريباً": نعرض الموسم الأخير المضاف (حتى لو كان قريباً).
-    // - في باقي الكاروسيلات (مثل أحدث الإضافات): نعرض آخر موسم مفعل (ليس قريباً).
     const latestSeason = isEpisodic && content.seasons && content.seasons.length > 0
         ? isSoonCarousel
             ? [...content.seasons].sort((a, b) => b.seasonNumber - a.seasonNumber)[0]
@@ -62,6 +62,28 @@ const HybridCard: React.FC<HybridCardProps> = ({
     const posterSrc = (isEpisodic && latestSeason?.poster) ? latestSeason.poster : content.poster;
     const backdropSrc = (isEpisodic && latestSeason?.backdrop) ? latestSeason.backdrop : (content.backdrop || content.poster);
     const logoSrc = (isEpisodic && latestSeason?.logoUrl) ? latestSeason.logoUrl : content.logoUrl;
+
+    const getCollapsedImage = (): string => {
+        if (content.top10Poster && content.top10Poster.trim() !== '') {
+            return content.top10Poster;
+        }
+        const verticalGallery = content.imageGallery?.verticalBackdrop?.[0];
+        if (verticalGallery && verticalGallery.trim() !== '') {
+            return verticalGallery;
+        }
+        if (content.mobileBackdropUrl && content.mobileBackdropUrl.trim() !== '') {
+            return content.mobileBackdropUrl;
+        }
+        if (isEpisodic && latestSeason?.mobileImageUrl && latestSeason.mobileImageUrl.trim() !== '') {
+            return latestSeason.mobileImageUrl;
+        }
+        if (backdropSrc && backdropSrc.trim() !== '') {
+            return backdropSrc;
+        }
+        return posterSrc;
+    };
+
+    const collapsedImgSrc = getCollapsedImage();
 
     const getVideoId = (url: string | undefined) => {
         if (!url) return null;
@@ -77,11 +99,41 @@ const HybridCard: React.FC<HybridCardProps> = ({
     const trailerId = getVideoId(trailerUrl);
     const hasTrailer = !!trailerId;
 
+    const calculateRealPush = () => {
+        if (!cardRef.current) return 0;
+        const rect = cardRef.current.getBoundingClientRect();
+        
+        const currentWidth = rect.width;
+        // مقدار الزيادة في العرض عند التكبير (3.2x - 1x = 2.2x)
+        const extraWidth = currentWidth * 2.2; 
+        
+        // التعديل الجذري: ترك مساحة ظاهرة من الكارت التالي بنسبة 20% (بين 15% و 25%) بالإضافة لمسافة أمان
+        const visiblePeek = currentWidth * 0.20;
+        const safetyMargin = 16 + visiblePeek;
+        const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
+
+        // عند التمدد ناحية الشمال في Flexbox RTL
+        const projectedLeft = rect.left - extraWidth;
+
+        // إذا كان التمدد سيتسبب في خروج الكارت أو تغطية النسبة المطلوب إظهارها من الكارت التالي
+        if (projectedLeft < safetyMargin) {
+            // الشفت ناحية اليمين المطلوب لإبقاء الكارت داخل الشاشة مع ترك الجزء المرئي من الكارت التالي
+            const neededShiftRight = safetyMargin - projectedLeft;
+
+            // التأكد من أن الشفت لليمين لا يخرج حافة الكارت اليمين بره حدود الشاشة
+            const maxAllowedShift = Math.max(0, viewportWidth - safetyMargin - rect.right);
+            return Math.min(neededShiftRight, maxAllowedShift);
+        }
+
+        return 0;
+    };
+
     const handleMouseEnter = () => {
         if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
         hoverTimerRef.current = setTimeout(() => {
-            onSetExpandedIndex(index);
-        }, 600);
+            const pushAmount = calculateRealPush();
+            onSetExpandedIndex(index, pushAmount);
+        }, 350);
     };
 
     const handleMouseLeave = () => {
@@ -94,7 +146,7 @@ const HybridCard: React.FC<HybridCardProps> = ({
             videoTimerRef.current = null;
         }
         if (isExpanded) {
-            onSetExpandedIndex(null);
+            onSetExpandedIndex(null, 0);
             setShowVideo(false);
             setIsMuted(true);
         }
@@ -130,8 +182,16 @@ const HybridCard: React.FC<HybridCardProps> = ({
     const watchSubtitle = isEpisodic && seasonNumber ? `الموسم ${seasonNumber}، الحلقة 1` : content.releaseYear;
     const genres = content.genres?.slice(0, 3).join(' • ');
 
-    const idleWidthClass = 'w-[calc((100vw-40px)/2.25)] md:w-[calc((100vw-64px)/4.2)] lg:w-[calc((100vw-64px)/6)]';
-    const expandedWidthClass = 'w-[90vw] md:w-[calc(((100vw-64px)/4.2)*2.8)] lg:w-[calc(((100vw-64px)/6)*2.8)]';
+    const getNoteText = (): string | null => {
+        if (content.bannerNote && !content.bannerNote.includes('حلقة واحدة') && !content.bannerNote.includes('مجانا')) {
+            return content.bannerNote;
+        }
+        return null;
+    };
+    const noteText = getNoteText();
+
+    const idleWidthClass = 'w-[calc((100vw-32px)/2.1)] sm:w-[calc((100vw-48px)/3.1)] md:w-[calc((100vw-64px)/4.1)] lg:w-[calc((100vw-64px)/5.1)] xl:w-[calc((100vw-80px)/5.1)]';
+    const expandedWidthClass = 'w-[86vw] sm:w-[calc(((100vw-48px)/3.1)*3.2)] md:w-[calc(((100vw-64px)/4.1)*3.2)] lg:w-[calc(((100vw-64px)/5.1)*3.2)] xl:w-[calc(((100vw-80px)/5.1)*3.2)]';
 
     const detailUrl = content.type === 'movie' 
         ? `/watch/movie/${content.slug || content.id}` 
@@ -140,10 +200,12 @@ const HybridCard: React.FC<HybridCardProps> = ({
     const flipStyle = { transform: content.flipBackdrop ? 'scaleX(-1)' : 'none' };
 
     return (
-        <a 
-            href={detailUrl}
-            aria-label={`مشاهدة ${content.title}`}
-            className={`relative flex-shrink-0 block no-underline text-inherit transition-[width] duration-500 ease-in-out ${isExpanded ? expandedWidthClass : idleWidthClass} z-0`}
+        <div 
+            ref={cardRef}
+            style={{
+                transform: shiftX ? `translateX(${shiftX}px)` : 'none',
+            }}
+            className={`relative flex-shrink-0 cursor-pointer block no-underline text-inherit transition-[width,transform] duration-500 ease-in-out ${isExpanded ? expandedWidthClass : idleWidthClass} ${isExpanded ? 'z-40' : 'z-0'}`}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onClick={(e) => {
@@ -152,22 +214,38 @@ const HybridCard: React.FC<HybridCardProps> = ({
                 onSelectContent(content);
               } else {
                 e.preventDefault();
-                onSetExpandedIndex(index);
+                onSetExpandedIndex(index, calculateRealPush());
               }
             }}
         >
-            <div className={`relative w-full h-full rounded-lg overflow-hidden transition-all duration-500 ${isExpanded ? 'shadow-2xl' : 'shadow-lg'}`}>
-                <div className={`${idleWidthClass} ${isExpanded ? 'aspect-video' : 'aspect-[2/3]'} invisible pointer-events-none float-left transition-all duration-500`} aria-hidden="true" />
+            <div className={`relative w-full h-full rounded-xl overflow-hidden transition-all duration-500 ${isExpanded ? 'shadow-2xl border-2 border-white/90 ring-1 ring-white/20' : 'shadow-lg border border-transparent'}`}>
+                {isExpanded && (
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onSetExpandedIndex(null);
+                        }}
+                        className="absolute top-3 right-3 z-50 w-7 h-7 md:w-8 md:h-8 rounded-full bg-black/50 hover:bg-black/80 border border-white/30 hover:border-white text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-sm shadow-md"
+                        title="إغلاق"
+                        aria-label="إغلاق"
+                    >
+                        <CloseIcon className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
+                    </button>
+                )}
+                <div className={`${idleWidthClass} aspect-[9/16] invisible pointer-events-none float-left`} aria-hidden="true" />
 
                 <div className="absolute inset-0 w-full h-full">
                     <div className={`absolute inset-0 w-full h-full z-10 transition-opacity duration-500 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
                         {showVideo && hasTrailer ? (
-                            <div className="relative w-full h-full overflow-hidden bg-black">
+                            <div 
+                                className="relative w-full h-full overflow-hidden bg-black"
+                                style={{ transform: content.flipBackdrop ? 'scaleX(-1)' : undefined }}
+                            >
                                 <iframe 
                                     ref={iframeRef}
                                     src={`https://www.youtube.com/embed/${trailerId}?autoplay=1&mute=1&enablejsapi=1&controls=0&showinfo=0&rel=0&modestbranding=1&loop=1&playlist=${trailerId}&playsinline=1&disablekb=1&iv_load_policy=3&fs=0`}
-                                    className="absolute top-1/2 left-0 w-full h-[120%] -translate-y-1/2 pointer-events-none border-none scale-[1.05]" 
-                                    style={flipStyle}
+                                    className="absolute top-1/2 left-1/2 w-[160%] h-[160%] -translate-x-1/2 -translate-y-1/2 pointer-events-none border-none" 
                                     title={content.title}
                                     allow="autoplay; encrypted-media"
                                 />
@@ -175,11 +253,18 @@ const HybridCard: React.FC<HybridCardProps> = ({
                         ) : (
                             <img src={backdropSrc} style={flipStyle} alt={content.title} className="w-full h-full object-cover" />
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/40 to-transparent"></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-body)]/90 via-[var(--bg-body)]/25 via-25% to-transparent pointer-events-none"></div>
                     </div>
 
                     <div className={`absolute inset-0 w-full h-full z-20 transition-opacity duration-500 ${isExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-                        <img src={posterSrc} alt={content.title} className="w-full h-full object-cover" loading="lazy" />
+                        <img src={collapsedImgSrc} alt={content.title} className="w-full h-full object-cover" loading="lazy" />
+                        <div className="absolute inset-x-0 bottom-0 h-[82%] p-4 md:p-5 pb-7 md:pb-9 bg-gradient-to-t from-[var(--bg-body)] via-[var(--bg-body)]/85 via-45% to-transparent flex flex-col justify-end items-center text-center pointer-events-none z-10">
+                            {content.isLogoEnabled !== false && logoSrc ? (
+                                <img src={logoSrc} alt={content.title} className="h-14 md:h-18 lg:h-20 object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.95)] max-w-[90%] md:max-w-[92%] mb-2" />
+                            ) : (
+                                <h3 className="text-white font-black text-base md:text-lg leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] line-clamp-2 mb-2">{content.title}</h3>
+                            )}
+                        </div>
                     </div>
 
                     <div className={`absolute inset-0 z-30 flex flex-col justify-end p-4 md:p-6 transition-opacity duration-300 delay-100 ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
@@ -196,50 +281,70 @@ const HybridCard: React.FC<HybridCardProps> = ({
 
                         <div className="flex flex-col items-start gap-1 w-full relative z-30 pr-0 pb-1">
                             <div className="pr-2 flex flex-col items-start gap-1 w-full">
-                                <div className="mb-2">
-                                    {content.isLogoEnabled && logoSrc ? (
-                                        <img src={logoSrc} alt={content.title} className="h-14 md:h-20 object-contain self-start drop-shadow-md" />
+                                <div className="mb-1.5">
+                                    {content.isLogoEnabled !== false && logoSrc ? (
+                                        <img src={logoSrc} alt={content.title} className="h-12 md:h-16 object-contain self-start drop-shadow-md max-w-[75%]" />
                                     ) : (
-                                        <h3 className="text-white font-bold text-xl md:text-3xl leading-tight drop-shadow-md line-clamp-1">{content.title}</h3>
+                                        <h3 className="text-white font-bold text-xl md:text-2xl leading-tight drop-shadow-md line-clamp-1">{content.title}</h3>
                                     )}
                                 </div>
-                                {content.bannerNote && <div className="text-[#46d369] text-[10px] md:text-xs font-bold mb-1">{content.bannerNote}</div>}
-                                <div className="flex flex-wrap items-center gap-2 text-[10px] md:text-xs font-medium text-gray-300 mb-2">
+                                <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm font-medium text-gray-300 mb-1">
+                                    {content.releaseYear && <span>{content.releaseYear}</span>}
                                     {seasonNumber && (
                                         <>
-                                            <span className="text-[#3b82f6] font-bold">الموسم {seasonNumber}</span>
-                                            <div className="w-px h-3 bg-gray-500"></div>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                                            <span className="text-gray-200">الموسم {seasonNumber}</span>
                                         </>
                                     )}
-                                    {genres && <span>{genres}</span>}
+                                    {genres && (
+                                        <>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                                            <span>{genres}</span>
+                                        </>
+                                    )}
                                 </div>
+                                {noteText && (
+                                    <div className="text-[#ffb700] text-sm md:text-base font-bold mb-3 drop-shadow-sm">
+                                        {noteText}
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="mt-2 w-fit bg-white/10 backdrop-blur-[2px] border border-white/10 rounded-full p-2 flex items-center gap-3 shadow-lg relative z-50">
-                                <div className="flex items-center gap-3 pr-1 cursor-pointer group/play">
-                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#00A7F8] flex items-center justify-center shadow-[0_0_20px_rgba(0,167,248,0.5)] group-hover/play:scale-110 transition-transform">
-                                        <PlayIcon className="w-5 h-5 md:w-6 md:h-6 fill-white text-white ml-0.5" />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="font-bold text-white text-sm md:text-base leading-tight group-hover/play:text-[#00A7F8] transition-colors">شاهد الآن</span>
-                                        <span className="text-[10px] md:text-xs text-gray-400 font-medium leading-tight">{watchSubtitle}</span>
-                                    </div>
-                                </div>
+                            <div className="mt-1 flex items-center gap-2.5 relative z-50">
+                                <a 
+                                    href={detailUrl}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onSelectContent(content);
+                                    }}
+                                    className="bg-[#d1d5db] hover:bg-white text-black font-bold px-5 py-2 md:px-6 md:py-2.5 rounded-full flex items-center gap-2 text-xs md:text-sm transition-all shadow-md group/play"
+                                >
+                                    <PlayIcon className="w-4 h-4 fill-black text-black" />
+                                    <span>شاهد الآن</span>
+                                </a>
                                 <button 
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleMyList(content.id); }}
-                                    className="flex items-center gap-2 rounded-full hover:bg-white/5 transition-colors group/list pr-2 pl-1 translate-x-1"
+                                    className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/20 hover:bg-white/30 border border-white/10 flex items-center justify-center text-white transition-all"
+                                    title="قائمتي"
                                 >
-                                    <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full border-2 flex items-center justify-center transition-all ${isInMyList ? 'bg-white border-white text-black' : 'bg-transparent border-gray-400 text-white group-hover/list:border-white'}`}>
-                                        {isInMyList ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5" /> : <PlusIcon className="w-4 h-4 md:w-5 md:h-5" />}
-                                    </div>
-                                    <span className="text-xs md:text-sm font-bold text-gray-300 group-hover/list:text-white transition-colors">قائمتي</span>
+                                    {isInMyList ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-400" /> : <PlusIcon className="w-4 h-4 md:w-5 md:h-5" />}
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/20 hover:bg-white/30 border border-white/10 flex items-center justify-center text-white transition-all"
+                                    title="إعجاب"
+                                >
+                                    <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.684a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </a>
+        </div>
     );
 };
 

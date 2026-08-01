@@ -171,7 +171,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 url={canonicalUrl}
             />
 
-            <div className="sticky top-0 z-50 bg-[var(--bg-body)]/95 backdrop-blur-xl border-b border-white/5 px-4 h-16 flex items-center justify-between shadow-lg">
+            <div className="sticky top-0 z-50 bg-[var(--bg-body)] border-b border-white/15 px-4 h-16 flex items-center justify-between shadow-lg">
                 <div className="flex items-center gap-4 w-full">
                     <button onClick={() => onGoBack('detail')} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
                         <ChevronRightIcon className="w-5 h-5 transform rotate-180 text-white" />
@@ -181,7 +181,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                             <>
                                 <h1 className="text-sm md:text-base font-bold text-gray-200 truncate">{content.title}</h1>
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-[10px] md:text-xs font-bold ${accentColor}`}>الموسم {seasonNumber} | الحلقة {episodeNumber}</span>
+                                    <span className={`text-[10px] md:text-xs font-bold ${accentColor}`}>الموسم {seasonNumber} : الحلقة {episodeNumber}</span>
                                     {(() => {
                                         if (!selectedEpisode) return null;
                                         const badges = [];
@@ -237,10 +237,10 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 
                 <div className="w-full mb-6">
                     <div className="flex items-center justify-start md:justify-start gap-3 overflow-x-auto no-scrollbar pb-3">
-                        <span className="text-sm text-gray-400 font-black ml-2 whitespace-nowrap">سيرفر المشاهدة:</span>
+                        <span className="text-sm text-gray-400 font-black ml-2 whitespace-nowrap">جودة المشاهدة:</span>
                         {isFullyReady && activeServers.length > 0 ? activeServers.map((server, idx) => (
                             <button key={server.id} onClick={() => setSelectedServer(server)} className={`flex-shrink-0 px-8 py-3 rounded-2xl font-black text-sm transition-all border target-server-btn ${selectedServer?.id === server.id ? `${bgAccent} text-black border-transparent shadow-[0_0_20px_var(--shadow-color)] scale-105` : 'bg-gray-800/50 text-gray-300 border-gray-700 hover:bg-gray-800 hover:border-gray-600'}`}>
-                                سيرفر {idx + 1}
+                                {server.name && server.name.trim() !== '' ? server.name : `جودة ${idx + 1}`}
                             </button>
                         )) : (
                             Array.from({ length: 4 }).map((_, i) => (
@@ -254,7 +254,8 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black border border-white/5 z-10 mx-auto video-player-wrapper">
                     {isFullyReady ? (
                         <VideoPlayer 
-                            key={playerKey}
+                            key={`${playerKey}_s${seasonNumber}_e${episodeNumber}`}
+                            contentId={content.id}
                             tmdbId={content.tmdbId || content.id} 
                             type={content.type} 
                             season={seasonNumber} 
@@ -262,6 +263,22 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                             manualSrc={selectedServer?.url} 
                             poster={selectedEpisode?.thumbnail || displayBackdrop} 
                             title={content.title}
+                            seriesTitle={content.title}
+                            episodeTitle={selectedEpisode?.title || `الحلقة ${episodeNumber}`}
+                            episodes={currentSeason?.episodes || []}
+                            servers={activeServers}
+                            selectedServerId={selectedServer?.id}
+                            onServerSelect={(srv) => setSelectedServer(srv as Server)}
+                            intro={{ introStart: 30, introEnd: 120 }}
+                            onEpisodeSelect={(nextEpNum) => {
+                                onSetView('watch', undefined, {
+                                    content,
+                                    seasonNumber,
+                                    season: seasonNumber,
+                                    episodeNumber: nextEpNum,
+                                    episode: nextEpNum
+                                });
+                            }}
                         />
                     ) : (
                         <div className="absolute inset-0 bg-[#0f1014] skeleton-shimmer flex items-center justify-center">

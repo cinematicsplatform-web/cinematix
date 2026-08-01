@@ -130,6 +130,14 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
             }
             
             if (c.cast && c.cast.some(actor => normalizeText(actor).includes(normalizedQuery))) score += 10;
+            if (c.alternativeTitles) {
+                c.alternativeTitles.forEach(alt => {
+                    const altNorm = normalizeText(alt);
+                    if (altNorm === normalizedQuery) { score += 80; }
+                    else if (altNorm.startsWith(normalizedQuery)) { score += 40; }
+                    else if (altNorm.includes(normalizedQuery)) { score += 15; }
+                });
+            }
             if (c.genres && c.genres.some(g => normalizeText(g).includes(normalizedQuery))) score += 5;
             if (c.categories && c.categories.some(cat => normalizeText(cat).includes(normalizedQuery))) score += 5;
 
@@ -170,6 +178,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ allContent, onSelectContent, on
         const tags = new Set<string>();
         matchedParents.forEach(c => {
             if (normalizeText(c.title).includes(normalizedQuery)) tags.add(c.title);
+            if (c.alternativeTitles) c.alternativeTitles.forEach(alt => { if (normalizeText(alt).includes(normalizedQuery)) tags.add(alt); });
             if (c.cast) c.cast.forEach(actor => { if (normalizeText(actor).includes(normalizedQuery)) tags.add(actor); });
             if (c.genres) c.genres.forEach(g => { if (normalizeText(g).includes(normalizedQuery)) tags.add(g); });
             if (c.categories) c.categories.forEach(cat => { if (normalizeText(cat).includes(normalizedQuery)) tags.add(cat); });

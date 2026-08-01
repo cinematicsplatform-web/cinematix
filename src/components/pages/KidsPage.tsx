@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import type { Content, Ad, View } from '@/types';
+import type { Content, Ad, View, SiteSettings, HomeSection } from '@/types';
+import { resolveDynamicCarousels } from '@/utils/sectionUtils';
 import ContentCarousel from '../shared/ContentCarousel';
 import AdPlacement from '../ads/AdPlacement';
 import Hero from '../home/Hero';
@@ -11,6 +12,7 @@ interface KidsPageProps {
   allContent: Content[];
   pinnedContent: Content[];
   top10Content?: Content[]; 
+  homeSections?: HomeSection[];
   onSelectContent: (content: Content, seasonNumber?: number) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean; // تم الإضافة
@@ -25,12 +27,14 @@ interface KidsPageProps {
   isCosmicTealTheme?: boolean;
   isNetflixRedTheme?: boolean;
   isShahidTheme?: boolean;
+  siteSettings?: SiteSettings;
 }
 
 const KidsPage: React.FC<KidsPageProps> = ({ 
   allContent, 
   pinnedContent,
   top10Content,
+  homeSections,
   onSelectContent, 
   isLoggedIn, 
   isAdmin = false,
@@ -44,7 +48,8 @@ const KidsPage: React.FC<KidsPageProps> = ({
   isEidTheme,
   isCosmicTealTheme,
   isNetflixRedTheme,
-  isShahidTheme
+  isShahidTheme,
+  siteSettings
 }) => {
 
   const animationContent = useMemo(() =>
@@ -127,13 +132,29 @@ const KidsPage: React.FC<KidsPageProps> = ({
       { id: 'k2', title: 'أحدث الإضافات', contents: recentKids, isNew: true, categoryKey: 'new-kids' }, 
       { id: 'k3', title: 'أفلام أنيميشن', contents: allAnimationMovies, isNew: false, categoryKey: 'أفلام أنيميشن' },
       { id: 'k_anim_series', title: 'مسلسلات أنيميشن', contents: allAnimationSeries, isNew: false, categoryKey: 'مسلسلات أنيميشن' },
-    ].filter(Boolean).filter(carousel => (carousel as any).contents.length > 0); 
+    ];
 
-    return definedCarousels;
-  }, [animationContent, top10Content]); 
+    const baseList = definedCarousels.filter(Boolean).filter(carousel => (carousel as any).contents.length > 0);
 
-  const handleSeeAll = (categoryKey: string) => {
-      onNavigate('category', categoryKey);
+    return resolveDynamicCarousels('kids', homeSections, allContent, baseList);
+  }, [animationContent, top10Content, homeSections, allContent]); 
+
+  const handleSeeAll = (carousel: any) => {
+      if (typeof carousel === 'string') {
+        onNavigate('category', carousel);
+      } else if (carousel?.specialRoute) {
+        onNavigate(carousel.specialRoute as View);
+      } else if (carousel?.categoryKey) {
+        onNavigate('category', carousel.categoryKey);
+      } else if (carousel?.sectionId) {
+        onNavigate('category', `section:${carousel.sectionId}`);
+      } else if (carousel?.id) {
+        onNavigate('category', `section:${carousel.id}`);
+      } else if (typeof carousel?.title === 'string') {
+        onNavigate('category', carousel.title);
+      } else {
+        onNavigate('kids');
+      }
   };
 
   if (isLoading && animationContent.length === 0) {
@@ -208,12 +229,13 @@ const KidsPage: React.FC<KidsPageProps> = ({
               myList={myList}
               onToggleMyList={onToggleMyList}
               isNew={(carousel as any).isNew}
-              onSeeAll={(carousel as any).categoryKey ? () => handleSeeAll((carousel as any).categoryKey) : undefined}
+              onSeeAll={() => handleSeeAll(carousel)}
               isRamadanTheme={isRamadanTheme}
               isEidTheme={isEidTheme}
               isCosmicTealTheme={isCosmicTealTheme}
               isNetflixRedTheme={isNetflixRedTheme}
               showRanking={(carousel as any).showRanking}
+              rankStyle={siteSettings?.top10NumberStyle}
             />
           );
         })}
