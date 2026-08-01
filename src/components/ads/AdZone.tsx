@@ -40,7 +40,11 @@ const AdZone: React.FC<AdZoneProps> = ({ position, className }) => {
 
     const adType = ad.type || 'code';
 
-    if (adType === 'banner' && ad.imageUrl) {
+    if (adType === 'banner' && (ad.imageUrl || (ad as any).videoUrl)) {
+        const mediaUrl = (ad as any).videoUrl || ad.imageUrl;
+        const cleanUrl = mediaUrl.split('?')[0].toLowerCase();
+        const isVideo = ['.mp4', '.webm', '.m3u8', '.mov', '.ogg'].some(ext => cleanUrl.endsWith(ext)) || mediaUrl.toLowerCase().includes('.mp4');
+
         return (
             <div className={`w-full flex justify-center items-center my-6 z-10 relative ad-slot-zone ${className || ''}`}>
                 <a 
@@ -49,12 +53,24 @@ const AdZone: React.FC<AdZoneProps> = ({ position, className }) => {
                     rel="nofollow noopener noreferrer"
                     className="block transition-transform hover:scale-[1.01] active:scale-[0.98] max-w-full mx-auto"
                 >
-                    <img 
-                        src={ad.imageUrl} 
-                        alt={ad.title || "Advertisement"} 
-                        className="max-w-full h-auto rounded-2xl shadow-2xl object-contain border border-white/5 mx-auto"
-                        style={{ maxHeight: '250px' }} 
-                    />
+                    {isVideo ? (
+                        <video 
+                            src={mediaUrl} 
+                            autoPlay 
+                            loop 
+                            muted 
+                            playsInline 
+                            className="max-w-full h-auto rounded-2xl shadow-2xl object-contain border border-white/5 mx-auto"
+                            style={{ maxHeight: '250px' }} 
+                        />
+                    ) : (
+                        <img 
+                            src={ad.imageUrl} 
+                            alt={ad.title || "Advertisement"} 
+                            className="max-w-full h-auto rounded-2xl shadow-2xl object-contain border border-white/5 mx-auto"
+                            style={{ maxHeight: '250px' }} 
+                        />
+                    )}
                 </a>
             </div>
         );

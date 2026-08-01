@@ -7,10 +7,12 @@ export const SYSTEM_CATEGORIES = [
   'مسلسلات عربية',
   'مسلسلات تركية',
   'مسلسلات اجنبية',
+  'مسلسلات آسيوية',
   'افلام عربية',
   'افلام تركية',
   'افلام اجنبية',
   'افلام هندية',
+  'أفلام آسيوية',
   'أفلام أنيميشن',
   'مسلسلات أنيميشن',
   'برامج تلفزيونية',
@@ -112,6 +114,20 @@ export const FILTER_ITEMS: FilterItem[] = [
     icon: '🇮🇳',
     group: 'type',
     match: ({ content }) => !!content?.categories?.includes('افلام هندية')
+  },
+  { 
+    key: 'asian-series', 
+    label: 'مسلسلات آسيوية', 
+    icon: '🎎',
+    group: 'type',
+    match: ({ content }) => !!content?.categories?.includes('مسلسلات آسيوية')
+  },
+  { 
+    key: 'asian-movies', 
+    label: 'أفلام آسيوية', 
+    icon: '🐲',
+    group: 'type',
+    match: ({ content }) => !!content?.categories?.includes('أفلام آسيوية')
   },
   { 
     key: 'animation-all', 

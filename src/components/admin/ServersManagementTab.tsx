@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getServers, addServer, updateServer, deleteServer, db } from '../../firebase';
 import type { GlobalServer, Content } from '../../types';
+import DeleteConfirmationModal from '../shared/DeleteConfirmationModal';
 import { 
     Server, Globe, Database, Pencil, Trash2, RefreshCw, Layers, 
     CheckCircle2, AlertTriangle, Play, Search, WifiOff, Activity, 
@@ -23,6 +24,11 @@ const ServersManagementTab: React.FC<ServersManagementTabProps> = ({ addToast, o
     const [submitting, setSubmitting] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [domainSuggestion, setDomainSuggestion] = useState<string | null>(null);
+    const [deleteServerModal, setDeleteServerModal] = useState<{ isOpen: boolean; id: string; name: string }>({
+        isOpen: false,
+        id: '',
+        name: ''
+    });
 
     // Live Health Checks state
     const [healthStatus, setHealthStatus] = useState<Record<string, 'checking' | 'online' | 'blocked_cors' | 'offline'>>({});
@@ -357,14 +363,18 @@ const ServersManagementTab: React.FC<ServersManagementTabProps> = ({ addToast, o
         setSubmitting(false);
     };
 
-    const handleDelete = async (id: string, serverName: string) => {
-        if (confirm(`هل أنت متأكد من حذف السيرفر "${serverName}"؟`)) {
-            try {
-                await deleteServer(id);
-                addToast("تم حذف السيرفر.", "success");
-                fetchServers();
-            } catch (err) { addToast("فشل الحذف.", "error"); }
-        }
+    const handleDelete = (id: string, serverName: string) => {
+        setDeleteServerModal({ isOpen: true, id, name: serverName });
+    };
+
+    const confirmDeleteServer = async () => {
+        if (!deleteServerModal.id) return;
+        try {
+            await deleteServer(deleteServerModal.id);
+            addToast("تم حذف السيرفر.", "success");
+            setDeleteServerModal({ isOpen: false, id: '', name: '' });
+            fetchServers();
+        } catch (err) { addToast("فشل الحذف.", "error"); }
     };
 
     const filteredServers = useMemo(() => servers.filter(srv => 
@@ -612,6 +622,14 @@ const ServersManagementTab: React.FC<ServersManagementTabProps> = ({ addToast, o
                     </div>
                 )}
             </div>
+
+            <DeleteConfirmationModal
+                isOpen={deleteServerModal.isOpen}
+                onClose={() => setDeleteServerModal({ isOpen: false, id: '', name: '' })}
+                onConfirm={confirmDeleteServer}
+                title="حذف السيرفر"
+                message={`هل أنت متأكد من حذف السيرفر "${deleteServerModal.name}"؟`}
+            />
         </div>
     );
 };

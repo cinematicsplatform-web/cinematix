@@ -263,16 +263,28 @@ a img {
   }
 }
 
-/* Episode Card Hover Logic */
-.episode-card-hover {
-    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), z-index 0s;
+/* Episode Card Hover Logic & Poster Zoom Animation */
+.episode-card-hover,
+.poster-card-hover {
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), z-index 0s, box-shadow 0.3s ease;
+    will-change: transform;
 }
 
 @media (min-width: 768px) {
-    .episode-card-hover:hover {
-        transform: scale(1.20);
+    .episode-card-hover:hover,
+    .poster-card-hover:hover {
+        transform: scale(1.18);
         z-index: 100 !important;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.85);
+    }
+}
+
+@media (max-width: 767px) {
+    .poster-card-hover:active,
+    .poster-card-hover:hover {
+        transform: scale(1.08);
+        z-index: 50 !important;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.7);
     }
 }
 

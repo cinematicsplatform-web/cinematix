@@ -1,11 +1,14 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CloseIcon } from '../icons/CloseIcon';
 import { SearchIcon } from '../icons/SearchIcon';
 import { BouncingDotsLoader } from '../shared/BouncingDotsLoader';
+import { fetchTMDB } from '@/utils/tmdbService';
 
-// Using the API Key provided by the user
-const YOUTUBE_API_KEY = 'AIzaSyDKU89B22xeUd_R3mmVV_2G5L_r3Uh8gq4';
+const YOUTUBE_API_KEYS = [
+    'AIzaSyDKU89B22xeUd_R3mmVV_2G5L_r3Uh8gq4',
+];
+
+const TMDB_API_KEY = '4f27d42721868461ab121820ddf8a379';
 
 interface YouTubeVideo {
     id: { videoId: string };
@@ -15,6 +18,7 @@ interface YouTubeVideo {
         channelTitle: string;
         publishedAt: string;
     };
+    source?: string;
 }
 
 interface YouTubeSearchModalProps {
@@ -30,45 +34,266 @@ const YouTubeIcon = () => (
     </svg>
 );
 
+// Extract Video ID if input is a YouTube URL or 11-char ID
+function extractYouTubeVideoId(input: string): string | null {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+    if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+        return trimmed;
+    }
+    const match = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([a-zA-Z0-9_-]{11})/i);
+    return match ? match[1] : null;
+}
+
+// Invidious instances fallback search
+const invidiousInstances = [
+    'https://inv.tux.pizza',
+    'https://invidious.nerdvpn.de',
+    'https://vid.puffyan.us',
+    'https://invidious.drgns.space'
+];
+
+async function searchInvidious(searchQuery: string): Promise<YouTubeVideo[]> {
+    for (const domain of invidiousInstances) {
+        try {
+            const url = `${domain}/api/v1/search?q=${encodeURIComponent(searchQuery)}&type=video`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3500);
+            const res = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    return data.map((item: any) => ({
+                        id: { videoId: item.videoId },
+                        snippet: {
+                            title: item.title,
+                            thumbnails: { high: { url: `https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg` } },
+                            channelTitle: item.author || 'YouTube',
+                            publishedAt: item.publishedText || new Date().toISOString()
+                        },
+                        source: 'YouTube'
+                    })).filter(item => item.id.videoId);
+                }
+            }
+        } catch (e) {
+            // Silently try next instance
+        }
+    }
+    return [];
+}
+
+// Piped instances fallback search
+async function searchPiped(searchQuery: string): Promise<YouTubeVideo[]> {
+    const pipedInstances = [
+        'https://pipedapi.kavin.rocks',
+        'https://api.piped.yt',
+        'https://pipedapi.mha.fi'
+    ];
+    for (const domain of pipedInstances) {
+        try {
+            const url = `${domain}/search?q=${encodeURIComponent(searchQuery)}&filter=videos`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3500);
+            const res = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data && Array.isArray(data.items) && data.items.length > 0) {
+                    return data.items
+                        .filter((item: any) => item.url && item.url.includes('v='))
+                        .map((item: any) => {
+                            const vId = item.url.split('v=')[1]?.split('&')[0];
+                            return {
+                                id: { videoId: vId },
+                                snippet: {
+                                    title: item.title,
+                                    thumbnails: { high: { url: item.thumbnail || `https://img.youtube.com/vi/${vId}/hqdefault.jpg` } },
+                                    channelTitle: item.uploaderName || 'YouTube',
+                                    publishedAt: item.uploadedDate || new Date().toISOString()
+                                },
+                                source: 'YouTube'
+                            };
+                        })
+                        .filter((item: any) => item.id.videoId);
+                }
+            }
+        } catch (e) {
+            // Silently try next instance
+        }
+    }
+    return [];
+}
+
+// TMDB Trailers Search Fallback
+async function searchTMDBTrailers(rawQuery: string): Promise<YouTubeVideo[]> {
+    try {
+        const cleanQuery = rawQuery.replace(/official trailer|trailer|إعلان|التريلر|الرسمي/gi, '').trim();
+        if (!cleanQuery) return [];
+
+        const searchRes = await fetchTMDB(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(cleanQuery)}&language=ar-SA&include_adult=false`);
+        if (!searchRes.ok) return [];
+
+        const searchData = await searchRes.json();
+        const results = searchData.results || [];
+
+        const videoPromises = results.slice(0, 5).map(async (item: any) => {
+            const mediaType = item.media_type === 'tv' ? 'tv' : 'movie';
+            const title = item.title || item.name || cleanQuery;
+            try {
+                let videoRes = await fetchTMDB(`https://api.themoviedb.org/3/${mediaType}/${item.id}/videos?api_key=${TMDB_API_KEY}&language=ar-SA`);
+                let videoData = videoRes.ok ? await videoRes.json() : null;
+                let ytVideos = (videoData?.results || []).filter((v: any) => v.site === 'YouTube');
+
+                if (ytVideos.length === 0) {
+                    videoRes = await fetchTMDB(`https://api.themoviedb.org/3/${mediaType}/${item.id}/videos?api_key=${TMDB_API_KEY}&language=en-US`);
+                    videoData = videoRes.ok ? await videoRes.json() : null;
+                    ytVideos = (videoData?.results || []).filter((v: any) => v.site === 'YouTube');
+                }
+
+                return ytVideos.map((v: any) => ({
+                    id: { videoId: v.key },
+                    snippet: {
+                        title: `${title} - ${v.name || 'الإعلان الرسمي'}`,
+                        thumbnails: { high: { url: `https://img.youtube.com/vi/${v.key}/hqdefault.jpg` } },
+                        channelTitle: `${v.type || 'Trailer'} (${mediaType === 'movie' ? 'فيلم' : 'مسلسل'})`,
+                        publishedAt: v.published_at || new Date().toISOString()
+                    },
+                    source: 'TMDB Official Trailer'
+                }));
+            } catch (e) {
+                return [];
+            }
+        });
+
+        const allFetched = await Promise.all(videoPromises);
+        return allFetched.flat();
+    } catch (e) {
+        return [];
+    }
+}
+
+// Standard YouTube API Search
+async function searchYouTubeAPI(searchQuery: string): Promise<YouTubeVideo[]> {
+    for (const apiKey of YOUTUBE_API_KEYS) {
+        try {
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=15&q=${encodeURIComponent(searchQuery)}&relevanceLanguage=ar&key=${apiKey}`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3500);
+            const res = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.items && data.items.length > 0) {
+                    return data.items.map((item: any) => ({
+                        id: { videoId: item.id?.videoId },
+                        snippet: item.snippet,
+                        source: 'YouTube'
+                    })).filter((item: any) => item.id?.videoId);
+                }
+            }
+        } catch (e) {
+            // Silently fail if blocked or rate-limited
+        }
+    }
+    return [];
+}
+
 const YouTubeSearchModal: React.FC<YouTubeSearchModalProps> = ({ isOpen, onClose, onSelect, initialQuery = '' }) => {
     const [query, setQuery] = useState(initialQuery);
     const [loading, setLoading] = useState(false);
     const [results, setResults] = useState<YouTubeVideo[]>([]);
     const [error, setError] = useState('');
 
-    const handleSearch = async (e?: React.FormEvent) => {
+    const handleSearch = useCallback(async (e?: React.FormEvent, customQuery?: string) => {
         if (e) e.preventDefault();
-        if (!query.trim()) return;
+        const queryToUse = customQuery !== undefined ? customQuery : query;
+        if (!queryToUse.trim()) return;
 
         setLoading(true);
         setError('');
         setResults([]);
 
-        try {
-            // Searching for "Official Trailer" to get better cinematic results
-            const searchQuery = query.toLowerCase().includes('trailer') ? query : `${query} official trailer`;
-            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=15&q=${encodeURIComponent(searchQuery)}&relevanceLanguage=ar&key=${YOUTUBE_API_KEY}`;
-            
-            const res = await fetch(url);
-            
-            if (!res.ok) {
-                const errData = await res.json();
-                if (errData.error?.message?.includes('key')) {
-                    throw new Error('مفتاح الـ API غير صالح أو انتهت صلاحيته.');
+        const trimmedInput = queryToUse.trim();
+
+        // 1. Direct YouTube link or Video ID check
+        const directId = extractYouTubeVideoId(trimmedInput);
+        if (directId) {
+            let videoTitle = `فيديو يوتيوب (${directId})`;
+            let channelTitle = 'YouTube Video';
+            try {
+                const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${directId}&format=json`);
+                if (oembedRes.ok) {
+                    const oembedData = await oembedRes.json();
+                    if (oembedData.title) videoTitle = oembedData.title;
+                    if (oembedData.author_name) channelTitle = oembedData.author_name;
                 }
-                throw new Error(errData.error?.message || 'فشل الاتصال بـ YouTube');
+            } catch (e) {
+                // Ignore oembed failure
             }
-            
-            const data = await res.json();
-            setResults(data.items || []);
-            
-            if (data.items?.length === 0) setError('لم يتم العثور على نتائج. جرب كلمات بحث مختلفة.');
-        } catch (err: any) {
-            setError(err.message || 'حدث خطأ أثناء البحث. حاول مرة أخرى.');
-        } finally {
+
+            setResults([{
+                id: { videoId: directId },
+                snippet: {
+                    title: videoTitle,
+                    thumbnails: { high: { url: `https://img.youtube.com/vi/${directId}/hqdefault.jpg` } },
+                    channelTitle: channelTitle,
+                    publishedAt: new Date().toISOString()
+                },
+                source: 'رابط مباشر'
+            }]);
             setLoading(false);
+            return;
         }
-    };
+
+        // 2. Multi-source search
+        const searchQuery = trimmedInput.toLowerCase().includes('trailer') ? trimmedInput : `${trimmedInput} official trailer`;
+
+        // Run YouTube API, Invidious/Piped, and TMDB in smart sequence/parallel
+        let fetchedResults = await searchYouTubeAPI(searchQuery);
+
+        if (fetchedResults.length === 0) {
+            fetchedResults = await searchInvidious(searchQuery);
+        }
+
+        if (fetchedResults.length === 0) {
+            fetchedResults = await searchPiped(searchQuery);
+        }
+
+        const tmdbResults = await searchTMDBTrailers(trimmedInput);
+
+        // Deduplicate by videoId
+        const seenIds = new Set<string>();
+        const mergedResults: YouTubeVideo[] = [];
+
+        for (const item of [...fetchedResults, ...tmdbResults]) {
+            const vId = item.id?.videoId;
+            if (vId && !seenIds.has(vId)) {
+                seenIds.add(vId);
+                mergedResults.push(item);
+            }
+        }
+
+        if (mergedResults.length > 0) {
+            setResults(mergedResults);
+        } else {
+            setError('لم يتم العثور على نتائج تلقائياً. يمكنك لصق رابط فيديو يوتيوب مباشرة في خانة البحث.');
+        }
+        setLoading(false);
+    }, [query]);
+
+    // Automatically trigger search when modal opens or initialQuery changes
+    useEffect(() => {
+        if (isOpen && initialQuery) {
+            setQuery(initialQuery);
+            handleSearch(undefined, initialQuery);
+        } else if (isOpen && query) {
+            handleSearch(undefined, query);
+        }
+    }, [isOpen, initialQuery]);
 
     const handleSelectVideo = (videoId: string) => {
         onSelect(`https://www.youtube.com/watch?v=${videoId}`);
@@ -89,7 +314,7 @@ const YouTubeSearchModal: React.FC<YouTubeSearchModalProps> = ({ isOpen, onClose
                         </div>
                         <div>
                             <h3 className="text-xl md:text-2xl font-black text-white">YouTube Trailer Search</h3>
-                            <p className="text-xs text-gray-400 font-bold mt-0.5">ابحث عن الإعلانات الرسمية وأضفها بضغطة زر</p>
+                            <p className="text-xs text-gray-400 font-bold mt-0.5">ابحث عن الإعلانات الرسمية أو ألصق رابط الفيديو مباشرة</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-all">
@@ -141,7 +366,7 @@ const YouTubeSearchModal: React.FC<YouTubeSearchModalProps> = ({ isOpen, onClose
                         <div className="text-center py-20 bg-red-500/5 rounded-3xl border border-red-500/10 max-w-xl mx-auto p-10 shadow-inner">
                             <div className="text-red-500 mb-4 text-5xl">⚠️</div>
                             <p className="text-xl font-black text-red-400 mb-2">{error}</p>
-                            <p className="text-sm text-gray-500 font-bold">تأكد من كتابة اسم العمل بشكل صحيح أو حاول مرة أخرى لاحقاً.</p>
+                            <p className="text-sm text-gray-500 font-bold">تأكد من كتابة اسم العمل بشكل صحيح أو قم بلصق رابط يوتيوب مباشر.</p>
                         </div>
                     )}
 
@@ -150,7 +375,7 @@ const YouTubeSearchModal: React.FC<YouTubeSearchModalProps> = ({ isOpen, onClose
                             <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center opacity-20">
                                 <YouTubeIcon />
                             </div>
-                            <p className="max-w-md text-lg font-black opacity-40">أدخل اسم العمل في الأعلى للبحث عن الإعلانات المتوفرة على منصة يوتيوب.</p>
+                            <p className="max-w-md text-lg font-black opacity-40">أدخل اسم العمل في الأعلى للبحث أو ألصق رابط الفيديو من يوتيوب.</p>
                         </div>
                     )}
 
@@ -166,6 +391,10 @@ const YouTubeSearchModal: React.FC<YouTubeSearchModalProps> = ({ isOpen, onClose
                                         src={video.snippet.thumbnails.high.url} 
                                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                                         alt={video.snippet.title} 
+                                        onError={(e) => {
+                                            // Fallback to standard YouTube thumbnail if high res image fails
+                                            (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.id.videoId}/hqdefault.jpg`;
+                                        }}
                                     />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
                                         <div className="bg-red-600 text-white font-black px-6 py-3 rounded-2xl shadow-2xl transform scale-90 group-hover:scale-100 transition-all">
@@ -173,6 +402,11 @@ const YouTubeSearchModal: React.FC<YouTubeSearchModalProps> = ({ isOpen, onClose
                                         </div>
                                     </div>
                                     <div className="absolute bottom-2 right-2 bg-red-600 px-2 py-0.5 rounded text-[9px] font-black text-white uppercase tracking-tighter shadow-lg">HD</div>
+                                    {video.source && (
+                                        <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-lg text-[10px] font-bold text-gray-300">
+                                            {video.source}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="p-5 flex-1 flex flex-col">
                                     <h4 className="text-base font-bold text-white line-clamp-2 mb-3 leading-relaxed group-hover:text-red-400 transition-colors" title={video.snippet.title}>
@@ -181,7 +415,11 @@ const YouTubeSearchModal: React.FC<YouTubeSearchModalProps> = ({ isOpen, onClose
                                     <div className="mt-auto flex items-center justify-between pt-3 border-t border-white/5">
                                         <div className="flex flex-col">
                                             <span className="text-[10px] text-gray-500 font-black truncate max-w-[150px] uppercase tracking-wide">{video.snippet.channelTitle}</span>
-                                            <span className="text-[9px] text-gray-600 font-bold">{new Date(video.snippet.publishedAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long' })}</span>
+                                            <span className="text-[9px] text-gray-600 font-bold">
+                                                {isNaN(new Date(video.snippet.publishedAt).getTime()) 
+                                                    ? video.snippet.publishedAt 
+                                                    : new Date(video.snippet.publishedAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long' })}
+                                            </span>
                                         </div>
                                         <div className="flex items-center gap-1.5 bg-red-600/10 px-2 py-1 rounded-lg">
                                             <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
@@ -196,7 +434,7 @@ const YouTubeSearchModal: React.FC<YouTubeSearchModalProps> = ({ isOpen, onClose
 
                 {/* Footer Info */}
                 <div className="p-4 bg-[#0b1116] border-t border-white/5 text-center">
-                    <p className="text-[10px] text-gray-600 font-bold uppercase tracking-[0.2em]">YouTube Data API v3 Integrated System</p>
+                    <p className="text-[10px] text-gray-600 font-bold uppercase tracking-[0.2em]">Multi-Source Trailer Engine (YouTube + TMDB)</p>
                 </div>
             </div>
         </div>

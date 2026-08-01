@@ -166,7 +166,7 @@ const copyrightPolicyText = `
 export const initialSiteSettings: SiteSettings = {
     shoutBar: {
         text: '🎉 عرض خاص: اشترك الآن واحصل على شهر مجاني! 🎉 تابع أحدث المسلسلات والأفلام حصرياً على سينماتيكس. 🎉',
-        isVisible: true,
+        isVisible: false,
     },
     socialLinks: {
         facebook: 'https://facebook.com',
@@ -193,6 +193,15 @@ export const initialSiteSettings: SiteSettings = {
     showTop10Kids: true,
     showTop10Articles: true,
     showTop10Users: true,
+    top10NumberStyle: 'netflix',
     serviceAccountJson: '', 
     apkUrl: 'https://example.com/cinematix.apk', // Default APK URL
+    appConfig: {
+        apkUrl: 'https://example.com/cinematix.apk',
+        appSize: '35 MB',
+        version: '1.0.0',
+        screenshots: [],
+        reviews: [],
+        enableDynamicColors: true,
+    }
 };

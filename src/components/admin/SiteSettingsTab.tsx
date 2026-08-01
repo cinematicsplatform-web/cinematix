@@ -113,6 +113,35 @@ const SiteSettingsTab: React.FC<{
                             <ToggleSwitch checked={siteSettings.showTop10Ramadan} onChange={(c) => handleChange('showTop10Ramadan', c)} />
                         </div>
                     </div>
+
+                    {/* تغيير أسلوب وشكل أرقام التوب 10 */}
+                    <div className="mt-6 pt-6 border-t border-gray-700/60">
+                        <label className="block text-sm font-bold text-gray-200 mb-3 flex items-center gap-2">
+                            <span>🎨</span> استايل أرقام التوب 10 (Top 10 Number Style)
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            {[
+                                { id: 'netflix', name: '🎬 نيتفليكس 3D مفرغ', desc: 'إطار مفرغ احترافي ثلاثي الأبعاد' },
+                                { id: 'neon', name: '⚡ نيون سايبر مضيء', desc: 'توهج نيون بألوان متناسقة مع التيم' },
+                                { id: 'gold3d', name: '🏆 ذهبي مجسم (Bevel)', desc: 'تصميم معدني ذهبي بارز ثلاثي الأبعاد' },
+                                { id: 'modern', name: '💎 عصري ممتلئ (Solid)', desc: 'تعبئة جرافيكية حادة بتدرجات معدنية' },
+                            ].map((st) => (
+                                <button
+                                    key={st.id}
+                                    type="button"
+                                    onClick={() => handleChange('top10NumberStyle', st.id as any)}
+                                    className={`p-3.5 rounded-xl border text-right transition-all flex flex-col justify-between cursor-pointer ${
+                                        (siteSettings.top10NumberStyle || 'netflix') === st.id
+                                            ? 'bg-[#00A7F8]/20 border-[#00A7F8] text-white shadow-[0_0_15px_rgba(0,167,248,0.3)] scale-[1.02]'
+                                            : 'bg-gray-800/40 border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'
+                                    }`}
+                                >
+                                    <span className="font-bold text-xs md:text-sm">{st.name}</span>
+                                    <span className="text-[10px] opacity-75 mt-1">{st.desc}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -194,7 +223,7 @@ const SiteSettingsTab: React.FC<{
                 </div>
             </div>
 
-            <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold text-[#00A7F8]">شريط الإعلانات العلوي (ShoutBar)</h3><ToggleSwitch checked={siteSettings.shoutBar.isVisible} onChange={(c) => handleNestedChange('shoutBar', 'isVisible', c)} /></div><input value={siteSettings.shoutBar.text} onChange={(e) => handleNestedChange('shoutBar', 'text', e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-5 py-3 text-white focus:outline-none focus:border-[#00A7F8]" placeholder="نص الشريط المتحرك..."/></div>
+            <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold text-[#00A7F8]">شريط الإعلانات العلوي (ShoutBar)</h3><ToggleSwitch checked={Boolean(siteSettings.shoutBar?.isVisible)} onChange={(c) => handleNestedChange('shoutBar', 'isVisible', c)} /></div><input value={siteSettings.shoutBar?.text || ''} onChange={(e) => handleNestedChange('shoutBar', 'text', e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-5 py-3 text-white focus:outline-none focus:border-[#00A7F8]" placeholder="نص الشريط المتحرك..."/></div>
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl"><h3 className="text-xl font-bold text-[#00A7F8] mb-6">روابط التواصل الاجتماعي</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-6">{Object.keys(siteSettings.socialLinks).map((key) => (<div key={key}><label className="block text-xs font-bold text-gray-400 mb-2 capitalize">{key}</label><input value={(siteSettings.socialLinks as any)[key]} onChange={(e) => handleNestedChange('socialLinks', key, e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#00A7F8] text-white dir-ltr"/></div>))}</div></div>
             <div className="bg-[#1f2937] p-8 rounded-2xl border border-gray-700/50 shadow-xl">
                 <h3 className="text-xl font-bold text-[#00A7F8] mb-6">إعدادات الإشعارات (Firebase Cloud Messaging)</h3>

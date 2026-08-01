@@ -299,8 +299,10 @@ const PromoBannersTab: React.FC<PromoBannersTabProps> = ({ addToast, allContent 
                                     <option value="مسلسلات عربية">مسلسلات عربية</option>
                                     <option value="مسلسلات تركية">مسلسلات تركية</option>
                                     <option value="مسلسلات أجنبية">مسلسلات أجنبية</option>
+                                    <option value="مسلسلات آسيوية">مسلسلات آسيوية</option>
                                     <option value="أفلام عربية">أفلام عربية</option>
                                     <option value="أفلام أجنبية">أفلام أجنبية</option>
+                                    <option value="أفلام آسيوية">أفلام آسيوية</option>
                                 </select>
                                 {!editingBanner.targetCarousel && (
                                     <input 

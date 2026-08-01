@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Ad } from '@/types';
 import AdDisplay from './AdDisplay';
+import { checkIsDirectVideo } from '@/playerConfig';
 
 interface AdPlacementProps {
   ads: Ad[];
@@ -48,8 +49,11 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
   const defaultClasses = "ad-container w-full flex justify-center items-center my-4 overflow-hidden z-10";
   const finalClasses = className ? `${defaultClasses} ${className}` : defaultClasses;
 
-  // في حال كان الإعلان بانر صوري
-  if (activeAd.type === 'banner' && activeAd.imageUrl) {
+  // في حال كان الإعلان بانر صوري أو فيديو MP4
+  if (activeAd.type === 'banner' && (activeAd.imageUrl || (activeAd as any).videoUrl)) {
+      const mediaUrl = (activeAd as any).videoUrl || activeAd.imageUrl;
+      const isVideo = checkIsDirectVideo(mediaUrl);
+
       return (
           <div className={finalClasses}>
               <a 
@@ -58,12 +62,24 @@ const AdPlacement: React.FC<AdPlacementProps> = ({ ads, placement, isEnabled, cl
                 rel="nofollow noopener noreferrer"
                 className="block transition-all hover:scale-[1.01] active:scale-[0.98] max-w-full mx-auto"
               >
-                  <img 
-                    src={activeAd.imageUrl} 
-                    alt={activeAd.title || "Cinematix Ad"} 
-                    className="max-w-full h-auto rounded-2xl shadow-xl object-contain border border-white/5 mx-auto"
-                    style={{ maxHeight: '250px' }}
-                  />
+                  {isVideo ? (
+                      <video 
+                        src={mediaUrl} 
+                        autoPlay 
+                        loop 
+                        muted 
+                        playsInline 
+                        className="max-w-full h-auto rounded-2xl shadow-xl object-contain border border-white/5 mx-auto"
+                        style={{ maxHeight: '250px' }}
+                      />
+                  ) : (
+                      <img 
+                        src={mediaUrl} 
+                        alt={activeAd.title || "Cinematix Ad"} 
+                        className="max-w-full h-auto rounded-2xl shadow-xl object-contain border border-white/5 mx-auto"
+                        style={{ maxHeight: '250px' }}
+                      />
+                  )}
               </a>
           </div>
       );

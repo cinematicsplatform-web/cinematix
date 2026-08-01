@@ -63,18 +63,39 @@ const DownloadPage: React.FC<DownloadPageProps> = ({
 
         {/* Backdrop removed to satisfy request for solid background */}
 
-        <div className="relative z-10 max-w-5xl mx-auto px-4 pt-8 md:pt-16">
+        <div className="relative z-10 max-w-5xl mx-auto px-4 pt-6 md:pt-10">
             
-            {/* Header */}
-            <div className="flex items-center justify-between mb-10">
+            {/* Header with Logo and Page Name */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-6 mb-8 border-b border-white/10">
+                <div className="flex items-center gap-3 cursor-pointer" onClick={() => onSetView('home')}>
+                    <img src="/logo.png" alt="Cinematix Logo" className="w-9 h-9 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    <h1 className="text-2xl md:text-3xl font-extrabold flex items-center gap-2">
+                        {isNetflixRedTheme ? (
+                            <span className="text-[#E50914] font-['Lalezar'] tracking-wide">CINEMATIX</span>
+                        ) : (
+                            <><span className="text-white">سينما</span><span className="gradient-text font-['Lalezar'] tracking-wide">تيكس</span></>
+                        )}
+                    </h1>
+                    <span className="text-xs md:text-sm font-bold bg-white/10 text-gray-200 px-3 py-1 rounded-full border border-white/10 shadow-sm flex items-center gap-1.5">
+                        <DownloadIcon className="w-4 h-4 text-gray-300" />
+                        <span>صفحة التحميل</span>
+                    </span>
+                </div>
+
                 <button 
                     onClick={() => onSetView('detail')}
-                    className="p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+                    className="px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all group flex items-center gap-2 text-sm font-bold text-gray-200"
+                    aria-label="رجوع"
                 >
-                    <ChevronRightIcon className="w-6 h-6 transform rotate-180 text-white group-hover:-translate-x-1 transition-transform" />
+                    <span>رجوع</span>
+                    <ChevronRightIcon className="w-5 h-5 transform rotate-180 text-white group-hover:-translate-x-1 transition-transform" />
                 </button>
-                <h1 className="text-xl md:text-3xl font-black truncate max-w-[70%] text-center">{displayTitle}</h1>
-                <div className="w-12"></div> {/* Spacer for symmetry */}
+            </div>
+
+            {/* Content Title */}
+            <div className="mb-8">
+                <h2 className="text-xl md:text-3xl font-black text-white leading-tight">{displayTitle}</h2>
+                <p className="text-gray-400 text-xs md:text-sm mt-1">اختر سيرفر التحميل المباشر والسريع لمتابعة هذا العمل</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
@@ -112,7 +133,7 @@ const DownloadPage: React.FC<DownloadPageProps> = ({
                 {/* Right: Download Servers */}
                 <div className="lg:col-span-8 space-y-8 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
                     
-                    <div className="bg-[#1f2937]/40 backdrop-blur-md border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl">
+                    <div className="bg-[#1f2937] border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl">
                         <div className="text-center mb-10">
                             <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl ${bgAccent} text-black mb-6 shadow-xl`}>
                                 <DownloadIcon className="w-8 h-8" />

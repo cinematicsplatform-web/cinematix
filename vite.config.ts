@@ -104,14 +104,19 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
-          '@': path.resolve('src'),
-        }
+          '@': path.resolve(__dirname, 'src'),
+          'react': path.resolve(__dirname, 'node_modules/react'),
+          'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
+        },
+        dedupe: ['react', 'react-dom'],
+      },
+      optimizeDeps: {
+        include: ['react', 'react-dom', 'react-helmet-async'],
       },
       build: {
         rollupOptions: {
           output: {
             manualChunks: {
-              'react-vendor': ['react', 'react-dom'],
               'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
               'ui-vendor': ['lucide-react', 'motion', 'react-helmet-async']
             }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { Content, Server, Season, Episode, Category, Genre, GlobalServer, AutoLinkConfig, User } from '@/types';
+import type { Content, Server, Season, Episode, Category, Genre, GlobalServer, AutoLinkConfig, User, TrailerItem } from '@/types';
 import { ContentType, genres } from '@/types';
 import { db, generateSlug, getPeople, savePerson, getServers, getAllContent, addServer, getUsers, getBroadcastHistory } from '@/firebase';  
 import DeleteConfirmationModal from '../shared/DeleteConfirmationModal';
@@ -169,6 +169,201 @@ const labelClass = "block text-xs font-bold text-gray-400 mb-2 uppercase trackin
 const sectionBoxClass = "bg-[#0f1014] p-4 md:p-8 rounded-2xl border border-gray-800 shadow-xl";
 
 // --- HELPERS ---
+const getVideoId = (url: string | undefined) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+};
+
+const formatDurationSeconds = (totalSeconds: number): string => {
+    if (!totalSeconds || isNaN(totalSeconds) || totalSeconds <= 0) return '';
+    const secs = Math.floor(totalSeconds);
+    const hours = Math.floor(secs / 3600);
+    const minutes = Math.floor((secs % 3600) / 60);
+    const remainingSecs = secs % 60;
+
+    const pad = (num: number) => num.toString().padStart(2, '0');
+
+    if (hours > 0) {
+        return `${hours}:${pad(minutes)}:${pad(remainingSecs)}`;
+    }
+    return `${minutes}:${pad(remainingSecs)}`;
+};
+
+const fetchVideoDuration = (url: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+        if (!url || !url.trim()) {
+            resolve(null);
+            return;
+        }
+
+        const ytId = getVideoId(url);
+        if (ytId) {
+            const loadYTApiAndGetDuration = () => {
+                const windowAny = window as any;
+                if (windowAny.YT && windowAny.YT.Player) {
+                    createYTPlayer();
+                } else {
+                    if (!document.getElementById('yt-iframe-api-script')) {
+                        const tag = document.createElement('script');
+                        tag.id = 'yt-iframe-api-script';
+                        tag.src = 'https://www.youtube.com/iframe_api';
+                        document.body.appendChild(tag);
+                    }
+                    const prevOnReady = windowAny.onYouTubeIframeAPIReady;
+                    windowAny.onYouTubeIframeAPIReady = () => {
+                        if (prevOnReady) prevOnReady();
+                        createYTPlayer();
+                    };
+                }
+            };
+
+            const createYTPlayer = () => {
+                const windowAny = window as any;
+                const tempDiv = document.createElement('div');
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.width = '1px';
+                tempDiv.style.height = '1px';
+                tempDiv.style.top = '-9999px';
+                tempDiv.style.left = '-9999px';
+                tempDiv.style.opacity = '0';
+                document.body.appendChild(tempDiv);
+
+                let player: any = null;
+                let resolved = false;
+
+                const cleanup = () => {
+                    try {
+                        if (player && typeof player.destroy === 'function') player.destroy();
+                        if (tempDiv && tempDiv.parentNode) tempDiv.parentNode.removeChild(tempDiv);
+                    } catch (e) {}
+                };
+
+                const timeout = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        cleanup();
+                        resolve(null);
+                    }
+                }, 5000);
+
+                try {
+                    player = new windowAny.YT.Player(tempDiv, {
+                        videoId: ytId,
+                        events: {
+                            onReady: (event: any) => {
+                                if (resolved) return;
+                                try {
+                                    const dur = event.target.getDuration();
+                                    if (dur && dur > 0) {
+                                        resolved = true;
+                                        clearTimeout(timeout);
+                                        cleanup();
+                                        resolve(formatDurationSeconds(dur));
+                                        return;
+                                    }
+                                } catch (err) {}
+                            },
+                            onStateChange: (event: any) => {
+                                if (resolved) return;
+                                try {
+                                    const dur = event.target.getDuration();
+                                    if (dur && dur > 0) {
+                                        resolved = true;
+                                        clearTimeout(timeout);
+                                        cleanup();
+                                        resolve(formatDurationSeconds(dur));
+                                    }
+                                } catch (err) {}
+                            }
+                        }
+                    });
+                } catch (err) {
+                    cleanup();
+                    clearTimeout(timeout);
+                    resolve(null);
+                }
+            };
+
+            loadYTApiAndGetDuration();
+            return;
+        }
+
+        // Direct Video URL (mp4, webm, m3u8, etc.)
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        let resolved = false;
+
+        const cleanup = () => {
+            video.removeAttribute('src');
+            video.load();
+        };
+
+        const timeout = setTimeout(() => {
+            if (!resolved) {
+                resolved = true;
+                clearTimeout(timeout);
+                cleanup();
+                resolve(null);
+            }
+        }, 6000);
+
+        video.onloadedmetadata = () => {
+            if (!resolved) {
+                resolved = true;
+                clearTimeout(timeout);
+                const dur = video.duration;
+                cleanup();
+                if (dur && !isNaN(dur) && isFinite(dur)) {
+                    resolve(formatDurationSeconds(dur));
+                } else {
+                    resolve(null);
+                }
+            }
+        };
+
+        video.onerror = () => {
+            if (!resolved) {
+                resolved = true;
+                clearTimeout(timeout);
+                cleanup();
+                resolve(null);
+            }
+        };
+
+        video.src = url;
+    });
+};
+
+const normalizeTrailersList = (trailers?: TrailerItem[], fallbackUrl?: string, defaultTitle = 'الإعلان الرسمي'): TrailerItem[] => {
+    if (trailers && Array.isArray(trailers) && trailers.length > 0) {
+        return trailers.map((t, idx) => {
+            const ytId = getVideoId(t.url);
+            const autoThumb = t.thumbnail || (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : '');
+            return {
+                id: t.id || String(idx + 1),
+                title: t.title || (idx === 0 ? defaultTitle : `إعلان ${idx + 1}`),
+                url: t.url || '',
+                thumbnail: autoThumb,
+                duration: t.duration || ''
+            };
+        });
+    }
+    if (fallbackUrl && fallbackUrl.trim()) {
+        const ytId = getVideoId(fallbackUrl.trim());
+        const autoThumb = ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : '';
+        return [{
+            id: '1',
+            title: defaultTitle,
+            url: fallbackUrl.trim(),
+            thumbnail: autoThumb,
+            duration: ''
+        }];
+    }
+    return [];
+};
+
 const getRowValue = (row: any, ...candidates: string[]) => {
     const rowKeys = Object.keys(row);
     for (const candidate of candidates) {
@@ -1315,32 +1510,56 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         poster: string;
     }>({ isOpen: false, url: '', title: '', poster: '' });
 
-    const getDefaultFormData = (): Content => ({
-        id: '', tmdbId: '', title: '', description: '', type: ContentType.Movie, poster: '', top10Poster: '', backdrop: '', horizontalPoster: '', mobileBackdropUrl: '',
-        rating: 0, ageRating: '', categories: [], genres: [], releaseYear: new Date().getFullYear(), cast: [],
-        visibility: 'general', seasons: [], servers: [], bannerNote: '', createdAt: '',
-        logoUrl: '', isLogoEnabled: false, trailerUrl: '', duration: '', enableMobileCrop: false, 
-        mobileCropPositionX: 50, mobileCropPositionY: 50, 
-        slug: '',
-        director: '', writer: '',
-        isUpcoming: false,
-        // Global Content Scheduling (Movies/Series level)
-        isScheduled: false,
-        scheduledAt: '',
-        notifyOnPublish: false, // New: Notify when main content drops (defaults to false)
-        autoEpisodeNotification: false,
-        autoScheduledEpisodeNotification: false,
-        notificationSent: false,
-        flipBackdrop: false,
-        imageGallery: {
-            poster: [],
-            backdrop: [],
-            logo: [],
-            horizontalPoster: [],
-            verticalBackdrop: []
-        },
-        ...content,
-    });
+    const getDefaultFormData = (): Content => {
+        const base: Content = {
+            id: '', tmdbId: '', title: '', description: '', type: ContentType.Movie, poster: '', top10Poster: '', backdrop: '', horizontalPoster: '', mobileBackdropUrl: '',
+            rating: 0, ageRating: '', categories: [], genres: [], releaseYear: new Date().getFullYear(), cast: [],
+            visibility: 'general', seasons: [], servers: [], bannerNote: '', createdAt: '',
+            logoUrl: '', isLogoEnabled: false, trailerUrl: '', duration: '', enableMobileCrop: false, 
+            mobileCropPositionX: 50, mobileCropPositionY: 50, 
+            slug: '',
+            alternativeTitles: [],
+            director: '', writer: '',
+            isUpcoming: false,
+            isScheduled: false,
+            scheduledAt: '',
+            notifyOnPublish: false,
+            autoEpisodeNotification: false,
+            autoScheduledEpisodeNotification: false,
+            notificationSent: false,
+            flipBackdrop: false,
+            imageGallery: {
+                poster: [],
+                backdrop: [],
+                logo: [],
+                horizontalPoster: [],
+                verticalBackdrop: []
+            },
+        };
+
+        if (!content) return base;
+
+        const cleanedContent: Record<string, any> = {};
+        Object.keys(content).forEach((k) => {
+            const val = (content as any)[k];
+            if (val !== undefined && val !== null) {
+                cleanedContent[k] = val;
+            }
+        });
+
+        return {
+            ...base,
+            ...cleanedContent,
+            alternativeTitles: content.alternativeTitles || [],
+            imageGallery: {
+                poster: content.imageGallery?.poster || [],
+                backdrop: content.imageGallery?.backdrop || [],
+                logo: content.imageGallery?.logo || [],
+                horizontalPoster: content.imageGallery?.horizontalPoster || [],
+                verticalBackdrop: content.imageGallery?.verticalBackdrop || [],
+            }
+        };
+    };
 
     const [formData, setFormData] = useState<Content>(getDefaultFormData());
 
@@ -1427,7 +1646,254 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [castResults, setCastResults] = useState<any[]>([]);
     const [isSearchingCast, setIsSearchingCast] = useState(false);
 
-    const [youTubeSearchState, setYouTubeSearchState] = useState<{ isOpen: boolean; targetId: 'main' | number | null }>({ isOpen: false, targetId: null });
+    const [youTubeSearchState, setYouTubeSearchState] = useState<{ isOpen: boolean; targetId: 'main' | number | { type: 'main' | 'season'; seasonId?: number; index?: number } | null }>({ isOpen: false, targetId: null });
+
+    const handleAddMainTrailer = (title = '', url = '', thumbnail = '', duration = '') => {
+        setFormData(prev => {
+            const currentTrailers = normalizeTrailersList(prev.trailers, prev.trailerUrl);
+            const newTitle = title || (currentTrailers.length === 0 ? 'الإعلان الرسمي' : `إعلان تشويقي ${currentTrailers.length}`);
+            let finalThumb = thumbnail;
+            if (url) {
+                const ytId = getVideoId(url);
+                if (ytId && !finalThumb) {
+                    finalThumb = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+                }
+            }
+            const newItem: TrailerItem = {
+                id: String(Date.now()),
+                title: newTitle,
+                url,
+                thumbnail: finalThumb,
+                duration
+            };
+            const updated = [...currentTrailers, newItem];
+            return {
+                ...prev,
+                trailers: updated,
+                trailerUrl: updated[0]?.url || ''
+            };
+        });
+
+        if (url && !duration) {
+            fetchVideoDuration(url).then(dur => {
+                if (dur) {
+                    setFormData(prev => {
+                        const current = normalizeTrailersList(prev.trailers, prev.trailerUrl);
+                        if (current.length === 0) return prev;
+                        const lastIdx = current.length - 1;
+                        if (!current[lastIdx].duration) {
+                            const updated = [...current];
+                            updated[lastIdx] = { ...updated[lastIdx], duration: dur };
+                            return { ...prev, trailers: updated };
+                        }
+                        return prev;
+                    });
+                }
+            });
+        }
+    };
+
+    const handleUpdateMainTrailer = (index: number, field: keyof TrailerItem, value: string) => {
+        setFormData(prev => {
+            const currentTrailers = normalizeTrailersList(prev.trailers, prev.trailerUrl);
+            if (index < 0 || index >= currentTrailers.length) return prev;
+            const updated = [...currentTrailers];
+            updated[index] = { ...updated[index], [field]: value };
+
+            if (field === 'url' && value) {
+                const ytId = getVideoId(value);
+                if (ytId) {
+                    updated[index].thumbnail = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+                }
+            }
+
+            return {
+                ...prev,
+                trailers: updated,
+                trailerUrl: updated[0]?.url || ''
+            };
+        });
+
+        if (field === 'url' && value) {
+            fetchVideoDuration(value).then(dur => {
+                if (dur) {
+                    setFormData(prev => {
+                        const current = normalizeTrailersList(prev.trailers, prev.trailerUrl);
+                        if (index >= 0 && index < current.length) {
+                            const updated = [...current];
+                            if (!updated[index].duration) {
+                                updated[index] = { ...updated[index], duration: dur };
+                                return { ...prev, trailers: updated };
+                            }
+                        }
+                        return prev;
+                    });
+                }
+            });
+        }
+    };
+
+    const handleDeleteMainTrailer = (index: number) => {
+        setFormData(prev => {
+            const currentTrailers = normalizeTrailersList(prev.trailers, prev.trailerUrl);
+            const updated = currentTrailers.filter((_, i) => i !== index);
+            return {
+                ...prev,
+                trailers: updated,
+                trailerUrl: updated[0]?.url || ''
+            };
+        });
+    };
+
+    const handleSetPrimaryMainTrailer = (index: number) => {
+        setFormData(prev => {
+            const currentTrailers = normalizeTrailersList(prev.trailers, prev.trailerUrl);
+            if (index <= 0 || index >= currentTrailers.length) return prev;
+            const target = currentTrailers[index];
+            const remaining = currentTrailers.filter((_, i) => i !== index);
+            const updated = [target, ...remaining];
+            return {
+                ...prev,
+                trailers: updated,
+                trailerUrl: updated[0]?.url || ''
+            };
+        });
+    };
+
+    const handleMoveMainTrailer = (index: number, direction: 'up' | 'down') => {
+        setFormData(prev => {
+            const currentTrailers = normalizeTrailersList(prev.trailers, prev.trailerUrl);
+            const targetIdx = direction === 'up' ? index - 1 : index + 1;
+            if (targetIdx < 0 || targetIdx >= currentTrailers.length) return prev;
+            const updated = [...currentTrailers];
+            const temp = updated[index];
+            updated[index] = updated[targetIdx];
+            updated[targetIdx] = temp;
+            return {
+                ...prev,
+                trailers: updated,
+                trailerUrl: updated[0]?.url || ''
+            };
+        });
+    };
+
+    const handleAddSeasonTrailer = (seasonId: number, title = '', url = '', thumbnail = '', duration = '') => {
+        setFormData(prev => {
+            const season = prev.seasons?.find(s => s.id === seasonId);
+            if (!season) return prev;
+            const currentTrailers = normalizeTrailersList(season.trailers, season.trailerUrl, 'إعلان الموسم');
+            const newTitle = title || (currentTrailers.length === 0 ? 'إعلان الموسم الرئيسي' : `إعلان تشويقي ${currentTrailers.length}`);
+            let finalThumb = thumbnail;
+            if (url) {
+                const ytId = getVideoId(url);
+                if (ytId && !finalThumb) {
+                    finalThumb = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+                }
+            }
+            const newItem: TrailerItem = { id: String(Date.now()), title: newTitle, url, thumbnail: finalThumb, duration };
+            const updated = [...currentTrailers, newItem];
+            return {
+                ...prev,
+                seasons: (prev.seasons || []).map(s => s.id === seasonId ? { ...s, trailers: updated, trailerUrl: updated[0]?.url || '' } : s)
+            };
+        });
+
+        if (url && !duration) {
+            fetchVideoDuration(url).then(dur => {
+                if (dur) {
+                    setFormData(prev => {
+                        const season = prev.seasons?.find(s => s.id === seasonId);
+                        if (!season) return prev;
+                        const current = normalizeTrailersList(season.trailers, season.trailerUrl, 'إعلان الموسم');
+                        if (current.length === 0) return prev;
+                        const lastIdx = current.length - 1;
+                        if (!current[lastIdx].duration) {
+                            const updated = [...current];
+                            updated[lastIdx] = { ...updated[lastIdx], duration: dur };
+                            return {
+                                ...prev,
+                                seasons: (prev.seasons || []).map(s => s.id === seasonId ? { ...s, trailers: updated } : s)
+                            };
+                        }
+                        return prev;
+                    });
+                }
+            });
+        }
+    };
+
+    const handleUpdateSeasonTrailer = (seasonId: number, index: number, field: keyof TrailerItem, value: string) => {
+        setFormData(prev => {
+            const season = prev.seasons?.find(s => s.id === seasonId);
+            if (!season) return prev;
+            const currentTrailers = normalizeTrailersList(season.trailers, season.trailerUrl, 'إعلان الموسم');
+            if (index < 0 || index >= currentTrailers.length) return prev;
+            const updated = [...currentTrailers];
+            updated[index] = { ...updated[index], [field]: value };
+            if (field === 'url' && value) {
+                const ytId = getVideoId(value);
+                if (ytId) {
+                    updated[index].thumbnail = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+                }
+            }
+            return {
+                ...prev,
+                seasons: (prev.seasons || []).map(s => s.id === seasonId ? { ...s, trailers: updated, trailerUrl: updated[0]?.url || '' } : s)
+            };
+        });
+
+        if (field === 'url' && value) {
+            fetchVideoDuration(value).then(dur => {
+                if (dur) {
+                    setFormData(prev => {
+                        const season = prev.seasons?.find(s => s.id === seasonId);
+                        if (!season) return prev;
+                        const current = normalizeTrailersList(season.trailers, season.trailerUrl, 'إعلان الموسم');
+                        if (index >= 0 && index < current.length) {
+                            const updated = [...current];
+                            if (!updated[index].duration) {
+                                updated[index] = { ...updated[index], duration: dur };
+                                return {
+                                    ...prev,
+                                    seasons: (prev.seasons || []).map(s => s.id === seasonId ? { ...s, trailers: updated } : s)
+                                };
+                            }
+                        }
+                        return prev;
+                    });
+                }
+            });
+        }
+    };
+
+    const handleDeleteSeasonTrailer = (seasonId: number, index: number) => {
+        setFormData(prev => {
+            const season = prev.seasons?.find(s => s.id === seasonId);
+            if (!season) return prev;
+            const currentTrailers = normalizeTrailersList(season.trailers, season.trailerUrl, 'إعلان الموسم');
+            const updated = currentTrailers.filter((_, i) => i !== index);
+            return {
+                ...prev,
+                seasons: (prev.seasons || []).map(s => s.id === seasonId ? { ...s, trailers: updated, trailerUrl: updated[0]?.url || '' } : s)
+            };
+        });
+    };
+
+    const handleSetPrimarySeasonTrailer = (seasonId: number, index: number) => {
+        setFormData(prev => {
+            const season = prev.seasons?.find(s => s.id === seasonId);
+            if (!season) return prev;
+            const currentTrailers = normalizeTrailersList(season.trailers, season.trailerUrl, 'إعلان الموسم');
+            if (index <= 0 || index >= currentTrailers.length) return prev;
+            const target = currentTrailers[index];
+            const remaining = currentTrailers.filter((_, i) => i !== index);
+            const updated = [target, ...remaining];
+            return {
+                ...prev,
+                seasons: (prev.seasons || []).map(s => s.id === seasonId ? { ...s, trailers: updated, trailerUrl: updated[0]?.url || '' } : s)
+            };
+        });
+    };
 
     const [galleryState, setGalleryState] = useState<{
         isOpen: boolean;
@@ -1517,6 +1983,25 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [tmdbSearchQuery, setTmdbSearchQuery] = useState('');
     const [tmdbSearchResults, setTmdbSearchResults] = useState<any[]>([]);
     const [isSearchingTMDB, setIsSearchingTMDB] = useState(false);
+    const [isRefreshingRating, setIsRefreshingRating] = useState(false);
+    const [isRefreshingAltTitles, setIsRefreshingAltTitles] = useState(false);
+    const [newAltTitleInput, setNewAltTitleInput] = useState('');
+
+    const filteredCategories = useMemo<Category[]>(() => {
+        const commonCats: Category[] = ['قريباً'];
+        if (formData.type === ContentType.Movie) {
+            return ['افلام عربية', 'افلام تركية', 'افلام اجنبية', 'افلام هندية', 'أفلام آسيوية', 'أفلام أنيميشن', 'افلام العيد', ...commonCats];
+        } else if (formData.type === ContentType.Series) {
+            return ['مسلسلات عربية', 'مسلسلات تركية', 'مسلسلات اجنبية', 'مسلسلات آسيوية', 'مسلسلات أنيميشن', 'رمضان', 'حصرياً لرمضان', 'مسلسلات رمضان', ...commonCats];
+        } else if (formData.type === ContentType.Program) {
+            return ['برامج تلفزيونية', 'برامج رمضان', ...commonCats];
+        } else if (formData.type === ContentType.Concert) {
+            return ['حفلات', ...commonCats];
+        } else if (formData.type === ContentType.Play) {
+            return ['مسرحيات', ...commonCats];
+        }
+        return commonCats;
+    }, [formData.type]);
 
     const isEpisodic = formData.type === ContentType.Series || formData.type === ContentType.Program;
     const isStandalone = !isEpisodic;
@@ -1575,6 +2060,21 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 initData.isScheduled = false;
                 initData.scheduledAt = '';
             }
+        }
+
+        const normalizedMainTrailers = normalizeTrailersList(initData.trailers, initData.trailerUrl, 'الإعلان الرسمي');
+        initData.trailers = normalizedMainTrailers;
+        initData.trailerUrl = normalizedMainTrailers[0]?.url || initData.trailerUrl || '';
+
+        if (initData.seasons && initData.seasons.length > 0) {
+            initData.seasons = initData.seasons.map(season => {
+                const normSTrailers = normalizeTrailersList(season.trailers, season.trailerUrl, 'إعلان الموسم');
+                return {
+                    ...season,
+                    trailers: normSTrailers,
+                    trailerUrl: normSTrailers[0]?.url || season.trailerUrl || ''
+                };
+            });
         }
 
         setFormData(initData);
@@ -2538,30 +3038,67 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             if (!res.ok) throw new Error('لم يتم العثور على محتوى بهذا الـ ID. تأكد من صحة الرقم.');
             let details = await res.json();
             const originLang = details.original_language;
+            const isAsianLang = ['ko', 'ja', 'zh', 'cn', 'th', 'id', 'vi', 'ph', 'ms', 'tw', 'kr', 'jp'].includes(originLang);
             
             let autoCategory: Category = 'افلام اجنبية'; 
             if (currentType === ContentType.Series || currentType === ContentType.Program) {
                 if (originLang === 'tr') autoCategory = 'مسلسلات تركية';
                 else if (originLang === 'ar') autoCategory = 'مسلسلات عربية';
+                else if (isAsianLang) autoCategory = 'مسلسلات آسيوية';
                 else autoCategory = 'مسلسلات اجنبية';
             } else {
                 if (originLang === 'tr') autoCategory = 'افلام تركية';
                 else if (originLang === 'ar') autoCategory = 'افلام عربية';
                 else if (originLang === 'hi') autoCategory = 'افلام هندية';
+                else if (isAsianLang) autoCategory = 'أفلام آسيوية';
                 else autoCategory = 'افلام اجنبية';
             }
 
+            let enTitle = '';
             if (originLang !== 'ar') {
                 const resEn = await fetchTMDB(getUrl(currentType, 'en-US'));
                 if (resEn.ok) {
                     const enDetails = await resEn.json();
+                    enTitle = enDetails.title || enDetails.name || '';
                     if (!details.overview) details.overview = enDetails.overview;
                     if (enDetails.images) details.images = enDetails.images;
                     if (enDetails.videos) details.videos = enDetails.videos;
                 }
+            } else {
+                const resEn = await fetchTMDB(getUrl(currentType, 'en-US'));
+                if (resEn.ok) {
+                    const enDetails = await resEn.json();
+                    enTitle = enDetails.title || enDetails.name || '';
+                }
+            }
+
+            let altTitlesFromTmdb: string[] = [];
+            try {
+                const typePath = (currentType === ContentType.Movie || currentType === ContentType.Play || currentType === ContentType.Concert) ? 'movie' : 'tv';
+                const altRes = await fetchTMDB(`https://api.themoviedb.org/3/${typePath}/${targetId}/alternative_titles?api_key=${API_KEY}`);
+                if (altRes.ok) {
+                    const altData = await altRes.json();
+                    const rawList = altData.titles || altData.results || [];
+                    altTitlesFromTmdb = rawList.map((item: any) => item.title || item.name).filter(Boolean);
+                }
+            } catch (errAlt) {
+                console.warn("Failed to fetch alternative titles", errAlt);
             }
 
             const title = details.title || details.name || '';
+            const origTitle = details.original_title || details.original_name || '';
+            const allCandidates = [origTitle, enTitle, ...altTitlesFromTmdb];
+            const fetchedAltTitlesSet = new Set<string>();
+            allCandidates.forEach(c => {
+                if (c && typeof c === 'string') {
+                    const trimmed = c.trim();
+                    if (trimmed && trimmed.toLowerCase() !== title.trim().toLowerCase()) {
+                        fetchedAltTitlesSet.add(trimmed);
+                    }
+                }
+            });
+            const newAltTitlesArray = Array.from(fetchedAltTitlesSet);
+
             const description = details.overview || ''; 
             const poster = details.poster_path ? `https://image.tmdb.org/t/p/w500${details.poster_path}` : '';
             const backdrop = details.backdrop_path ? `https://image.tmdb.org/t/p/original${details.backdrop_path}` : '';
@@ -2570,10 +3107,18 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             const releaseYear = releaseDate ? new Date(releaseDate).getFullYear() : new Date().getFullYear();
             
             let trailerUrl = '';
+            let tmdbTrailers: TrailerItem[] = [];
             if (details.videos && details.videos.results) {
-                let trailer = details.videos.results.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
-                if (!trailer) trailer = details.videos.results.find((v: any) => v.type === 'Teaser' && v.site === 'YouTube');
-                if (trailer) trailerUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
+                const ytVideos = details.videos.results.filter((v: any) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser' || v.type === 'Clip'));
+                if (ytVideos.length > 0) {
+                    tmdbTrailers = ytVideos.map((v: any, idx: number) => ({
+                        id: String(v.id || idx + 1),
+                        title: v.name || (v.type === 'Trailer' ? (idx === 0 ? 'الإعلان الرسمي' : `الإعلان الرسمي ${idx + 1}`) : `إعلان تشويقي ${idx}`),
+                        url: `https://www.youtube.com/watch?v=${v.key}`,
+                        thumbnail: `https://img.youtube.com/vi/${v.key}/hqdefault.jpg`
+                    }));
+                    trailerUrl = tmdbTrailers[0]?.url || '';
+                }
             }
 
             let logoUrl = '';
@@ -2729,6 +3274,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 logoUrl,
                 isLogoEnabled: !!logoUrl,
                 trailerUrl,
+                trailers: tmdbTrailers.length > 0 ? tmdbTrailers : prev.trailers,
                 rating,
                 releaseYear,
                 ageRating,
@@ -2739,6 +3285,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 director: directorName || prev.director,
                 writer: writerName || prev.writer,
                 duration: duration || prev.duration,
+                alternativeTitles: newAltTitlesArray.length > 0 ? newAltTitlesArray : (prev.alternativeTitles || []),
                 isUpcoming: false,
                 seasons: (currentType === ContentType.Series || currentType === ContentType.Program) ? newSeasons : prev.seasons,
                 servers: isStandalone ? generateMovieServers(String(targetId)) : [],
@@ -2753,8 +3300,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             setUpdateLoading(false);
         }
     };
-
-    const [isRefreshingRating, setIsRefreshingRating] = useState(false);
 
     const handleRefreshRating = async () => {
         const targetId = formData.tmdbId || tmdbIdInput;
@@ -2780,6 +3325,66 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
     };
 
+    const handleRefreshAlternativeTitles = async () => {
+        const targetId = formData.tmdbId || tmdbIdInput;
+        if (!targetId) {
+            addToast("يرجى إدخال كود TMDB أولاً لجلب الأسماء الأخرى.", "error");
+            return;
+        }
+        setIsRefreshingAltTitles(true);
+        try {
+            const typePath = (formData.type === ContentType.Movie || formData.type === ContentType.Play || formData.type === ContentType.Concert) ? 'movie' : 'tv';
+            
+            // 1. Fetch Arabic details
+            const arUrl = `https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=ar-SA`;
+            const arRes = await fetchTMDB(arUrl);
+            let arDetails: any = {};
+            if (arRes.ok) arDetails = await arRes.json();
+
+            // 2. Fetch English details
+            const enUrl = `https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=en-US`;
+            const enRes = await fetchTMDB(enUrl);
+            let enDetails: any = {};
+            if (enRes.ok) enDetails = await enRes.json();
+
+            // 3. Fetch alternative titles endpoint
+            const altUrl = `https://api.themoviedb.org/3/${typePath}/${targetId}/alternative_titles?api_key=${API_KEY}`;
+            const altRes = await fetchTMDB(altUrl);
+            let altList: string[] = [];
+            if (altRes.ok) {
+                const altData = await altRes.json();
+                const rawList = altData.titles || altData.results || [];
+                altList = rawList.map((item: any) => item.title || item.name).filter(Boolean);
+            }
+
+            const currentMainTitle = formData.title || arDetails.title || arDetails.name || '';
+            const origTitle = arDetails.original_title || arDetails.original_name || '';
+            const enTitle = enDetails.title || enDetails.name || '';
+
+            const candidates = [origTitle, enTitle, ...altList];
+            const existingAlt = formData.alternativeTitles || [];
+            const mergedSet = new Set<string>(existingAlt);
+
+            candidates.forEach(t => {
+                if (t && typeof t === 'string') {
+                    const trimmed = t.trim();
+                    if (trimmed && trimmed.toLowerCase() !== currentMainTitle.trim().toLowerCase()) {
+                        mergedSet.add(trimmed);
+                    }
+                }
+            });
+
+            const updatedAltTitles = Array.from(mergedSet);
+            setFormData(prev => ({ ...prev, alternativeTitles: updatedAltTitles }));
+            addToast(`تم جلب وتحديث الأسماء الأخرى بنجاح (${updatedAltTitles.length} اسم متاح)`, "success");
+        } catch (e: any) {
+            console.error(e);
+            addToast(e.message || "حدث خطأ أثناء جلب الأسماء الأخرى من TMDB.", "error");
+        } finally {
+            setIsRefreshingAltTitles(false);
+        }
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         const inputElement = e.target as HTMLInputElement;
@@ -2802,22 +3407,6 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         if (name === 'slug') setSlugManuallyEdited(true);
         setFormData(prev => ({ ...prev, [name]: value } as Content));
     };
-
-    const filteredCategories = useMemo<Category[]>(() => {
-        const commonCats: Category[] = ['قريباً'];
-        if (formData.type === ContentType.Movie) {
-            return ['افلام عربية', 'افلام تركية', 'افلام اجنبية', 'افلام هندية', 'أفلام أنيميشن', 'افلام العيد', ...commonCats];
-        } else if (formData.type === ContentType.Series) {
-            return ['مسلسلات عربية', 'مسلسلات تركية', 'مسلسلات اجنبية', 'مسلسلات أنيميشن', 'رمضان', 'حصرياً لرمضان', 'مسلسلات رمضان', ...commonCats];
-        } else if (formData.type === ContentType.Program) {
-            return ['برامج تلفزيونية', 'برامج رمضان', ...commonCats];
-        } else if (formData.type === ContentType.Concert) {
-            return ['حفلات', ...commonCats];
-        } else if (formData.type === ContentType.Play) {
-            return ['مسرحيات', ...commonCats];
-        }
-        return commonCats;
-    }, [formData.type]);
 
     const handleCategoryChange = (category: Category) => {
         setFormData(prev => {
@@ -3474,19 +4063,19 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 }
 
                 if (blankEpisodeToFill && sourceEpisodeForFill) {
-                    const lastEpNum = extractEpisodeNumber(sourceEpisodeForFill.title);
-                    const newEpNum = extractEpisodeNumber(blankEpisodeToFill.title);
+                    const srcEpNum = extractEpisodeNumber(sourceEpisodeForFill.title);
+                    const targetBlankEpNum = extractEpisodeNumber(blankEpisodeToFill.title);
 
                     didFillBlank = true;
-                    filledBlankEpNum = newEpNum;
-                    sourceEpNum = lastEpNum;
+                    filledBlankEpNum = targetBlankEpNum;
+                    sourceEpNum = srcEpNum;
 
-                    const newServers = (sourceEpisodeForFill.servers || []).map(server => {
+                    const filledServers = (sourceEpisodeForFill.servers || []).map(server => {
                         return {
                             ...server,
                             id: Date.now() + Math.random(),
-                            url: smartIncrementUrl(server.url, lastEpNum, newEpNum),
-                            downloadUrl: smartIncrementUrl(server.downloadUrl, lastEpNum, newEpNum)
+                            url: smartIncrementUrl(server.url, srcEpNum, targetBlankEpNum),
+                            downloadUrl: smartIncrementUrl(server.downloadUrl, srcEpNum, targetBlankEpNum)
                         };
                     });
 
@@ -3495,7 +4084,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         if (ep.id === blankEpisodeToFill!.id) {
                             return {
                                 ...ep,
-                                servers: newServers
+                                servers: filledServers
                             };
                         }
                         return ep;
@@ -4615,7 +5204,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     }
 
     return (
-        <div className="flex h-screen w-full bg-[#090b10] text-gray-200 overflow-hidden font-sans selection:bg-[var(--color-accent)] selection:text-black" dir="rtl">
+        <div className="fixed inset-0 z-[200] flex h-screen h-[100dvh] w-full bg-[#090b10] text-gray-200 overflow-hidden font-sans selection:bg-[var(--color-accent)] selection:text-black" dir="rtl">
             <div 
                 className={`fixed inset-0 bg-black/60 z-[90] lg:hidden transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
                 onClick={() => setIsSidebarOpen(false)} 
@@ -4689,8 +5278,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 </div>
             </aside>
 
-            <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#090b10] relative shrink-0">
-                <header className="h-20 border-b border-gray-800 bg-[#0f1014]/90 backdrop-blur-md flex items-center justify-between px-4 md:px-10 z-10 sticky top-0 shrink-0">
+            <main className="flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-[#090b10] relative">
+                <header className="h-16 md:h-20 border-b border-gray-800 bg-[#0f1014]/90 backdrop-blur-md flex items-center justify-between px-3 md:px-10 z-10 sticky top-0 shrink-0">
                     <div className="flex items-center gap-4">
                         <button 
                             type="button" 
@@ -4750,7 +5339,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     ))}
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar pb-10">
+                <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 md:p-10 custom-scrollbar pb-10">
                     <div className="max-w-6xl mx-auto space-y-10">
                         
                         {activeTab === 'general' && (
@@ -4957,6 +5546,111 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         </button>
                                     </div>
                                 </div>
+
+                                <div className={`${sectionBoxClass} lg:col-span-12 h-full flex flex-col`}>
+                                    <div className="flex items-center justify-between border-b border-gray-800 pb-2 mb-6">
+                                        <h4 className="text-sm font-bold text-[#00A7F8] uppercase flex items-center gap-2">
+                                            <span>أسماء أخرى للعمل</span>
+                                            <span className="text-xs font-normal text-gray-500">({(formData.alternativeTitles || []).length})</span>
+                                        </h4>
+                                        <button
+                                            type="button"
+                                            onClick={handleRefreshAlternativeTitles}
+                                            disabled={isRefreshingAltTitles}
+                                            className="flex items-center gap-2 rounded-lg bg-gray-800 px-3 py-1.5 text-xs text-yellow-400 font-bold shadow-md transition-all hover:bg-gray-700 border border-gray-700 hover:text-yellow-300 disabled:opacity-50"
+                                            title="تحديث وتأكيد جلب الأسماء الأخرى من TMDB"
+                                        >
+                                            {isRefreshingAltTitles ? (
+                                                <>
+                                                    <svg className="animate-spin h-4 w-4 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    <span>جاري الجلب...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <RefreshIcon className="w-4 h-4" />
+                                                    <span>تحديث الأسماء من TMDB</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-4 flex-1">
+                                        <p className="text-xs text-gray-400 leading-relaxed">
+                                            تُستخدم هذه الأسماء والبدائل المترجمة لمساعدة المشاهدين في البحث عن العمل بأي اسم شائع أو بلغات أخرى. يمكنك اختيار حذف أي اسم لا ترغب بظهوره أو إضافة أسماء جديدة يدوياً.
+                                        </p>
+
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={newAltTitleInput}
+                                                onChange={(e) => setNewAltTitleInput(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        if (newAltTitleInput.trim()) {
+                                                            const trimmed = newAltTitleInput.trim();
+                                                            if (!(formData.alternativeTitles || []).includes(trimmed)) {
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    alternativeTitles: [...(prev.alternativeTitles || []), trimmed]
+                                                                }));
+                                                            }
+                                                            setNewAltTitleInput('');
+                                                        }
+                                                    }
+                                                }}
+                                                className={`${inputClass} flex-1`}
+                                                placeholder="إضافة اسم أو عنوان إضافي..."
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (newAltTitleInput.trim()) {
+                                                        const trimmed = newAltTitleInput.trim();
+                                                        if (!(formData.alternativeTitles || []).includes(trimmed)) {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                alternativeTitles: [...(prev.alternativeTitles || []), trimmed]
+                                                            }));
+                                                        }
+                                                        setNewAltTitleInput('');
+                                                    }
+                                                }}
+                                                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-xs whitespace-nowrap transition-all"
+                                            >
+                                                + إضافة اسم
+                                            </button>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 pt-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
+                                            {(formData.alternativeTitles || []).length === 0 ? (
+                                                <div className="text-xs text-gray-500 italic py-2">لا توجد أسماء إضافية مضافة بعد. اضغط "تحديث الأسماء من TMDB" لجلب الأسماء تلقائياً.</div>
+                                            ) : (
+                                                (formData.alternativeTitles || []).map((altTitle, idx) => (
+                                                    <span key={idx} className="flex items-center gap-2 bg-[#1a2230] text-gray-200 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-700/80 shadow-sm hover:border-gray-500 transition-all">
+                                                        <span>{altTitle}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    alternativeTitles: (prev.alternativeTitles || []).filter(t => t !== altTitle)
+                                                                }));
+                                                            }}
+                                                            className="text-gray-400 hover:text-red-400 transition-colors p-0.5 rounded hover:bg-white/10"
+                                                            title="مسح هذا الاسم"
+                                                        >
+                                                            <CloseIcon className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </span>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
@@ -5056,17 +5750,267 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             </div>
                                         )}
                                     </div>
-                                    <div>
-                                         <label className={labelClass}>رابط التريلر (YouTube)</label>
-                                         <div className="flex items-center gap-2">
-                                            <div className="flex-1 relative">
-                                                <input type="text" value={formData.trailerUrl || ''} onChange={(e) => setFormData(prev => ({...prev, trailerUrl: e.target.value}))} className={inputClass} placeholder="https://youtube.com/..." />
-                                                <button type="button" onClick={() => setYouTubeSearchState({ isOpen: true, targetId: 'main' })} className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 text-[10px] font-black hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"><YouTubeIcon className="w-4 h-4" /></button>
-                                            </div>
-                                            {formData.trailerUrl && <a href={formData.trailerUrl} target="_blank" className="p-3 bg-red-600 rounded-lg text-white hover:bg-red-500"><PlayIcon className="w-5 h-5"/></a>}
+                                     {/* --- BOX: TRAILERS & PROMOS (إعلانات وتريلرات العمل) --- */}
+                                     <div className="w-full rounded-2xl border border-red-500/20 bg-gradient-to-b from-[#161a23] to-[#0f1014] p-5 md:p-6 shadow-xl space-y-4 mt-6">
+                                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-gray-800">
+                                             <div>
+                                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                                     <YouTubeIcon className="w-6 h-6 text-red-500" />
+                                                     إعلانات وتريلرات العمل
+                                                     <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-400 font-mono border border-red-500/30">
+                                                         {normalizeTrailersList(formData.trailers, formData.trailerUrl).length} إعلانات
+                                                     </span>
+                                                 </h3>
+                                                 <p className="text-xs text-gray-400 mt-1">
+                                                     يمكنك إضافة أكثر من إعلان/تريلر للعمل مع عنوان وصورة مصغرة مخصصة لكل إعلان. يتم اعتماد الإعلان الأول تلقائياً كإعلان رئيسي لتطبيقات وموقع سينماتيكس.
+                                                 </p>
+                                             </div>
+                                             <div className="flex items-center gap-2 w-full sm:w-auto">
+                                                 <button
+                                                     type="button"
+                                                     onClick={() => setYouTubeSearchState({ isOpen: true, targetId: { type: 'main' } })}
+                                                     className="flex-1 sm:flex-none px-3.5 py-2 bg-red-600/10 border border-red-600/30 text-red-400 hover:bg-red-600 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                                                 >
+                                                     <YouTubeIcon className="w-4 h-4" />
+                                                     بحث يوتيوب
+                                                 </button>
+                                                 <button
+                                                     type="button"
+                                                     onClick={() => handleAddMainTrailer()}
+                                                     className="flex-1 sm:flex-none px-4 py-2 bg-[var(--color-accent)] text-black hover:bg-yellow-400 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-[var(--color-accent)]/10"
+                                                 >
+                                                     <PlusIcon className="w-4 h-4" />
+                                                     إضافة إعلان جديد
+                                                 </button>
+                                             </div>
                                          </div>
-                                    </div>
-                                </div>
+
+                                         {/* Trailer Cards List */}
+                                         <div className="space-y-4 pt-2">
+                                             {normalizeTrailersList(formData.trailers, formData.trailerUrl).map((trailer, idx) => {
+                                                 const ytId = getVideoId(trailer.url);
+                                                 const displayThumb = trailer.thumbnail || (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : (formData.backdrop || formData.poster || ''));
+                                                 const isPrimary = idx === 0;
+
+                                                 return (
+                                                     <div 
+                                                         key={trailer.id || idx}
+                                                         className={`p-4 md:p-5 rounded-2xl border transition-all ${
+                                                             isPrimary 
+                                                                 ? 'border-red-500/40 bg-[#1a151b]/80 shadow-lg shadow-red-950/20' 
+                                                                 : 'border-gray-800 bg-[#121620] hover:border-gray-700'
+                                                         }`}
+                                                     >
+                                                         {/* Header of trailer card */}
+                                                         <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-gray-800/80">
+                                                             <div className="flex items-center gap-2">
+                                                                 <span className={`text-xs font-black px-2.5 py-1 rounded-lg ${isPrimary ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-300'}`}>
+                                                                     {isPrimary ? '🌟 الإعلان الرئيسي (#1)' : `إعلان #${idx + 1}`}
+                                                                 </span>
+                                                                 {!isPrimary && (
+                                                                     <button
+                                                                         type="button"
+                                                                         onClick={() => handleSetPrimaryMainTrailer(idx)}
+                                                                         className="text-[11px] text-gray-400 hover:text-red-400 underline font-bold px-2 py-0.5 rounded transition-all"
+                                                                     >
+                                                                         جعله الإعلان الرئيسي
+                                                                     </button>
+                                                                 )}
+                                                             </div>
+
+                                                             <div className="flex items-center gap-1">
+                                                                 {idx > 0 && (
+                                                                     <button
+                                                                         type="button"
+                                                                         onClick={() => handleMoveMainTrailer(idx, 'up')}
+                                                                         className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-gray-300 rounded-lg text-xs"
+                                                                         title="رفع للأعلى"
+                                                                     >
+                                                                         ▲
+                                                                     </button>
+                                                                 )}
+                                                                 {idx < normalizeTrailersList(formData.trailers, formData.trailerUrl).length - 1 && (
+                                                                     <button
+                                                                         type="button"
+                                                                         onClick={() => handleMoveMainTrailer(idx, 'down')}
+                                                                         className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-gray-300 rounded-lg text-xs"
+                                                                         title="خفض للأسفل"
+                                                                     >
+                                                                         ▼
+                                                                     </button>
+                                                                 )}
+                                                                 <button
+                                                                     type="button"
+                                                                     onClick={() => handleDeleteMainTrailer(idx)}
+                                                                     className="p-1.5 bg-red-600/10 border border-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition-all ml-2"
+                                                                     title="حذف الإعلان"
+                                                                 >
+                                                                     <TrashIcon className="w-4 h-4" />
+                                                                 </button>
+                                                             </div>
+                                                         </div>
+
+                                                         {/* Fields of trailer card */}
+                                                         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                                                             {/* Thumbnail Column */}
+                                                             <div className="md:col-span-3 flex flex-col items-center gap-2">
+                                                                 <div className="w-full aspect-video bg-black/60 rounded-xl overflow-hidden border border-gray-800 relative group shadow-md">
+                                                                     {displayThumb ? (
+                                                                         <img src={displayThumb} className="w-full h-full object-cover" alt="" />
+                                                                     ) : (
+                                                                         <div className="w-full h-full flex flex-col items-center justify-center text-gray-600 text-xs gap-1">
+                                                                             <PhotoIcon className="w-6 h-6" />
+                                                                             لا توجد صورة
+                                                                         </div>
+                                                                     )}
+                                                                     {trailer.url && (
+                                                                         <button
+                                                                             type="button"
+                                                                             onClick={() => setPreviewVideoState({ isOpen: true, url: trailer.url, title: trailer.title || 'معاينة الإعلان', poster: displayThumb })}
+                                                                             className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all text-white font-bold text-xs gap-1 backdrop-blur-xs"
+                                                                         >
+                                                                             <PlayIcon className="w-6 h-6 fill-white" />
+                                                                             تشغيل
+                                                                         </button>
+                                                                     )}
+                                                                 </div>
+                                                                 <div className="w-full">
+                                                                     <label className="block text-[10px] font-bold text-gray-400 mb-1">صورة مصغرة للإعلان (اختياري)</label>
+                                                                     <div className="flex gap-1">
+                                                                         <input
+                                                                             type="text"
+                                                                             value={trailer.thumbnail || ''}
+                                                                             onChange={(e) => handleUpdateMainTrailer(idx, 'thumbnail', e.target.value)}
+                                                                             className={`${inputClass} !py-1.5 !px-2.5 !text-xs`}
+                                                                             placeholder="https://..."
+                                                                         />
+                                                                         <button
+                                                                             type="button"
+                                                                             onClick={() => openGallery('backdrop', (url) => handleUpdateMainTrailer(idx, 'thumbnail', url))}
+                                                                             className="p-1.5 bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 rounded-lg text-xs"
+                                                                             title="معرض الصور"
+                                                                         >
+                                                                             <PhotoIcon className="w-4 h-4" />
+                                                                         </button>
+                                                                     </div>
+                                                                 </div>
+                                                             </div>
+
+                                                             {/* Title, Duration, and URL Column */}
+                                                             <div className="md:col-span-9 space-y-3">
+                                                                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                                                     <div className="sm:col-span-8">
+                                                                         <label className={labelClass}>عنوان الإعلان / التريلر</label>
+                                                                         <input
+                                                                             type="text"
+                                                                             value={trailer.title || ''}
+                                                                             onChange={(e) => handleUpdateMainTrailer(idx, 'title', e.target.value)}
+                                                                             className={inputClass}
+                                                                             placeholder="مثال: الإعلان الرسمي الأول، العرض التشويقي..."
+                                                                         />
+                                                                     </div>
+                                                                     <div className="sm:col-span-4">
+                                                                         <label className={labelClass}>مدة الإعلان (مثال: 02:15)</label>
+                                                                         <div className="flex items-center gap-1.5">
+                                                                             <input
+                                                                                 type="text"
+                                                                                 value={trailer.duration || ''}
+                                                                                 onChange={(e) => handleUpdateMainTrailer(idx, 'duration', e.target.value)}
+                                                                                 className={`${inputClass} !py-2.5 !text-xs font-mono text-center`}
+                                                                                 placeholder="02:15"
+                                                                             />
+                                                                             <button
+                                                                                 type="button"
+                                                                                 onClick={async () => {
+                                                                                     if (!trailer.url) {
+                                                                                         addToast("يرجى إدخال رابط الفيديو أولاً", "info");
+                                                                                         return;
+                                                                                     }
+                                                                                     addToast("جاري جلب مدة الفيديو...", "info");
+                                                                                     const dur = await fetchVideoDuration(trailer.url);
+                                                                                     if (dur) {
+                                                                                         handleUpdateMainTrailer(idx, 'duration', dur);
+                                                                                         addToast("تم التعرف على المدة: " + (dur || ""), "success");
+                                                                                     } else {
+                                                                                         addToast("تعذر جلب المدة تلقائياً، يمكنك كتابتها يدوياً", "info");
+                                                                                     }
+                                                                                 }}
+                                                                                 className="px-2.5 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all"
+                                                                                 title="جلب مدة الفيديو تلقائياً"
+                                                                             >
+                                                                                 ⏱️ جلب
+                                                                             </button>
+                                                                         </div>
+                                                                     </div>
+                                                                 </div>
+
+                                                                 <div>
+                                                                     <label className={labelClass}>رابط الفيديو / التريلر (YouTube / Direct Video)</label>
+                                                                     <div className="flex items-center gap-2">
+                                                                         <div className="flex-1 relative">
+                                                                             <input
+                                                                                 type="text"
+                                                                                 value={trailer.url || ''}
+                                                                                 onChange={(e) => handleUpdateMainTrailer(idx, 'url', e.target.value)}
+                                                                                 className={inputClass}
+                                                                                 placeholder="https://www.youtube.com/watch?v=... أو رابط مباشر"
+                                                                             />
+                                                                             <button
+                                                                                 type="button"
+                                                                                 onClick={() => setYouTubeSearchState({ isOpen: true, targetId: { type: 'main', index: idx } })}
+                                                                                 className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 text-[10px] font-black hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-1"
+                                                                             >
+                                                                                 <YouTubeIcon className="w-4 h-4" />
+                                                                                 بحث
+                                                                             </button>
+                                                                         </div>
+                                                                         {trailer.url && (
+                                                                             <button
+                                                                                 type="button"
+                                                                                 onClick={() => setPreviewVideoState({ isOpen: true, url: trailer.url, title: trailer.title || 'معاينة الإعلان', poster: displayThumb })}
+                                                                                 className="p-3 bg-red-600 rounded-lg text-white hover:bg-red-500 transition-all flex-shrink-0"
+                                                                                 title="معاينة الإعلان"
+                                                                             >
+                                                                                 <PlayIcon className="w-5 h-5 fill-white" />
+                                                                             </button>
+                                                                         )}
+                                                                     </div>
+                                                                 </div>
+                                                             </div>
+                                                         </div>
+                                                     </div>
+                                                 );
+                                             })}
+
+                                             {normalizeTrailersList(formData.trailers, formData.trailerUrl).length === 0 && (
+                                                 <div className="p-8 text-center border-2 border-dashed border-gray-800 rounded-2xl bg-[#0b0c10]">
+                                                     <YouTubeIcon className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                                                     <p className="text-sm font-bold text-gray-300">لا توجد إعلانات مضافة بعد</p>
+                                                     <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
+                                                         إضافة إعلانات تساعد زوار الموقع والتطبيق على مشاهدة العروض التشويقية قبل متابعة العمل.
+                                                     </p>
+                                                     <div className="flex justify-center gap-3 mt-4">
+                                                         <button
+                                                             type="button"
+                                                             onClick={() => handleAddMainTrailer()}
+                                                             className="px-4 py-2 bg-[var(--color-accent)] text-black font-bold text-xs rounded-xl hover:bg-yellow-400 transition-all"
+                                                         >
+                                                             + إضافة أول إعلان
+                                                         </button>
+                                                         <button
+                                                             type="button"
+                                                             onClick={() => setYouTubeSearchState({ isOpen: true, targetId: { type: 'main' } })}
+                                                             className="px-4 py-2 bg-red-600/10 border border-red-600/30 text-red-400 font-bold text-xs rounded-xl hover:bg-red-600 hover:text-white transition-all"
+                                                         >
+                                                             <YouTubeIcon className="w-4 h-4 inline ml-1" />
+                                                             بحث في يوتيوب
+                                                         </button>
+                                                     </div>
+                                                 </div>
+                                             )}
+                                         </div>
+                                     </div>
+                                 </div>
                                 <div className={`w-full ${sectionBoxClass}`}>
                                     <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">📱 تخصيص الموبايل</h3>
                                     {renderImageInput("صورة الخلفية للموبايل", formData.mobileBackdropUrl, (val) => setFormData(prev => ({...prev, mobileBackdropUrl: val})), 'poster', "https://...", "hidden")}
@@ -5212,12 +6156,90 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                 {renderImageInput("صورة الموبايل (Mobile)", season.mobileImageUrl, (val) => handleUpdateSeason(season.id, 'mobileImageUrl', val), 'poster', "Mobile Image URL")}
                                                                 <div className="space-y-4">
                                                                     <div>
-                                                                        <label className={labelClass}>رابط التريلر (Trailer Link)</label>
-                                                                        <div className="flex gap-2">
-                                                                            <div className="flex-1 relative">
-                                                                                <input value={season.trailerUrl || ''} onChange={(e) => handleUpdateSeason(season.id, 'trailerUrl', e.target.value)} className={inputClass} placeholder="YouTube Trailer URL" />
-                                                                                <button type="button" onClick={() => setYouTubeSearchState({ isOpen: true, targetId: season.id })} className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded-md px-3 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"><YouTubeIcon className="w-4 h-4" /></button>
-                                                                            </div>
+                                                                        <div className="flex items-center justify-between mb-3">
+                                                                            <label className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
+                                                                                <YouTubeIcon className="w-4 h-4 text-red-500"/>
+                                                                                إعلانات وترايلرات هذا الموسم ({normalizeTrailersList(season.trailers, season.trailerUrl, 'إعلان الموسم').length})
+                                                                            </label>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleAddSeasonTrailer(season.id)}
+                                                                                className="text-[11px] font-bold text-[var(--color-accent)] hover:underline flex items-center gap-1"
+                                                                            >
+                                                                                + إضافة إعلان للموسم
+                                                                            </button>
+                                                                        </div>
+
+                                                                        <div className="space-y-3">
+                                                                            {normalizeTrailersList(season.trailers, season.trailerUrl, 'إعلان الموسم').map((sTrailer, sIdx) => (
+                                                                                <div key={sTrailer.id || sIdx} className="p-3 bg-[#121620] border border-gray-800 rounded-xl flex flex-col gap-2">
+                                                                                    <div className="flex flex-col md:flex-row gap-2 items-center">
+                                                                                        <input
+                                                                                            type="text"
+                                                                                            value={sTrailer.title || ''}
+                                                                                            onChange={(e) => handleUpdateSeasonTrailer(season.id, sIdx, 'title', e.target.value)}
+                                                                                            className={`${inputClass} md:w-1/3 !py-1.5 !text-xs`}
+                                                                                            placeholder="عنوان إعلان الموسم"
+                                                                                        />
+                                                                                        <div className="flex-1 relative w-full">
+                                                                                            <input
+                                                                                                type="text"
+                                                                                                value={sTrailer.url || ''}
+                                                                                                onChange={(e) => handleUpdateSeasonTrailer(season.id, sIdx, 'url', e.target.value)}
+                                                                                                className={`${inputClass} !py-1.5 !text-xs`}
+                                                                                                placeholder="YouTube Trailer URL"
+                                                                                            />
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => setYouTubeSearchState({ isOpen: true, targetId: { type: 'season', seasonId: season.id, index: sIdx } })}
+                                                                                                className="absolute left-1 top-1 bottom-1 bg-red-600/10 border border-red-600/30 text-red-500 rounded px-2 text-[10px] hover:bg-red-600 hover:text-white"
+                                                                                            >
+                                                                                                <YouTubeIcon className="w-3.5 h-3.5" />
+                                                                                            </button>
+                                                                                        </div>
+                                                                                        <div className="flex items-center gap-1.5 w-full md:w-auto">
+                                                                                            <input
+                                                                                                type="text"
+                                                                                                value={sTrailer.duration || ''}
+                                                                                                onChange={(e) => handleUpdateSeasonTrailer(season.id, sIdx, 'duration', e.target.value)}
+                                                                                                className={`${inputClass} w-24 !py-1.5 !text-xs font-mono text-center`}
+                                                                                                placeholder="المدة (02:15)"
+                                                                                            />
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={async () => {
+                                                                                                    if (!sTrailer.url) return;
+                                                                                                    addToast("جاري كشف المدة...", "info");
+                                                                                                    const dur = await fetchVideoDuration(sTrailer.url);
+                                                                                                    if (dur) {
+                                                                                                        handleUpdateSeasonTrailer(season.id, sIdx, 'duration', dur);
+                                                                                                        addToast("تم التعرف على المدة", "success");
+                                                                                                    } else {
+                                                                                                        addToast("لم يتم التعرف على المدة تلقائياً", "info");
+                                                                                                    }
+                                                                                                }}
+                                                                                                className="p-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 rounded-lg text-[10px] font-bold whitespace-nowrap"
+                                                                                                title="كشف مدة الفيديو تلقائياً"
+                                                                                            >
+                                                                                                ⏱️
+                                                                                            </button>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => handleDeleteSeasonTrailer(season.id, sIdx)}
+                                                                                                className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg"
+                                                                                                title="حذف الإعلان"
+                                                                                            >
+                                                                                                <TrashIcon className="w-4 h-4" />
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))}
+                                                                            {normalizeTrailersList(season.trailers, season.trailerUrl, 'إعلان الموسم').length === 0 && (
+                                                                                <div className="text-center py-3 text-xs text-gray-500 italic bg-black/20 rounded-xl border border-gray-800/50">
+                                                                                    لا توجد إعلانات مخصصة لهذا الموسم بعد.
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     </div>
                                                                     <div><label className={labelClass}>سنة إنتاج الموسم</label><input type="number" value={season.releaseYear || ''} onChange={e => handleUpdateSeason(season.id, 'releaseYear', parseInt(e.target.value))} className={inputClass} placeholder="مثال: 2024"/></div>
@@ -5873,51 +6895,61 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 </div>
 
                 {showSchedulingUI && (
-                    <div className="px-4 md:px-10 py-6 bg-[#1a2230] border-t border-gray-800 animate-fade-in-up">
-                        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20">
-                                    <CalendarIcon className="w-6 h-6" />
+                    <div className="px-3 sm:px-6 md:px-10 py-3 md:py-5 bg-[#1a2230] border-t border-amber-500/30 animate-fade-in-up shrink-0 max-h-[45vh] overflow-y-auto">
+                        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20 shrink-0">
+                                    <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                                 </div>
                                 <div>
-                                    <h4 className="text-white font-bold">تحديد موعد النشر المجدول (المحتوى بالكامل)</h4>
-                                    <p className="text-xs text-gray-500 mt-1">اختر متى تريد أن يظهر هذا المحتوى للجمهور تلقائياً.</p>
+                                    <h4 className="text-white text-xs sm:text-sm font-bold">تحديد موعد النشر المجدول</h4>
+                                    <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">اختر متى تريد أن يظهر هذا المحتوى للجمهور تلقائياً.</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4 w-full md:w-auto">
-                                <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                                <div className="flex flex-col gap-1 flex-1 sm:flex-initial">
                                     <label className="text-[10px] text-gray-400 uppercase font-bold">تاريخ النشر</label>
                                     <input 
                                         type="datetime-local" 
                                         value={formData.scheduledAt || ''} 
                                         onChange={(e) => setFormData(prev => ({...prev, scheduledAt: e.target.value}))}
-                                        className="bg-[#0f1014] border border-amber-500/30 rounded-xl px-4 py-3 text-white focus:border-amber-500 outline-none w-full md:w-64 shadow-lg text-sm"
+                                        className="bg-[#0f1014] border border-amber-500/30 rounded-xl px-3 py-2 text-white focus:border-amber-500 outline-none w-full sm:w-60 shadow-lg text-xs"
                                     />
                                 </div>
                                 
                                 <button 
+                                    type="button"
                                     onClick={() => {
                                         setFormData(prev => ({...prev, isScheduled: false, scheduledAt: ''}));
                                         setShowSchedulingUI(false);
+                                        addToast("تم إلغاء جدولة النشر للمحتوى", "info");
                                     }}
-                                    className="p-3 mt-4 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
+                                    className="px-3 py-2 sm:p-3 mt-4 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-1.5 shrink-0 text-xs font-bold"
                                     title="إلغاء الجدولة"
                                 >
-                                    <TrashIcon className="w-5 h-5" />
+                                    <TrashIcon className="w-4 h-4" />
+                                    <span>إلغاء الجدولة</span>
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
 
-                <footer className="h-20 border-t border-gray-800 bg-[#0f1014]/95 backdrop-blur-xl flex items-center justify-between px-3 sm:px-10 z-50 sticky bottom-0 w-full shadow-[0_-5px_20px_rgba(0,0,0,0.5)] shrink-0 gap-2">
-                      <button type="button" onClick={onClose} disabled={isSubmitting} className="flex-none px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold text-gray-400 bg-gray-800/50 border border-gray-700 hover:bg-gray-800 hover:text-white transition-all shadow-sm disabled:opacity-50">إلغاء</button>
+                <footer className="min-h-[4.5rem] py-3 border-t border-gray-800 bg-[#0f1014]/95 backdrop-blur-xl flex items-center justify-between px-3 sm:px-10 z-50 shrink-0 gap-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+                      <button 
+                        type="button" 
+                        onClick={onClose} 
+                        disabled={isSubmitting} 
+                        className="px-3 sm:px-8 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold text-gray-400 bg-gray-800/50 border border-gray-700 hover:bg-gray-800 hover:text-white transition-all shadow-sm disabled:opacity-50 shrink-0"
+                      >
+                        إلغاء
+                      </button>
                       
-                      <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                           <button 
                             type="button" 
                             onClick={() => setShowSchedulingUI(!showSchedulingUI)}
-                            className={`flex items-center gap-1.5 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black transition-all transform active:scale-95 shadow-lg
+                            className={`flex items-center gap-1.5 px-3 sm:px-6 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black transition-all transform active:scale-95 shadow-lg
                                 ${showSchedulingUI 
                                     ? 'bg-amber-500 text-black shadow-amber-500/20' 
                                     : 'bg-gray-800 text-amber-500 border border-amber-500/30 hover:bg-amber-500/10'}`}
@@ -5931,11 +6963,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             type="button" 
                             onClick={(e) => handleSubmit(e, showSchedulingUI)} 
                             disabled={isSubmitting} 
-                            className={`flex-none px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-lg shadow-[var(--color-accent)]/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            className={`px-3 sm:px-8 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-[var(--color-primary-from)] to-[var(--color-primary-to)] text-black shadow-lg shadow-[var(--color-accent)]/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
                           >
                             {isSubmitting ? <BouncingDotsLoader size="sm" colorClass="bg-black" delayMs={300} /> : <CheckSmallIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                             <span className="hidden sm:inline">{isSubmitting ? 'جاري الحفظ...' : (showSchedulingUI ? 'حفظ وجدولة' : 'حفظ ونشر المحتوى')}</span>
-                            <span className="inline sm:hidden">{isSubmitting ? 'حفظ...' : (showSchedulingUI ? 'حفظ' : 'حفظ ونشر')}</span>
+                            <span className="inline sm:hidden">{isSubmitting ? 'حفظ' : (showSchedulingUI ? 'حفظ' : 'حفظ ونشر')}</span>
                           </button>
                       </div>
                 </footer>
@@ -6253,8 +7285,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
             {/* EPISODE SCHEDULING MODAL */}
             {episodeSchedulingState.isOpen && (
-                <div className="fixed inset-0 z-[310] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setEpisodeSchedulingState(prev => ({ ...prev, isOpen: false }))}>
-                    <div className="w-full max-w-sm bg-[#0f1014] border border-amber-500/30 rounded-2xl p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                <div className="fixed inset-0 z-[310] flex items-center justify-center bg-black/90 p-3 sm:p-4 backdrop-blur-sm" onClick={() => setEpisodeSchedulingState(prev => ({ ...prev, isOpen: false }))}>
+                    <div className="w-full max-w-sm max-h-[90dvh] overflow-y-auto bg-[#0f1014] border border-amber-500/30 rounded-2xl p-5 sm:p-6 shadow-2xl animate-fade-in-up custom-scrollbar" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-800">
                             <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
                                 <CalendarIcon className="w-5 h-5"/>
@@ -6324,9 +7356,23 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     onSelect={(url) => {
                         const { targetId } = youTubeSearchState;
                         if (targetId === 'main') {
-                            setFormData(prev => ({ ...prev, trailerUrl: url }));
+                            handleAddMainTrailer('إعلان يوتيوب', url);
                         } else if (typeof targetId === 'number') {
-                            handleUpdateSeason(targetId, 'trailerUrl', url);
+                            handleAddSeasonTrailer(targetId, 'إعلان الموسم', url);
+                        } else if (targetId && typeof targetId === 'object') {
+                            if (targetId.type === 'main') {
+                                if (targetId.index !== undefined) {
+                                    handleUpdateMainTrailer(targetId.index, 'url', url);
+                                } else {
+                                    handleAddMainTrailer('إعلان يوتيوب', url);
+                                }
+                            } else if (targetId.type === 'season' && targetId.seasonId) {
+                                if (targetId.index !== undefined) {
+                                    handleUpdateSeasonTrailer(targetId.seasonId, targetId.index, 'url', url);
+                                } else {
+                                    handleAddSeasonTrailer(targetId.seasonId, 'إعلان الموسم', url);
+                                }
+                            }
                         }
                         setYouTubeSearchState({ isOpen: false, targetId: null });
                         addToast("تم تحديث رابط التريلر بنجاح!", "success");

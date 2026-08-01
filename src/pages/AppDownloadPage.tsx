@@ -128,17 +128,29 @@ const AppDownloadPage: React.FC<AppDownloadPageProps> = ({
             <SEO title="تحميل التطبيق الرسمي" description="حمل تطبيق سينماتيكس الرسمي للأندرويد واستمتع بتجربة مشاهدة فائقة السرعة وبجودة عالية لأحدث الأفلام والمسلسلات." />
 
             {/* Top Navigation */}
-            <div className="w-full px-6 md:px-12 py-6 flex items-center justify-between relative z-50">
-                <h1 onClick={() => onSetView('home')} className="text-2xl md:text-3xl font-extrabold cursor-pointer">
-                    <span className="text-white">سينما</span><span className="gradient-text font-['Lalezar'] tracking-wide">تيكس</span>
-                </h1>
+            <div className="w-full px-6 md:px-12 py-6 flex items-center justify-between border-b border-white/10 relative z-50">
+                <div className="flex items-center gap-3 cursor-pointer" onClick={() => onSetView('home')}>
+                    <img src="/logo.png" alt="Cinematix Logo" className="w-9 h-9 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    <h1 className="text-2xl md:text-3xl font-extrabold flex items-center gap-2">
+                        {isNetflixRedTheme ? (
+                            <span className="text-[#E50914] font-['Lalezar'] tracking-wide">CINEMATIX</span>
+                        ) : (
+                            <><span className="text-white">سينما</span><span className="gradient-text font-['Lalezar'] tracking-wide">تيكس</span></>
+                        )}
+                    </h1>
+                    <span className="text-xs md:text-sm font-bold bg-white/10 text-gray-200 px-3 py-1 rounded-full border border-white/10 shadow-sm flex items-center gap-1.5">
+                        <DownloadIcon className="w-4 h-4 text-gray-300" />
+                        <span>تحميل التطبيق</span>
+                    </span>
+                </div>
                 
                 <button 
                     onClick={() => onGoBack(returnView || 'home')}
-                    className="p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+                    className="px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all group flex items-center gap-2 text-sm font-bold text-gray-200"
                     aria-label="رجوع"
                 >
-                    <ChevronRightIcon className="w-6 h-6 transform rotate-180 text-white group-hover:-translate-x-1 transition-transform" />
+                    <span>رجوع</span>
+                    <ChevronRightIcon className="w-5 h-5 transform rotate-180 text-white group-hover:-translate-x-1 transition-transform" />
                 </button>
             </div>
 

@@ -117,6 +117,8 @@ const DashboardTab: React.FC<DashboardTabProps> = ({ stats, allContent, onSelect
         if (category === 'turkish_series') tvBaseUrl += '&with_original_language=tr';
         if (category === 'foreign_movies') moviesBaseUrl += '&with_original_language=en';
         if (category === 'foreign_series') tvBaseUrl += '&with_original_language=en';
+        if (category === 'asian_movies') moviesBaseUrl += '&with_original_language=ko|ja|zh|cn|th';
+        if (category === 'asian_series') tvBaseUrl += '&with_original_language=ko|ja|zh|cn|th';
         if (category === 'animation') {
             moviesBaseUrl += '&with_genres=16';
             tvBaseUrl += '&with_genres=16';
@@ -168,6 +170,8 @@ const DashboardTab: React.FC<DashboardTabProps> = ({ stats, allContent, onSelect
         { id: 'turkish_series', label: 'مسلسلات تركية', icon: '🔥', color: 'from-cyan-600/30 to-cyan-900/40 border-cyan-500/50 text-cyan-300' },
         { id: 'foreign_movies', label: 'أفلام أجنبية', icon: '🎥', color: 'from-indigo-600/30 to-indigo-900/40 border-indigo-500/50 text-indigo-300' },
         { id: 'foreign_series', label: 'مسلسلات أجنبية', icon: '🌍', color: 'from-purple-600/30 to-purple-900/40 border-purple-500/50 text-purple-300' },
+        { id: 'asian_movies', label: 'أفلام آسيوية', icon: '🐲', color: 'from-rose-600/30 to-rose-900/40 border-rose-500/50 text-rose-300' },
+        { id: 'asian_series', label: 'مسلسلات آسيوية', icon: '🎎', color: 'from-fuchsia-600/30 to-fuchsia-900/40 border-fuchsia-500/50 text-fuchsia-300' },
         { id: 'animation', label: 'أنيميشن وكرتون', icon: '🦄', color: 'from-amber-600/30 to-amber-900/40 border-amber-500/50 text-amber-300' },
     ];
 

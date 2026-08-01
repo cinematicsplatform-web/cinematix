@@ -16,8 +16,8 @@ import "firebase/compat/firestore";
 import "firebase/compat/messaging";
 import "firebase/compat/storage";
 
-import type { Ad, SiteSettings, User, PinnedContentState, PinnedItem, PageKey, ContentRequest, HomeSection, Content, Top10State, Story, Notification, BroadcastNotification, Person, ReleaseSchedule, PromotionalBanner, GlobalServer, AutoLinkConfig } from '@/types';
-import { initialSiteSettings, pinnedContentData as initialPinnedData, top10ContentData as initialTop10Data } from './data';
+import type { Ad, SiteSettings, User, Profile, PinnedContentState, PinnedItem, PageKey, ContentRequest, HomeSection, Content, Top10State, Story, Notification, BroadcastNotification, Person, ReleaseSchedule, PromotionalBanner, GlobalServer, AutoLinkConfig } from '@/types';
+import { initialSiteSettings, pinnedContentData as initialPinnedData, top10ContentData as initialTop10Data, defaultAvatar } from './data';
 import { UserRole } from '@/types';
 
 // Check if we are on the client or server to handle env vars correctly
@@ -47,33 +47,22 @@ const firebaseConfig = {
 // 1. Initialize Firebase Modular App
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// 2. Initialize Firestore with a fallback to memory cache to prevent FILE_ERROR_NO_SPACE
+// 2. Initialize Firestore with persistent cache and resilient fallback
 let firestoreInstance;
 try {
   firestoreInstance = initializeFirestore(app, {
-    experimentalForceLongPolling: true
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager(),
+      cacheSizeBytes: 10485760 
+    })
   });
 } catch (getErr) {
   try {
     firestoreInstance = initializeFirestore(app, {
-      // Set a conservative cache size limit (10 MB instead of default 40 MB) 
-      // to prevent hitting IndexDB space limits on user's browser
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-        cacheSizeBytes: 10485760 
-      }),
-      experimentalForceLongPolling: true
+      localCache: memoryLocalCache()
     });
   } catch (e) {
-    console.warn("[Cinematix] Failed to initialize persistent cache, falling back to memory:", e);
-    try {
-      firestoreInstance = initializeFirestore(app, {
-        localCache: memoryLocalCache(),
-        experimentalForceLongPolling: true
-      });
-    } catch (e2) {
-      firestoreInstance = getFirestore(app);
-    }
+    firestoreInstance = getFirestore(app);
   }
 }
 
@@ -86,11 +75,11 @@ export const db = firebase.firestore();
 export const storage = firebase.app().storage();
 export const auth = firebase.app().auth();
 
-// Set explicit persistence to ensure it works across environments if possible
-try {
-  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-} catch (e) {
-  console.warn("[Cinematix] Auth persistence could not be set:", e);
+// Set explicit persistence to ensure user sessions survive browser restarts and idle periods
+if (typeof window !== 'undefined') {
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch((e) => {
+    console.warn("[Cinematix] Auth persistence error:", e);
+  });
 }
 
 // Google Auth Provider for Social Login
@@ -100,14 +89,27 @@ export const googleProvider = new firebase.auth.GoogleAuthProvider();
 try {
   db.settings({
     ignoreUndefinedProperties: true,
-    merge: true,
-    experimentalForceLongPolling: true
+    merge: true
   });
 } catch (e: any) {
   if (!e.message.includes('already been initialized')) {
     console.warn("[Cinematix] Firestore settings error:", e.message);
   }
 }
+
+/**
+ * Timeout Wrapper: Guarantees Firestore operations resolve/reject within threshold
+ * to prevent tab resume locks and infinite loading on mobile devices.
+ */
+export const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 8000, fallback: T): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => {
+      console.warn(`[Cinematix] Firestore operation timed out after ${timeoutMs}ms. Using fallback.`);
+      resolve(fallback);
+    }, timeoutMs))
+  ]);
+};
 
 export const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
 export const Timestamp = firebase.firestore.Timestamp;
@@ -164,9 +166,10 @@ const handleFirestoreError = (error: any, context: string, fallback: any) => {
 
 export const getPromotionalBanners = async (): Promise<PromotionalBanner[]> => {
     try {
-        const querySnapshot = await db.collection('promotionalBanners').get();
+        const querySnapshot = await withTimeout(db.collection('promotionalBanners').get(), 7000, null as any);
+        if (!querySnapshot) return [];
         const banners: PromotionalBanner[] = [];
-        querySnapshot.forEach((doc) => {
+        querySnapshot.forEach((doc: any) => {
             const data = doc.data();
             if (data.isActive) {
                 banners.push({ id: doc.id, ...data } as PromotionalBanner);
@@ -179,33 +182,95 @@ export const getPromotionalBanners = async (): Promise<PromotionalBanner[]> => {
     }
 };
 
-export const getSiteSettings = async (): Promise<SiteSettings> => {
+export const getCachedSiteSettings = (): SiteSettings => {
     try {
-        const docSnap = await db.collection("settings").doc("site").get();
-        if (docSnap.exists) {
+        if (typeof localStorage !== 'undefined') {
+            const cachedStr = localStorage.getItem('cinematix_cached_site_settings');
+            if (cachedStr) {
+                const cached = JSON.parse(cachedStr);
+                const savedTheme = localStorage.getItem('cinematix_active_theme');
+                if (savedTheme) cached.activeTheme = savedTheme;
+                return {
+                    ...initialSiteSettings,
+                    ...cached,
+                    shoutBar: { ...initialSiteSettings.shoutBar, ...(cached.shoutBar || {}) },
+                    socialLinks: { ...initialSiteSettings.socialLinks, ...(cached.socialLinks || {}) }
+                };
+            }
+            const savedTheme = localStorage.getItem('cinematix_active_theme');
+            if (savedTheme) {
+                return { ...initialSiteSettings, activeTheme: savedTheme as any };
+            }
+        }
+    } catch (e) {}
+    return initialSiteSettings;
+};
+
+export const getSiteSettings = async (): Promise<SiteSettings> => {
+    const cached = getCachedSiteSettings();
+    try {
+        const docSnap = await withTimeout(db.collection("settings").doc("site").get(), 7000, null as any);
+        if (docSnap && docSnap.exists) {
             const data = docSnap.data() as Partial<SiteSettings>;
-            return {
-                ...initialSiteSettings,
-                ...data,
-                shoutBar: { ...initialSiteSettings.shoutBar, ...(data.shoutBar || {}) },
-                socialLinks: { ...initialSiteSettings.socialLinks, ...(data.socialLinks || {}) }
+            
+            const effectiveTheme = data.activeTheme 
+                ? data.activeTheme 
+                : (cached.activeTheme || 'default');
+
+            const mergedShoutBar = {
+                ...initialSiteSettings.shoutBar,
+                ...(cached.shoutBar || {}),
+                ...(data.shoutBar || {})
             };
+
+            const mergedSocialLinks = {
+                ...initialSiteSettings.socialLinks,
+                ...(cached.socialLinks || {}),
+                ...(data.socialLinks || {})
+            };
+
+            const result: SiteSettings = {
+                ...initialSiteSettings,
+                ...cached,
+                ...data,
+                activeTheme: effectiveTheme as any,
+                shoutBar: mergedShoutBar,
+                socialLinks: mergedSocialLinks
+            };
+
+            if (typeof localStorage !== 'undefined') {
+                try {
+                    localStorage.setItem('cinematix_cached_site_settings', JSON.stringify(result));
+                    localStorage.setItem('cinematix_active_theme', result.activeTheme);
+                } catch (e) {}
+            }
+
+            return result;
         } else {
-            return initialSiteSettings;
+            return cached;
         }
     } catch (error) {
-        return handleFirestoreError(error, 'site settings', initialSiteSettings);
+        console.warn("[Cinematix] Error fetching site settings from Firestore, using cached settings.", error);
+        return cached;
     }
 };
 
 export const updateSiteSettings = async (settings: SiteSettings): Promise<void> => {
+    if (typeof localStorage !== 'undefined') {
+        try {
+            localStorage.setItem('cinematix_cached_site_settings', JSON.stringify(settings));
+            if (settings.activeTheme) {
+                localStorage.setItem('cinematix_active_theme', settings.activeTheme);
+            }
+        } catch (e) {}
+    }
     await db.collection("settings").doc("site").set(settings, { merge: true });
 };
 
 export const getPinnedContent = async (): Promise<PinnedContentState> => {
     try {
-        const docSnap = await db.collection("settings").doc("pinned").get();
-        if (docSnap.exists) {
+        const docSnap = await withTimeout(db.collection("settings").doc("pinned").get(), 7000, null as any);
+        if (docSnap && docSnap.exists) {
             return { ...initialPinnedData, ...docSnap.data() };
         }
         return initialPinnedData;
@@ -222,8 +287,8 @@ export const updatePinnedContentForPage = async (pageKey: PageKey, items: Pinned
 
 export const getTop10Content = async (): Promise<Top10State> => {
     try {
-        const docSnap = await db.collection("settings").doc("top10").get();
-        if (docSnap.exists) {
+        const docSnap = await withTimeout(db.collection("settings").doc("top10").get(), 7000, null as any);
+        if (docSnap && docSnap.exists) {
             return { ...initialTop10Data, ...docSnap.data() };
         }
         return initialTop10Data;
@@ -240,8 +305,9 @@ export const updateTop10ContentForPage = async (pageKey: PageKey, items: PinnedI
 
 export const getAds = async (): Promise<Ad[]> => {
     try {
-        const querySnapshot = await db.collection("ads").orderBy("updatedAt", "desc").get();
-        return querySnapshot.docs.map(d => {
+        const querySnapshot = await withTimeout(db.collection("ads").orderBy("updatedAt", "desc").get(), 7000, null as any);
+        if (!querySnapshot) return [];
+        return querySnapshot.docs.map((d: any) => {
             const data = d.data();
             return {
                 ...data,
@@ -369,9 +435,10 @@ export const isItemVisible = (item: { isScheduled?: boolean; scheduledAt?: any }
 
 export const getAllContent = async (isAdmin: boolean = false): Promise<Content[]> => {
     try {
-        const snapshot = await db.collection('content').get();
+        const snapshot = await withTimeout(db.collection('content').get(), 8000, null as any);
+        if (!snapshot) return [];
         
-        let contents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Content));
+        let contents = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Content));
         
         try {
             const serversList = await getServers();
@@ -410,6 +477,163 @@ export const getAllContent = async (isAdmin: boolean = false): Promise<Content[]
     }
 };
 
+export const subscribeToContent = (
+    callback: (contents: Content[]) => void,
+    isAdmin: boolean = false
+): (() => void) => {
+    let serversList: GlobalServer[] = [];
+    getServers().then(srvs => { serversList = srvs; }).catch(() => {});
+
+    return db.collection('content').onSnapshot(
+        async (snapshot) => {
+            if (!snapshot) return;
+            let contents = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Content));
+            
+            if (serversList.length === 0) {
+                try {
+                    serversList = await getServers();
+                } catch (e) {}
+            }
+            if (serversList.length > 0) {
+                contents = resolveContentDynamicUrls(contents, serversList);
+            }
+            
+            if (!isAdmin) {
+                contents = contents.filter(c => isItemVisible(c));
+                contents = contents.map(c => {
+                    if (c.seasons && c.seasons.length > 0) {
+                        const filteredSeasons = c.seasons.map(s => {
+                            if (s.episodes && s.episodes.length > 0) {
+                                return {
+                                    ...s,
+                                    episodes: s.episodes.filter(ep => isItemVisible(ep))
+                                };
+                            }
+                            return s;
+                        });
+                        return { ...c, seasons: filteredSeasons };
+                    }
+                    return c;
+                });
+            }
+
+            callback(contents);
+        },
+        (error) => {
+            console.error('[Cinematix] Realtime content subscription error:', error);
+        }
+    );
+};
+
+export const subscribeToPinnedContent = (
+    callback: (pinned: PinnedContentState) => void
+): (() => void) => {
+    return db.collection("settings").doc("pinned").onSnapshot(
+        (docSnap) => {
+            if (docSnap && docSnap.exists) {
+                callback({ ...initialPinnedData, ...docSnap.data() });
+            } else {
+                callback(initialPinnedData);
+            }
+        },
+        (err) => {
+            console.error("[Cinematix] Realtime pinned subscription error:", err);
+        }
+    );
+};
+
+export const subscribeToTop10Content = (
+    callback: (top10: Top10State) => void
+): (() => void) => {
+    return db.collection("settings").doc("top10").onSnapshot(
+        (docSnap) => {
+            if (docSnap && docSnap.exists) {
+                callback({ ...initialTop10Data, ...docSnap.data() });
+            } else {
+                callback(initialTop10Data);
+            }
+        },
+        (err) => {
+            console.error("[Cinematix] Realtime top10 subscription error:", err);
+        }
+    );
+};
+
+export const subscribeToStories = (
+    callback: (stories: Story[]) => void,
+    onlyActive: boolean = true
+): (() => void) => {
+    return db.collection("stories").onSnapshot(
+        (snapshot) => {
+            if (!snapshot) return;
+            let stories = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...(data as Omit<Story, 'id' | 'createdAt'>),
+                    createdAt: safeGetTimestamp(data.createdAt)
+                } as Story;
+            });
+            stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            if (onlyActive) {
+                stories = stories.filter(s => s.isActive);
+            }
+            callback(stories);
+        },
+        (err) => {
+            console.error("[Cinematix] Realtime stories subscription error:", err);
+        }
+    );
+};
+
+export const subscribeToAds = (
+    callback: (ads: Ad[]) => void
+): (() => void) => {
+    return db.collection("ads").onSnapshot(
+        (snapshot) => {
+            if (!snapshot) return;
+            const adsList = snapshot.docs.map((d: any) => {
+                const data = d.data();
+                return {
+                    ...data,
+                    id: d.id,
+                    placement: data.placement || data.position || 'home-top',
+                    type: data.type || 'code',
+                    status: data.status || (data.isActive === false ? 'disabled' : 'active'),
+                    isActive: data.status === 'active' || data.isActive === true,
+                    timerDuration: data.timerDuration || 0,
+                    updatedAt: safeGetTimestamp(data.updatedAt),
+                };
+            }) as Ad[];
+            callback(adsList);
+        },
+        (err) => {
+            console.error("[Cinematix] Realtime ads subscription error:", err);
+        }
+    );
+};
+
+export const subscribeToPromotionalBanners = (
+    callback: (banners: PromotionalBanner[]) => void
+): (() => void) => {
+    return db.collection("promotionalBanners").onSnapshot(
+        (snapshot) => {
+            if (!snapshot) return;
+            const banners: PromotionalBanner[] = [];
+            snapshot.forEach((doc: any) => {
+                const data = doc.data();
+                if (data.isActive) {
+                    banners.push({ id: doc.id, ...data } as PromotionalBanner);
+                }
+            });
+            callback(banners);
+        },
+        (err) => {
+            console.error("[Cinematix] Realtime banners subscription error:", err);
+        }
+    );
+};
+
 export const incrementContentViewCount = async (contentId: string): Promise<void> => {
     if (!contentId) return;
     try {
@@ -435,9 +659,26 @@ export const getUsers = async (): Promise<User[]> => {
 
 export const getUserProfile = async (uid: string): Promise<Omit<User, 'password'> | null> => {
     try {
-        const docSnap = await db.collection("users").doc(uid).get();
-        if (docSnap.exists) {
-            return { ...(docSnap.data() as Omit<User, 'id'>), id: docSnap.id };
+        const docSnap = await withTimeout(db.collection("users").doc(uid).get(), 6000, null as any);
+        if (docSnap && docSnap.exists) {
+            const data = docSnap.data() as Omit<User, 'id'>;
+            let profiles = data.profiles || [];
+            
+            // Auto-heal profiles array if missing or empty to guarantee profile is never lost
+            if (!Array.isArray(profiles) || profiles.length === 0) {
+                const defaultProf: Profile = {
+                    id: Date.now(),
+                    name: data.firstName || 'المستخدم',
+                    avatar: defaultAvatar,
+                    isKid: false,
+                    watchHistory: [],
+                    myList: []
+                };
+                profiles = [defaultProf];
+                db.collection("users").doc(uid).set({ profiles }, { merge: true }).catch((err) => console.warn(err));
+            }
+
+            return { ...data, profiles, id: docSnap.id };
         }
         return null;
     } catch (e) {
@@ -621,39 +862,6 @@ export const updateReportStatus = async (reportId: string, status: 'pending' | '
 
 export const deleteReport = async (reportId: string): Promise<void> => {
     await db.collection('reports').doc(reportId).delete();
-};
-
-export const getHomeSections = async (): Promise<HomeSection[]> => {
-    try {
-        const snapshot = await db.collection('home_sections').orderBy('positionIndex', 'asc').get();
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        })) as HomeSection[];
-    } catch (e) {
-        return handleFirestoreError(e, 'home sections', []);
-    }
-};
-
-export const saveHomeSection = async (section: HomeSection): Promise<void> => {
-    const { id, ...data } = section;
-    const dataToSave = {
-        ...data,
-        updatedAt: serverTimestamp()
-    };
-
-    if (id) {
-        await db.collection('home_sections').doc(id).update(dataToSave);
-    } else {
-        await db.collection('home_sections').add({
-            ...dataToSave,
-            createdAt: serverTimestamp()
-        });
-    }
-};
-
-export const deleteHomeSection = async (sectionId: string): Promise<void> => {
-    await db.collection('home_sections').doc(sectionId).delete();
 };
 
 export const getPeople = async (): Promise<Person[]> => {
@@ -1153,3 +1361,46 @@ export const runDatabaseNormalizationMigration = async (serverId: string): Promi
 export const resolveSingleContentDynamicUrls = (content: Content, servers: GlobalServer[]): Content => {
     return resolveContentDynamicUrls([content], servers)[0];
 };
+
+// --- CUSTOM CAROUSELS / HOME SECTIONS MANAGEMENT ---
+
+export const getHomeSections = async (): Promise<HomeSection[]> => {
+    try {
+        const snapshot = await db.collection('home_sections').get();
+        const sections = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as HomeSection));
+        return sections.sort((a, b) => (a.positionIndex || 0) - (b.positionIndex || 0));
+    } catch (error) {
+        console.error("Error fetching home sections:", error);
+        return [];
+    }
+};
+
+export const saveHomeSection = async (section: Partial<HomeSection>): Promise<string> => {
+    const { id, ...data } = section;
+    const now = new Date().toISOString();
+    
+    if (id) {
+        await db.collection('home_sections').doc(id).set({
+            ...data,
+            updatedAt: now
+        }, { merge: true });
+        return id;
+    } else {
+        const docRef = await db.collection('home_sections').add({
+            ...data,
+            isVisible: section.isVisible !== false,
+            positionIndex: section.positionIndex || 0,
+            createdAt: now,
+            updatedAt: now
+        });
+        return docRef.id;
+    }
+};
+
+export const deleteHomeSection = async (id: string): Promise<void> => {
+    await db.collection('home_sections').doc(id).delete();
+};
+

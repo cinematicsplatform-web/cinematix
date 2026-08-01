@@ -13,10 +13,12 @@ export const categories = [
   'مسلسلات عربية',
   'مسلسلات تركية',
   'مسلسلات اجنبية',
+  'مسلسلات آسيوية',
   'افلام عربية',
   'افلام تركية',
   'افلام اجنبية',
   'افلام هندية',
+  'أفلام آسيوية',
   'أفلام أنيميشن',
   'مسلسلات أنيميشن',
   'برامج تلفزيونية',
@@ -70,6 +72,14 @@ export interface Episode {
   notificationSent?: boolean;
 }
 
+export interface TrailerItem {
+  id?: string;
+  title: string;
+  url: string;
+  thumbnail?: string;
+  duration?: string;
+}
+
 export interface Season {
   id: number;
   seasonNumber: number;
@@ -80,6 +90,7 @@ export interface Season {
   horizontalPoster?: string; 
   logoUrl?: string; 
   trailerUrl?: string; 
+  trailers?: TrailerItem[];
   releaseYear?: number; 
   description?: string; 
   cast?: string[]; 
@@ -132,12 +143,14 @@ export interface Content {
   logoUrl?: string; 
   isLogoEnabled?: boolean; 
   trailerUrl?: string; 
+  trailers?: TrailerItem[];
   duration?: string; 
   enableMobileCrop?: boolean; 
   mobileCropPosition?: number; 
   mobileCropPositionX?: number; 
   mobileCropPositionY?: number; 
   slug?: string; 
+  alternativeTitles?: string[];
   isUpcoming?: boolean; 
   flipBackdrop?: boolean; 
   views?: number;
@@ -444,6 +457,7 @@ export interface AppConfig {
   heroImage?: string;
   screenshots: string[];
   reviews: AppReview[];
+  enableDynamicColors?: boolean;
 }
 
 export interface PromotionalBannerItem {
@@ -474,6 +488,9 @@ export interface StartupAd {
   name: string;
   imageUrlPc: string;
   imageUrlMobile: string;
+  badgeText?: string;
+  customText?: string;
+  buttonText?: string;
   linkType: 'content' | 'external' | 'none';
   targetContentId?: string;
   externalUrl?: string;
@@ -504,6 +521,7 @@ export interface SiteSettings {
     showTop10Kids: boolean;
     showTop10Articles: boolean;
     showTop10Users: boolean;
+    top10NumberStyle?: 'netflix' | 'neon' | 'gold3d' | 'modern';
     serviceAccountJson?: string; 
     apkUrl?: string;
     appConfig?: AppConfig;
@@ -564,9 +582,9 @@ export interface CategorySection {
   items: MediaItem[];
 }
 
-export type SectionDisplayType = 'vertical_poster' | 'horizontal_card' | 'hybrid';
+export type SectionDisplayType = 'vertical_poster' | 'horizontal_card' | 'hybrid' | 'shahid_featured' | 'top10_ranking' | 'hero_showcase';
 export type SectionContentType = 'automatic' | 'manual';
-export type SectionSourceType = 'latest' | 'top_rated' | 'most_viewed' | 'by_genre';
+export type SectionSourceType = 'latest' | 'top_rated' | 'most_viewed' | 'by_genre' | 'by_category';
 export type SectionPageLocation = 'home' | 'movies' | 'series' | 'kids' | 'ramadan' | 'soon';
 
 export interface HomeSection {
@@ -581,8 +599,11 @@ export interface HomeSection {
   itemLimit?: number;
   selectedContentIds?: string[]; 
   filterGenre?: string[]; 
+  filterCategory?: string[];
   filterType?: string; 
   showRanking?: boolean;
+  targetCarouselId?: string;
+  isNew?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

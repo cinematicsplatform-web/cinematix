@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, Suspense } from 'react';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
-import { db, auth, googleProvider, getUserProfile, updateUserProfileInFirestore, createUserProfileInFirestore, deleteUserFromFirestore, getSiteSettings, getAds, getUsers, updateSiteSettings as updateSiteSettingsInDb, addAd, updateAd, deleteAd, getPinnedContent, updatePinnedContentForPage, getTop10Content, updateTop10ContentForPage, requestNotificationPermission, getAllContent, getStories, getUserNotifications, getPeople, getPromotionalBanners } from './firebase'; 
-import type { Content, User, Profile, Ad, PinnedItem, SiteSettings, View, PinnedContentState, Top10State, PageKey, Story, Notification, Person, LoginError, StartupAd, PromotionalBanner } from './types';
+import { db, auth, googleProvider, getUserProfile, updateUserProfileInFirestore, createUserProfileInFirestore, deleteUserFromFirestore, getSiteSettings, getCachedSiteSettings, getAds, getUsers, updateSiteSettings as updateSiteSettingsInDb, addAd, updateAd, deleteAd, getPinnedContent, updatePinnedContentForPage, getTop10Content, updateTop10ContentForPage, requestNotificationPermission, getAllContent, getStories, getUserNotifications, getPeople, getPromotionalBanners, getHomeSections, subscribeToContent, subscribeToPinnedContent, subscribeToTop10Content, subscribeToStories, subscribeToAds, subscribeToPromotionalBanners } from './firebase'; 
+import type { Content, User, Profile, Ad, PinnedItem, SiteSettings, View, PinnedContentState, Top10State, PageKey, Story, Notification, Person, LoginError, StartupAd, PromotionalBanner, HomeSection } from './types';
 import { UserRole, triggerSelectors, ContentType } from './types';
 import { initialSiteSettings, defaultAvatar, pinnedContentData as initialPinned, top10ContentData as initialTop10, femaleAvatars } from './data';
 
@@ -15,41 +15,58 @@ import AdPlacement from './components/ads/AdPlacement';
 import AdZone from './components/ads/AdZone'; 
 import RequestContentModal from './components/shared/RequestContentModal';
 import { BouncingDotsLoader } from './components/shared/BouncingDotsLoader';
+import ErrorBoundary from './components/shared/ErrorBoundary';
 
 import StartupAdModal from './components/ads/StartupAdModal';
 
-const DetailPage = React.lazy(() => import('./components/detail/DetailPage'));
-const LoginModal = React.lazy(() => import('./components/auth/LoginModal'));
-const AdminPanel = React.lazy(() => import('./components/admin/AdminPanel'));
-const CreateAccountPage = React.lazy(() => import('./components/auth/CreateAccountPage'));
-const OnboardingPage = React.lazy(() => import('./components/auth/OnboardingPage'));
-const MoviesPage = React.lazy(() => import('./components/pages/MoviesPage'));
-const SeriesPage = React.lazy(() => import('./components/pages/SeriesPage'));
-const ProgramsPage = React.lazy(() => import('./components/pages/ProgramsPage')); 
-const ProfileSelector = React.lazy(() => import('./components/auth/ProfileSelector'));
-const AccountSettingsPage = React.lazy(() => import('./components/pages/AccountSettingsPage'));
-const KidsPage = React.lazy(() => import('./components/pages/KidsPage'));
-const RamadanPage = React.lazy(() => import('./components/pages/RamadanPage'));
-const SoonPage = React.lazy(() => import('./components/pages/SoonPage'));
-const PrivacyPolicyPage = React.lazy(() => import('./components/pages/PrivacyPolicyPage'));
-const CopyrightPage = React.lazy(() => import('./components/pages/CopyrightPage'));
-const AboutPage = React.lazy(() => import('./components/pages/AboutPage'));
-const MyListPage = React.lazy(() => import('./components/pages/MyListPage'));
-const HomePage = React.lazy(() => import('./components/home/HomePage'));
-const CategoryPage = React.lazy(() => import('./components/pages/CategoryPage')); 
-const ProfileHubPage = React.lazy(() => import('./components/auth/ProfileHubPage'));
-const MaintenancePage = React.lazy(() => import('./components/pages/MaintenancePage'));
-const EpisodeWatchPage = React.lazy(() => import('./components/detail/EpisodeWatchPage'));
-const SearchPage = React.lazy(() => import('./components/pages/SearchPage'));
-const WelcomePage = React.lazy(() => import('./components/auth/WelcomePage'));
-const NotificationsPage = React.lazy(() => import('./components/pages/NotificationsPage'));
-const AppPage = React.lazy(() => import('./pages/AppPage'));
-const PeoplePage = React.lazy(() => import('./pages/PeoplePage'));
-const PersonProfilePage = React.lazy(() => import('./pages/PersonProfilePage'));
-const DownloadPage = React.lazy(() => import('./pages/DownloadPage'));
-const AdGatePage = React.lazy(() => import('./components/ads/AdGatePage'));
-const ContentRequestPage = React.lazy(() => import('./pages/ContentRequestPage'));
-const ShortcutsPage = React.lazy(() => import('./components/pages/ShortcutsPage'));
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  componentImport: () => Promise<{ default: T }>
+) {
+  return React.lazy(() =>
+    componentImport().catch((error) => {
+      const pageHasBeenRefreshed = sessionStorage.getItem('lazy-refresh-attempted');
+      if (!pageHasBeenRefreshed) {
+        sessionStorage.setItem('lazy-refresh-attempted', 'true');
+        window.location.reload();
+        return new Promise<{ default: T }>(() => {});
+      }
+      throw error;
+    })
+  );
+}
+
+const DetailPage = lazyWithRetry(() => import('./components/detail/DetailPage'));
+const LoginModal = lazyWithRetry(() => import('./components/auth/LoginModal'));
+const AdminPanel = lazyWithRetry(() => import('./components/admin/AdminPanel'));
+const CreateAccountPage = lazyWithRetry(() => import('./components/auth/CreateAccountPage'));
+const OnboardingPage = lazyWithRetry(() => import('./components/auth/OnboardingPage'));
+const MoviesPage = lazyWithRetry(() => import('./components/pages/MoviesPage'));
+const SeriesPage = lazyWithRetry(() => import('./components/pages/SeriesPage'));
+const ProgramsPage = lazyWithRetry(() => import('./components/pages/ProgramsPage')); 
+const ProfileSelector = lazyWithRetry(() => import('./components/auth/ProfileSelector'));
+const AccountSettingsPage = lazyWithRetry(() => import('./components/pages/AccountSettingsPage'));
+const KidsPage = lazyWithRetry(() => import('./components/pages/KidsPage'));
+const RamadanPage = lazyWithRetry(() => import('./components/pages/RamadanPage'));
+const SoonPage = lazyWithRetry(() => import('./components/pages/SoonPage'));
+const PrivacyPolicyPage = lazyWithRetry(() => import('./components/pages/PrivacyPolicyPage'));
+const CopyrightPage = lazyWithRetry(() => import('./components/pages/CopyrightPage'));
+const AboutPage = lazyWithRetry(() => import('./components/pages/AboutPage'));
+const MyListPage = lazyWithRetry(() => import('./components/pages/MyListPage'));
+const HomePage = lazyWithRetry(() => import('./components/home/HomePage'));
+const CategoryPage = lazyWithRetry(() => import('./components/pages/CategoryPage')); 
+const ProfileHubPage = lazyWithRetry(() => import('./components/auth/ProfileHubPage'));
+const MaintenancePage = lazyWithRetry(() => import('./components/pages/MaintenancePage'));
+const EpisodeWatchPage = lazyWithRetry(() => import('./components/detail/EpisodeWatchPage'));
+const SearchPage = lazyWithRetry(() => import('./components/pages/SearchPage'));
+const WelcomePage = lazyWithRetry(() => import('./components/auth/WelcomePage'));
+const NotificationsPage = lazyWithRetry(() => import('./components/pages/NotificationsPage'));
+const AppPage = lazyWithRetry(() => import('./pages/AppPage'));
+const PeoplePage = lazyWithRetry(() => import('./pages/PeoplePage'));
+const PersonProfilePage = lazyWithRetry(() => import('./pages/PersonProfilePage'));
+const DownloadPage = lazyWithRetry(() => import('./pages/DownloadPage'));
+const AdGatePage = lazyWithRetry(() => import('./components/ads/AdGatePage'));
+const ContentRequestPage = lazyWithRetry(() => import('./pages/ContentRequestPage'));
+const ShortcutsPage = lazyWithRetry(() => import('./components/pages/ShortcutsPage'));
 
 const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} {...props}>
@@ -218,8 +235,29 @@ const App: React.FC = () => {
       return '';
   });
 
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+      try {
+          const cached = localStorage.getItem('cinematix_cached_user');
+          return cached ? JSON.parse(cached) : null;
+      } catch (e) {
+          return null;
+      }
+  });
+
+  const [activeProfile, setActiveProfile] = useState<Profile | null>(() => {
+      try {
+          const cachedUserStr = localStorage.getItem('cinematix_cached_user');
+          if (cachedUserStr) {
+              const u = JSON.parse(cachedUserStr);
+              const savedProfileId = localStorage.getItem('cinematix_active_profile');
+              if (u && Array.isArray(u.profiles) && u.profiles.length > 0) {
+                  const match = u.profiles.find((p: Profile) => String(p.id) === String(savedProfileId));
+                  return match || u.profiles[0];
+              }
+          }
+      } catch (e) {}
+      return null;
+  });
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [selectedPersonName, setSelectedPersonName] = useState<string>(() => {
       const path = decodeURIComponent(window.location.pathname);
@@ -229,7 +267,7 @@ const App: React.FC = () => {
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const [watchParams, setWatchParams] = useState<{ season: number, episode: number } | null>(null);
+  const [watchParams, setWatchParams] = useState<{ season: number, episode: number, seasonNumber?: number, episodeNumber?: number } | null>(null);
   const [detailParams, setDetailParams] = useState<{ seasonNumber: number } | null>(null);
   const [downloadParams, setDownloadParams] = useState<{ season?: number, episode?: number } | null>(null);
   
@@ -237,25 +275,81 @@ const App: React.FC = () => {
 
   const [authPrefillEmail, setAuthPrefillEmail] = useState('');
 
-  const [allContent, setAllContent] = useState<Content[]>([]);
+  const [allContent, setAllContent] = useState<Content[]>(() => {
+      try {
+          const cached = localStorage.getItem('cinematix_cached_content');
+          return cached ? JSON.parse(cached) : [];
+      } catch (e) {
+          return [];
+      }
+  });
   const [people, setPeople] = useState<Person[]>([]);
   const [pinnedItems, setPinnedItems] = useState<PinnedContentState>(initialPinned);
   const [top10Items, setTop10Items] = useState<Top10State>(initialTop10);
   const [allStories, setAllStories] = useState<Story[]>([]);
   const [promoBanners, setPromoBanners] = useState<PromotionalBanner[]>([]);
+  const [homeSections, setHomeSections] = useState<HomeSection[]>([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   
   const [isTv, setIsTv] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
-      let settings = initialSiteSettings;
-      try {
-          const savedTheme = localStorage.getItem('cinematix_active_theme');
-          if (savedTheme) settings = { ...settings, activeTheme: savedTheme as any };
-      } catch (e) {}
-      return settings;
-  });
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => getCachedSiteSettings());
+
+  // Real-time listener for site settings to keep theme and shoutBar instantly updated across tabs and sessions
+  useEffect(() => {
+      const unsubscribe = db.collection("settings").doc("site").onSnapshot((docSnap) => {
+          if (docSnap.exists) {
+              const data = docSnap.data() as Partial<SiteSettings>;
+              setSiteSettings(prev => {
+                  const updatedTheme = data.activeTheme ? data.activeTheme : prev.activeTheme;
+                  const updatedShoutBar = {
+                      ...initialSiteSettings.shoutBar,
+                      ...(prev.shoutBar || {}),
+                      ...(data.shoutBar || {})
+                  };
+                  const updatedSocial = {
+                      ...initialSiteSettings.socialLinks,
+                      ...(prev.socialLinks || {}),
+                      ...(data.socialLinks || {})
+                  };
+                  const updated: SiteSettings = {
+                      ...initialSiteSettings,
+                      ...prev,
+                      ...data,
+                      activeTheme: updatedTheme as any,
+                      shoutBar: updatedShoutBar,
+                      socialLinks: updatedSocial
+                  };
+                  try {
+                      localStorage.setItem('cinematix_cached_site_settings', JSON.stringify(updated));
+                      if (updatedTheme) {
+                          localStorage.setItem('cinematix_active_theme', updatedTheme);
+                      }
+                  } catch (e) {}
+                  return updated;
+              });
+          }
+      }, (err) => {
+          console.warn("[Cinematix] Settings realtime listener error:", err);
+      });
+      return () => unsubscribe();
+  }, []);
+
+  // Real-time listener for home_sections to reflect custom carousels immediately
+  useEffect(() => {
+      const unsubscribe = db.collection("home_sections").onSnapshot((snapshot) => {
+          const sections = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+          } as HomeSection));
+          sections.sort((a, b) => (a.positionIndex || 0) - (b.positionIndex || 0));
+          setHomeSections(sections);
+      }, (err) => {
+          console.warn("[Cinematix] home_sections listener error:", err);
+      });
+      return () => unsubscribe();
+  }, []);
 
   const [ads, setAds] = useState<Ad[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -287,7 +381,27 @@ const App: React.FC = () => {
               seenAds = JSON.parse(seenAdsStr);
           } catch (e) {}
 
-          const activeUnseenAds = siteSettings.startupAds.filter(ad => ad.isActive && !seenAds.includes(ad.id));
+          const userAgent = navigator.userAgent || '';
+          const isMobileDevice = /android|iPad|iPhone|iPod/i.test(userAgent) || window.innerWidth < 768;
+
+          const activeUnseenAds = siteSettings.startupAds.filter(ad => {
+              if (!ad.isActive || seenAds.includes(ad.id)) return false;
+
+              const hasPc = !!(ad.imageUrlPc && ad.imageUrlPc.trim());
+              const hasMobile = !!(ad.imageUrlMobile && ad.imageUrlMobile.trim());
+
+              // If mobile image is present and PC image is missing -> show ONLY on mobile app / mobile devices
+              if (hasMobile && !hasPc && !isMobileDevice) {
+                  return false;
+              }
+
+              // If PC image is present and mobile image is missing -> show ONLY on PC / desktop
+              if (hasPc && !hasMobile && isMobileDevice) {
+                  return false;
+              }
+
+              return true;
+          });
           
           if (activeUnseenAds.length > 0 && activeStartupAds.length === 0) {
               const timer = setTimeout(() => {
@@ -533,68 +647,127 @@ const App: React.FC = () => {
           root.classList.remove('allow-selection');
       }
 
-      if (view === 'admin') return;
-      
-      let active = siteSettings.activeTheme;
+      let active = siteSettings.activeTheme || 'default';
 
-      if (active !== 'default') {
+      if (active !== 'default' && view !== 'admin') {
           root.classList.add(`theme-${active}`);
       }
       
-      localStorage.setItem('cinematix_active_theme', active);
+      if (active) {
+          try {
+              localStorage.setItem('cinematix_active_theme', active);
+          } catch (e) {}
+      }
   }, [siteSettings.activeTheme, view]); 
 
-  const fetchData = useCallback(async () => {
-      try {
-          setIsContentLoading(true);
-          const [contentList, settings, adsList, pinnedData, top10Data, storiesList, peopleList, promoBannersList] = await Promise.all([
-              getAllContent(false),
-              getSiteSettings(),
-              getAds(),
-              getPinnedContent(),
-              getTop10Content(),
-              getStories(currentUser?.role !== UserRole.Admin),
-              getPeople(),
-              getPromotionalBanners()
-          ]);
+  // Set up real-time snapshot listeners for all core collections so app responds live in real-time
+  useEffect(() => {
+      setIsContentLoading(true);
+
+      // 1. Content listener
+      const unsubContent = subscribeToContent((contentList) => {
           setAllContent(contentList);
-          setPeople(peopleList);
-          setPromoBanners(promoBannersList);
-          setSiteSettings(prev => ({...settings, activeTheme: settings.activeTheme || 'default'}));
-          setAds(adsList);
-          setPinnedItems(pinnedData);
-          setTop10Items(top10Data);
-          setAllStories(storiesList);
-      } catch (error) {
-          console.error("Error fetching data", error);
-      } finally {
+          if (contentList && contentList.length > 0) {
+              try {
+                  localStorage.setItem('cinematix_cached_content', JSON.stringify(contentList));
+              } catch (e) {}
+          }
           setIsContentLoading(false);
-      }
+      }, currentUser?.role === UserRole.Admin);
+
+      // 2. Pinned content (Hero) listener
+      const unsubPinned = subscribeToPinnedContent((pinnedData) => {
+          setPinnedItems(pinnedData);
+      });
+
+      // 3. Top 10 content listener
+      const unsubTop10 = subscribeToTop10Content((top10Data) => {
+          setTop10Items(top10Data);
+      });
+
+      // 4. Stories listener
+      const unsubStories = subscribeToStories((storiesList) => {
+          setAllStories(storiesList);
+      }, currentUser?.role !== UserRole.Admin);
+
+      // 5. Ads listener
+      const unsubAds = subscribeToAds((adsList) => {
+          setAds(adsList);
+      });
+
+      // 6. Banners listener
+      const unsubBanners = subscribeToPromotionalBanners((bannersList) => {
+          setPromoBanners(bannersList);
+      });
+
+      // Fetch static/infrequent collections (people, site settings)
+      getPeople().then(setPeople).catch(() => {});
+      getSiteSettings().then(settings => {
+          setSiteSettings(prev => {
+              const savedLocalTheme = (typeof localStorage !== 'undefined') ? localStorage.getItem('cinematix_active_theme') : null;
+              const effectiveTheme = settings.activeTheme 
+                  ? settings.activeTheme 
+                  : (prev.activeTheme || savedLocalTheme || 'default');
+              
+              const merged: SiteSettings = {
+                  ...initialSiteSettings,
+                  ...prev,
+                  ...settings,
+                  activeTheme: effectiveTheme as any,
+                  shoutBar: {
+                      ...initialSiteSettings.shoutBar,
+                      ...(prev.shoutBar || {}),
+                      ...(settings.shoutBar || {})
+                  },
+                  socialLinks: {
+                      ...initialSiteSettings.socialLinks,
+                      ...(prev.socialLinks || {}),
+                      ...(settings.socialLinks || {})
+                  }
+              };
+
+              try {
+                  localStorage.setItem('cinematix_cached_site_settings', JSON.stringify(merged));
+                  localStorage.setItem('cinematix_active_theme', effectiveTheme);
+              } catch (e) {}
+
+              return merged;
+          });
+      }).catch(() => {});
+
+      return () => {
+          unsubContent();
+          unsubPinned();
+          unsubTop10();
+          unsubStories();
+          unsubAds();
+          unsubBanners();
+      };
   }, [currentUser?.role]);
 
-   useEffect(() => {
-       const hideLoader = () => {
-         const preloader = document.getElementById('preloader');
-         if (preloader && !preloader.classList.contains('preloader-hidden')) {
-             preloader.classList.add('preloader-hidden');
-             setTimeout(() => { if (preloader) preloader.style.display = 'none'; }, 500);
-         }
-       };
-       
-       const skipSplash = document.documentElement.classList.contains('hide-splash');
-       const startTime = Date.now();
-       const MAX_LOADER_TIME = skipSplash ? 0 : 3000; 
-       const isHomePage = window.location.pathname === '/';
-       
-       fetchData().finally(() => { 
-           const elapsedTime = Date.now() - startTime;
-           const remainingTime = Math.max(0, MAX_LOADER_TIME - elapsedTime);
-           setTimeout(() => { hideLoader(); }, isHomePage ? (remainingTime > 0 ? 300 : 0) : 0);
-       });
+  useEffect(() => {
+      const hideLoader = () => {
+        const preloader = document.getElementById('preloader');
+        if (preloader && !preloader.classList.contains('preloader-hidden')) {
+            preloader.classList.add('preloader-hidden');
+            setTimeout(() => { if (preloader) preloader.style.display = 'none'; }, 500);
+        }
+      };
+      
+      const skipSplash = document.documentElement.classList.contains('hide-splash');
+      const startTime = Date.now();
+      const MAX_LOADER_TIME = skipSplash ? 0 : 2500; 
+      const isHomePage = window.location.pathname === '/';
+      
+      if (!isContentLoading) {
+          const elapsedTime = Date.now() - startTime;
+          const remainingTime = Math.max(0, MAX_LOADER_TIME - elapsedTime);
+          setTimeout(() => { hideLoader(); }, isHomePage ? (remainingTime > 0 ? 200 : 0) : 0);
+      }
 
-       const safetyTimer = setTimeout(() => { hideLoader(); }, MAX_LOADER_TIME);
-       return () => clearTimeout(safetyTimer);
-   }, [fetchData]);
+      const safetyTimer = setTimeout(() => { hideLoader(); }, MAX_LOADER_TIME);
+      return () => clearTimeout(safetyTimer);
+  }, [isContentLoading]);
   
   useEffect(() => {
       if (allContent.length > 0) resolveContentFromUrl(window.location.pathname, allContent, view);
@@ -610,26 +783,48 @@ const App: React.FC = () => {
                   
                   const profile = await getUserProfile(firebaseUser.uid);
                   if (profile) {
+                      let userProfiles = profile.profiles || [];
+                      if (!Array.isArray(userProfiles) || userProfiles.length === 0) {
+                          const defaultProf: Profile = {
+                              id: Date.now(),
+                              name: profile.firstName || 'المستخدم',
+                              avatar: defaultAvatar,
+                              isKid: false,
+                              watchHistory: [],
+                              myList: []
+                          };
+                          userProfiles = [defaultProf];
+                      }
+
                       const user: User = { 
                           id: firebaseUser.uid, 
                           email: firebaseUser.email || '', 
                           role: profile.role || UserRole.User, 
-                          profiles: profile.profiles || [], 
+                          profiles: userProfiles, 
                           firstName: profile.firstName, 
                           lastName: profile.lastName,
-                          setupCompleted: profile.setupCompleted || false
+                          setupCompleted: profile.setupCompleted !== false
                       };
-                      setCurrentUser(user);
 
-                      if (user.setupCompleted === false && user.profiles.length > 0) {
-                          setActiveProfile(user.profiles[0]);
+                      setCurrentUser(user);
+                      try {
+                          localStorage.setItem('cinematix_cached_user', JSON.stringify(user));
+                      } catch (e) {}
+
+                      const savedProfileId = localStorage.getItem('cinematix_active_profile');
+                      let active = userProfiles.find(p => String(p.id) === String(savedProfileId));
+                      if (!active && userProfiles.length > 0) {
+                          active = userProfiles[0];
+                      }
+                      if (active) {
+                          setActiveProfile(active);
+                          try {
+                              localStorage.setItem('cinematix_active_profile', String(active.id));
+                          } catch (e) {}
+                      }
+
+                      if (user.setupCompleted === false && userProfiles.length > 0) {
                           handleSetView('onboarding');
-                      } else {
-                        const savedProfileId = localStorage.getItem('cinematix_active_profile');
-                        if (savedProfileId) {
-                            const savedProfile = user.profiles.find(p => p.id === Number(savedProfileId));
-                            if (savedProfile) setActiveProfile(savedProfile);
-                        }
                       }
                       
                       if (user.role === UserRole.Admin) {
@@ -643,10 +838,15 @@ const App: React.FC = () => {
               } else { 
                 setCurrentUser(null); 
                 setActiveProfile(null); 
+                localStorage.removeItem('cinematix_cached_user');
                 localStorage.removeItem('cinematix_active_profile'); 
                 setUnreadNotificationsCount(0);
               }
-          } finally { setIsAuthLoading(false); }
+          } catch (authErr) {
+              console.warn("[Cinematix] Error syncing auth user:", authErr);
+          } finally { 
+              setIsAuthLoading(false); 
+          }
       });
       return () => unsubscribe();
   }, []);
@@ -666,11 +866,22 @@ const App: React.FC = () => {
       if (category) setSelectedCategory(category);
       
       if (newView === 'watch' && params) {
-          setWatchParams(params);
+          if (params.content) setSelectedContent(params.content);
+          const sNum = params.seasonNumber ?? params.season ?? 1;
+          const eNum = params.episodeNumber ?? params.episode ?? 1;
+          const normalizedWatchParams = {
+              ...params,
+              season: sNum,
+              seasonNumber: sNum,
+              episode: eNum,
+              episodeNumber: eNum
+          };
+          setWatchParams(normalizedWatchParams);
           setDetailParams(null);
-          if (selectedContent) {
-              const slug = selectedContent.slug || selectedContent.id;
-              pushHistory(`/watch/${slug}/الموسم${params.season}/الحلقة${params.episode}`);
+          const activeContent = params.content || selectedContent;
+          if (activeContent) {
+              const slug = activeContent.slug || activeContent.id;
+              pushHistory(`/watch/${slug}/الموسم${sNum}/الحلقة${eNum}`);
           }
       } else if (newView === 'download' && params) {
           setDownloadParams(params);
@@ -873,7 +1084,15 @@ const App: React.FC = () => {
       } catch (error: any) { return error.code; }
   };
 
-  const handleLogout = async () => { localStorage.removeItem('cinematix_active_profile'); await auth.signOut(); setCurrentUser(null); setActiveProfile(null); handleSetView('home'); addToast('تم تسجيل الخروج.', 'info'); };
+  const handleLogout = async () => { 
+      localStorage.removeItem('cinematix_active_profile'); 
+      localStorage.removeItem('cinematix_cached_user');
+      await auth.signOut(); 
+      setCurrentUser(null); 
+      setActiveProfile(null); 
+      handleSetView('home'); 
+      addToast('تم تسجيل الخروج.', 'info'); 
+  };
   const handleProfileSelect = (profile: Profile) => { localStorage.setItem('cinematix_active_profile', String(profile.id)); setActiveProfile(profile); if (profile.isKid) handleSetView('kids'); else handleSetView('home'); };
   
   const handleOnboardingFinish = async (profileData: Partial<Profile>, extraData: any) => {
@@ -901,7 +1120,20 @@ const App: React.FC = () => {
   };
 
   const handleUpdateSiteSettings = async (settings: SiteSettings) => {
-      try { await updateSiteSettingsInDb(settings); setSiteSettings(settings); addToast('تم حفظ الإعدادات بنجاح', 'success'); } catch (e) { addToast('فشل حفظ الإعدادات', 'error'); }
+      try {
+          setSiteSettings(settings);
+          try {
+              localStorage.setItem('cinematix_cached_site_settings', JSON.stringify(settings));
+              if (settings.activeTheme) {
+                  localStorage.setItem('cinematix_active_theme', settings.activeTheme);
+              }
+          } catch (e) {}
+          await updateSiteSettingsInDb(settings);
+          addToast('تم حفظ الإعدادات بنجاح', 'success');
+      } catch (e) {
+          console.error("Error updating site settings:", e);
+          addToast('فشل حفظ الإعدادات', 'error');
+      }
   };
 
   const handleUpdatePinnedItems = async (pageKey: PageKey, items: PinnedItem[]) => {
@@ -987,13 +1219,13 @@ const App: React.FC = () => {
       const getTop10ContentWithMeta = (page: PageKey) => getContentWithMeta(top10Items[page]);
 
       switch (view) {
-          case 'home': return <HomePage allContent={allContent} pinnedContent={getPinnedContentWithMeta('home')} top10Content={getTop10ContentWithMeta('home')} stories={allStories} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} activeProfile={activeProfile} promoBanners={promoBanners} />;
-          case 'movies': return <MoviesPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('movies')} top10Content={getTop10ContentWithMeta('movies')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} siteSettings={siteSettings} promoBanners={promoBanners} />;
-          case 'series': return <SeriesPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('series')} top10Content={getTop10ContentWithMeta('series')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} promoBanners={promoBanners} />;
-          case 'programs': return <ProgramsPage allContent={allContent} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} activeProfile={activeProfile} />;
-          case 'kids': return <KidsPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('kids')} top10Content={getTop10ContentWithMeta('kids')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isShahidTheme={siteSettings.activeTheme === 'shahid'} />;
-          case 'ramadan': return <RamadanPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('ramadan')} top10Content={getTop10ContentWithMeta('ramadan')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} />;
-          case 'soon': return <SoonPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('soon')} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isShahidTheme={siteSettings.activeTheme === 'shahid'} />;
+          case 'home': return <HomePage allContent={allContent} pinnedContent={getPinnedContentWithMeta('home')} top10Content={getTop10ContentWithMeta('home')} stories={allStories} homeSections={homeSections} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} activeProfile={activeProfile} promoBanners={promoBanners} />;
+          case 'movies': return <MoviesPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('movies')} top10Content={getTop10ContentWithMeta('movies')} homeSections={homeSections} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} siteSettings={siteSettings} promoBanners={promoBanners} />;
+          case 'series': return <SeriesPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('series')} top10Content={getTop10ContentWithMeta('series')} homeSections={homeSections} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} promoBanners={promoBanners} />;
+          case 'programs': return <ProgramsPage allContent={allContent} homeSections={homeSections} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} activeProfile={activeProfile} />;
+          case 'kids': return <KidsPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('kids')} top10Content={getTop10ContentWithMeta('kids')} homeSections={homeSections} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isShahidTheme={siteSettings.activeTheme === 'shahid'} />;
+          case 'ramadan': return <RamadanPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('ramadan')} top10Content={getTop10ContentWithMeta('ramadan')} homeSections={homeSections} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} siteSettings={siteSettings} onNavigate={handleSetView} isLoading={isContentLoading} />;
+          case 'soon': return <SoonPage allContent={allContent} pinnedContent={getPinnedContentWithMeta('soon')} homeSections={homeSections} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} isAdmin={isAdmin} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} adsEnabled={siteSettings.adsEnabled} isLoading={isContentLoading} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isShahidTheme={siteSettings.activeTheme === 'shahid'} />;
           case 'welcome': return <WelcomePage allContent={allContent} onSetView={handleSetView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isShahidTheme={siteSettings.activeTheme === 'shahid'} returnView={returnView} />;
           case 'onboarding': return <OnboardingPage allContent={allContent} activeProfile={activeProfile} onFinish={handleOnboardingFinish} onSetView={handleSetView} />;
           case 'notifications': return currentUser ? <NotificationsPage userId={currentUser.id} onSetView={handleSetView} onUpdateUnreadCount={setUnreadNotificationsCount} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isShahidTheme={siteSettings.activeTheme === 'shahid'} authReturnView={returnView} initialEmail={authPrefillEmail} />;
@@ -1008,7 +1240,7 @@ const App: React.FC = () => {
                );
           case 'watch':
                return (
-                   <EpisodeWatchPage content={selectedContent || ({} as Content)} seasonNumber={watchParams?.season || 1} episodeNumber={watchParams?.episode || 1} allContent={allContent} onSetView={handleSetView} onGoBack={handleGoBack} isAdmin={isAdmin} ads={ads} adsEnabled={siteSettings.adsEnabled} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
+                   <EpisodeWatchPage content={selectedContent || ({} as Content)} seasonNumber={watchParams?.seasonNumber ?? watchParams?.season ?? 1} episodeNumber={watchParams?.episodeNumber ?? watchParams?.episode ?? 1} allContent={allContent} onSetView={handleSetView} onGoBack={handleGoBack} isAdmin={isAdmin} ads={ads} adsEnabled={siteSettings.adsEnabled} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />
                );
            case 'download':
                return (
@@ -1018,7 +1250,7 @@ const App: React.FC = () => {
            case 'register': if (isAuthLoading) return <LoadingSpinner />; return <CreateAccountPage onSetView={handleSetView} onRegister={handleRegister} onGoogleLogin={handleGoogleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isShahidTheme={siteSettings.activeTheme === 'shahid'} authReturnView={returnView} />;
            case 'profileSelector': if (isAuthLoading) return <LoadingSpinner />; return currentUser ? <ProfileSelector user={currentUser} onSelectProfile={handleProfileSelect} onSetView={handleSetView} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isShahidTheme={siteSettings.activeTheme === 'shahid'} authReturnView={returnView} initialEmail={authPrefillEmail} />;
            case 'myList': if (isAuthLoading) return <LoadingSpinner />; return activeProfile ? <MyListPage allContent={allContent} activeProfile={activeProfile} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} onGoBack={handleGoBack} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isShahidTheme={siteSettings.activeTheme === 'shahid'} authReturnView={returnView} initialEmail={authPrefillEmail} />;
-           case 'category': return <CategoryPage categoryTitle={selectedCategory} allContent={allContent} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} onGoBack={handleGoBack} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} ads={ads} adsEnabled={siteSettings.adsEnabled} onRequestOpen={() => handleSetView('contentRequest')} />;
+           case 'category': return <CategoryPage categoryTitle={selectedCategory} allContent={allContent} homeSections={homeSections} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} onSetView={handleSetView} onGoBack={handleGoBack} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} ads={ads} adsEnabled={siteSettings.adsEnabled} onRequestOpen={() => handleSetView('contentRequest')} />;
            case 'admin': 
                 if (isAuthLoading) return <LoadingSpinner />; 
                 if (!isAdmin) {
@@ -1047,7 +1279,7 @@ const App: React.FC = () => {
                          onAddAd={handleAddAd}
                          onAddAdmin={handleAddAdmin}
                          onDeleteUser={handleDeleteUser}
-                         onContentChanged={fetchData}
+                         onContentChanged={() => {}}
                          addToast={addToast}
                      />
                  );
@@ -1061,15 +1293,30 @@ const App: React.FC = () => {
                             if (!currentUser.profiles.find(prof => prof.id === p.id)) updatedProfiles.push(p); 
                             const updatedUser = { ...currentUser, profiles: updatedProfiles }; 
                             setCurrentUser(updatedUser); 
-                            if (activeProfile?.id === p.id) setActiveProfile(p); 
+                            if (activeProfile?.id === p.id || !activeProfile) {
+                                setActiveProfile(p); 
+                                localStorage.setItem('cinematix_active_profile', String(p.id));
+                            }
+                            try {
+                                localStorage.setItem('cinematix_cached_user', JSON.stringify(updatedUser));
+                            } catch (e) {}
                             await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); 
                             addToast('تم تحديث الملف الشخصي', 'success'); 
                         }} 
                         onDeleteProfile={async (pid) => { 
                             const updatedProfiles = currentUser.profiles.filter(p => p.id !== pid); 
-                            setCurrentUser({ ...currentUser, profiles: updatedProfiles }); 
+                            const updatedUser = { ...currentUser, profiles: updatedProfiles };
+                            setCurrentUser(updatedUser); 
+                            if (activeProfile?.id === pid) {
+                                const nextActive = updatedProfiles[0] || null;
+                                setActiveProfile(nextActive);
+                                if (nextActive) localStorage.setItem('cinematix_active_profile', String(nextActive.id));
+                                else localStorage.removeItem('cinematix_active_profile');
+                            }
+                            try {
+                                localStorage.setItem('cinematix_cached_user', JSON.stringify(updatedUser));
+                            } catch (e) {}
                             await updateUserProfileInFirestore(currentUser.id, { profiles: updatedProfiles }); 
-                            if (activeProfile?.id === pid) setActiveProfile(null); 
                             addToast('تم حذف الملف الشخصي', 'success'); 
                         }} 
                         onUpdatePassword={async (oldP, newP) => { 
@@ -1142,14 +1389,14 @@ const App: React.FC = () => {
            case 'about': return <AboutPage onSetView={handleSetView} onGoBack={handleGoBack} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
            case 'search': return <SearchPage allContent={allContent} onSelectContent={handleSelectContent} onSetView={handleSetView} onGoBack={handleGoBack} />;
            case 'shortcuts': return <ShortcutsPage onSetView={handleSetView} onGoBack={handleGoBack} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} siteSettings={siteSettings} onSetSiteSettings={handleUpdateSiteSettings} addToast={addToast} />;
-          default: return <HomePage allContent={allContent} pinnedContent={[]} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} activeProfile={activeProfile} isLoading={isContentLoading} promoBanners={promoBanners} />;
+          default: return <HomePage allContent={allContent} pinnedContent={[]} onSelectContent={handleSelectContent} isLoggedIn={!!currentUser} myList={activeProfile?.myList} onToggleMyList={handleToggleMyList} ads={ads} siteSettings={siteSettings} onNavigate={handleSetView} activeProfile={activeProfile} isLoading={isContentLoading} promoBanners={promoBanners} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
       }
   };
 
   const mobileCleanViews = ['myList', 'accountSettings', 'profileHub'];
   
   const headerAllowedViews: View[] = [
-    'home', 'series', 'movies', 'ramadan', 'kids', 'soon', 'detail', 'shortcuts'
+    'home', 'series', 'movies', 'ramadan', 'kids', 'soon', 'programs', 'detail', 'shortcuts'
   ];
 
   const isForcedProfileSelection = !isAuthLoading && currentUser && currentUser.setupCompleted && !activeProfile && view !== 'profileSelector' && view !== 'accountSettings' && view !== 'admin' && view !== 'onboarding';
@@ -1159,7 +1406,7 @@ const App: React.FC = () => {
 
   const isMaintenanceActive = (siteSettings.is_maintenance_mode_enabled || siteSettings.is_closure_mode_enabled) && currentUser?.role !== UserRole.Admin;
 
-  const showGlobalHeader = (headerAllowedViews.includes(view) || (siteSettings.activeTheme === 'shahid' && view !== 'admin' && view !== 'watch' && view !== 'adGate' && view !== 'maintenance' && view !== 'onboarding')) && view !== 'search' && view !== 'category' && view !== 'login' && view !== 'register' && view !== 'welcome' && !isDetailMobile && !isChoosingProfile && !isTv && !isMaintenanceActive;
+  const showGlobalHeader = headerAllowedViews.includes(view) && !isDetailMobile && !isChoosingProfile && !isTv && !isMaintenanceActive;
   
   const showGlobalFooter = !fullScreenViews.includes(view) && !isTv && !isMaintenanceActive;
   
@@ -1225,9 +1472,11 @@ const App: React.FC = () => {
         {shouldShowGlobalAds && <AdPlacement ads={ads} placement="global-sticky-footer" isEnabled={siteSettings.adsEnabled} className={bottomAdClass} />}
         
         <div className="relative z-10">
-            <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><BouncingDotsLoader size="lg" delayMs={300} colorClass="bg-[var(--color-accent)]" /></div>}>
-                {renderView()}
-            </Suspense>
+            <ErrorBoundary>
+                <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><BouncingDotsLoader size="lg" delayMs={300} colorClass="bg-[var(--color-accent)]" /></div>}>
+                    {renderView()}
+                </Suspense>
+            </ErrorBoundary>
         </div>
 
         {showGlobalFooter && (
