@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { Content, Server, Season, Episode, Category, Genre, GlobalServer, AutoLinkConfig, User, TrailerItem } from '@/types';
+import type { Content, Server, Season, Episode, Category, Genre, GlobalServer, AutoLinkConfig, User, TrailerItem, Person } from '@/types';
 import { ContentType, genres } from '@/types';
 import { db, generateSlug, getPeople, savePerson, getServers, getAllContent, addServer, getUsers, getBroadcastHistory } from '@/firebase';  
 import DeleteConfirmationModal from '../shared/DeleteConfirmationModal';
@@ -9,7 +9,7 @@ import UqloadSearchModal from './UqloadSearchModal';
 import DailymotionSearchModal from './DailymotionSearchModal';
 import YouTubeSearchModal from './YouTubeSearchModal';
 import VkSearchModal from './VkSearchModal';
-import { normalizeText } from '@/utils/textUtils';
+import { normalizeText, translateToArabic } from '@/utils/textUtils';
 import { fetchTMDB } from '@/utils/tmdbService';
 import ActionButtons from '../detail/ActionButtons';
 import { StarIcon } from '../icons/StarIcon';
@@ -1513,7 +1513,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const getDefaultFormData = (): Content => {
         const base: Content = {
             id: '', tmdbId: '', title: '', description: '', type: ContentType.Movie, poster: '', top10Poster: '', backdrop: '', horizontalPoster: '', mobileBackdropUrl: '',
-            rating: 0, ageRating: '', categories: [], genres: [], releaseYear: new Date().getFullYear(), cast: [],
+            rating: 0, ageRating: '', categories: [], genres: [], releaseYear: new Date().getFullYear(), cast: [], castCharacters: content?.castCharacters || {},
             visibility: 'general', seasons: [], servers: [], bannerNote: '', createdAt: '',
             logoUrl: '', isLogoEnabled: false, trailerUrl: '', duration: '', enableMobileCrop: false, 
             mobileCropPositionX: 50, mobileCropPositionY: 50, 
@@ -1645,6 +1645,33 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [castQuery, setCastQuery] = useState('');
     const [castResults, setCastResults] = useState<any[]>([]);
     const [isSearchingCast, setIsSearchingCast] = useState(false);
+    const [peopleList, setPeopleList] = useState<Person[]>([]);
+    const [isSyncingCast, setIsSyncingCast] = useState(false);
+    const [editingCharPerson, setEditingCharPerson] = useState<{ person: Person; newCharName: string } | null>(null);
+
+    const handleSaveCharacterName = () => {
+        if (!editingCharPerson) return;
+        const { person, newCharName } = editingCharPerson;
+        const trimmedChar = newCharName.trim();
+        const actorName = person.name;
+
+        setFormData(prev => ({
+            ...prev,
+            castCharacters: {
+                ...(prev.castCharacters || {}),
+                [actorName]: trimmedChar
+            }
+        }));
+
+        addToast('تم تحديث اسم الشخصية لهذا العمل بنجاح!', 'success');
+        setEditingCharPerson(null);
+    };
+
+    useEffect(() => {
+        getPeople().then(data => {
+            if (data && Array.isArray(data)) setPeopleList(data);
+        }).catch(err => console.error("Error loading people in ContentEditModal:", err));
+    }, []);
 
     const [youTubeSearchState, setYouTubeSearchState] = useState<{ isOpen: boolean; targetId: 'main' | number | { type: 'main' | 'season'; seasonId?: number; index?: number } | null }>({ isOpen: false, targetId: null });
 
@@ -2725,11 +2752,37 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
         setIsSearchingCast(true);
         try {
+            const normQ = normalizeText(query);
+            const localMatches = peopleList.filter(p => 
+                p.name.toLowerCase().includes(query.toLowerCase()) || 
+                (p.normalizedName && p.normalizedName.includes(normQ)) ||
+                (p.characterName && p.characterName.toLowerCase().includes(query.toLowerCase()))
+            );
+
+            let combined: any[] = localMatches.map(p => ({
+                id: p.tmdbId || p.id,
+                name: p.name,
+                profile_path: p.image ? p.image.replace('https://image.tmdb.org/t/p/w500', '').replace('https://image.tmdb.org/t/p/w92', '') : '',
+                image: p.image,
+                character: p.characterName,
+                known_for_department: 'تمثيل',
+                isLocal: true
+            }));
+
             const res = await fetchTMDB(`https://api.themoviedb.org/3/search/person?api_key=${API_KEY}&query=${encodeURIComponent(query)}&language=ar-SA`);
             const data = await res.json();
             if (data.results) {
-                setCastResults(data.results);
+                for (const tmdbP of data.results) {
+                    if (!combined.some(c => c.name.toLowerCase() === tmdbP.name.toLowerCase())) {
+                        if (tmdbP.character) {
+                            tmdbP.character = await translateToArabic(tmdbP.character);
+                        }
+                        combined.push(tmdbP);
+                    }
+                }
             }
+
+            setCastResults(combined);
         } catch (error) {
             console.error("Cast Search Error:", error);
         } finally {
@@ -2737,16 +2790,282 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
     };
 
-    const addCastMember = (person: any) => {
-        if (!formData.cast.includes(person.name)) {
-            setFormData(prev => ({ ...prev, cast: [...prev.cast, person.name] }));
+    const fetchFullPersonFromTMDB = async (tmdbPersonId: string | number, characterNameFromCast?: string) => {
+        let biography = '';
+        let birthday = '';
+        let placeOfBirth = '';
+        let name = '';
+        let profilePath = '';
+        let socialLinks: any = {};
+
+        try {
+            const resAr = await fetchTMDB(`https://api.themoviedb.org/3/person/${tmdbPersonId}?api_key=${API_KEY}&language=ar-SA`);
+            if (resAr.ok) {
+                const dataAr = await resAr.json();
+                name = dataAr.name || '';
+                biography = dataAr.biography || '';
+                birthday = dataAr.birthday || '';
+                placeOfBirth = dataAr.place_of_birth || '';
+                profilePath = dataAr.profile_path || '';
+
+                if (!biography) {
+                    const resEn = await fetchTMDB(`https://api.themoviedb.org/3/person/${tmdbPersonId}?api_key=${API_KEY}&language=en-US`);
+                    if (resEn.ok) {
+                        const dataEn = await resEn.json();
+                        biography = dataEn.biography || '';
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Error fetching TMDB person details:", e);
         }
+
+        try {
+            const extRes = await fetchTMDB(`https://api.themoviedb.org/3/person/${tmdbPersonId}/external_ids?api_key=${API_KEY}`);
+            if (extRes.ok) {
+                const extData = await extRes.json();
+                socialLinks = {
+                    instagram: extData.instagram_id ? `https://instagram.com/${extData.instagram_id}` : '',
+                    facebook: extData.facebook_id ? `https://facebook.com/${extData.facebook_id}` : '',
+                    twitter: extData.twitter_id ? `https://x.com/${extData.twitter_id}` : '',
+                    imdb: extData.imdb_id ? `https://www.imdb.com/name/${extData.imdb_id}` : '',
+                    tiktok: extData.tiktok_id ? `https://tiktok.com/@${extData.tiktok_id}` : '',
+                    youtube: extData.youtube_id ? `https://youtube.com/${extData.youtube_id}` : '',
+                };
+            }
+        } catch (e) {
+            console.error("Error fetching TMDB person external_ids:", e);
+        }
+
+        const translatedCharName = characterNameFromCast ? await translateToArabic(characterNameFromCast) : '';
+
+        return {
+            name,
+            biography,
+            birthday,
+            placeOfBirth,
+            profilePath,
+            characterName: translatedCharName,
+            socialLinks
+        };
+    };
+
+    const addCastMember = async (person: any) => {
+        let translatedCharName = '';
+        try {
+            const normName = normalizeText(person.name);
+            const existingIdx = peopleList.findIndex(p => p.name === person.name || p.normalizedName === normName || (person.id && p.tmdbId === String(person.id)));
+            const existing = existingIdx !== -1 ? peopleList[existingIdx] : null;
+
+            const isMissingData = !existing ||
+                !existing.biography ||
+                !existing.birthday ||
+                !existing.image ||
+                !existing.socialLinks ||
+                !Object.values(existing.socialLinks || {}).some(Boolean);
+
+            let fullDetails: any = null;
+            if (isMissingData && person.id) {
+                fullDetails = await fetchFullPersonFromTMDB(person.id, person.character);
+            }
+
+            const profileImg = fullDetails?.profilePath 
+                ? `https://image.tmdb.org/t/p/w500${fullDetails.profilePath}` 
+                : (person.profile_path ? `https://image.tmdb.org/t/p/w500${person.profile_path}` : '');
+
+            // Protect and preserve existing custom photo if already set by user
+            const finalPersonImage = (existing?.image && existing.image.trim()) 
+                ? existing.image 
+                : (profileImg || existing?.image || '');
+
+            const rawCharName = person.character || fullDetails?.characterName || '';
+            translatedCharName = rawCharName ? await translateToArabic(rawCharName) : '';
+
+            const personPayload: Partial<Person> = {
+                ...(existing || {}),
+                name: fullDetails?.name || person.name || existing?.name || '',
+                normalizedName: normName,
+                tmdbId: String(person.id || existing?.tmdbId || ''),
+                image: finalPersonImage,
+                characterName: existing?.characterName || '',
+                biography: fullDetails?.biography || existing?.biography || '',
+                birthday: fullDetails?.birthday || existing?.birthday || '',
+                placeOfBirth: fullDetails?.placeOfBirth || existing?.placeOfBirth || '',
+                role: 'actor',
+                socialLinks: {
+                    ...(existing?.socialLinks || {}),
+                    ...(fullDetails?.socialLinks || {})
+                },
+                updatedAt: new Date().toISOString()
+            };
+
+            const savedId = await savePerson(personPayload);
+            const savedPersonObj = { ...personPayload, id: savedId || existing?.id || String(Date.now()) } as Person;
+            setPeopleList(prev => {
+                const filtered = prev.filter(p => p.name !== person.name && p.normalizedName !== normName);
+                return [...filtered, savedPersonObj];
+            });
+        } catch (err) {
+            console.error("Error auto-creating person profile on cast add:", err);
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            cast: prev.cast.includes(person.name) ? prev.cast : [...prev.cast, person.name],
+            castCharacters: {
+                ...(prev.castCharacters || {}),
+                ...(translatedCharName ? { [person.name]: translatedCharName } : {})
+            }
+        }));
+
         setCastQuery('');
         setCastResults([]);
     };
 
     const removeCastMember = (name: string) => {
-        setFormData(prev => ({ ...prev, cast: prev.cast.filter(c => c !== name) }));
+        setFormData(prev => {
+            const newCast = prev.cast.filter(c => c !== name);
+            const newChars = { ...(prev.castCharacters || {}) };
+            delete newChars[name];
+            return {
+                ...prev,
+                cast: newCast,
+                castCharacters: newChars
+            };
+        });
+    };
+
+    const handleSyncCastAndCrew = async (overrideTmdbId?: string) => {
+        const targetTmdbId = overrideTmdbId || formData.tmdbId || tmdbIdInput || formData.id;
+        if (!targetTmdbId) {
+            if (!overrideTmdbId) {
+                addToast('يرجى إدخال كود TMDB ID أولاً للمزامنة.', 'info');
+            }
+            return;
+        }
+
+        setIsSyncingCast(true);
+        try {
+            const typePath = (formData.type === ContentType.Movie || formData.type === ContentType.Play || formData.type === ContentType.Concert) ? 'movie' : 'tv';
+            const res = await fetchTMDB(`https://api.themoviedb.org/3/${typePath}/${targetTmdbId}/credits?api_key=${API_KEY}&language=ar-SA`);
+            if (!res.ok) {
+                throw new Error('لم نتمكن من جلب طاقم العمل من TMDB. تحقّق من كود TMDB ID.');
+            }
+
+            const creditsData = await res.json();
+            const rawCast: any[] = creditsData.cast || [];
+            const rawCrew: any[] = creditsData.crew || [];
+
+            const directorObj = rawCrew.find((c: any) => c.job === 'Director');
+            const writerObj = rawCrew.find((c: any) => c.job === 'Writer' || c.job === 'Screenplay' || c.job === 'Story');
+
+            let updatedDirector = formData.director;
+            let updatedWriter = formData.writer;
+
+            if (directorObj?.name) updatedDirector = directorObj.name;
+            if (writerObj?.name) updatedWriter = writerObj.name;
+
+            const topCast = rawCast.slice(0, 15);
+            const newCastNames = topCast.map(c => c.name).filter(Boolean);
+            const mergedCast = Array.from(new Set([...formData.cast, ...newCastNames]));
+
+            const updatedPeople: Person[] = [...peopleList];
+            let newProfilesCount = 0;
+            const newCastCharacters: Record<string, string> = { ...(formData.castCharacters || {}) };
+
+            const peopleToSync: { person: any; role: 'actor' | 'director' | 'writer' }[] = [
+                ...topCast.map(c => ({ person: c, role: 'actor' as const })),
+            ];
+            if (directorObj) peopleToSync.push({ person: directorObj, role: 'director' });
+            if (writerObj) peopleToSync.push({ person: writerObj, role: 'writer' });
+
+            for (const item of peopleToSync) {
+                const { person, role } = item;
+                if (!person || !person.name) continue;
+
+                const normName = normalizeText(person.name);
+                const tmdbStr = String(person.id || '');
+                const existingIdx = updatedPeople.findIndex(p => p.name === person.name || p.normalizedName === normName || (tmdbStr && p.tmdbId === tmdbStr));
+                const existing = existingIdx !== -1 ? updatedPeople[existingIdx] : null;
+
+                const isMissingData = !existing ||
+                    !existing.biography ||
+                    !existing.birthday ||
+                    !existing.image ||
+                    !existing.socialLinks ||
+                    !Object.values(existing.socialLinks || {}).some(Boolean);
+
+                let fullDetails: any = null;
+                if (isMissingData && person.id) {
+                    fullDetails = await fetchFullPersonFromTMDB(person.id, person.character);
+                }
+
+                const profileImg = fullDetails?.profilePath 
+                    ? `https://image.tmdb.org/t/p/w500${fullDetails.profilePath}` 
+                    : (person.profile_path ? `https://image.tmdb.org/t/p/w500${person.profile_path}` : '');
+
+                // Protect and preserve existing custom photo if already set by user
+                const finalPersonImage = (existing?.image && existing.image.trim()) 
+                    ? existing.image 
+                    : (profileImg || existing?.image || '');
+
+                const mergedSocials = {
+                    ...(existing?.socialLinks || {}),
+                    ...(fullDetails?.socialLinks || {})
+                };
+
+                const rawCharName = person.character || fullDetails?.characterName || '';
+                const translatedCharName = rawCharName ? await translateToArabic(rawCharName) : '';
+
+                if (role === 'actor' && translatedCharName) {
+                    newCastCharacters[person.name] = translatedCharName;
+                }
+
+                const personPayload: Partial<Person> = {
+                    ...(existing || {}),
+                    name: fullDetails?.name || person.name || existing?.name || '',
+                    normalizedName: normName,
+                    tmdbId: tmdbStr || existing?.tmdbId || '',
+                    image: finalPersonImage,
+                    characterName: existing?.characterName || '',
+                    biography: fullDetails?.biography || existing?.biography || '',
+                    birthday: fullDetails?.birthday || existing?.birthday || '',
+                    placeOfBirth: fullDetails?.placeOfBirth || existing?.placeOfBirth || '',
+                    role: role || existing?.role || 'actor',
+                    socialLinks: mergedSocials,
+                    updatedAt: new Date().toISOString()
+                };
+
+                try {
+                    const savedId = await savePerson(personPayload);
+                    const savedObj = { ...personPayload, id: savedId || existing?.id || String(Date.now()) } as Person;
+                    if (existingIdx !== -1) {
+                        updatedPeople[existingIdx] = savedObj;
+                    } else {
+                        updatedPeople.push(savedObj);
+                        newProfilesCount++;
+                    }
+                } catch (e) {
+                    console.error("Failed to save person profile for", person.name, e);
+                }
+            }
+
+            setPeopleList(updatedPeople);
+            setFormData(prev => ({
+                ...prev,
+                cast: mergedCast,
+                castCharacters: newCastCharacters,
+                director: updatedDirector,
+                writer: updatedWriter
+            }));
+
+            addToast(`تمت مزامنة طاقم العمل بنجاح (${newCastNames.length} ممثلين) مع جلب كامل السيرة الذاتية والسوشيال ميديا!`, 'success');
+        } catch (error: any) {
+            console.error("Sync Cast Error:", error);
+            addToast(error.message || 'حدث خطأ أثناء مزامنة طاقم العمل.', 'error');
+        } finally {
+            setIsSyncingCast(false);
+        }
     };
 
     const generateEpisodeServers = (tmdbId: string, seasonNum: number, episodeNum: number): Server[] => {
@@ -3022,7 +3341,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 const append = (type === ContentType.Movie || type === ContentType.Play || type === ContentType.Concert)
                     ? 'credits,release_dates,videos,images' 
                     : 'content_ratings,credits,videos,images'; 
-                return `https://api.themoviedb.org/3/${typePath}/${targetId}${path}?api_key=${API_KEY}&language=${lang}&append_to_response=${append}&include_image_language=${lang},en,null`;
+                return `https://api.themoviedb.org/3/${typePath}/${targetId}${path}?api_key=${API_KEY}&language=${lang}&append_to_response=${append}&include_image_language=${lang},en,null&include_video_language=${lang},en,null`;
             };
 
             let res = await fetchTMDB(getUrl(currentType, 'ar-SA'));
@@ -3055,6 +3374,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             }
 
             let enTitle = '';
+            let enVideos: any = null;
             if (originLang !== 'ar') {
                 const resEn = await fetchTMDB(getUrl(currentType, 'en-US'));
                 if (resEn.ok) {
@@ -3062,13 +3382,14 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     enTitle = enDetails.title || enDetails.name || '';
                     if (!details.overview) details.overview = enDetails.overview;
                     if (enDetails.images) details.images = enDetails.images;
-                    if (enDetails.videos) details.videos = enDetails.videos;
+                    if (enDetails.videos) enVideos = enDetails.videos;
                 }
             } else {
                 const resEn = await fetchTMDB(getUrl(currentType, 'en-US'));
                 if (resEn.ok) {
                     const enDetails = await resEn.json();
                     enTitle = enDetails.title || enDetails.name || '';
+                    if (enDetails.videos) enVideos = enDetails.videos;
                 }
             }
 
@@ -3108,17 +3429,118 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             
             let trailerUrl = '';
             let tmdbTrailers: TrailerItem[] = [];
-            if (details.videos && details.videos.results) {
-                const ytVideos = details.videos.results.filter((v: any) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser' || v.type === 'Clip'));
-                if (ytVideos.length > 0) {
-                    tmdbTrailers = ytVideos.map((v: any, idx: number) => ({
-                        id: String(v.id || idx + 1),
-                        title: v.name || (v.type === 'Trailer' ? (idx === 0 ? 'الإعلان الرسمي' : `الإعلان الرسمي ${idx + 1}`) : `إعلان تشويقي ${idx}`),
-                        url: `https://www.youtube.com/watch?v=${v.key}`,
-                        thumbnail: `https://img.youtube.com/vi/${v.key}/hqdefault.jpg`
-                    }));
-                    trailerUrl = tmdbTrailers[0]?.url || '';
+            
+            // Extract and prioritize videos: Max 3 (Official Trailer, Teaser, then next Official Trailer/Teaser)
+            const rawVideoList: any[] = [];
+            const seenVideoKeys = new Set<string>();
+
+            const isFanOrUnofficialVideo = (v: any) => {
+                if (!v) return true;
+                const nameLower = (v.name || '').toLowerCase();
+                
+                // Exclude explicit fan, concept, fake, or speculation trailers
+                const fanKeywords = [
+                    'concept', 'fan made', 'fanmade', 'fan-made', 'fan trailer', 
+                    'teaser concept', 'mockup', 'fan edit', 'fanedit', 'parody', 
+                    'trailer concept', 'fan concept', 'fan-concept', 'fake', 'speculation',
+                    'fan-teaser', 'fanteaser', 'made by fan', 'fan movie', 'concept teaser',
+                    'fan version', 'concept version'
+                ];
+                
+                for (const kw of fanKeywords) {
+                    if (nameLower.includes(kw)) {
+                        return true;
+                    }
                 }
+
+                // If v.official is explicitly false AND title indicates unofficial translated re-upload
+                if (v.official === false) {
+                    if (nameLower.includes('مترجم') || nameLower.includes('subtitled') || nameLower.includes('إعلان مترجم') || nameLower.includes('تريلر مترجم')) {
+                        return true;
+                    }
+                }
+
+                return false;
+            };
+
+            const addVideoCandidates = (videoContainer: any) => {
+                if (videoContainer && Array.isArray(videoContainer.results)) {
+                    for (const v of videoContainer.results) {
+                        if (v && v.site === 'YouTube' && v.key && !seenVideoKeys.has(v.key)) {
+                            if (isFanOrUnofficialVideo(v)) continue;
+                            if (v.type === 'Trailer' || v.type === 'Teaser') {
+                                seenVideoKeys.add(v.key);
+                                rawVideoList.push(v);
+                            }
+                        }
+                    }
+                }
+            };
+
+            addVideoCandidates(details.videos);
+            addVideoCandidates(enVideos);
+
+            // Fallback: If no Trailer or Teaser was found, accept any YouTube video candidate from TMDB (excluding fan/fake)
+            if (rawVideoList.length === 0) {
+                const addAnyVideoCandidates = (videoContainer: any) => {
+                    if (videoContainer && Array.isArray(videoContainer.results)) {
+                        for (const v of videoContainer.results) {
+                            if (v && v.site === 'YouTube' && v.key && !seenVideoKeys.has(v.key)) {
+                                if (isFanOrUnofficialVideo(v)) continue;
+                                seenVideoKeys.add(v.key);
+                                rawVideoList.push(v);
+                            }
+                        }
+                    }
+                };
+                addAnyVideoCandidates(details.videos);
+                addAnyVideoCandidates(enVideos);
+            }
+
+            if (rawVideoList.length > 0) {
+                // If there are official videos (v.official === true), strictly restrict to official videos only
+                const officialVideos = rawVideoList.filter((v: any) => v.official === true);
+                const candidatesPool = officialVideos.length > 0 ? officialVideos : rawVideoList;
+
+                // Rank videos: Official trailers > Official Teasers > Language priority > Title keywords
+                candidatesPool.sort((a: any, b: any) => {
+                    const getScore = (v: any) => {
+                        let score = 0;
+                        if (v.official === true) score += 10000;
+                        if (v.type === 'Trailer') score += 1000;
+                        else if (v.type === 'Teaser') score += 500;
+
+                        if (v.iso_639_1 === 'ar') score += 300;
+                        else if (v.iso_639_1 === 'en') score += 100;
+
+                        const nameLower = (v.name || '').toLowerCase();
+                        if (nameLower.includes('official trailer') || nameLower.includes('الاعلان الرسمي') || nameLower.includes('تريلر رسمي')) score += 50;
+                        else if (nameLower.includes('official') || nameLower.includes('رسمي')) score += 20;
+
+                        return score;
+                    };
+                    return getScore(b) - getScore(a);
+                });
+
+                // Enforce strict limit of 3 videos maximum
+                const top3Videos = candidatesPool.slice(0, 3);
+
+                tmdbTrailers = top3Videos.map((v: any, idx: number) => {
+                    // Use the exact title registered in TMDB (v.name)
+                    const title = (v.name && v.name.trim()) 
+                        ? v.name.trim() 
+                        : (v.type === 'Trailer' ? 'إعلان تريلر' : 'إعلان تشويقي');
+
+                    return {
+                        id: String(v.id || idx + 1),
+                        title: title,
+                        url: `https://www.youtube.com/watch?v=${v.key}`,
+                        thumbnail: `https://img.youtube.com/vi/${v.key}/hqdefault.jpg`,
+                        duration: ''
+                    };
+                });
+
+                trailerUrl = tmdbTrailers[0]?.url || '';
             }
 
             let logoUrl = '';
@@ -3291,6 +3713,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 servers: isStandalone ? generateMovieServers(String(targetId)) : [],
                 flipBackdrop: false
             }));
+
+            // Auto-sync cast & crew profiles to Firestore people collection
+            setTimeout(() => {
+                handleSyncCastAndCrew(String(targetId));
+            }, 300);
 
         } catch (e: any) {
             console.error(e);
@@ -5501,32 +5928,159 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             {isStandalone && <div><label className={labelClass}>المدة</label><input type="text" name="duration" value={formData.duration || ''} onChange={handleChange} className={inputClass} placeholder="1h 30m" /></div>}
                                         </div>
                                         
-                                        <div className="border-t border-gray-800 pt-4">
-                                            <label className={labelClass}>طاقم العمل</label>
-                                            <div className="relative mb-3">
-                                                <input type="text" value={castQuery} onChange={(e) => searchCast(e.target.value)} className={inputClass} placeholder="بحث عن ممثل في TMDB..." />
-                                                {isSearchingCast && <div className="absolute left-3 top-3"><BouncingDotsLoader size="sm" colorClass="bg-gray-500" delayMs={0} /></div>}
-                                                {castResults.length > 0 && (
-                                                    <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-[#1a1f29] border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                                                        {castResults.map(person => (
-                                                            <div key={person.id} onClick={() => addCastMember(person)} className="flex items-center gap-3 p-2 hover:bg-gray-700 cursor-pointer border-b border-gray-800 last:border-0">
-                                                                <img src={person.profile_path ? `https://image.tmdb.org/t/p/w45${person.profile_path}` : 'https://placehold.co/45x45'} className="w-8 h-8 rounded-full object-cover" alt=""/>
-                                                                <span className="text-xs text-white">{person.name}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto custom-scrollbar p-1">
-                                                {formData.cast.map((c, i) => (
-                                                    <span key={i} className="flex items-center gap-1 bg-gray-800 text-[11px] font-bold px-3 py-1 rounded-full border border-gray-700 text-gray-300">
-                                                        {c} <button type="button" onClick={() => removeCastMember(c)} className="text-gray-500 hover:text-red-400 transition-colors mr-1"><CloseIcon className="w-3 h-3"/></button>
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
+                                        <div className="border-t border-gray-800 pt-4" dir="rtl">
+                                             <div className="flex items-center justify-between mb-3">
+                                                 <label className={labelClass + " !mb-0 text-sm font-extrabold text-white"}>طاقم العمل (النجوم)</label>
+                                                 <button
+                                                     type="button"
+                                                     onClick={() => handleSyncCastAndCrew()}
+                                                     disabled={isSyncingCast}
+                                                     className="flex items-center gap-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50 shadow-sm cursor-pointer"
+                                                     title="جلب طاقم العمل وحفظ بروفايلهم في قاعدة البيانات تلقائياً"
+                                                 >
+                                                     <svg className={`w-3.5 h-3.5 ${isSyncingCast ? 'animate-spin' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                     </svg>
+                                                     <span>{isSyncingCast ? 'جاري المزامنة...' : 'مزامنة طاقم العمل من TMDB'}</span>
+                                                 </button>
+                                             </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-800 pt-4">
+                                             <div className="relative mb-4">
+                                                 <input 
+                                                     type="text" 
+                                                     value={castQuery} 
+                                                     onChange={(e) => searchCast(e.target.value)} 
+                                                     className={inputClass} 
+                                                     placeholder="بحث عن ممثل أو عضو طاقم العمل..." 
+                                                 />
+                                                 {isSearchingCast && (
+                                                     <div className="absolute left-3 top-3.5">
+                                                         <BouncingDotsLoader size="sm" colorClass="bg-gray-500" delayMs={0} />
+                                                     </div>
+                                                 )}
+                                                 {castResults.length > 0 && (
+                                                     <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-[#1a1f29] border border-gray-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto p-1 divide-y divide-gray-800/60 custom-scrollbar">
+                                                         {castResults.map(person => {
+                                                             const imgUrl = person.image || (person.profile_path ? `https://image.tmdb.org/t/p/w92${person.profile_path}` : '');
+                                                             const dept = person.known_for_department ? (person.known_for_department === 'Acting' ? 'تمثيل' : person.known_for_department) : '';
+                                                             const charName = person.character || '';
+                                                             return (
+                                                                 <div 
+                                                                     key={person.id || person.name} 
+                                                                     onClick={() => addCastMember(person)} 
+                                                                     className="flex items-center justify-between p-2 hover:bg-gray-800/80 rounded-lg cursor-pointer transition-colors"
+                                                                 >
+                                                                     <div className="flex items-center gap-3">
+                                                                         {imgUrl ? (
+                                                                             <img src={imgUrl} className="w-10 h-10 rounded-full object-cover border border-gray-700 shadow-sm" alt={person.name} />
+                                                                         ) : (
+                                                                             <div className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400 text-xs font-bold">
+                                                                                 {person.name?.[0] || '؟'}
+                                                                             </div>
+                                                                         )}
+                                                                         <div className="flex flex-col">
+                                                                             <span className="text-xs font-bold text-white">{person.name}</span>
+                                                                             {charName ? (
+                                                                                 <span className="text-[10px] text-gray-400">الشخصية: {charName}</span>
+                                                                             ) : dept ? (
+                                                                                 <span className="text-[10px] text-gray-400">{dept}</span>
+                                                                             ) : null}
+                                                                         </div>
+                                                                     </div>
+                                                                     <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-1 rounded-md font-bold hover:bg-blue-600 hover:text-white transition-colors">إضافة</span>
+                                                                 </div>
+                                                             );
+                                                         })}
+                                                     </div>
+                                                 )}
+                                             </div>
+
+                                             {/* Circular Avatars Horizontal Scroll View */}
+                                             <div className="relative bg-[#0b0e14] rounded-2xl border border-gray-800/80 p-4 shadow-inner">
+                                                 {formData.cast.length === 0 ? (
+                                                     <div className="text-xs text-gray-500 italic py-6 text-center">
+                                                         لا يوجد طاقم عمل مضاف. ابحث عن ممثل أو اضغط على "مزامنة طاقم العمل من TMDB" لجلبهم تلقائياً.
+                                                     </div>
+                                                 ) : (
+                                                     <div className="flex flex-nowrap overflow-x-auto gap-6 pb-3 pt-2 px-1 custom-scrollbar">
+                                                         {formData.cast.map((c, i) => {
+                                                             const personObj = peopleList.find(p => p.name === c || p.normalizedName === normalizeText(c));
+                                                             const personImg = personObj?.image;
+                                                             const charName = formData.castCharacters?.[c] || personObj?.characterName;
+
+                                                             return (
+                                                                 <div 
+                                                                     key={i} 
+                                                                     className="group relative flex flex-col items-center flex-shrink-0 w-28 text-center select-none"
+                                                                 >
+                                                                     {/* Circle Avatar with Hover Overlay for Deletion */}
+                                                                     <div className="relative w-20 h-20 md:w-22 md:h-22 rounded-full border-2 border-gray-700/80 group-hover:border-[var(--color-accent)] transition-all shadow-xl overflow-hidden bg-gray-900 flex items-center justify-center">
+                                                                         {personImg ? (
+                                                                             <img 
+                                                                                 src={personImg} 
+                                                                                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                                                                                 alt={c} 
+                                                                             />
+                                                                         ) : (
+                                                                             <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-gray-300 font-bold text-lg">
+                                                                                 {c[0]}
+                                                                             </div>
+                                                                         )}
+
+                                                                         {/* Hover to Delete Overlay (X) */}
+                                                                         <div className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center backdrop-blur-[1px]">
+                                                                             <button 
+                                                                                 type="button" 
+                                                                                 onClick={(e) => {
+                                                                                     e.stopPropagation();
+                                                                                     removeCastMember(c);
+                                                                                 }} 
+                                                                                 className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full shadow-lg transform scale-90 group-hover:scale-100 transition-all cursor-pointer"
+                                                                                 title={`حذف ${c} من العمل`}
+                                                                             >
+                                                                                 <CloseIcon className="w-4 h-4" />
+                                                                             </button>
+                                                                         </div>
+                                                                     </div>
+
+                                                                     {/* Actor Name */}
+                                                                     <span className="text-xs font-bold text-white mt-2.5 w-full truncate px-1" title={c}>
+                                                                         {c}
+                                                                     </span>
+
+                                                                     {/* Character Name in the work */}
+                                                                     <div className="flex items-center justify-center gap-1 w-full mt-0.5 px-1">
+                                                                         <span 
+                                                                             className="text-[11px] text-gray-400 w-full truncate font-medium cursor-pointer hover:text-blue-400 transition-colors" 
+                                                                             title={charName ? `الشخصية: ${charName} (اضغط للتعديل)` : 'اضغط لتحديد اسم الشخصية'}
+                                                                             onClick={() => {
+                                                                                 if (personObj) {
+                                                                                     setEditingCharPerson({ person: personObj, newCharName: charName || '' });
+                                                                                 } else {
+                                                                                     const newPerson: Person = {
+                                                                                         id: String(Date.now()),
+                                                                                         name: c,
+                                                                                         normalizedName: normalizeText(c),
+                                                                                         role: 'actor',
+                                                                                         characterName: '',
+                                                                                         updatedAt: new Date().toISOString()
+                                                                                     };
+                                                                                     setEditingCharPerson({ person: newPerson, newCharName: '' });
+                                                                                 }
+                                                                             }}
+                                                                         >
+                                                                             {charName || '—'}
+                                                                         </span>
+                                                                     </div>
+                                                                 </div>
+                                                             );
+                                                         })}
+                                                     </div>
+                                                 )}
+                                             </div>
+                                         </div>
+
+                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-800 pt-4">
                                             <div><label className={labelClass}>Slug (الرابط)</label><input type="text" name="slug" value={formData.slug || ''} onChange={handleChange} className={inputClass + " font-mono text-xs text-blue-400"} /></div>
                                             <div><label className={labelClass}>كود (TMDB ID)</label><input type="text" name="tmdbId" value={formData.tmdbId || ''} onChange={handleChange} className={inputClass + " font-mono text-[var(--color-accent)]"} /></div>
                                         </div>
@@ -7399,6 +7953,56 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 title={previewVideoState.title} 
                                 onClose={() => setPreviewVideoState({ isOpen: false, url: '', title: '', poster: '' })} 
                             />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {editingCharPerson && (
+                <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" dir="rtl">
+                    <div className="w-full max-w-md bg-[#161b22] border border-gray-800 rounded-2xl shadow-2xl p-6">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-lg font-bold text-white">تعديل اسم الشخصية</h3>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    if (editingCharPerson.newCharName) {
+                                        const translated = await translateToArabic(editingCharPerson.newCharName);
+                                        setEditingCharPerson(prev => prev ? { ...prev, newCharName: translated } : null);
+                                    }
+                                }}
+                                className="text-xs bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg hover:bg-blue-600 hover:text-white transition-all cursor-pointer font-bold flex items-center gap-1.5 shadow-sm"
+                                title="ترجمة اسم الشخصية للعربية تلقائياً"
+                            >
+                                <span>🪄 ترجمة للعربية</span>
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-400 mb-4">
+                            أدخل اسم الشخصية التي تؤديها الفنان <span className="text-[var(--color-accent)] font-bold">{editingCharPerson.person.name}</span> في هذا العمل:
+                        </p>
+                        <input 
+                            type="text"
+                            value={editingCharPerson.newCharName}
+                            onChange={(e) => setEditingCharPerson(prev => prev ? { ...prev, newCharName: e.target.value } : null)}
+                            className={inputClass + " mb-6"}
+                            placeholder="مثال: بيتر باركر / سبايدرمان"
+                            autoFocus
+                        />
+                        <div className="flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setEditingCharPerson(null)}
+                                className="px-4 py-2 bg-gray-800 text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-700 transition-all cursor-pointer"
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveCharacterName}
+                                className="px-5 py-2 bg-[var(--color-accent)] text-black rounded-xl text-xs font-black hover:brightness-110 transition-all cursor-pointer shadow-lg"
+                            >
+                                حفظ التغييرات
+                            </button>
                         </div>
                     </div>
                 </div>

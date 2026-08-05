@@ -32,13 +32,14 @@ import ManageStories from '../home/ManageStories';
 import ServersManagementTab from './ServersManagementTab';
 import MostViewedTab from './MostViewedTab';
 import CarouselsManagementTab from './CarouselsManagementTab';
+import UsageLogsTab from './UsageLogsTab';
 
 // Import Icons
 import { 
     HomeIcon, FilmIcon, StarIcon, TrophyIcon, UsersIcon, InboxIcon, 
     FlagIcon, MegaphoneIcon, PaintBrushIcon, CogIcon, ChartBarIcon, 
     PlayCircleIcon, DevicePhoneMobileIcon, UserGroupIcon, MenuIcon, 
-    MapIcon, ExitIcon, BellIcon
+    MapIcon, ExitIcon, BellIcon, TimerIcon
 } from './AdminIcons';
 
 const ServerIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -53,7 +54,7 @@ const KeyboardIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-type AdminTab = 'dashboard' | 'content' | 'carousels' | 'most_viewed' | 'servers_domains' | 'content_radar' | 'top_content' | 'top10' | 'stories' | 'people' | 'users' | 'requests' | 'reports' | 'ads' | 'startup_ad' | 'promo_banners' | 'themes' | 'settings' | 'analytics' | 'notifications' | 'alerts' | 'app_config' | 'shortcuts';
+type AdminTab = 'dashboard' | 'content' | 'carousels' | 'most_viewed' | 'servers_domains' | 'content_radar' | 'top_content' | 'top10' | 'stories' | 'people' | 'users' | 'requests' | 'reports' | 'ads' | 'startup_ad' | 'promo_banners' | 'themes' | 'settings' | 'analytics' | 'usage_logs' | 'notifications' | 'alerts' | 'app_config' | 'shortcuts';
 
 interface RadarAlert {
     id: string;
@@ -526,8 +527,9 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             case 'notifications': return <NotificationTab addToast={props.addToast} allUsers={props.allUsers} onRequestDelete={confirmDeleteBroadcast} />;
             case 'stories': return <ManageStories addToast={props.addToast} />;
             case 'analytics': return <AnalyticsTab allContent={allContent} allUsers={props.allUsers}/>;
+            case 'usage_logs': return <UsageLogsTab addToast={props.addToast} />;
             case 'app_config': return <AppConfigTab settings={props.siteSettings} onUpdate={props.onSetSiteSettings} />;
-            case 'people': return <PeopleManagerTab addToast={props.addToast} />;
+            case 'people': return <PeopleManagerTab addToast={props.addToast} onSetView={props.onSetView} isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} allContent={allContent} />;
             case 'shortcuts': return <ShortcutsPage siteSettings={props.siteSettings} onSetSiteSettings={props.onSetSiteSettings} addToast={props.addToast} isNestedInAdmin={true} />;
             case 'content_radar': return <ContentRadarTab addToast={props.addToast} onRequestDelete={confirmDeleteRadar} onEditContent={openContentModalForEdit} allPublishedContent={allContent} />;
             case 'alerts': return <AlertsTab alerts={radarAlerts} onGoToRadar={() => setActiveTab('content_radar')} onDismiss={handleDismissAlert} onClearAll={handleClearAllAlerts} />;
@@ -575,6 +577,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
         { id: 'themes', label: 'المظهر', icon: PaintBrushIcon },
         { id: 'settings', label: 'إعدادات الموقع', icon: CogIcon },
         { id: 'analytics', label: 'الإحصائيات', icon: ChartBarIcon },
+        { id: 'usage_logs', label: 'سجل الاستخدام', icon: TimerIcon },
         { id: 'notifications', label: 'إرسال إشعار', icon: BellIcon },
         { id: 'alerts', label: 'تنبيهات النظام', icon: BellIcon },
         { id: 'app_config', label: 'تطبيق الموبايل', icon: DevicePhoneMobileIcon },

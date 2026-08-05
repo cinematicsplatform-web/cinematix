@@ -885,7 +885,7 @@ export const savePerson = async (person: Partial<Person>): Promise<string> => {
   };
 
   if (id) {
-    await db.collection('people').doc(id).update(dataToSave);
+    await db.collection('people').doc(id).set(dataToSave, { merge: true });
     return id;
   } else {
     const docRef = await db.collection('people').add({

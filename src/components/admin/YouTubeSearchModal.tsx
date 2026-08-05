@@ -139,24 +139,58 @@ async function searchTMDBTrailers(rawQuery: string): Promise<YouTubeVideo[]> {
         const searchData = await searchRes.json();
         const results = searchData.results || [];
 
+        const isFanOrUnofficialVideo = (v: any) => {
+            if (!v) return true;
+            const nameLower = (v.name || '').toLowerCase();
+            const fanKeywords = [
+                'concept', 'fan made', 'fanmade', 'fan-made', 'fan trailer', 
+                'teaser concept', 'mockup', 'fan edit', 'fanedit', 'parody', 
+                'trailer concept', 'fan concept', 'fan-concept', 'fake', 'speculation',
+                'fan-teaser', 'fanteaser', 'made by fan', 'fan movie', 'concept teaser',
+                'fan version', 'concept version'
+            ];
+            for (const kw of fanKeywords) {
+                if (nameLower.includes(kw)) return true;
+            }
+            if (v.official === false) {
+                if (nameLower.includes('مترجم') || nameLower.includes('subtitled') || nameLower.includes('إعلان مترجم') || nameLower.includes('تريلر مترجم')) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         const videoPromises = results.slice(0, 5).map(async (item: any) => {
             const mediaType = item.media_type === 'tv' ? 'tv' : 'movie';
             const title = item.title || item.name || cleanQuery;
             try {
-                let videoRes = await fetchTMDB(`https://api.themoviedb.org/3/${mediaType}/${item.id}/videos?api_key=${TMDB_API_KEY}&language=ar-SA`);
+                let videoRes = await fetchTMDB(`https://api.themoviedb.org/3/${mediaType}/${item.id}/videos?api_key=${TMDB_API_KEY}&language=ar-SA&include_video_language=ar,en,null`);
                 let videoData = videoRes.ok ? await videoRes.json() : null;
-                let ytVideos = (videoData?.results || []).filter((v: any) => v.site === 'YouTube');
+                let ytVideos = (videoData?.results || []).filter((v: any) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser') && !isFanOrUnofficialVideo(v));
 
                 if (ytVideos.length === 0) {
-                    videoRes = await fetchTMDB(`https://api.themoviedb.org/3/${mediaType}/${item.id}/videos?api_key=${TMDB_API_KEY}&language=en-US`);
+                    videoRes = await fetchTMDB(`https://api.themoviedb.org/3/${mediaType}/${item.id}/videos?api_key=${TMDB_API_KEY}&language=en-US&include_video_language=ar,en,null`);
                     videoData = videoRes.ok ? await videoRes.json() : null;
-                    ytVideos = (videoData?.results || []).filter((v: any) => v.site === 'YouTube');
+                    ytVideos = (videoData?.results || []).filter((v: any) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser') && !isFanOrUnofficialVideo(v));
                 }
 
-                return ytVideos.map((v: any) => ({
+                if (ytVideos.length === 0) {
+                    ytVideos = (videoData?.results || []).filter((v: any) => v.site === 'YouTube' && !isFanOrUnofficialVideo(v));
+                }
+
+                const officialOnly = ytVideos.filter((v: any) => v.official === true);
+                const candidates = officialOnly.length > 0 ? officialOnly : ytVideos;
+
+                // Rank by official status & type, then cap at 3 max
+                candidates.sort((a: any, b: any) => {
+                    const score = (v: any) => (v.official ? 10000 : 0) + (v.type === 'Trailer' ? 1000 : 500) + (v.iso_639_1 === 'ar' ? 300 : 100);
+                    return score(b) - score(a);
+                });
+
+                return candidates.slice(0, 3).map((v: any) => ({
                     id: { videoId: v.key },
                     snippet: {
-                        title: `${title} - ${v.name || 'الإعلان الرسمي'}`,
+                        title: v.name || `${title} - Official Trailer`,
                         thumbnails: { high: { url: `https://img.youtube.com/vi/${v.key}/hqdefault.jpg` } },
                         channelTitle: `${v.type || 'Trailer'} (${mediaType === 'movie' ? 'فيلم' : 'مسلسل'})`,
                         publishedAt: v.published_at || new Date().toISOString()

@@ -18,6 +18,7 @@ import { BouncingDotsLoader } from './components/shared/BouncingDotsLoader';
 import ErrorBoundary from './components/shared/ErrorBoundary';
 
 import StartupAdModal from './components/ads/StartupAdModal';
+import { sendWebHeartbeat } from './analyticsUtils';
 
 function lazyWithRetry<T extends React.ComponentType<any>>(
   componentImport: () => Promise<{ default: T }>
@@ -371,6 +372,22 @@ const App: React.FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Real-time active web session heartbeat
+  useEffect(() => {
+    const currentPageName = view === 'detail' && selectedContent ? `محتوى: ${selectedContent.title}` : view;
+    const userPayload = currentUser ? { id: currentUser.id, email: currentUser.email, name: currentUser.firstName } : null;
+    
+    // Initial heartbeat
+    sendWebHeartbeat(currentPageName, userPayload);
+
+    // Heartbeat every 25 seconds
+    const heartbeatInterval = setInterval(() => {
+      sendWebHeartbeat(currentPageName, userPayload);
+    }, 25000);
+
+    return () => clearInterval(heartbeatInterval);
+  }, [view, selectedContent?.id, currentUser?.id]);
 
   useEffect(() => {
       // Show startup ads only on the home page when content and auth are loaded
@@ -1230,7 +1247,7 @@ const App: React.FC = () => {
           case 'onboarding': return <OnboardingPage allContent={allContent} activeProfile={activeProfile} onFinish={handleOnboardingFinish} onSetView={handleSetView} />;
           case 'notifications': return currentUser ? <NotificationsPage userId={currentUser.id} onSetView={handleSetView} onUpdateUnreadCount={setUnreadNotificationsCount} /> : <LoginModal onSetView={handleSetView} onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} isShahidTheme={siteSettings.activeTheme === 'shahid'} authReturnView={returnView} initialEmail={authPrefillEmail} />;
           case 'appDownload': return <AppPage onSetView={handleSetView} onGoBack={handleGoBack} appConfig={siteSettings.appConfig} returnView={returnView} />;
-          case 'people': return <PeoplePage allContent={allContent} onPersonClick={handlePersonClick} onSetView={handleSetView} />;
+          case 'people': return <PeoplePage allContent={allContent} people={people} onPersonClick={handlePersonClick} onSetView={handleSetView} />;
           case 'personProfile': return <PersonProfilePage name={selectedPersonName} allContent={allContent} people={people} onSelectContent={handleSelectContent} onSetView={handleSetView} onGoBack={handleGoBack} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} returnView={returnView} />;
           case 'adGate': return <AdGatePage content={adGateTarget?.content || ({} as Content)} targetView={adGateTarget?.view || 'home'} onDone={handleAdGateDone} onCancel={handleAdGateCancel} ads={ads} adsEnabled={siteSettings.adsEnabled} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;
           case 'contentRequest': return <ContentRequestPage onSetView={handleSetView} onGoBack={handleGoBack} currentUser={currentUser} addToast={addToast} returnView={returnView} isRamadanTheme={isRamadanTheme} isEidTheme={isEidTheme} isCosmicTealTheme={isCosmicTealTheme} isNetflixRedTheme={isNetflixRedTheme} />;

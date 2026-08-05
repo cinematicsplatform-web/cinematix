@@ -125,6 +125,7 @@ export interface Content {
   genres: Genre[];
   releaseYear: number;
   cast: string[];
+  castCharacters?: Record<string, string>;
   director?: string;
   writer?: string;
   bannerNote?: string;
@@ -201,16 +202,41 @@ export interface GlobalServer {
   createdAt?: string;
 }
 
+export interface PersonSocialLinks {
+  instagram?: string;
+  facebook?: string;
+  twitter?: string;
+  imdb?: string;
+  tiktok?: string;
+  youtube?: string;
+}
+
+export interface PersonTask {
+  id: string;
+  title: string;
+  roleName?: string;
+  type?: 'movie' | 'series' | 'program' | 'play' | 'other';
+  status?: 'completed' | 'in_production' | 'upcoming' | 'assigned';
+  contentId?: string;
+  releaseYear?: string | number;
+  notes?: string;
+  createdAt?: string;
+}
+
 export interface Person {
   id: string;
   name: string;
   normalizedName: string;
   tmdbId?: string;
   image?: string;
+  gallery?: string[];
+  characterName?: string;
   biography?: string;
   role: 'actor' | 'director' | 'writer' | 'crew';
   birthday?: string;
   placeOfBirth?: string;
+  socialLinks?: PersonSocialLinks;
+  tasks?: PersonTask[];
   updatedAt: string;
 }
 
