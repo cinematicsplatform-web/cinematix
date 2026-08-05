@@ -534,48 +534,91 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
   const PersonCard: React.FC<{ name: string, label?: string }> = ({ name, label }) => {
     const personProfile = people.find(p => p.name === name);
+    const charName = content.castCharacters?.[name] || personProfile?.characterName;
+    const roleText = label || charName;
     const arabic = isArabic(name);
     return (
       <div 
         key={name}
         onClick={() => onPersonClick(name)}
-        className="cursor-pointer group flex flex-col"
+        className="cursor-pointer group flex flex-col items-center text-center w-28 sm:w-32 md:w-36 flex-shrink-0 transition-transform duration-300 hover:scale-105"
       >
-        <div className="w-full aspect-square rounded-xl bg-[#1f2937]/80 border border-white/5 overflow-hidden mb-2 transition-all duration-300 group-hover:scale-105 group-hover:border-[var(--color-accent)] relative flex flex-col justify-end shadow-2xl">
+        <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full bg-[#1f2937]/90 border-2 border-white/10 overflow-hidden mb-3 group-hover:border-[var(--color-accent)] group-hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] relative flex items-center justify-center shadow-xl flex-shrink-0 transition-all duration-300">
           {personProfile?.image ? (
             <img 
               src={personProfile.image} 
               alt={name}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="w-full h-full object-cover rounded-full"
             />
           ) : (
-            <div className="absolute inset-0 w-full h-full flex items-end justify-center">
-              <UserIcon className="w-full h-full text-gray-700/50" />
-            </div>
+            <UserIcon className="w-12 h-12 text-gray-500/70" />
           )}
-          <div className={`relative z-10 pb-3 px-3 ${arabic ? 'text-right' : 'text-left'}`} dir={arabic ? 'rtl' : 'ltr'}>
-            <span className="text-sm md:text-base font-bold text-white truncate block drop-shadow-[0_2px_6px_rgba(0,0,0,1)]">{name}</span>
-          </div>
         </div>
-        {label && (
-          <span className="text-center text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest leading-none mt-1">{label}</span>
-        )}
+        <div className="w-full px-1 flex flex-col items-center">
+          <span 
+            className="text-xs sm:text-sm md:text-base font-bold text-white truncate w-full block leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+            dir={arabic ? 'rtl' : 'ltr'}
+          >
+            {name}
+          </span>
+          {roleText && (
+            <span 
+              className="text-[11px] sm:text-xs text-gray-400 font-medium truncate w-full block mt-1 leading-tight"
+              dir={isArabic(roleText) ? 'rtl' : 'ltr'}
+            >
+              {roleText}
+            </span>
+          )}
+        </div>
       </div>
     );
   };
 
-  const PeopleGrid: React.FC<{ title: string, names: string[] }> = ({ title, names }) => {
-    if (!names || names.length === 0) return null;
+  const PeopleGrid: React.FC<{ title: string, names?: string[], children?: React.ReactNode }> = ({ title, names, children }) => {
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    if ((!names || names.length === 0) && !children) return null;
+
+    const scroll = (direction: 'left' | 'right') => {
+      if (scrollRef.current) {
+        const scrollAmount = direction === 'left' ? -350 : 350;
+        scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      }
+    };
+
     return (
-      <div className="mb-12 w-full">
-        <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center gap-3">
-          <div className="h-6 md:h-8 w-1.5 bg-[var(--color-accent)] rounded-full"></div>
-          <span>{title}</span>
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4 w-full">
-          {names.map((name, idx) => (
+      <div className="mb-10 w-full relative">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl md:text-2xl font-bold text-white flex items-center gap-3">
+            <div className="h-6 md:h-8 w-1.5 bg-[var(--color-accent)] rounded-full"></div>
+            <span>{title}</span>
+          </h3>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => scroll('right')}
+              className="p-2 rounded-full bg-gray-800/80 hover:bg-gray-700 text-white transition-all border border-white/10 shadow-md cursor-pointer hover:scale-105 active:scale-95"
+              title="السابق"
+            >
+              <ChevronRightIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => scroll('left')}
+              className="p-2 rounded-full bg-gray-800/80 hover:bg-gray-700 text-white transition-all border border-white/10 shadow-md cursor-pointer hover:scale-105 active:scale-95"
+              title="التالي"
+            >
+              <ChevronRightIcon className="w-5 h-5 rotate-180" />
+            </button>
+          </div>
+        </div>
+
+        <div 
+          ref={scrollRef}
+          className="flex items-start gap-4 sm:gap-6 md:gap-8 overflow-x-auto pb-4 pt-1 scroll-smooth scrollbar-none select-none w-full"
+          dir="rtl"
+        >
+          {names ? names.map((name, idx) => (
             <PersonCard key={idx} name={name} />
-          ))}
+          )) : children}
         </div>
       </div>
     );
@@ -1123,19 +1166,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
                   {isLoaded && (
                     <div className="relative z-10 px-4 md:px-8 py-12 mt-12 border-t border-white/5 bg-black/20 w-full">
                         <div className="w-full text-right">
-                            {content.cast && content.cast.length > 0 && <PeopleGrid title="طاقم التمثيل" names={content.cast} />}
+                            {content.cast && content.cast.length > 0 && <PeopleGrid title="طاقم العمل" names={content.cast} />}
                             
                             {(content.director || content.writer) && (
-                            <div className="mb-12 w-full text-right">
-                                <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center justify-center md:justify-start gap-3">
-                                <div className="h-6 md:h-8 w-1.5 bg-[var(--color-accent)] rounded-full"></div>
-                                <span>صنّاع العمل</span>
-                                </h3>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4 w-full">
+                              <PeopleGrid title="صنّاع العمل">
                                 {content.director && <PersonCard name={content.director} label="إخراج" />}
                                 {content.writer && <PersonCard name={content.writer} label="تأليف" />}
-                                </div>
-                            </div>
+                              </PeopleGrid>
                             )}
                         </div>
                     </div>

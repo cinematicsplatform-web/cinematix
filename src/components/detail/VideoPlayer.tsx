@@ -151,6 +151,10 @@ const ServerIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
   </svg>
 );
 
+const EMPTY_SUBTITLES: SubtitleTrack[] = [];
+const EMPTY_EPISODES: PlayerEpisode[] = [];
+const EMPTY_SERVERS: PlayerServer[] = [];
+
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
   poster,
   manualSrc,
@@ -162,10 +166,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   episodeTitle,
   seriesTitle,
   contentId,
-  subtitles = [],
+  subtitles = EMPTY_SUBTITLES,
   intro,
-  episodes = [],
-  servers = [],
+  episodes = EMPTY_EPISODES,
+  servers = EMPTY_SERVERS,
   selectedServerId,
   onServerSelect,
   lastPosition,
@@ -225,40 +229,49 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   useEffect(() => {
     if (effectiveServers.length > 0) {
+      let chosenServer: PlayerServer | null = null;
+
       if (selectedServerId !== undefined) {
         const match = effectiveServers.find(s => String(s.id) === String(selectedServerId));
         if (match) {
-          setSelectedServer(match);
-          return;
+          chosenServer = match;
         }
       }
-      if (manualSrc) {
+      if (!chosenServer && manualSrc) {
         const matchUrl = effectiveServers.find(s => s.url === manualSrc);
         if (matchUrl) {
-          setSelectedServer(matchUrl);
-          return;
+          chosenServer = matchUrl;
         }
       }
 
-      const item720 = effectiveServers.find(s => `${s.name} ${s.url}`.includes('720'));
-      const item360 = effectiveServers.find(s => `${s.name} ${s.url}`.includes('360'));
-      const item480 = effectiveServers.find(s => `${s.name} ${s.url}`.includes('480'));
+      if (!chosenServer) {
+        const item720 = effectiveServers.find(s => `${s.name} ${s.url}`.includes('720'));
+        const item360 = effectiveServers.find(s => `${s.name} ${s.url}`.includes('360'));
+        const item480 = effectiveServers.find(s => `${s.name} ${s.url}`.includes('480'));
 
-      let chosenServer: PlayerServer;
-      if (item720 && item360) {
-        chosenServer = item360;
-      } else if (item480) {
-        chosenServer = item480;
-      } else if (item720) {
-        chosenServer = item720;
-      } else if (item360) {
-        chosenServer = item360;
-      } else {
-        const middleIndex = effectiveServers.length >= 2 ? 1 : 0;
-        chosenServer = effectiveServers[middleIndex];
+        if (item720 && item360) {
+          chosenServer = item360;
+        } else if (item480) {
+          chosenServer = item480;
+        } else if (item720) {
+          chosenServer = item720;
+        } else if (item360) {
+          chosenServer = item360;
+        } else {
+          const middleIndex = effectiveServers.length >= 2 ? 1 : 0;
+          chosenServer = effectiveServers[middleIndex];
+        }
       }
 
-      setSelectedServer(chosenServer);
+      if (chosenServer) {
+        const target = chosenServer;
+        setSelectedServer(prev => {
+          if (prev && String(prev.id) === String(target.id) && prev.url === target.url) {
+            return prev;
+          }
+          return target;
+        });
+      }
     }
   }, [effectiveServers, selectedServerId, manualSrc]);
 
