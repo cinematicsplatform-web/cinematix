@@ -186,39 +186,50 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   // Compute effective server list dynamically
   const effectiveServers = useMemo<PlayerServer[]>(() => {
+    // 1. Explicit servers array passed from content/episode
     if (servers && servers.length > 0) {
       return servers.map((srv, idx) => ({
         id: srv.id ?? idx + 1,
-        name: srv.name && srv.name.trim() !== '' ? srv.name : `جودة ${idx + 1}`,
-        url: srv.url,
-        downloadUrl: srv.downloadUrl,
+        name: srv.name && srv.name.trim() !== '' ? srv.name : `سيرفر ${idx + 1}`,
+        url: formatVideoSource(srv.url) || srv.url,
+        downloadUrl: srv.downloadUrl ? (formatVideoSource(srv.downloadUrl) || srv.downloadUrl) : srv.url,
         isActive: srv.isActive
       }));
     }
 
+    // 2. Direct manual source passed
+    if (manualSrc) {
+      const formattedManual = formatVideoSource(manualSrc) || manualSrc;
+      return [
+        { id: 'server1', name: 'سيرفر رئيسي', url: formattedManual, isActive: true }
+      ];
+    }
+
+    // 3. Fallback to TMDB embed servers
     if (tmdbId) {
-      const s1Domain = PLAYER_CONFIG.servers[0]?.domain || 'https://vidsrc.xyz/embed';
-      const s2Domain = PLAYER_CONFIG.servers[1]?.domain || 'https://vidsrc.vip/embed';
-      const s1Url = (type === 'movie' || type === 'video.movie')
-        ? `${s1Domain}/movie/${tmdbId}`
-        : `${s1Domain}/tv/${tmdbId}/${season || 1}/${episode || 1}`;
-      const s2Url = (type === 'movie' || type === 'video.movie')
-        ? `${s2Domain}/movie/${tmdbId}`
-        : `${s2Domain}/tv/${tmdbId}/${season || 1}/${episode || 1}`;
-      const s3Url = (type === 'movie' || type === 'video.movie')
+      const isMovie = type === 'movie' || type === 'video.movie' || type === 'film';
+      const s1Url = isMovie
+        ? `https://vidsrc.pro/embed/movie/${tmdbId}`
+        : `https://vidsrc.pro/embed/tv/${tmdbId}/${season || 1}/${episode || 1}`;
+      const s2Url = isMovie
+        ? `https://vidsrc.cc/v2/embed/movie/${tmdbId}`
+        : `https://vidsrc.cc/v2/embed/tv/${tmdbId}/${season || 1}/${episode || 1}`;
+      const s3Url = isMovie
+        ? `https://vidsrc.in/embed/movie/${tmdbId}`
+        : `https://vidsrc.in/embed/tv/${tmdbId}/${season || 1}/${episode || 1}`;
+      const s4Url = isMovie
+        ? `https://vidlink.pro/movie/${tmdbId}`
+        : `https://vidlink.pro/tv/${tmdbId}/${season || 1}/${episode || 1}`;
+      const s5Url = isMovie
         ? `https://www.2embed.cc/embed/${tmdbId}`
         : `https://www.2embed.cc/embedtv/${tmdbId}&s=${season || 1}&e=${episode || 1}`;
 
       return [
-        { id: 'server1', name: 'جودة 1 (VidSrc)', url: s1Url },
-        { id: 'server2', name: 'جودة 2 (Cinematix VIP)', url: s2Url },
-        { id: 'server3', name: 'جودة 3 (2Embed)', url: s3Url }
-      ];
-    }
-
-    if (manualSrc) {
-      return [
-        { id: 'server1', name: 'جودة عالية (رئيسي)', url: manualSrc }
+        { id: 'server1', name: 'سيرفر 1 (VidSrc PRO)', url: s1Url },
+        { id: 'server2', name: 'سيرفر 2 (VidSrc CC)', url: s2Url },
+        { id: 'server3', name: 'سيرفر 3 (VidSrc IN)', url: s3Url },
+        { id: 'server4', name: 'سيرفر 4 (VidLink)', url: s4Url },
+        { id: 'server5', name: 'سيرفر 5 (2Embed)', url: s5Url }
       ];
     }
 
@@ -231,35 +242,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (effectiveServers.length > 0) {
       let chosenServer: PlayerServer | null = null;
 
-      if (selectedServerId !== undefined) {
+      if (selectedServerId !== undefined && selectedServerId !== null) {
         const match = effectiveServers.find(s => String(s.id) === String(selectedServerId));
         if (match) {
           chosenServer = match;
         }
       }
       if (!chosenServer && manualSrc) {
-        const matchUrl = effectiveServers.find(s => s.url === manualSrc);
+        const formattedManual = formatVideoSource(manualSrc) || manualSrc;
+        const matchUrl = effectiveServers.find(s => s.url === manualSrc || s.url === formattedManual);
         if (matchUrl) {
           chosenServer = matchUrl;
         }
       }
 
       if (!chosenServer) {
-        const item720 = effectiveServers.find(s => `${s.name} ${s.url}`.includes('720'));
-        const item360 = effectiveServers.find(s => `${s.name} ${s.url}`.includes('360'));
-        const item480 = effectiveServers.find(s => `${s.name} ${s.url}`.includes('480'));
-
-        if (item720 && item360) {
-          chosenServer = item360;
-        } else if (item480) {
-          chosenServer = item480;
-        } else if (item720) {
-          chosenServer = item720;
-        } else if (item360) {
-          chosenServer = item360;
+        const activeOne = effectiveServers.find(s => s.isActive);
+        if (activeOne) {
+          chosenServer = activeOne;
         } else {
-          const middleIndex = effectiveServers.length >= 2 ? 1 : 0;
-          chosenServer = effectiveServers[middleIndex];
+          chosenServer = effectiveServers[0];
         }
       }
 
@@ -272,6 +274,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           return target;
         });
       }
+    } else {
+      setSelectedServer(null);
     }
   }, [effectiveServers, selectedServerId, manualSrc]);
 
@@ -379,9 +383,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const isEpisodic = useMemo(() => {
+    if (type === 'movie') return false;
+    if (type === 'series' || type === 'program') return true;
+    return !!(season !== undefined || episode !== undefined || (episodes && episodes.length > 0));
+  }, [type, season, episode, episodes]);
+
   // Calculate Next Episode Obj
   const nextEpisodeObj = useMemo(() => {
-    if (!episodes || episodes.length === 0) return null;
+    if (!isEpisodic || !episodes || episodes.length === 0) return null;
     const currentIndex = episodes.findIndex((e, idx) => (e.episodeNumber || idx + 1) === episode);
     if (currentIndex >= 0 && currentIndex < episodes.length - 1) {
       const nextEp = episodes[currentIndex + 1];
@@ -391,12 +401,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       };
     }
     return null;
-  }, [episodes, episode]);
+  }, [isEpisodic, episodes, episode]);
 
   // Read saved watch position on load
   useEffect(() => {
     const effectiveContentId = contentId || tmdbId || title || 'default';
-    const savedPos = lastPosition || getSavedWatchPosition(effectiveContentId, season, episode);
+    const sParam = isEpisodic ? season : undefined;
+    const eParam = isEpisodic ? episode : undefined;
+    const savedPos = lastPosition || getSavedWatchPosition(effectiveContentId, sParam, eParam);
     if (savedPos > 5) {
       setResumePosition(savedPos);
     } else {
@@ -405,7 +417,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setHasPromptedResume(false);
     setHasDismissedNextEpisode(false);
     setShowNextEpisodeOverlay(false);
-  }, [manualSrc, contentId, tmdbId, season, episode, lastPosition, title]);
+  }, [manualSrc, contentId, tmdbId, season, episode, lastPosition, title, isEpisodic]);
 
   // Fullscreen listener
   useEffect(() => {
@@ -426,18 +438,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     let shouldUseIsolation = false;
 
     if (!sourceUrl && tmdbId) {
-      let domain = PLAYER_CONFIG.servers[0]?.domain || 'https://vidsrc.xyz/embed';
-      if (activeServerType === 'server2') domain = PLAYER_CONFIG.servers[1]?.domain || 'https://vidsrc.vip/embed';
-      if (activeServerType === 'server3') domain = PLAYER_CONFIG.servers[2]?.domain || 'https://www.2embed.cc/embed';
-
-      if (activeServerType === 'server3') {
+      if (activeServerType === 'server2') {
+        sourceUrl = (type === 'movie' || type === 'video.movie')
+          ? `https://vidsrc.cc/v2/embed/movie/${tmdbId}`
+          : `https://vidsrc.cc/v2/embed/tv/${tmdbId}/${season || 1}/${episode || 1}`;
+      } else if (activeServerType === 'server3') {
         sourceUrl = (type === 'movie' || type === 'video.movie')
           ? `https://www.2embed.cc/embed/${tmdbId}`
           : `https://www.2embed.cc/embedtv/${tmdbId}&s=${season || 1}&e=${episode || 1}`;
       } else {
         sourceUrl = (type === 'movie' || type === 'video.movie')
-          ? `${domain}/movie/${tmdbId}`
-          : `${domain}/tv/${tmdbId}/${season || 1}/${episode || 1}`;
+          ? `https://vidsrc.pro/embed/movie/${tmdbId}`
+          : `https://vidsrc.pro/embed/tv/${tmdbId}/${season || 1}/${episode || 1}`;
       }
       shouldUseIsolation = true;
     }
@@ -455,7 +467,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setIsServerLoading(true);
       setIsBuffering(false);
 
-      if (shouldUseIsolation || finalUrl.includes('vidsrc') || finalUrl.includes('2embed')) {
+      const isEmbedServer = shouldUseIsolation ||
+        finalUrl.includes('vidsrc') ||
+        finalUrl.includes('2embed') ||
+        finalUrl.includes('embed') ||
+        finalUrl.includes('vidlink') ||
+        finalUrl.includes('autoembed') ||
+        finalUrl.includes('videasy') ||
+        finalUrl.includes('uqload') ||
+        finalUrl.includes('dailymotion') ||
+        finalUrl.includes('vk.com');
+
+      if (isEmbedServer && !checkIsDirectVideo(finalUrl)) {
         const encodedUrl = encodeURIComponent(finalUrl);
         setActiveSource(`/embed.html?url=${encodedUrl}`);
       } else {
@@ -483,76 +506,85 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     let hls: Hls | null = null;
     const videoElement = videoRef.current;
 
-    if (activeSource && isDirectVideo && activeSource.toLowerCase().includes('.m3u8') && videoElement) {
-      if (Hls.isSupported()) {
-        hls = new Hls({
-          maxMaxBufferLength: 30,
-          enableWorker: true,
-          lowLatencyMode: true,
-          backBufferLength: 90
-        });
-        hlsRef.current = hls;
+    if (activeSource && isDirectVideo && videoElement) {
+      if (activeSource.toLowerCase().includes('.m3u8')) {
+        if (Hls.isSupported()) {
+          hls = new Hls({
+            maxMaxBufferLength: 30,
+            enableWorker: true,
+            lowLatencyMode: true,
+            backBufferLength: 90
+          });
+          hlsRef.current = hls;
 
-        hls.loadSource(activeSource);
-        hls.attachMedia(videoElement);
+          hls.loadSource(activeSource);
+          hls.attachMedia(videoElement);
 
-        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-          setIsServerLoading(false);
-          setIsBuffering(false);
-          if (videoElement.duration) {
-            setDuration(videoElement.duration);
-          }
-          if (data.levels) {
-            const levels = data.levels.map((lvl, index) => ({
-              id: index,
-              label: `${lvl.height || lvl.bitrate || 720}p`,
-              height: lvl.height || 720
-            }));
-            levels.sort((a, b) => b.height - a.height);
-            setQualityLevels(levels);
-
-            const level720 = levels.find(l => l.height === 720 || l.label.includes('720'));
-            const level360 = levels.find(l => l.height === 360 || l.label.includes('360'));
-            const level480 = levels.find(l => l.height === 480 || l.label.includes('480'));
-
-            let chosenLevel = null;
-            if (level720 && level360) {
-              chosenLevel = level360;
-            } else if (level480) {
-              chosenLevel = level480;
-            } else if (level720) {
-              chosenLevel = level720;
-            } else if (level360) {
-              chosenLevel = level360;
-            } else {
-              const midIdx = levels.length >= 2 ? Math.floor(levels.length / 2) : 0;
-              chosenLevel = levels[midIdx];
+          hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+            setIsServerLoading(false);
+            setIsBuffering(false);
+            if (videoElement.duration) {
+              setDuration(videoElement.duration);
             }
+            if (data.levels) {
+              const levels = data.levels.map((lvl, index) => ({
+                id: index,
+                label: `${lvl.height || lvl.bitrate || 720}p`,
+                height: lvl.height || 720
+              }));
+              levels.sort((a, b) => b.height - a.height);
+              setQualityLevels(levels);
 
-            if (chosenLevel && hls) {
-              hls.currentLevel = chosenLevel.id;
-              setSelectedQuality(chosenLevel.label);
-            }
-          }
-        });
+              const level720 = levels.find(l => l.height === 720 || l.label.includes('720'));
+              const level360 = levels.find(l => l.height === 360 || l.label.includes('360'));
+              const level480 = levels.find(l => l.height === 480 || l.label.includes('480'));
 
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                hls?.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                hls?.recoverMediaError();
-                break;
-              default:
-                handleVideoPlaybackError();
-                break;
+              let chosenLevel = null;
+              if (level720 && level360) {
+                chosenLevel = level360;
+              } else if (level480) {
+                chosenLevel = level480;
+              } else if (level720) {
+                chosenLevel = level720;
+              } else if (level360) {
+                chosenLevel = level360;
+              } else {
+                const midIdx = levels.length >= 2 ? Math.floor(levels.length / 2) : 0;
+                chosenLevel = levels[midIdx];
+              }
+
+              if (chosenLevel && hls) {
+                hls.currentLevel = chosenLevel.id;
+                setSelectedQuality(chosenLevel.label);
+              }
             }
-          }
-        });
-      } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-        videoElement.src = activeSource;
+          });
+
+          hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+              switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                  hls?.startLoad();
+                  break;
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                  hls?.recoverMediaError();
+                  break;
+                default:
+                  handleVideoPlaybackError();
+                  break;
+              }
+            }
+          });
+        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+          videoElement.src = activeSource;
+        }
+      } else {
+        // Direct MP4 / Video file load
+        try {
+          videoElement.load();
+        } catch (err) {
+          console.warn("Error triggering video load:", err);
+        }
       }
     }
 
@@ -618,7 +650,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       const effectiveContentId = contentId || tmdbId || title || 'default';
       if (Math.floor(cur) % 5 === 0) {
-        saveWatchPosition(effectiveContentId, cur, dur, season, episode);
+        saveWatchPosition(effectiveContentId, cur, dur, isEpisodic ? season : undefined, isEpisodic ? episode : undefined);
         if (onProgressUpdate) onProgressUpdate(cur, dur);
       }
 
@@ -882,6 +914,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [seriesTitle, title]);
 
   const subTitle = useMemo(() => {
+    if (!isEpisodic) {
+      return '';
+    }
     const sNum = season || 1;
     const eNum = episode || 1;
     let extraTitle = '';
@@ -892,7 +927,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       }
     }
     return `الموسم ${sNum} : الحلقة ${eNum}${extraTitle}`;
-  }, [episodeTitle, mainTitle, season, episode]);
+  }, [isEpisodic, episodeTitle, mainTitle, season, episode]);
 
   return (
     <div className="flex flex-col gap-4 font-['Cairo']">
@@ -904,7 +939,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         {/* Copy Confirmation Toast */}
         {showCopiedToast && (
           <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[220] bg-black/90 text-white font-bold text-xs px-4 py-2 rounded-full border border-white/20 shadow-xl animate-fade-in pointer-events-none">
-            ✓ تم نسخ رابط الحلقة
+            {isEpisodic ? '✓ تم نسخ رابط الحلقة' : '✓ تم نسخ رابط الفيلم'}
           </div>
         )}
 
@@ -1079,6 +1114,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 <video
                   ref={videoRef}
                   key={activeSource}
+                  src={activeSource}
                   poster={poster}
                   className="w-full h-full bg-black object-contain"
                   onTimeUpdate={handleTimeUpdate}
@@ -1091,13 +1127,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   onPlay={() => { setIsPlaying(true); setIsBuffering(false); }}
                   onPause={() => { setIsPlaying(false); setIsBuffering(false); }}
                   onError={() => {
+                    // If direct video fails in <video> tag (e.g. HuggingFace / external server CORS/Header restrictions),
+                    // fallback to loading it inside the isolated embed iframe which bypasses CORS restrictions
+                    if (isDirectVideo && activeSource && !activeSource.startsWith('/embed.html')) {
+                      const encodedUrl = encodeURIComponent(activeSource);
+                      setActiveSource(`/embed.html?url=${encodedUrl}`);
+                      setIsServerLoading(true);
+                      setIsBuffering(false);
+                      setHasVideoError(false);
+                      return;
+                    }
                     handleVideoPlaybackError();
                   }}
                   playsInline
+                  preload="auto"
                 >
-                  {!activeSource.toLowerCase().includes('.m3u8') && (
-                    <source src={activeSource} type="video/mp4" />
-                  )}
                   {subtitles.map((sub, idx) => (
                     <track
                       key={idx}
@@ -1157,9 +1201,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       <h2 className="text-base md:text-xl font-black text-white tracking-wide truncate max-w-md drop-shadow-sm">
                         {mainTitle}
                       </h2>
-                      <span className="text-xs md:text-sm font-bold text-gray-200 opacity-90 drop-shadow-sm">
-                        {subTitle}
-                      </span>
+                      {subTitle ? (
+                        <span className="text-xs md:text-sm font-bold text-gray-200 opacity-90 drop-shadow-sm">
+                          {subTitle}
+                        </span>
+                      ) : null}
                     </div>
 
                     {/* Top Right: Share & Picture-in-Picture / Screen Icons */}
@@ -1174,7 +1220,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       <button
                         onClick={handleTogglePip}
                         className="p-1.5 hover:opacity-80 transition-opacity text-white"
-                        title="شاشة داخل شاشة / قائمة الحلقات"
+                        title={isEpisodic ? "شاشة داخل شاشة / قائمة الحلقات" : "شاشة داخل شاشة"}
                       >
                         <PipScreenIcon className="w-6 h-6 md:w-7 md:h-7" />
                       </button>

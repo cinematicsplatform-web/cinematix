@@ -97,7 +97,7 @@ const AdEditModal: React.FC<AdEditModalProps> = ({ ad, onClose, onSave }) => {
                         
                         <div>
                            <label htmlFor="title" className="block text-sm font-bold text-gray-400 mb-2 uppercase tracking-widest">عنوان الإعلان</label>
-                            <input id="title" name="title" value={formData.title} onChange={handleChange} placeholder="مثال: بانر الصفحة الرئيسية" className="w-full bg-[#161b22] border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] outline-none transition-all" required />
+                            <input id="title" name="title" value={formData.title || ''} onChange={handleChange} placeholder="مثال: بانر الصفحة الرئيسية" className="w-full bg-[#161b22] border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] outline-none transition-all" required />
                         </div>
                         
                         <div>
@@ -140,14 +140,14 @@ const AdEditModal: React.FC<AdEditModalProps> = ({ ad, onClose, onSave }) => {
                         ) : (
                             <div>
                                <label htmlFor="code" className="block text-sm font-bold text-gray-400 mb-2 uppercase tracking-widest">كود الإعلان (HTML / JS)</label>
-                                <textarea id="code" name="code" value={formData.code} onChange={handleChange} placeholder="<script>...</script>" className="w-full h-48 bg-[#0a0a0a] border border-gray-700 rounded-xl px-4 py-3 font-mono text-xs focus:border-[var(--color-accent)] outline-none text-left dir-ltr shadow-inner" />
+                                <textarea id="code" name="code" value={formData.code || ''} onChange={handleChange} placeholder="<script>...</script>" className="w-full h-48 bg-[#0a0a0a] border border-gray-700 rounded-xl px-4 py-3 font-mono text-xs focus:border-[var(--color-accent)] outline-none text-left dir-ltr shadow-inner" />
                             </div>
                         )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                              <div>
                                <label htmlFor="placement" className="block text-sm font-bold text-gray-400 mb-2 uppercase tracking-widest">مكان العرض المخصص</label>
-                               <select id="placement" name="placement" value={formData.placement} onChange={handleChange} className="w-full bg-[#161b22] border border-gray-700 rounded-xl px-4 py-3 text-white font-bold focus:border-[var(--color-accent)] outline-none">
+                               <select id="placement" name="placement" value={formData.placement || ''} onChange={handleChange} className="w-full bg-[#161b22] border border-gray-700 rounded-xl px-4 py-3 text-white font-bold focus:border-[var(--color-accent)] outline-none">
                                    {adPlacements.map(key => (
                                      <option key={key} value={key}>{adPlacementLabels[key]}</option>
                                    ))}
@@ -156,7 +156,7 @@ const AdEditModal: React.FC<AdEditModalProps> = ({ ad, onClose, onSave }) => {
 
                             <div>
                                <label htmlFor="targetDevice" className="block text-sm font-bold text-gray-400 mb-2 uppercase tracking-widest">الجهاز المستهدف</label>
-                               <select id="targetDevice" name="targetDevice" value={formData.targetDevice} onChange={handleChange} className="w-full bg-[#161b22] border border-gray-700 rounded-xl px-4 py-3 text-white font-bold focus:border-[var(--color-accent)] outline-none">
+                               <select id="targetDevice" name="targetDevice" value={formData.targetDevice || 'all'} onChange={handleChange} className="w-full bg-[#161b22] border border-gray-700 rounded-xl px-4 py-3 text-white font-bold focus:border-[var(--color-accent)] outline-none">
                                    <option value="all">جميع الأجهزة</option>
                                    <option value="mobile">موبايل فقط</option>
                                    <option value="desktop">كمبيوتر فقط</option>

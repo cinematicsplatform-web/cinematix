@@ -131,11 +131,11 @@ const ManageStories: React.FC<ManageStoriesProps> = ({ addToast }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div>
                                 <label className={labelClass}>عنوان الستوري (العام)</label>
-                                <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={inputClass} placeholder="مثال: تريند الأسبوع"/>
+                                <input value={formData.title || ''} onChange={e => setFormData({...formData, title: e.target.value})} className={inputClass} placeholder="مثال: تريند الأسبوع"/>
                             </div>
                             <div>
                                 <label className={labelClass}>رابط الصورة الدائرية (Thumbnail)</label>
-                                <input value={formData.thumbnailUrl} onChange={e => setFormData({...formData, thumbnailUrl: e.target.value})} className={inputClass + " font-mono text-[10px] text-blue-400"} placeholder="https://..."/>
+                                <input value={formData.thumbnailUrl || ''} onChange={e => setFormData({...formData, thumbnailUrl: e.target.value})} className={inputClass + " font-mono text-[10px] text-blue-400"} placeholder="https://..."/>
                             </div>
                         </div>
 
@@ -161,22 +161,22 @@ const ManageStories: React.FC<ManageStoriesProps> = ({ addToast }) => {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="col-span-2">
                                                 <label className={labelClass}>رابط ميديا الشريحة (صورة/فيديو)</label>
-                                                <input value={item.url} onChange={e => { const m=[...mediaItems]; m[idx].url=e.target.value; setMediaItems(m); }} className={inputClass} placeholder="رابط مباشر للميديا"/>
+                                                <input value={item.url || ''} onChange={e => { const m=[...mediaItems]; m[idx].url=e.target.value; setMediaItems(m); }} className={inputClass} placeholder="رابط مباشر للميديا"/>
                                             </div>
                                             <div>
                                                 <label className={labelClass}>النوع</label>
-                                                <select value={item.mediaType} onChange={e => { const m=[...mediaItems]; m[idx].mediaType=e.target.value as any; setMediaItems(m); }} className={inputClass}>
+                                                <select value={item.mediaType || 'image'} onChange={e => { const m=[...mediaItems]; m[idx].mediaType=e.target.value as any; setMediaItems(m); }} className={inputClass}>
                                                     <option value="image">صورة (Image)</option>
                                                     <option value="video">فيديو (Video)</option>
                                                 </select>
                                             </div>
                                             <div>
                                                 <label className={labelClass}>نص الزر (CTA)</label>
-                                                <input value={item.ctaText} onChange={e => { const m=[...mediaItems]; m[idx].ctaText=e.target.value; setMediaItems(m); }} className={inputClass} placeholder="شاهد الآن"/>
+                                                <input value={item.ctaText || ''} onChange={e => { const m=[...mediaItems]; m[idx].ctaText=e.target.value; setMediaItems(m); }} className={inputClass} placeholder="شاهد الآن"/>
                                             </div>
                                             <div className="col-span-2">
                                                 <label className={labelClass}>رابط التوجيه عند الضغط</label>
-                                                <input value={item.targetUrl} onChange={e => { const m=[...mediaItems]; m[idx].targetUrl=e.target.value; setMediaItems(m); }} className={inputClass} placeholder="Target URL"/>
+                                                <input value={item.targetUrl || ''} onChange={e => { const m=[...mediaItems]; m[idx].targetUrl=e.target.value; setMediaItems(m); }} className={inputClass} placeholder="Target URL"/>
                                             </div>
                                         </div>
                                     </div>

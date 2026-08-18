@@ -264,10 +264,14 @@ const DetailPage: React.FC<DetailPageProps> = ({
   const [playerKey, setPlayerKey] = useState(0);
 
   useEffect(() => {
-      if (!isEpisodic && activeServers.length > 0) {
-          setSelectedServer(activeServers.find(s => s.isActive) || activeServers[0]);
+      if (!isEpisodic) {
+          if (activeServers.length > 0) {
+              setSelectedServer(activeServers.find(s => s.isActive) || activeServers[0]);
+          } else {
+              setSelectedServer(null);
+          }
       }
-  }, [activeServers, isEpisodic]); 
+  }, [activeServers, isEpisodic, content?.id]); 
    
   const [isMobile, setIsMobile] = useState(false);
   useLayoutEffect(() => {
@@ -994,7 +998,18 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 </div>
 
                                 <div className="relative z-10 mx-auto aspect-video w-full overflow-hidden rounded-2xl border border-gray-800 bg-black shadow-2xl video-player-wrapper">
-                                        <VideoPlayer key={playerKey} contentId={content.id} tmdbId={content.tmdbId || content.id} type={content.type} manualSrc={selectedServer?.url} poster={displayBackdrop} title={content.title} />
+                                        <VideoPlayer 
+                                            key={`${playerKey}_${selectedServer?.id || 'main'}_${content.id}`} 
+                                            contentId={content.id} 
+                                            tmdbId={content.tmdbId || content.id} 
+                                            type={content.type} 
+                                            manualSrc={selectedServer?.url} 
+                                            poster={displayBackdrop} 
+                                            title={content.title}
+                                            servers={activeServers}
+                                            selectedServerId={selectedServer?.id}
+                                            onServerSelect={(srv) => setSelectedServer(srv as Server)}
+                                        />
                                 </div>
 
                                 <div className="relative mt-6 flex flex-col items-center gap-2 animate-fade-in-up">
@@ -1144,6 +1159,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                                     {content.ageRating}
                                                 </div>
                                             </div>
+
+                                            {content.country && (
+                                                <div className="flex flex-col items-center md:items-start gap-1 p-4">
+                                                    <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">دولة الإنتاج</span>
+                                                    <span className="text-base font-black text-white">{content.country}</span>
+                                                </div>
+                                            )}
 
                                             {isEpisodic && (
                                                 <>

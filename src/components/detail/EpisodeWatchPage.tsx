@@ -171,7 +171,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 url={canonicalUrl}
             />
 
-            <div className="sticky top-0 z-50 bg-[var(--bg-body)] border-b border-white/15 px-4 h-16 flex items-center justify-between shadow-lg">
+            <div className="sticky top-0 z-50 bg-[var(--bg-body)]/90 backdrop-blur-xl border-b border-white/10 px-4 h-16 flex items-center justify-between shadow-lg">
                 <div className="flex items-center gap-4 w-full">
                     <button onClick={() => onGoBack('detail')} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
                         <ChevronRightIcon className="w-5 h-5 transform rotate-180 text-white" />
@@ -181,11 +181,13 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                             <>
                                 <h1 className="text-sm md:text-base font-bold text-gray-200 truncate">{content.title}</h1>
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-[10px] md:text-xs font-bold ${accentColor}`}>الموسم {seasonNumber} : الحلقة {episodeNumber}</span>
+                                    {isEpisodic && (
+                                        <span className={`text-[10px] md:text-xs font-bold ${accentColor}`}>الموسم {seasonNumber} : الحلقة {episodeNumber}</span>
+                                    )}
                                     {(() => {
                                         if (!selectedEpisode) return null;
                                         const badges = [];
-                                        if (selectedEpisode.isLastEpisode) {
+                                        if (selectedEpisode.isLastEpisode && isEpisodic) {
                                             badges.push({ text: 'الحلقة الأخيرة', type: 'last' });
                                         }
                                         if (selectedEpisode.badgeText) {
@@ -254,23 +256,23 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black border border-white/5 z-10 mx-auto video-player-wrapper">
                     {isFullyReady ? (
                         <VideoPlayer 
-                            key={`${playerKey}_s${seasonNumber}_e${episodeNumber}`}
+                            key={`${playerKey}_${isEpisodic ? `s${seasonNumber}_e${episodeNumber}` : 'movie'}`}
                             contentId={content.id}
                             tmdbId={content.tmdbId || content.id} 
                             type={content.type} 
-                            season={seasonNumber} 
-                            episode={episodeNumber} 
+                            season={isEpisodic ? seasonNumber : undefined} 
+                            episode={isEpisodic ? episodeNumber : undefined} 
                             manualSrc={selectedServer?.url} 
                             poster={selectedEpisode?.thumbnail || displayBackdrop} 
                             title={content.title}
-                            seriesTitle={content.title}
-                            episodeTitle={selectedEpisode?.title || `الحلقة ${episodeNumber}`}
-                            episodes={currentSeason?.episodes || []}
+                            seriesTitle={isEpisodic ? content.title : undefined}
+                            episodeTitle={isEpisodic ? (selectedEpisode?.title || `الحلقة ${episodeNumber}`) : undefined}
+                            episodes={isEpisodic ? (currentSeason?.episodes || []) : []}
                             servers={activeServers}
                             selectedServerId={selectedServer?.id}
                             onServerSelect={(srv) => setSelectedServer(srv as Server)}
                             intro={{ introStart: 30, introEnd: 120 }}
-                            onEpisodeSelect={(nextEpNum) => {
+                            onEpisodeSelect={isEpisodic ? ((nextEpNum) => {
                                 onSetView('watch', undefined, {
                                     content,
                                     seasonNumber,
@@ -278,7 +280,7 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                                     episodeNumber: nextEpNum,
                                     episode: nextEpNum
                                 });
-                            }}
+                            }) : undefined}
                         />
                     ) : (
                         <div className="absolute inset-0 bg-[#0f1014] skeleton-shimmer flex items-center justify-center">
@@ -333,7 +335,9 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                     {isFullyReady ? (
                         <div className="space-y-6 w-full">
                             <div className="flex justify-center md:justify-between items-start">
-                                <h2 className="text-2xl font-bold text-white text-center md:text-right">{selectedEpisode?.title || `الحلقة ${episodeNumber}`}</h2>
+                                <h2 className="text-2xl font-bold text-white text-center md:text-right">
+                                    {isEpisodic ? (selectedEpisode?.title || `الحلقة ${episodeNumber}`) : content.title}
+                                </h2>
                             </div>
                             <p className="text-sm text-gray-400 max-w-3xl leading-loose mx-auto md:mx-0">{selectedEpisode?.description || displayDescription}</p>
                             
@@ -344,8 +348,10 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                                         <span className="text-white font-black text-sm md:text-base">{currentSeason?.releaseYear || content.releaseYear}</span>
                                     </div>
                                     <div className="p-4 flex flex-col items-center md:items-start gap-1 flex-1 min-w-[120px]">
-                                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">مدة الحلقة</span>
-                                        <span className="text-white font-black text-sm md:text-base" dir="ltr">{selectedEpisode?.duration || '45m+'}</span>
+                                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{isEpisodic ? 'مدة الحلقة' : 'مدة الفيلم'}</span>
+                                        <span className="text-white font-black text-sm md:text-base" dir="ltr">
+                                            {isEpisodic ? (selectedEpisode?.duration || '45m+') : (content.duration || selectedEpisode?.duration || '120m')}
+                                        </span>
                                     </div>
                                     <div className="p-4 flex flex-col items-center md:items-start gap-1 flex-1 min-w-[120px]">
                                         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">التصنيف</span>
@@ -377,9 +383,9 @@ const EpisodeWatchPage: React.FC<EpisodeWatchPageProps> = ({
                 isOpen={isReportModalOpen} 
                 onClose={() => setIsReportModalOpen(false)} 
                 contentId={content?.id || ''} 
-                contentType="series"
+                contentType={isEpisodic ? "series" : "movie"}
                 contentTitle={content?.title || ''} 
-                episode={`الموسم ${seasonNumber} الحلقة ${episodeNumber}`}
+                episode={isEpisodic ? `الموسم ${seasonNumber} الحلقة ${episodeNumber}` : undefined}
                 isCosmicTealTheme={isCosmicTealTheme}
                 isNetflixRedTheme={isNetflixRedTheme}
             />
