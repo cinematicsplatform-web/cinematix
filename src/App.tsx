@@ -171,10 +171,20 @@ const safeHistoryReplace = (path: string) => {
     } catch (e) {}
 };
 
+const normalizePath = (path: string) => {
+    try {
+        const decoded = decodeURIComponent(path);
+        return decoded.endsWith('/') && decoded.length > 1 ? decoded.slice(0, -1) : decoded;
+    } catch (e) {
+        return path;
+    }
+};
+
 const getSavedScrollPosition = (path: string) => {
     try {
-        const saved = sessionStorage.getItem(`scroll_${path}`);
-        return saved ? parseInt(saved, 10) : undefined;
+        const norm = normalizePath(path);
+        const saved = sessionStorage.getItem(`scroll_${norm}`) || sessionStorage.getItem(`scroll_${path}`);
+        return saved !== null && saved !== undefined ? parseInt(saved, 10) : undefined;
     } catch (e) {
         return undefined;
     }
@@ -182,6 +192,8 @@ const getSavedScrollPosition = (path: string) => {
 
 const saveScrollPosition = (path: string, position: number) => {
     try {
+        const norm = normalizePath(path);
+        sessionStorage.setItem(`scroll_${norm}`, position.toString());
         sessionStorage.setItem(`scroll_${path}`, position.toString());
     } catch (e) {}
 };
@@ -209,6 +221,7 @@ const App: React.FC = () => {
 
   const [view, setView] = useState<View>(getInitialView);
   const isPopStateRef = useRef(false);
+  const restoringScrollRef = useRef<{ path: string; targetY: number; until: number } | null>(null);
   const historyStack = useRef<string[]>([window.location.pathname]);
   const prevViewRef = useRef<View>(getInitialView());
   const prevContentIdRef = useRef<string | undefined>(undefined);
@@ -220,6 +233,7 @@ const App: React.FC = () => {
 
   const handleGoBack = useCallback((fallbackView: View) => {
       saveScrollPosition(window.location.pathname, window.scrollY);
+      isPopStateRef.current = true;
       if (historyStack.current.length > 1) {
           window.history.back();
       } else {
@@ -518,22 +532,46 @@ const App: React.FC = () => {
       const currentPath = window.location.pathname;
       const isSameContent = view === prevViewRef.current && selectedContent?.id === prevContentIdRef.current;
       
-      if (isPopStateRef.current) {
+      if (restoringScrollRef.current && Date.now() < restoringScrollRef.current.until) {
+          const target = restoringScrollRef.current;
+          let rafId: number;
+          const restoreStep = () => {
+              if (!restoringScrollRef.current || Date.now() > target.until) {
+                  restoringScrollRef.current = null;
+                  isPopStateRef.current = false;
+                  return;
+              }
+              window.scrollTo({ top: target.targetY, left: 0, behavior: 'instant' as any });
+              if (Math.abs(window.scrollY - target.targetY) <= 2) {
+                  restoringScrollRef.current = null;
+                  isPopStateRef.current = false;
+              } else {
+                  rafId = requestAnimationFrame(restoreStep);
+              }
+          };
+          rafId = requestAnimationFrame(restoreStep);
+          return () => cancelAnimationFrame(rafId);
+      } else if (isPopStateRef.current) {
           const savedPosition = getSavedScrollPosition(currentPath);
-          if (savedPosition !== undefined) {
-              let attempts = 0;
-              const tryScroll = () => {
+          if (savedPosition !== undefined && savedPosition > 0) {
+              restoringScrollRef.current = { path: currentPath, targetY: savedPosition, until: Date.now() + 2500 };
+              let rafId: number;
+              const restoreStep = () => {
+                  if (!restoringScrollRef.current) return;
                   window.scrollTo({ top: savedPosition, left: 0, behavior: 'instant' as any });
-                  attempts++;
-                  if (window.scrollY < savedPosition - 2 && attempts < 10) {
-                      setTimeout(tryScroll, 50);
+                  if (Math.abs(window.scrollY - savedPosition) <= 2 || Date.now() > restoringScrollRef.current.until) {
+                      restoringScrollRef.current = null;
+                      isPopStateRef.current = false;
+                  } else {
+                      rafId = requestAnimationFrame(restoreStep);
                   }
               };
-              tryScroll();
+              rafId = requestAnimationFrame(restoreStep);
+              return () => cancelAnimationFrame(rafId);
           } else {
               window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+              isPopStateRef.current = false;
           }
-          isPopStateRef.current = false;
       } else if (!isSameContent) {
           window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
       }
@@ -619,6 +657,14 @@ const App: React.FC = () => {
           const newView = getInitialView();
           if (newView !== 'search') setIsSearchOpen(false); 
           
+          const currentPath = window.location.pathname;
+          const savedPos = getSavedScrollPosition(currentPath);
+          if (savedPos !== undefined && savedPos > 0) {
+              restoringScrollRef.current = { path: currentPath, targetY: savedPos, until: Date.now() + 2500 };
+          } else {
+              restoringScrollRef.current = null;
+          }
+
           setView(newView); 
           const path = decodeURIComponent(window.location.pathname);
           

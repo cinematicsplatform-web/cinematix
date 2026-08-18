@@ -128,6 +128,7 @@ export interface Content {
   castCharacters?: Record<string, string>;
   director?: string;
   writer?: string;
+  country?: string;
   bannerNote?: string;
   seasons?: Season[];
   servers?: Server[]; 

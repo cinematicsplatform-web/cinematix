@@ -5,7 +5,7 @@ import type { Content, Season, Episode, Server } from '../../types';
 import { ContentType } from '../../types';
 import { SearchIcon, TableCellsIcon, ArrowUpTrayIcon, ExcelIcon, RefreshIcon, TrashIcon } from './AdminIcons';
 import { normalizeText } from '../../utils/textUtils';
-import { fetchTMDB } from '../../utils/tmdbService';
+import { fetchTMDB, resolveTMDBOverview } from '../../utils/tmdbService';
 import { BouncingDotsLoader } from '../shared/BouncingDotsLoader';
 import { 
     Filter, 
@@ -47,6 +47,30 @@ const getTypeMeta = (type: string) => {
         case ContentType.Play: return { label: 'مسرحية', color: 'bg-pink-500/20 text-pink-300 border-pink-500/40 shadow-pink-500/10' };
         default: return { label: type || 'أخرى', color: 'bg-gray-500/20 text-gray-300 border-gray-500/40' };
     }
+};
+
+const getNoteBadgeMeta = (note?: string) => {
+    if (!note) return null;
+    const trimmed = note.trim();
+    if (trimmed === 'مترجم') {
+        return { 
+            label: 'مترجم', 
+            color: 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-blue-400/50 shadow-md shadow-blue-500/20' 
+        };
+    }
+    if (trimmed === 'مدبلج') {
+        return { 
+            label: 'مدبلج', 
+            color: 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white border-purple-400/50 shadow-md shadow-purple-500/20' 
+        };
+    }
+    if (trimmed === 'مدبلج مصري') {
+        return { 
+            label: 'مدبلج مصري', 
+            color: 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-400/50 shadow-md shadow-emerald-500/20' 
+        };
+    }
+    return null;
 };
 
 interface ContentManagementTabProps {
@@ -301,9 +325,10 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                         if (row.TMDB_ID) { 
                             const tmdb = await fetchTMDBData(String(row.TMDB_ID), 'movie'); 
                             if (tmdb) { 
+                                const resolvedDesc = await resolveTMDBOverview(tmdb.overview);
                                 movieData = { 
                                     title: tmdb.title, 
-                                    description: tmdb.overview, 
+                                    description: resolvedDesc, 
                                     poster: tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : '', 
                                     backdrop: tmdb.backdrop_path ? `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}` : '', 
                                     rating: tmdb.vote_average ? Number((tmdb.vote_average / 2).toFixed(1)) : 0, 
@@ -327,6 +352,11 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                         if (row.Watch_Server_3) servers.push({ id: 3, name: "سيرفر 3", url: row.Watch_Server_3, downloadUrl: "", isActive: true }); 
                         if (row.Watch_Server_4) servers.push({ id: 4, name: "سيرفر 4", url: row.Watch_Server_4, downloadUrl: "", isActive: true }); 
                         if (row.Download_Link) servers.forEach(s => s.downloadUrl = row.Download_Link); 
+                        const isMovieAnimation = (
+                            movieData.genres?.some((g: string) => /animation|أنيميشن|انيميشن|رسوم متحركة|أطفال/i.test(g)) ||
+                            (row.TMDB_ID && movieData.genres?.length > 0)
+                        );
+                        const movieCategory = (movieData.genres?.some((g: string) => /animation|أنيميشن|انيميشن|رسوم متحركة/i.test(g))) ? 'أفلام أنيميشن' : 'افلام اجنبية';
                         const finalMovie: Content = { 
                             id: row.TMDB_ID ? String(row.TMDB_ID) : String(Date.now() + Math.random()), 
                             type: ContentType.Movie, 
@@ -337,10 +367,11 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                             rating: movieData.rating || 0, 
                             releaseYear: movieData.releaseYear || new Date().getFullYear(), 
                             genres: movieData.genres || [], 
-                            categories: ['افلام اجنبية'], 
+                            categories: [movieCategory], 
                             cast: movieData.cast || [], 
                             visibility: 'general', 
                             ageRating: '', 
+                            country: movieData.country || '',
                             servers: servers, 
                             seasons: [], 
                             createdAt: new Date().toISOString(), 
@@ -380,17 +411,21 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                             if (!isNaN(Number(seriesKey))) { 
                                 tmdbSeries = await fetchTMDBData(String(seriesKey), 'tv'); 
                             } 
+                            const seriesGenres = tmdbSeries?.genres?.map((g: any) => g.name) || [];
+                            const isSeriesAnimation = tmdbSeries?.genres?.some((g: any) => g.id === 16 || (g.name && /animation|أنيميشن|انيميشن|رسوم متحركة/i.test(g.name)));
+                            const seriesCategory = isSeriesAnimation ? 'مسلسلات أنيميشن' : 'مسلسلات اجنبية';
+                            const resolvedSeriesDesc = await resolveTMDBOverview(tmdbSeries?.overview);
                             seriesDoc = { 
                                 id: seriesId, 
                                 type: ContentType.Series, 
                                 title: tmdbSeries?.name || epRows[0].Series_Name || 'New Series', 
-                                description: tmdbSeries?.overview || '', 
+                                description: resolvedSeriesDesc || '', 
                                 poster: tmdbSeries?.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbSeries.poster_path}` : '', 
                                 backdrop: tmdbSeries?.backdrop_path ? `https://image.tmdb.org/t/p/original${tmdbSeries.backdrop_path}` : '', 
                                 rating: tmdbSeries?.vote_average ? Number((tmdbSeries.vote_average / 2).toFixed(1)) : 0, 
                                 releaseYear: tmdbSeries?.first_air_date ? new Date(tmdbSeries.first_air_date).getFullYear() : new Date().getFullYear(), 
-                                genres: tmdbSeries?.genres?.map((g: any) => g.name) || [], 
-                                categories: ['مسلسلات اجنبية'], 
+                                genres: seriesGenres, 
+                                categories: [seriesCategory], 
                                 seasons: [], 
                                 visibility: 'general', 
                                 createdAt: new Date().toISOString(), 
@@ -864,6 +899,7 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                             {pagedItems.map((c: any) => {
                                 if (!c) return null;
                                 const meta = getTypeMeta(c.type);
+                                const noteBadge = getNoteBadgeMeta(c.bannerNote);
                                 return (
                                     <div 
                                         key={c.id || Math.random()} 
@@ -877,10 +913,9 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                                             <span className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold backdrop-blur-md border shadow-md ${meta.color}`}>
                                                 {meta.label}
                                             </span>
-                                            {c.rating > 0 && (
-                                                <span className="flex items-center gap-1 bg-black/60 backdrop-blur-md text-amber-400 font-mono text-[11px] font-extrabold px-2 py-1 rounded-xl border border-white/10">
-                                                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                                    <span>{c.rating}</span>
+                                            {noteBadge && (
+                                                <span className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold backdrop-blur-md border shadow-md ${noteBadge.color}`}>
+                                                    {noteBadge.label}
                                                 </span>
                                             )}
                                         </div>
@@ -934,6 +969,7 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                             {pagedItems.map((c: any) => {
                                 if (!c) return null;
                                 const meta = getTypeMeta(c.type);
+                                const noteBadge = getNoteBadgeMeta(c.bannerNote);
                                 const primaryGenre = (Array.isArray(c.categories) && c.categories[0]) || (Array.isArray(c.genres) && c.genres[0]) || 'غير مصنف';
                                 
                                 const isEpisodic = c.type === ContentType.Series || c.type === ContentType.Program;
@@ -980,10 +1016,9 @@ const ContentManagementTab: React.FC<ContentManagementTabProps> = ({
                                                         <span className="font-mono font-bold bg-gray-950 px-2.5 py-1 rounded-xl text-xs text-gray-300 border border-gray-800">
                                                             📅 {c.releaseYear || '----'}
                                                         </span>
-                                                        {c.rating > 0 && (
-                                                            <span className="flex items-center gap-1 bg-amber-500/10 text-amber-400 font-mono text-xs font-extrabold px-2.5 py-1 rounded-xl border border-amber-500/20">
-                                                                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                                                                <span>{c.rating}</span>
+                                                        {noteBadge && (
+                                                            <span className={`px-2.5 py-1 rounded-xl text-xs font-extrabold border shadow-sm ${noteBadge.color}`}>
+                                                                {noteBadge.label}
                                                             </span>
                                                         )}
                                                     </div>

@@ -234,7 +234,7 @@ const PromoBannersTab: React.FC<PromoBannersTabProps> = ({ addToast, allContent 
                             <label className="block text-sm font-bold text-gray-300 mb-2">العنوان الرئيسي</label>
                             <input 
                                 type="text"
-                                value={editingBanner.title}
+                                value={editingBanner.title || ''}
                                 onChange={(e) => setEditingBanner({...editingBanner, title: e.target.value})}
                                 placeholder="مثال: صراعات خلف العشوائيات"
                                 className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-indigo-500"
@@ -244,7 +244,7 @@ const PromoBannersTab: React.FC<PromoBannersTabProps> = ({ addToast, allContent 
                             <label className="block text-sm font-bold text-gray-300 mb-2">الوصف الفرعي</label>
                             <input 
                                 type="text"
-                                value={editingBanner.subtitle}
+                                value={editingBanner.subtitle || ''}
                                 onChange={(e) => setEditingBanner({...editingBanner, subtitle: e.target.value})}
                                 placeholder="مثال: عالم من الجريمة خلف أبواب موصدة"
                                 className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-indigo-500"
@@ -278,7 +278,7 @@ const PromoBannersTab: React.FC<PromoBannersTabProps> = ({ addToast, allContent 
                             <div>
                                 <label className="block text-sm font-bold text-gray-300 mb-2">الصفحة المستهدفة</label>
                                 <select 
-                                    value={editingBanner.targetPage}
+                                    value={editingBanner.targetPage || 'home'}
                                     onChange={(e) => setEditingBanner({...editingBanner, targetPage: e.target.value})}
                                     className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-indigo-500"
                                 >
@@ -309,7 +309,7 @@ const PromoBannersTab: React.FC<PromoBannersTabProps> = ({ addToast, allContent 
                                         type="number"
                                         min="1"
                                         placeholder="رقم الصف البديل"
-                                        value={editingBanner.positionIndex}
+                                        value={editingBanner.positionIndex ?? ''}
                                         onChange={(e) => setEditingBanner({...editingBanner, positionIndex: parseInt(e.target.value) || 1})}
                                         className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-indigo-500"
                                     />
@@ -390,19 +390,19 @@ const PromoBannersTab: React.FC<PromoBannersTabProps> = ({ addToast, allContent 
                                             </div>
                                             <div>
                                                 <label className="block text-xs text-gray-400 mb-1">عنوان الكرت</label>
-                                                <input type="text" value={item.title} onChange={(e) => handleItemChange(index, 'title', e.target.value)} className="w-full bg-gray-800 rounded px-3 py-2 text-sm text-white" placeholder="الموسم 1, الحلقة 1" />
+                                                <input type="text" value={item.title || ''} onChange={(e) => handleItemChange(index, 'title', e.target.value)} className="w-full bg-gray-800 rounded px-3 py-2 text-sm text-white" placeholder="الموسم 1, الحلقة 1" />
                                             </div>
                                             <div>
                                                 <label className="block text-xs text-gray-400 mb-1">صورة الكرت</label>
-                                                <input type="text" value={item.thumbnail} onChange={(e) => handleItemChange(index, 'thumbnail', e.target.value)} className="w-full bg-gray-800 rounded px-3 py-2 text-sm text-white" placeholder="رابط الصورة" />
+                                                <input type="text" value={item.thumbnail || ''} onChange={(e) => handleItemChange(index, 'thumbnail', e.target.value)} className="w-full bg-gray-800 rounded px-3 py-2 text-sm text-white" placeholder="رابط الصورة" />
                                             </div>
                                             <div>
                                                 <label className="block text-xs text-gray-400 mb-1">المدة</label>
-                                                <input type="text" value={item.duration} onChange={(e) => handleItemChange(index, 'duration', e.target.value)} className="w-full bg-gray-800 rounded px-3 py-2 text-sm text-white" placeholder="42:50" />
+                                                <input type="text" value={item.duration || ''} onChange={(e) => handleItemChange(index, 'duration', e.target.value)} className="w-full bg-gray-800 rounded px-3 py-2 text-sm text-white" placeholder="42:50" />
                                             </div>
                                             <div>
                                                 <label className="block text-xs text-gray-400 mb-1">رابط الفيديو</label>
-                                                <input type="text" value={item.videoUrl} onChange={(e) => handleItemChange(index, 'videoUrl', e.target.value)} className="w-full bg-gray-800 rounded px-3 py-2 text-sm text-white" placeholder="/watch/slug" />
+                                                <input type="text" value={item.videoUrl || ''} onChange={(e) => handleItemChange(index, 'videoUrl', e.target.value)} className="w-full bg-gray-800 rounded px-3 py-2 text-sm text-white" placeholder="/watch/slug" />
                                             </div>
                                         </div>
                                     </div>

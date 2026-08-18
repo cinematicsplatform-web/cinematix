@@ -9,8 +9,8 @@ import UqloadSearchModal from './UqloadSearchModal';
 import DailymotionSearchModal from './DailymotionSearchModal';
 import YouTubeSearchModal from './YouTubeSearchModal';
 import VkSearchModal from './VkSearchModal';
-import { normalizeText, translateToArabic } from '@/utils/textUtils';
-import { fetchTMDB } from '@/utils/tmdbService';
+import { normalizeText, translateToArabic, cleanArabicDescription } from '@/utils/textUtils';
+import { fetchTMDB, fetchTMDBSeasonData, processTMDBEpisode, processSeasonTrailers, extractAgeRatingFromTMDBDetails, extractCountryFromTMDBDetails, isTextArabic, resolveTMDBOverview } from '@/utils/tmdbService';
 import ActionButtons from '../detail/ActionButtons';
 import { StarIcon } from '../icons/StarIcon';
 import { ClockIcon } from '../icons/ClockIcon';
@@ -554,7 +554,7 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                         <div className="relative h-6 flex items-center">
                             <input 
                                 type="range" min="0" max="100" step="1"
-                                value={posX}
+                                value={posX ?? 50}
                                 onChange={(e) => onUpdateX(Number(e.target.value))}
                                 className="absolute w-full h-2 rounded-lg bg-gray-700 accent-[var(--color-accent)] hover:accent-blue-400 cursor-grab active:cursor-grabbing appearance-none z-10"
                             />
@@ -573,7 +573,7 @@ const MobileSimulator: React.FC<MobileSimulatorProps> = ({ imageUrl, posX, posY,
                         <div className="relative h-6 flex items-center">
                             <input 
                                 type="range" min="0" max="100" step="1"
-                                value={posY}
+                                value={posY ?? 50}
                                 onChange={(e) => onUpdateY(Number(e.target.value))}
                                 className="absolute w-full h-2 rounded-lg bg-gray-700 accent-[var(--color-accent)] hover:accent-blue-400 cursor-grab active:cursor-grabbing appearance-none z-10"
                             />
@@ -751,10 +751,20 @@ const TitleGalleryModal: React.FC<TitleGalleryModalProps> = ({ isOpen, onClose, 
             const altRes = await fetchTMDB(`https://api.themoviedb.org/3/${endpointType}/${tmdbId}/alternative_titles?api_key=${API_KEY}`);
             const altData = await altRes.json();
             
+            const originLang = (info.original_language || '').toLowerCase();
+            const originCountries: string[] = (info.origin_country || (info.production_countries || []).map((c: any) => c.iso_3166_1) || []).map((c: any) => String(c).toUpperCase());
+            const isTurkishWork = originLang === 'tr' || originCountries.includes('TR');
+
             if (altData.titles || altData.results) {
                 const altList = altData.titles || altData.results;
                 altList.forEach((item: any) => {
-                    if (!results.some(r => r.title === (item.title || item.name))) {
+                    const isoCountry = (item.iso_3166_1 || '').toUpperCase();
+                    const isoLang = (item.iso_639_1 || '').toLowerCase();
+                    const isArabic = ['AR', 'EG', 'SA', 'AE', 'KW', 'QA', 'BH', 'OM', 'JO', 'LB', 'IQ', 'SY', 'MA', 'DZ', 'TN'].includes(isoCountry) || isoLang === 'ar';
+                    const isEnglish = ['US', 'GB', 'CA', 'AU', 'NZ', 'IE'].includes(isoCountry) || isoLang === 'en';
+                    const isTurkish = isTurkishWork && (isoCountry === 'TR' || isoLang === 'tr');
+
+                    if ((isArabic || isEnglish || isTurkish) && !results.some(r => r.title === (item.title || item.name))) {
                         results.push({
                             title: item.title || item.name,
                             iso_3166_1: item.iso_3166_1 || 'Alt',
@@ -1244,7 +1254,7 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({
                                                 
                                                 <input 
                                                     type="text"
-                                                    value={server.name} 
+                                                    value={server.name || ''} 
                                                     onChange={(e) => handleServerChange(index, 'name', e.target.value)} 
                                                     placeholder="اسم السيرفر" 
                                                     className="rounded-lg border border-gray-850 bg-[#07090e] px-4 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-bold w-44 text-center"
@@ -1255,7 +1265,7 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({
                                                 <label className="flex items-center gap-1.5 cursor-pointer select-none">
                                                     <input 
                                                         type="checkbox" 
-                                                        checked={server.isActive} 
+                                                        checked={Boolean(server.isActive)} 
                                                         onChange={(e) => handleServerChange(index, 'isActive', e.target.checked)} 
                                                         className="h-4 w-4 accent-[#00e5c9] rounded bg-[#07090e] border-gray-800 cursor-pointer"
                                                     />
@@ -1270,7 +1280,7 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({
                                                 <label className="mb-1.5 block text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center">رابط المشاهدة (WATCH)</label>
                                                 <input 
                                                     type="text"
-                                                    value={server.url} 
+                                                    value={server.url || ''} 
                                                     onChange={(e) => handleServerChange(index, 'url', e.target.value)} 
                                                     placeholder="رابط كامل للمشاهدة أو امتداد البث..." 
                                                     className="w-full rounded-xl border border-gray-800 bg-[#07090e] px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono text-center placeholder:text-center"
@@ -1281,7 +1291,7 @@ const ServerManagementModal: React.FC<ServerManagementModalProps> = ({
                                                 <label className="mb-1.5 block text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center">رابط التحميل (DOWNLOAD)</label>
                                                 <input 
                                                     type="text"
-                                                    value={server.downloadUrl} 
+                                                    value={server.downloadUrl || ''} 
                                                     onChange={(e) => handleServerChange(index, 'downloadUrl', e.target.value)} 
                                                     placeholder="رابط التحميل المباشر للزوار..." 
                                                     className="w-full rounded-xl border border-gray-800 bg-[#07090e] px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono text-center placeholder:text-center"
@@ -1520,6 +1530,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             slug: '',
             alternativeTitles: [],
             director: '', writer: '',
+            country: '',
             isUpcoming: false,
             isScheduled: false,
             scheduledAt: '',
@@ -1849,6 +1860,37 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
     };
 
+    const handleFetchSeasonTrailersFromTMDB = async (seasonId: number, seasonNumber: number) => {
+        const idToUse = formData.tmdbId;
+        if (!idToUse) {
+            addToast("يرجى إدخال TMDB ID للعمل أولاً.", "info");
+            return;
+        }
+        try {
+            addToast(`جاري جلب إعلانات الموسم ${seasonNumber} من TMDB...`, "info");
+            const { sDataAr, sDataEn } = await fetchTMDBSeasonData(idToUse, seasonNumber, API_KEY);
+            const fetchedTrailers = processSeasonTrailers(sDataAr, sDataEn, seasonNumber);
+            if (fetchedTrailers.length === 0) {
+                addToast(`لم يتم العثور على إعلانات خاصة بالموسم ${seasonNumber} في TMDB.`, "info");
+                return;
+            }
+            setFormData(prev => ({
+                ...prev,
+                seasons: (prev.seasons || []).map(s => {
+                    if (s.id !== seasonId) return s;
+                    return {
+                        ...s,
+                        trailers: fetchedTrailers,
+                        trailerUrl: fetchedTrailers[0]?.url || s.trailerUrl || ''
+                    };
+                })
+            }));
+            addToast(`تم جلب ${fetchedTrailers.length} إعلان للموسم ${seasonNumber} بنجاح!`, "success");
+        } catch (e: any) {
+            addToast("فشل جلب إعلانات الموسم من TMDB.", "error");
+        }
+    };
+
     const handleUpdateSeasonTrailer = (seasonId: number, index: number, field: keyof TrailerItem, value: string) => {
         setFormData(prev => {
             const season = prev.seasons?.find(s => s.id === seasonId);
@@ -2011,7 +2053,10 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const [tmdbSearchResults, setTmdbSearchResults] = useState<any[]>([]);
     const [isSearchingTMDB, setIsSearchingTMDB] = useState(false);
     const [isRefreshingRating, setIsRefreshingRating] = useState(false);
+    const [isRefreshingAgeRating, setIsRefreshingAgeRating] = useState(false);
+    const [isRefreshingCountry, setIsRefreshingCountry] = useState(false);
     const [isRefreshingAltTitles, setIsRefreshingAltTitles] = useState(false);
+    const [isTranslatingDescription, setIsTranslatingDescription] = useState(false);
     const [newAltTitleInput, setNewAltTitleInput] = useState('');
 
     const filteredCategories = useMemo<Category[]>(() => {
@@ -2212,6 +2257,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     updated.rating = 0;
                     updated.director = '';
                     updated.writer = '';
+                    updated.country = '';
                     updated.cast = [];
                     updated.bannerNote = '';
                     updated.isUpcoming = false;
@@ -2382,7 +2428,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
         const idToUse = formData.tmdbId || formData.id;
         if (!idToUse) {
-            addToast('يجب توفر كود TMDB للمحتوى لجلب الصور تلقائياً.', "error");
+            addToast('يجب توفر كود TMDB للمحتوى لجلب الصور والبيانات تلقائياً.', "error");
             return;
         }
 
@@ -2399,56 +2445,60 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
 
         try {
-            addToast("جاري جلب بيانات الحلقات من TMDB...", "info");
-            const sRes = await fetchTMDB(`https://api.themoviedb.org/3/tv/${idToUse}/season/${seasonNumber}?api_key=${API_KEY}&language=ar-SA`);
-            if (!sRes.ok) throw new Error("فشل جلب الموسم من TMDB.");
-            const sData = await sRes.json();
+            addToast("جاري جلب بيانات ووصف الحلقات من TMDB...", "info");
+            const { sDataAr, sDataEn, sDataDefault } = await fetchTMDBSeasonData(idToUse, seasonNumber, API_KEY);
+            if (!sDataAr && !sDataEn && !sDataDefault) throw new Error("فشل جلب الموسم من TMDB.");
 
             let foundCount = 0;
 
-            setFormData(prev => ({
-                ...prev,
-                seasons: (prev.seasons || []).map(s => {
-                    if (s.id !== seasonId) return s;
+            const updatedSeasons = await Promise.all((formData.seasons || []).map(async s => {
+                if (s.id !== seasonId) return s;
 
-                    const updatedEpisodes = (s.episodes || []).map(ep => {
-                        const epNum = extractEpisodeNumber(ep.title);
-                        let shouldApply = false;
-                        if (applyRange === 'all') {
-                            shouldApply = true;
-                        } else {
-                            shouldApply = epNum >= sFrom && epNum <= eTo;
+                const updatedEpisodes = await Promise.all((s.episodes || []).map(async (ep, epIdx) => {
+                    const epNum = extractEpisodeNumber(ep.title) || (epIdx + 1);
+                    let shouldApply = false;
+                    if (applyRange === 'all') {
+                        shouldApply = true;
+                    } else {
+                        shouldApply = epNum >= sFrom && epNum <= eTo;
+                    }
+
+                    if (shouldApply) {
+                        const tmdbArEp = sDataAr?.episodes?.find((tep: any) => tep.episode_number === epNum);
+                        const tmdbEnEp = sDataEn?.episodes?.find((tep: any) => tep.episode_number === epNum);
+                        const tmdbDefEp = sDataDefault?.episodes?.find((tep: any) => tep.episode_number === epNum);
+
+                        if (tmdbArEp || tmdbEnEp || tmdbDefEp) {
+                            foundCount++;
+                            const processed = await processTMDBEpisode(tmdbArEp, tmdbEnEp, seasonNumber, tmdbDefEp);
+                            return {
+                                ...ep,
+                                thumbnail: processed.thumbnail || ep.thumbnail,
+                                description: processed.finalDescription || ep.description || '',
+                                duration: processed.epDuration || ep.duration,
+                                publishDate: processed.publishDate || ep.publishDate || ''
+                            };
                         }
+                    }
+                    return ep;
+                }));
 
-                        if (shouldApply) {
-                            const tmdbEp = sData.episodes?.find((tep: any) => tep.episode_number === epNum);
-                            if (tmdbEp) {
-                                foundCount++;
-                                let epDuration = ep.duration || '';
-                                if (tmdbEp.runtime) {
-                                    if (tmdbEp.runtime > 60) epDuration = `${Math.floor(tmdbEp.runtime/60)}h ${tmdbEp.runtime%60}m`;
-                                    else epDuration = `${tmdbEp.runtime}:00`;
-                                }
-                                return {
-                                    ...ep,
-                                    thumbnail: tmdbEp.still_path ? `https://image.tmdb.org/t/p/w500${tmdbEp.still_path}` : ep.thumbnail,
-                                    duration: epDuration,
-                                    publishDate: tmdbEp.air_date || ep.publishDate || ''
-                                };
-                            }
-                        }
-                        return ep;
-                    });
-
-                    return { ...s, episodes: updatedEpisodes };
-                })
+                const seasonTrailers = processSeasonTrailers(sDataAr, sDataEn, seasonNumber);
+                const updatedTrailers = (s.trailers && s.trailers.length > 0) ? s.trailers : seasonTrailers;
+                const updatedTrailerUrl = s.trailerUrl || seasonTrailers[0]?.url || '';
+                return { ...s, episodes: updatedEpisodes, trailers: updatedTrailers, trailerUrl: updatedTrailerUrl };
             }));
 
-            addToast("تم تحديث صور وبيانات الحلقات المحددة من قاعدة بيانات TMDB بنجاح!", "success");
+            setFormData(prev => ({
+                ...prev,
+                seasons: updatedSeasons
+            }));
+
+            addToast(`تم تحديث صور وبيانات ووصف الحلقات (${foundCount} حلقة) بنجاح!`, "success");
             setBulkImageState(prev => ({ ...prev, isOpen: false }));
         } catch (err: any) {
             console.error(err);
-            addToast("حدث خطأ أثناء تحديث صور الحلقات: " + err.message, "error");
+            addToast("حدث خطأ أثناء تحديث صور وبيانات الحلقات: " + err.message, "error");
         }
     };
 
@@ -3071,7 +3121,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const generateEpisodeServers = (tmdbId: string, seasonNum: number, episodeNum: number): Server[] => {
          const epServers: Server[] = [];
          if (enableAutoLinks) {
-             const vipUrl = `https://vidsrc.vip/embed/tv/${tmdbId}/${seasonNum}/${episodeNum}`;
+             const vipUrl = `https://vidsrc.pro/embed/tv/${tmdbId}/${seasonNum}/${episodeNum}`;
              epServers.push({
                  id: 80000 + episodeNum,
                  name: 'سيرفر 1',
@@ -3086,7 +3136,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
     const generateMovieServers = (tmdbId: string): Server[] => {
         const movieServers: Server[] = [];
         if (enableAutoLinks) {
-            const vipUrl = `https://vidsrc.vip/embed/movie/${tmdbId}`;
+            const vipUrl = `https://vidsrc.pro/embed/movie/${tmdbId}`;
             movieServers.push({
                 id: 99901,
                 name: 'سيرفر 1',
@@ -3147,46 +3197,52 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 let existingSeasonIndex = currentSeasons.findIndex(s => s.seasonNumber === tmdbSeason.season_number);
 
                 if (existingSeasonIndex === -1) {
-                    const sRes = await fetchTMDB(`https://api.themoviedb.org/3/tv/${idToUse}/season/${tmdbSeason.season_number}?api_key=${API_KEY}&language=ar-SA`);
-                    const sData = await sRes.json();
-                    
-                    const mappedEpisodes: Episode[] = sData.episodes?.map((ep: any) => {
-                        let epDuration = '';
-                        if (ep.runtime) {
-                            if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
-                            else epDuration = `${ep.runtime}:00`;
-                        }
-                        
-                        const fixedTitle = `الحلقة ${ep.episode_number}`;
-                        const isGenericTitle = !ep.name || ep.name.match(/^Episode \d+$/i) || ep.name.match(/^الحلقة \d+$/i);
-                        let finalDescription = ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${sData.season_number}.`;
-                        if (!isGenericTitle && ep.name) finalDescription = `${ep.name} : ${ep.overview || ''}`;
+                    const { sDataAr, sDataEn, sDataDefault } = await fetchTMDBSeasonData(idToUse, tmdbSeason.season_number, API_KEY);
+                    const sData = sDataAr || sDataEn || sDataDefault || {};
+                    const arEps = sDataAr?.episodes || [];
+                    const enEps = sDataEn?.episodes || [];
+                    const defEps = sDataDefault?.episodes || [];
+                    const maxCount = Math.max(arEps.length, enEps.length, defEps.length);
 
-                        return {
-                            id: Date.now() + ep.episode_number + Math.random(),
-                            title: fixedTitle,
-                            description: finalDescription,
-                            thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : backdrop, 
-                            duration: epDuration,
-                            progress: 0,
-                            servers: generateEpisodeServers(String(idToUse), sData.season_number, ep.episode_number),
-                            publishDate: ep.air_date || ''
-                        };
-                    }) || [];
+                    const mappedEpisodes: Episode[] = await Promise.all(
+                        Array.from({ length: maxCount }, async (_, idx) => {
+                            const arEp = arEps[idx] || {};
+                            const enEp = enEps[idx] || {};
+                            const defEp = defEps[idx] || {};
+                            const processed = await processTMDBEpisode(arEp, enEp, tmdbSeason.season_number, defEp);
+
+                            return {
+                                id: Date.now() + (arEp.episode_number || enEp.episode_number || defEp.episode_number || idx + 1) + Math.random(),
+                                title: processed.fixedTitle,
+                                description: processed.finalDescription,
+                                thumbnail: processed.thumbnail || backdrop, 
+                                duration: processed.epDuration,
+                                progress: 0,
+                                servers: generateEpisodeServers(String(idToUse), tmdbSeason.season_number, arEp.episode_number || enEp.episode_number || defEp.episode_number || idx + 1),
+                                publishDate: processed.publishDate
+                            };
+                        })
+                    );
+
+                    const seasonTrailers = processSeasonTrailers(sDataAr, sDataEn, tmdbSeason.season_number);
+
+                    const sOverview = await resolveTMDBOverview(sDataAr?.overview, sDataEn?.overview, sData?.overview);
 
                     currentSeasons.push({
                         id: Date.now() + Math.random(),
                         seasonNumber: tmdbSeason.season_number,
                         title: sData.name || `الموسم ${tmdbSeason.season_number}`,
                         releaseYear: sData.air_date ? new Date(sData.air_date).getFullYear() : new Date().getFullYear(),
-                        description: sData.overview,
+                        description: sOverview,
                         poster: sData.poster_path ? `https://image.tmdb.org/t/p/w500${sData.poster_path}` : formData.poster,
                         backdrop: backdrop,
                         mobileImageUrl: '', 
                         logoUrl: '',
                         isUpcoming: false,
                         flipBackdrop: false,
-                        episodes: mappedEpisodes
+                        episodes: mappedEpisodes,
+                        trailers: seasonTrailers,
+                        trailerUrl: seasonTrailers[0]?.url || ''
                     });
                     hasUpdates = true;
 
@@ -3194,36 +3250,37 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     const existingSeason = currentSeasons[existingSeasonIndex];
                     
                     if (tmdbSeason.episode_count > (existingSeason.episodes?.length || 0)) {
-                        const sRes = await fetchTMDB(`https://api.themoviedb.org/3/tv/${idToUse}/season/${tmdbSeason.season_number}?api_key=${API_KEY}&language=ar-SA`);
-                        const sData = await sRes.json();
-                        
+                        const { sDataAr, sDataEn, sDataDefault } = await fetchTMDBSeasonData(idToUse, tmdbSeason.season_number, API_KEY);
+                        const arEps = sDataAr?.episodes || [];
+                        const enEps = sDataEn?.episodes || [];
+                        const defEps = sDataDefault?.episodes || [];
+
                         const currentCount = existingSeason.episodes?.length || 0;
-                        const newEpisodesData = sData.episodes.slice(currentCount);
-                        
-                        if (newEpisodesData.length > 0) {
-                            const newMappedEpisodes: Episode[] = newEpisodesData.map((ep: any) => {
-                                let epDuration = '';
-                                if (ep.runtime) {
-                                    if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
-                                    else epDuration = `${ep.runtime}:00`;
-                                }
+                        const newArEps = arEps.slice(currentCount);
+                        const newEnEps = enEps.slice(currentCount);
+                        const newDefEps = defEps.slice(currentCount);
+                        const maxNewCount = Math.max(newArEps.length, newEnEps.length, newDefEps.length);
 
-                                const fixedTitle = `الحلقة ${ep.episode_number}`;
-                                const isGenericTitle = !ep.name || ep.name.match(/^Episode \d+$/i) || ep.name.match(/^الحلقة \d+$/i);
-                                let finalDescription = ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${tmdbSeason.season_number}.`;
-                                if (!isGenericTitle && ep.name) finalDescription = `${ep.name} : ${ep.overview || ''}`;
+                        if (maxNewCount > 0) {
+                            const newMappedEpisodes: Episode[] = await Promise.all(
+                                Array.from({ length: maxNewCount }, async (_, idx) => {
+                                    const arEp = newArEps[idx] || {};
+                                    const enEp = newEnEps[idx] || {};
+                                    const defEp = newDefEps[idx] || {};
+                                    const processed = await processTMDBEpisode(arEp, enEp, tmdbSeason.season_number, defEp);
 
-                                return {
-                                    id: Date.now() + ep.episode_number + Math.random(),
-                                    title: fixedTitle,
-                                    description: finalDescription,
-                                    thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : (existingSeason.backdrop || backdrop), 
-                                    duration: epDuration,
-                                    progress: 0,
-                                    servers: generateEpisodeServers(String(idToUse), tmdbSeason.season_number, ep.episode_number),
-                                    publishDate: ep.air_date || ''
-                                };
-                            });
+                                    return {
+                                        id: Date.now() + (arEp.episode_number || enEp.episode_number || defEp.episode_number || currentCount + idx + 1) + Math.random(),
+                                        title: processed.fixedTitle,
+                                        description: processed.finalDescription,
+                                        thumbnail: processed.thumbnail || (existingSeason.backdrop || backdrop), 
+                                        duration: processed.epDuration,
+                                        progress: 0,
+                                        servers: generateEpisodeServers(String(idToUse), tmdbSeason.season_number, arEp.episode_number || enEp.episode_number || defEp.episode_number || currentCount + idx + 1),
+                                        publishDate: processed.publishDate
+                                    };
+                                })
+                            );
                             
                             currentSeasons[existingSeasonIndex] = {
                                 ...existingSeason,
@@ -3260,45 +3317,58 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
         
         try {
-            const sRes = await fetchTMDB(`https://api.themoviedb.org/3/tv/${idToUse}/season/${seasonNumber}?api_key=${API_KEY}&language=ar-SA`);
-            if (!sRes.ok) throw new Error("فشل جلب الموسم من TMDB.");
-            const sData = await sRes.json();
-            
+            const { sDataAr, sDataEn, sDataDefault } = await fetchTMDBSeasonData(idToUse, seasonNumber, API_KEY);
+            if (!sDataAr && !sDataEn && !sDataDefault) throw new Error("فشل جلب الموسم من TMDB.");
+
+            const arEps = sDataAr?.episodes || [];
+            const enEps = sDataEn?.episodes || [];
+            const defEps = sDataDefault?.episodes || [];
+            const maxEpsCount = Math.max(arEps.length, enEps.length, defEps.length);
+
+            const allTmdbEps = await Promise.all(
+                Array.from({ length: maxEpsCount }, async (_, idx) => {
+                    const arEp = arEps[idx] || {};
+                    const enEp = enEps[idx] || {};
+                    const defEp = defEps[idx] || {};
+                    const epNum = arEp.episode_number || enEp.episode_number || defEp.episode_number || (idx + 1);
+                    const processed = await processTMDBEpisode(arEp, enEp, seasonNumber, defEp);
+                    return { arEp, enEp, defEp, epNum, processed };
+                })
+            );
+
+            const updatedSeasons = (formData.seasons || []).map(s => {
+                if (s.id !== seasonId) return s;
+
+                const existingEps = s.episodes || [];
+                const newEpsFromTmdb = allTmdbEps.filter(item => 
+                    !existingEps.some(eep => extractEpisodeNumber(eep.title) === item.epNum)
+                ).map(item => {
+                    return {
+                        id: Date.now() + item.epNum + Math.random(),
+                        title: item.processed.fixedTitle,
+                        description: item.processed.finalDescription,
+                        thumbnail: item.processed.thumbnail || (s.backdrop || formData.backdrop),
+                        duration: item.processed.epDuration,
+                        progress: 0,
+                        servers: generateEpisodeServers(String(idToUse), seasonNumber, item.epNum),
+                        publishDate: item.processed.publishDate
+                    };
+                });
+
+                const merged = [...existingEps, ...newEpsFromTmdb].sort((a, b) => {
+                    const numA = extractEpisodeNumber(a.title);
+                    const numB = extractEpisodeNumber(b.title);
+                    return numA - numB;
+                });
+
+                return { ...s, episodes: merged };
+            });
+
             setFormData(prev => ({
                 ...prev,
-                seasons: (prev.seasons || []).map(s => {
-                    if (s.id !== seasonId) return s;
-                    
-                    const existingEps = s.episodes || [];
-                    const newEpsFromTmdb = sData.episodes.filter((ep: any) => 
-                        !existingEps.some(eep => extractEpisodeNumber(eep.title) === ep.episode_number)
-                    ).map((ep: any) => {
-                        let epDuration = '';
-                        if (ep.runtime) {
-                            if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
-                            else epDuration = `${ep.runtime}:00`;
-                        }
-                        return {
-                            id: Date.now() + ep.episode_number + Math.random(),
-                            title: `الحلقة ${ep.episode_number}`,
-                            description: ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${seasonNumber}.`,
-                            thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : (s.backdrop || formData.backdrop), 
-                            duration: epDuration,
-                            progress: 0,
-                            servers: generateEpisodeServers(String(idToUse), seasonNumber, ep.episode_number),
-                            publishDate: ep.air_date || ''
-                        };
-                    });
-                    
-                    const merged = [...existingEps, ...newEpsFromTmdb].sort((a, b) => {
-                        const numA = extractEpisodeNumber(a.title);
-                        const numB = extractEpisodeNumber(b.title);
-                        return numA - numB;
-                    });
-                    
-                    return { ...s, episodes: merged };
-                })
+                seasons: updatedSeasons
             }));
+
             addToast(`تم التحقق من الموسم ${seasonNumber} وإضافة الحلقات الجديدة.`, "success");
         } catch (e: any) {
             addToast(e.message, "error");
@@ -3319,12 +3389,167 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
     const fetchSeasonDetails = async (tmdbId: string, seasonNumber: number) => {
         try {
-            const res = await fetchTMDB(`https://api.themoviedb.org/3/tv/${tmdbId}/season/${seasonNumber}?api_key=${API_KEY}&language=ar-SA`);
-            if (res.ok) return await res.json();
-            return null;
+            return await fetchTMDBSeasonData(tmdbId, seasonNumber, API_KEY);
         } catch (e) {
             console.warn(`Failed to fetch season ${seasonNumber}`, e);
-            return null;
+            return { sDataAr: null, sDataEn: null };
+        }
+    };
+
+    const getFilteredAlternativeTitles = async (
+        targetId: string,
+        typePath: 'movie' | 'tv',
+        preFetchedArDetails?: any,
+        preFetchedEnDetails?: any,
+        categories?: Category[]
+    ): Promise<string[]> => {
+        try {
+            let arDetails = preFetchedArDetails;
+            if (!arDetails) {
+                const arUrl = `https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=ar-SA`;
+                const arRes = await fetchTMDB(arUrl);
+                if (arRes.ok) arDetails = await arRes.json();
+            }
+
+            let enDetails = preFetchedEnDetails;
+            if (!enDetails) {
+                const enUrl = `https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=en-US`;
+                const enRes = await fetchTMDB(enUrl);
+                if (enRes.ok) enDetails = await enRes.json();
+            }
+
+            arDetails = arDetails || {};
+            enDetails = enDetails || {};
+
+            const originLang = (arDetails.original_language || enDetails.original_language || '').toLowerCase();
+            const originCountries: string[] = [
+                ...(arDetails.origin_country || []),
+                ...(enDetails.origin_country || []),
+                ...((arDetails.production_countries || []).map((c: any) => c.iso_3166_1)),
+                ...((enDetails.production_countries || []).map((c: any) => c.iso_3166_1))
+            ].map(c => String(c).toUpperCase());
+
+            const genresList: string[] = [
+                ...((arDetails.genres || []).map((g: any) => g.name || '')),
+                ...((enDetails.genres || []).map((g: any) => g.name || ''))
+            ];
+
+            const isArabicWork = originLang === 'ar' || 
+                ['AR', 'EG', 'SA', 'AE', 'KW', 'QA', 'BH', 'OM', 'JO', 'LB', 'IQ', 'SY', 'MA', 'DZ', 'TN'].some(c => originCountries.includes(c)) ||
+                (categories || []).some(c => typeof c === 'string' && (c.includes('عرب') || c.includes('مصر')));
+
+            const isTurkishWork = originLang === 'tr' || 
+                originCountries.includes('TR') || 
+                (categories || []).some(c => typeof c === 'string' && (c.includes('ترك') || c.includes('تركي')));
+
+            let trTitle = '';
+            if (isTurkishWork) {
+                try {
+                    const trUrl = `https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=tr-TR`;
+                    const trRes = await fetchTMDB(trUrl);
+                    if (trRes.ok) {
+                        const trDetails = await trRes.json();
+                        trTitle = (trDetails.title || trDetails.name || '').trim();
+                    }
+                } catch (e) {
+                    console.warn("Failed to fetch Turkish title from TMDB", e);
+                }
+            }
+
+            let altArTitle = '';
+            let altEnTitle = '';
+            let altTrTitle = '';
+
+            try {
+                const altUrl = `https://api.themoviedb.org/3/${typePath}/${targetId}/alternative_titles?api_key=${API_KEY}`;
+                const altRes = await fetchTMDB(altUrl);
+                if (altRes.ok) {
+                    const altData = await altRes.json();
+                    const rawList = altData.titles || altData.results || [];
+                    for (const item of rawList) {
+                        const titleCandidate = (item.title || item.name || '').trim();
+                        if (!titleCandidate) continue;
+
+                        const isoCountry = (item.iso_3166_1 || '').toUpperCase();
+                        const isoLang = (item.iso_639_1 || '').toLowerCase();
+
+                        const isAr = ['AR', 'EG', 'SA', 'AE', 'KW', 'QA', 'BH', 'OM', 'JO', 'LB', 'IQ', 'SY', 'MA', 'DZ', 'TN'].includes(isoCountry) || isoLang === 'ar' || (isTextArabic(titleCandidate) && !/[a-zA-Z]/.test(titleCandidate));
+                        const isEn = ['US', 'GB', 'CA', 'AU', 'NZ', 'IE'].includes(isoCountry) || isoLang === 'en';
+                        const isTr = isoCountry === 'TR' || isoLang === 'tr';
+
+                        if (isAr && !altArTitle) altArTitle = titleCandidate;
+                        if (isEn && !altEnTitle) altEnTitle = titleCandidate;
+                        if (isTr && !altTrTitle) altTrTitle = titleCandidate;
+                    }
+                }
+            } catch (e) {
+                console.warn("Failed to fetch alternative titles from TMDB", e);
+            }
+
+            const arTitle = (arDetails.title || arDetails.name || '').trim();
+            const enTitle = (enDetails.title || enDetails.name || '').trim();
+            const origTitle = (arDetails.original_title || arDetails.original_name || enDetails.original_title || enDetails.original_name || '').trim();
+
+            const currentMainTitle = (formData.title || arTitle || origTitle || '').trim();
+
+            // Assemble language title candidates (Max 1 title per language category)
+            const titleCandidates: string[] = [];
+
+            if (isArabicWork) {
+                // Arabic Work: include 1 English title if available, and 1 Original title if distinct
+                const englishChoice = enTitle || altEnTitle;
+                if (englishChoice) titleCandidates.push(englishChoice);
+                if (origTitle && origTitle !== arTitle && origTitle !== englishChoice) {
+                    titleCandidates.push(origTitle);
+                }
+            } else if (isTurkishWork) {
+                // Turkish Work: include 1 Turkish title, 1 English title, 1 Arabic title
+                const turkishChoice = trTitle || (originLang === 'tr' ? origTitle : '') || altTrTitle;
+                const englishChoice = enTitle || altEnTitle;
+                const arabicChoice = arTitle || altArTitle;
+
+                if (turkishChoice) titleCandidates.push(turkishChoice);
+                if (englishChoice) titleCandidates.push(englishChoice);
+                if (arabicChoice) titleCandidates.push(arabicChoice);
+                if (origTitle && ![turkishChoice, englishChoice, arabicChoice].includes(origTitle)) {
+                    titleCandidates.push(origTitle);
+                }
+            } else {
+                // Foreign / English / General Foreign / Animation Work: include 1 Arabic title, 1 English title, 1 Original title
+                const arabicChoice = arTitle || altArTitle;
+                const englishChoice = enTitle || altEnTitle;
+                const origChoice = origTitle;
+
+                if (arabicChoice) titleCandidates.push(arabicChoice);
+                if (englishChoice) titleCandidates.push(englishChoice);
+                if (origChoice && origChoice !== arabicChoice && origChoice !== englishChoice) {
+                    titleCandidates.push(origChoice);
+                }
+            }
+
+            // Deduplicate, clean up, and filter out any title that matches main title
+            const resultSet = new Set<string>();
+            const seenNormalized = new Set<string>();
+
+            if (currentMainTitle) {
+                seenNormalized.add(currentMainTitle.toLowerCase().trim());
+            }
+
+            for (const cand of titleCandidates) {
+                if (cand && typeof cand === 'string') {
+                    const trimmed = cand.trim();
+                    const norm = trimmed.toLowerCase();
+                    if (trimmed && !seenNormalized.has(norm)) {
+                        seenNormalized.add(norm);
+                        resultSet.add(trimmed);
+                    }
+                }
+            }
+
+            return Array.from(resultSet);
+        } catch (e) {
+            console.error("Error in getFilteredAlternativeTitles", e);
+            return [];
         }
     };
 
@@ -3338,9 +3563,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         try {
             const getUrl = (type: ContentType, lang: string, path: string = '') => {
                 const typePath = (type === ContentType.Movie || type === ContentType.Play || type === ContentType.Concert) ? 'movie' : 'tv';
-                const append = (type === ContentType.Movie || type === ContentType.Play || type === ContentType.Concert)
-                    ? 'credits,release_dates,videos,images' 
-                    : 'content_ratings,credits,videos,images'; 
+                const append = 'release_dates,content_ratings,credits,videos,images'; 
                 return `https://api.themoviedb.org/3/${typePath}/${targetId}${path}?api_key=${API_KEY}&language=${lang}&append_to_response=${append}&include_image_language=${lang},en,null&include_video_language=${lang},en,null`;
             };
 
@@ -3358,9 +3581,40 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
             let details = await res.json();
             const originLang = details.original_language;
             const isAsianLang = ['ko', 'ja', 'zh', 'cn', 'th', 'id', 'vi', 'ph', 'ms', 'tw', 'kr', 'jp'].includes(originLang);
-            
+
+            let enTitle = '';
+            let enVideos: any = null;
+            let enDetailsObj: any = null;
+            if (originLang !== 'ar') {
+                const resEn = await fetchTMDB(getUrl(currentType, 'en-US'));
+                if (resEn.ok) {
+                    enDetailsObj = await resEn.json();
+                    enTitle = enDetailsObj.title || enDetailsObj.name || '';
+                    if (!details.overview) details.overview = enDetailsObj.overview;
+                    if (enDetailsObj.images) details.images = enDetailsObj.images;
+                    if (enDetailsObj.videos) enVideos = enDetailsObj.videos;
+                }
+            } else {
+                const resEn = await fetchTMDB(getUrl(currentType, 'en-US'));
+                if (resEn.ok) {
+                    enDetailsObj = await resEn.json();
+                    enTitle = enDetailsObj.title || enDetailsObj.name || '';
+                    if (enDetailsObj.videos) enVideos = enDetailsObj.videos;
+                }
+            }
+
+            const isAnimationWork = (
+                details.genres?.some((g: any) => g.id === 16 || (g.name && /animation|أنيميشن|انيميشن|رسوم متحركة|أنمي/i.test(g.name))) ||
+                enDetailsObj?.genres?.some((g: any) => g.id === 16 || (g.name && /animation/i.test(g.name))) ||
+                (Array.isArray(details.genre_ids) && details.genre_ids.includes(16))
+            );
+
             let autoCategory: Category = 'افلام اجنبية'; 
-            if (currentType === ContentType.Series || currentType === ContentType.Program) {
+            if (isAnimationWork) {
+                autoCategory = (currentType === ContentType.Series || currentType === ContentType.Program)
+                    ? 'مسلسلات أنيميشن'
+                    : 'أفلام أنيميشن';
+            } else if (currentType === ContentType.Series || currentType === ContentType.Program) {
                 if (originLang === 'tr') autoCategory = 'مسلسلات تركية';
                 else if (originLang === 'ar') autoCategory = 'مسلسلات عربية';
                 else if (isAsianLang) autoCategory = 'مسلسلات آسيوية';
@@ -3373,54 +3627,16 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 else autoCategory = 'افلام اجنبية';
             }
 
-            let enTitle = '';
-            let enVideos: any = null;
-            if (originLang !== 'ar') {
-                const resEn = await fetchTMDB(getUrl(currentType, 'en-US'));
-                if (resEn.ok) {
-                    const enDetails = await resEn.json();
-                    enTitle = enDetails.title || enDetails.name || '';
-                    if (!details.overview) details.overview = enDetails.overview;
-                    if (enDetails.images) details.images = enDetails.images;
-                    if (enDetails.videos) enVideos = enDetails.videos;
-                }
-            } else {
-                const resEn = await fetchTMDB(getUrl(currentType, 'en-US'));
-                if (resEn.ok) {
-                    const enDetails = await resEn.json();
-                    enTitle = enDetails.title || enDetails.name || '';
-                    if (enDetails.videos) enVideos = enDetails.videos;
-                }
-            }
-
-            let altTitlesFromTmdb: string[] = [];
-            try {
-                const typePath = (currentType === ContentType.Movie || currentType === ContentType.Play || currentType === ContentType.Concert) ? 'movie' : 'tv';
-                const altRes = await fetchTMDB(`https://api.themoviedb.org/3/${typePath}/${targetId}/alternative_titles?api_key=${API_KEY}`);
-                if (altRes.ok) {
-                    const altData = await altRes.json();
-                    const rawList = altData.titles || altData.results || [];
-                    altTitlesFromTmdb = rawList.map((item: any) => item.title || item.name).filter(Boolean);
-                }
-            } catch (errAlt) {
-                console.warn("Failed to fetch alternative titles", errAlt);
-            }
-
+            const typePath = (currentType === ContentType.Movie || currentType === ContentType.Play || currentType === ContentType.Concert) ? 'movie' : 'tv';
+            const newAltTitlesArray = await getFilteredAlternativeTitles(String(targetId), typePath, details, enDetailsObj, [autoCategory]);
             const title = details.title || details.name || '';
-            const origTitle = details.original_title || details.original_name || '';
-            const allCandidates = [origTitle, enTitle, ...altTitlesFromTmdb];
-            const fetchedAltTitlesSet = new Set<string>();
-            allCandidates.forEach(c => {
-                if (c && typeof c === 'string') {
-                    const trimmed = c.trim();
-                    if (trimmed && trimmed.toLowerCase() !== title.trim().toLowerCase()) {
-                        fetchedAltTitlesSet.add(trimmed);
-                    }
-                }
-            });
-            const newAltTitlesArray = Array.from(fetchedAltTitlesSet);
 
-            const description = details.overview || ''; 
+            // Handle description according to TMDB priority rules:
+            // 1. Direct Arabic fetch: Use Arabic overview directly if available on TMDB.
+            // 2. Auto-translation: If no Arabic overview is on TMDB, automatically translate to Arabic.
+            // 3. Clean output: No translation indicators, prefixes, or badges are attached.
+            const description = await resolveTMDBOverview(details.overview, enDetailsObj?.overview);
+
             const poster = details.poster_path ? `https://image.tmdb.org/t/p/w500${details.poster_path}` : '';
             const backdrop = details.backdrop_path ? `https://image.tmdb.org/t/p/original${details.backdrop_path}` : '';
             const rating = details.vote_average ? Number((details.vote_average / 2).toFixed(1)) : 0;
@@ -3558,40 +3774,34 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 duration = `${h}h ${m}m`;
             }
 
-            let ageRating = '';
-            if (isStandalone) {
-                const usRelease = details.release_dates?.results?.find((r: any) => r.iso_3166_1 === 'US');
-                if (usRelease) ageRating = usRelease.release_dates[0]?.certification || '';
-            } else {
-                const usRating = details.content_ratings?.results?.find((r: any) => r.iso_3166_1 === 'US');
-                if (usRating) ageRating = usRating.rating || '';
-            }
+            const ageRating = extractAgeRatingFromTMDBDetails(details, enDetailsObj);
+            const country = extractCountryFromTMDBDetails(details, enDetailsObj);
 
             const mappedGenres: Genre[] = details.genres?.map((g: any) => {
-                if(g.name === 'Action') return 'أكشن';
-                if(g.name === 'Adventure') return 'مغامرة';
-                if(g.name === 'Animation') return 'أطفال';
-                if(g.name === 'Comedy') return 'كوميديا';
-                if(g.name === 'Crime') return 'جريمة';
-                if(g.name === 'Documentary') return 'وثائقي';
-                if(g.name === 'Drama') return 'دراما';
-                if(g.name === 'Family') return 'عائلي';
-                if(g.name === 'Fantasy') return 'فانتازيا';
-                if(g.name === 'History') return 'تاريخي';
-                if(g.name === 'Horror') return 'رعب';
-                if(g.name === 'Music') return 'موسيقي';
-                if(g.name === 'Mystery') return 'غموض';
-                if(g.name === 'Romance') return 'رومانسي';
-                if(g.name === 'Science Fiction') return 'خيال علمي';
-                if(g.name === 'TV Movie') return 'فيلم تلفزيوني';
-                if(g.name === 'Thriller') return 'إثارة';
-                if(g.name === 'War') return 'حربي';
-                if(g.name === 'Western') return 'ويسترن';
+                if(g.id === 16 || g.name === 'Animation' || g.name === 'أنيميشن' || g.name === 'انيميشن' || g.name === 'رسوم متحركة') return 'أطفال';
+                if(g.id === 28 || g.name === 'Action' || g.name === 'أكشن') return 'أكشن';
+                if(g.id === 12 || g.name === 'Adventure' || g.name === 'مغامرة') return 'مغامرة';
+                if(g.id === 35 || g.name === 'Comedy' || g.name === 'كوميديا') return 'كوميديا';
+                if(g.id === 80 || g.name === 'Crime' || g.name === 'جريمة') return 'جريمة';
+                if(g.id === 99 || g.name === 'Documentary' || g.name === 'وثائقي') return 'وثائقي';
+                if(g.id === 18 || g.name === 'Drama' || g.name === 'دراما') return 'دراما';
+                if(g.id === 10751 || g.name === 'Family' || g.name === 'عائلي') return 'عائلي';
+                if(g.id === 14 || g.name === 'Fantasy' || g.name === 'فانتازيا') return 'فانتازيا';
+                if(g.id === 36 || g.name === 'History' || g.name === 'تاريخي') return 'تاريخي';
+                if(g.id === 27 || g.name === 'Horror' || g.name === 'رعب') return 'رعب';
+                if(g.id === 10402 || g.name === 'Music' || g.name === 'موسيقي') return 'موسيقي';
+                if(g.id === 9648 || g.name === 'Mystery' || g.name === 'غموض') return 'غموض';
+                if(g.id === 10749 || g.name === 'Romance' || g.name === 'رومانسي') return 'رومانسي';
+                if(g.id === 878 || g.name === 'Science Fiction' || g.name === 'خيال علمي') return 'خيال علمي';
+                if(g.id === 10770 || g.name === 'TV Movie' || g.name === 'فيلم تلفزيوني') return 'فيلم تلفزيوني';
+                if(g.id === 53 || g.name === 'Thriller' || g.name === 'إثارة') return 'إثارة';
+                if(g.id === 10752 || g.name === 'War' || g.name === 'حربي') return 'حربي';
+                if(g.id === 37 || g.name === 'Western' || g.name === 'ويسترن') return 'ويسترن';
                 return g.name; 
             }) || [];
 
-            if (mappedGenres.includes('أطفال') && !autoCategory.includes('أنيميشن')) {
-                autoCategory = (currentType === ContentType.Series) ? 'مسلسلات أنيميشن' : 'أفلام أنيميشن';
+            if ((mappedGenres.includes('أطفال') || isAnimationWork) && !autoCategory.includes('أنيميشن')) {
+                autoCategory = (currentType === ContentType.Series || currentType === ContentType.Program) ? 'مسلسلات أنيميشن' : 'أفلام أنيميشن';
             }
 
             const castNames: string[] = [];
@@ -3616,49 +3826,53 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 const seasonPromises = validSeasons.map((s: any) => fetchSeasonDetails(String(targetId), s.season_number));
                 const detailedSeasons = await Promise.all(seasonPromises);
 
-                newSeasons = detailedSeasons.filter(ds => ds !== null).map((ds: any) => {
-                    const mappedEpisodes: Episode[] = ds.episodes?.map((ep: any) => {
-                        let epDuration = '';
-                        if (ep.runtime) {
-                            if(ep.runtime > 60) epDuration = `${Math.floor(ep.runtime/60)}h ${ep.runtime%60}m`;
-                            else epDuration = `${ep.runtime}:00`;
-                        }
+                newSeasons = await Promise.all(detailedSeasons.map(async ({ sDataAr, sDataEn }, sIdx) => {
+                    const ds = sDataAr || sDataEn || {};
+                    const seasonNum = validSeasons[sIdx].season_number;
+                    const arEps = sDataAr?.episodes || [];
+                    const enEps = sDataEn?.episodes || [];
+                    const maxEpsCount = Math.max(arEps.length, enEps.length);
 
-                        const fixedTitle = `الحلقة ${ep.episode_number}`;
-                        const isGenericTitle = !ep.name || ep.name.match(/^Episode \d+$/i) || ep.name.match(/^الحلقة \d+$/i);
-                        let finalDescription = ep.overview || `شاهد أحداث الحلقة ${ep.episode_number} من الموسم ${ds.season_number}. استمتع بمشاهدة تطورات الأحداث في هذه الحلقة.`;
-                        
-                        if (!isGenericTitle && ep.name) {
-                            finalDescription = `${ep.name} : ${ep.overview || ''}`;
-                        }
-                        
-                        return {
-                            id: Date.now() + ep.episode_number + Math.random(),
-                            title: fixedTitle,
-                            description: finalDescription,
-                            thumbnail: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : backdrop, 
-                            duration: epDuration,
-                            progress: 0,
-                            servers: generateEpisodeServers(String(targetId), ds.season_number, ep.episode_number),
-                            publishDate: ep.air_date || ''
-                        };
-                    }) || [];
+                    const mappedEpisodes: Episode[] = await Promise.all(
+                        Array.from({ length: maxEpsCount }, async (_, idx) => {
+                            const arEp = arEps[idx] || {};
+                            const enEp = enEps[idx] || {};
+                            const processed = await processTMDBEpisode(arEp, enEp, seasonNum);
+
+                            return {
+                                id: Date.now() + (arEp.episode_number || enEp.episode_number || idx + 1) + Math.random(),
+                                title: processed.fixedTitle,
+                                description: processed.finalDescription,
+                                thumbnail: processed.thumbnail || backdrop, 
+                                duration: processed.epDuration,
+                                progress: 0,
+                                servers: generateEpisodeServers(String(targetId), seasonNum, arEp.episode_number || enEp.episode_number || idx + 1),
+                                publishDate: processed.publishDate
+                            };
+                        })
+                    );
+
+                    const seasonTrailers = processSeasonTrailers(sDataAr, sDataEn, seasonNum);
+
+                    const sOverview = await resolveTMDBOverview(sDataAr?.overview, sDataEn?.overview, ds.overview);
 
                     return {
-                        id: Date.now() + ds.season_number + Math.random(),
-                        seasonNumber: ds.season_number,
-                        title: ds.name || `الموسم ${ds.season_number}`,
+                        id: Date.now() + seasonNum + Math.random(),
+                        seasonNumber: seasonNum,
+                        title: ds.name || `الموسم ${seasonNum}`,
                         releaseYear: ds.air_date ? new Date(ds.air_date).getFullYear() : releaseYear,
-                        description: ds.overview,
+                        description: sOverview,
                         poster: ds.poster_path ? `https://image.tmdb.org/t/p/w500${ds.poster_path}` : poster,
                         backdrop: backdrop,
                         mobileImageUrl: '', 
-                        logoUrl: ds.season_number === 1 ? logoUrl : '',
+                        logoUrl: seasonNum === 1 ? logoUrl : '',
                         isUpcoming: false,
                         flipBackdrop: false,
-                        episodes: mappedEpisodes
+                        episodes: mappedEpisodes,
+                        trailers: seasonTrailers,
+                        trailerUrl: seasonTrailers[0]?.url || ''
                     };
-                });
+                }));
             }
 
             // Save newly fetched genres to dynamic list if not already there
@@ -3684,6 +3898,27 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 });
             }
 
+            // Auto-detect Egyptian content from TMDB origin country / production companies / Arabic title/overview
+            const originCountries: string[] = [
+                ...(details.origin_country || []),
+                ...(enDetailsObj?.origin_country || []),
+                ...((details.production_countries || []).map((c: any) => c.iso_3166_1)),
+                ...((enDetailsObj?.production_countries || []).map((c: any) => c.iso_3166_1))
+            ].filter(Boolean).map((c: any) => String(c).toUpperCase());
+
+            const isEgyptianWork = originCountries.includes('EG') ||
+                (details.production_companies || []).some((c: any) => (c.origin_country || '').toUpperCase() === 'EG' || /egypt|مصر/i.test(c.name || '')) ||
+                (originLang === 'ar' && /مصر|مصري|مصرية|القاهرة|الإسكندرية|الصعيد|صعيدي|مصريين/i.test(`${details.title || ''} ${details.name || ''} ${details.overview || ''}`));
+
+            const assignedCategories: Category[] = [autoCategory];
+            if (isEgyptianWork && !assignedCategories.includes('مصري' as Category)) {
+                assignedCategories.push('مصري' as Category);
+            }
+
+            if (isEgyptianWork) {
+                addToast("تم التعرف تلقائياً على التصنيف المصري وإضافته للتصنيفات! 🇪🇬", "info");
+            }
+
             setFormData(prev => ({
                 ...prev,
                 id: isNewContent ? db.collection("content").doc().id : (prev.id || String(targetId)),
@@ -3700,8 +3935,9 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 rating,
                 releaseYear,
                 ageRating,
+                country: country || prev.country || '',
                 type: currentType, 
-                categories: [autoCategory],
+                categories: assignedCategories,
                 genres: [...new Set([...prev.genres, ...mappedGenres])],
                 cast: castNames,
                 director: directorName || prev.director,
@@ -3752,6 +3988,98 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         }
     };
 
+    const handleRefreshAgeRating = async () => {
+        const targetId = formData.tmdbId || tmdbIdInput;
+        if (!targetId) {
+            addToast("يرجى إدخال كود TMDB أولاً لجلب التصنيف العمري.", "error");
+            return;
+        }
+        setIsRefreshingAgeRating(true);
+        try {
+            const typePath = (formData.type === ContentType.Movie || formData.type === ContentType.Play || formData.type === ContentType.Concert) ? 'movie' : 'tv';
+            const url = `https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=ar-SA&append_to_response=release_dates,content_ratings`;
+            const res = await fetchTMDB(url);
+            if (!res.ok) throw new Error("فشل جلب البيانات من TMDB. تأكد من صحة الكود.");
+            const details = await res.json();
+            
+            let enDetailsObj = null;
+            try {
+                const resEn = await fetchTMDB(`https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=en-US&append_to_response=release_dates,content_ratings`);
+                if (resEn.ok) enDetailsObj = await resEn.json();
+            } catch (e) {}
+
+            const ageRating = extractAgeRatingFromTMDBDetails(details, enDetailsObj);
+            if (ageRating) {
+                setFormData(prev => ({ ...prev, ageRating }));
+                addToast(`تم جلب وتحديث التصنيف العمري بنجاح من TMDB! (${ageRating})`, "success");
+            } else {
+                addToast("لم يتم العثور على تصنيف عمري في TMDB لهذا العمل.", "info");
+            }
+        } catch (e: any) {
+            console.error(e);
+            addToast(e.message || "حدث خطأ أثناء تحديث التصنيف العمري.", "error");
+        } finally {
+            setIsRefreshingAgeRating(false);
+        }
+    };
+
+    const handleRefreshCountry = async () => {
+        const targetId = formData.tmdbId || tmdbIdInput;
+        if (!targetId) {
+            addToast("يرجى إدخال كود TMDB أولاً لجلب الدولة.", "error");
+            return;
+        }
+        setIsRefreshingCountry(true);
+        try {
+            const typePath = (formData.type === ContentType.Movie || formData.type === ContentType.Play || formData.type === ContentType.Concert) ? 'movie' : 'tv';
+            const url = `https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=ar-SA`;
+            const res = await fetchTMDB(url);
+            if (!res.ok) throw new Error("فشل جلب البيانات من TMDB. تأكد من صحة الكود.");
+            const details = await res.json();
+            
+            let enDetailsObj = null;
+            try {
+                const resEn = await fetchTMDB(`https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=en-US`);
+                if (resEn.ok) enDetailsObj = await resEn.json();
+            } catch (e) {}
+
+            const country = extractCountryFromTMDBDetails(details, enDetailsObj);
+            if (country) {
+                setFormData(prev => ({ ...prev, country }));
+                addToast(`تم جلب وتحديث دولة العمل بنجاح من TMDB! (${country})`, "success");
+            } else {
+                addToast("لم يتم العثور على دولة الإنتاج في TMDB لهذا العمل.", "info");
+            }
+        } catch (e: any) {
+            console.error(e);
+            addToast(e.message || "حدث خطأ أثناء تحديث الدولة.", "error");
+        } finally {
+            setIsRefreshingCountry(false);
+        }
+    };
+
+    const handleTranslateDescription = async () => {
+        if (!formData.description || !formData.description.trim()) {
+            addToast("يرجى كتابة أو جلب وصف العمل أولاً لترجمته.", "info");
+            return;
+        }
+        setIsTranslatingDescription(true);
+        try {
+            const translated = await translateToArabic(formData.description);
+            if (translated && translated.trim() && translated.trim() !== formData.description.trim()) {
+                setFormData(prev => ({ ...prev, description: translated.trim() }));
+                addToast("تمت ترجمة الوصف إلى اللغة العربية بنجاح ✨", "success");
+            } else {
+                addToast("الوصف مكتوب باللغة العربية بالفعل أو لم يتم العثور على ترجمة مختلفة.", "info");
+            }
+        } catch (err: any) {
+            console.error("Failed to translate description:", err);
+            addToast("حدث خطأ أثناء ترجمة الوصف إلى العربية.", "error");
+        } finally {
+            setIsTranslatingDescription(false);
+        }
+    };
+
     const handleRefreshAlternativeTitles = async () => {
         const targetId = formData.tmdbId || tmdbIdInput;
         if (!targetId) {
@@ -3761,47 +4089,8 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
         setIsRefreshingAltTitles(true);
         try {
             const typePath = (formData.type === ContentType.Movie || formData.type === ContentType.Play || formData.type === ContentType.Concert) ? 'movie' : 'tv';
+            const updatedAltTitles = await getFilteredAlternativeTitles(String(targetId), typePath, null, null, formData.categories);
             
-            // 1. Fetch Arabic details
-            const arUrl = `https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=ar-SA`;
-            const arRes = await fetchTMDB(arUrl);
-            let arDetails: any = {};
-            if (arRes.ok) arDetails = await arRes.json();
-
-            // 2. Fetch English details
-            const enUrl = `https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=en-US`;
-            const enRes = await fetchTMDB(enUrl);
-            let enDetails: any = {};
-            if (enRes.ok) enDetails = await enRes.json();
-
-            // 3. Fetch alternative titles endpoint
-            const altUrl = `https://api.themoviedb.org/3/${typePath}/${targetId}/alternative_titles?api_key=${API_KEY}`;
-            const altRes = await fetchTMDB(altUrl);
-            let altList: string[] = [];
-            if (altRes.ok) {
-                const altData = await altRes.json();
-                const rawList = altData.titles || altData.results || [];
-                altList = rawList.map((item: any) => item.title || item.name).filter(Boolean);
-            }
-
-            const currentMainTitle = formData.title || arDetails.title || arDetails.name || '';
-            const origTitle = arDetails.original_title || arDetails.original_name || '';
-            const enTitle = enDetails.title || enDetails.name || '';
-
-            const candidates = [origTitle, enTitle, ...altList];
-            const existingAlt = formData.alternativeTitles || [];
-            const mergedSet = new Set<string>(existingAlt);
-
-            candidates.forEach(t => {
-                if (t && typeof t === 'string') {
-                    const trimmed = t.trim();
-                    if (trimmed && trimmed.toLowerCase() !== currentMainTitle.trim().toLowerCase()) {
-                        mergedSet.add(trimmed);
-                    }
-                }
-            });
-
-            const updatedAltTitles = Array.from(mergedSet);
             setFormData(prev => ({ ...prev, alternativeTitles: updatedAltTitles }));
             addToast(`تم جلب وتحديث الأسماء الأخرى بنجاح (${updatedAltTitles.length} اسم متاح)`, "success");
         } catch (e: any) {
@@ -3843,6 +4132,62 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                 : [...currentCats, category];
             return { ...prev, categories: newCats };
         });
+    };
+
+    const handleAutoDetectEgyptianCategory = async () => {
+        const targetId = formData.tmdbId || tmdbIdInput;
+        let detected = false;
+
+        if (targetId) {
+            try {
+                const typePath = (formData.type === ContentType.Movie || formData.type === ContentType.Play || formData.type === ContentType.Concert) ? 'movie' : 'tv';
+                const url = `https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=ar-SA`;
+                const res = await fetchTMDB(url);
+                if (res.ok) {
+                    const details = await res.json();
+                    let enDetailsObj: any = null;
+                    try {
+                        const resEn = await fetchTMDB(`https://api.themoviedb.org/3/${typePath}/${targetId}?api_key=${API_KEY}&language=en-US`);
+                        if (resEn.ok) enDetailsObj = await resEn.json();
+                    } catch (e) {}
+
+                    const originCountries: string[] = [
+                        ...(details.origin_country || []),
+                        ...(enDetailsObj?.origin_country || []),
+                        ...((details.production_countries || []).map((c: any) => c.iso_3166_1)),
+                        ...((enDetailsObj?.production_countries || []).map((c: any) => c.iso_3166_1))
+                    ].filter(Boolean).map((c: any) => String(c).toUpperCase());
+
+                    const isEgyptian = originCountries.includes('EG') ||
+                        (details.production_companies || []).some((c: any) => (c.origin_country || '').toUpperCase() === 'EG' || /egypt|مصر/i.test(c.name || '')) ||
+                        (details.original_language === 'ar' && /مصر|مصري|مصرية|القاهرة|الإسكندرية|الصعيد|صعيدي|مصريين/i.test(`${details.title || ''} ${details.name || ''} ${details.overview || ''}`));
+
+                    if (isEgyptian) detected = true;
+                }
+            } catch (e) {
+                console.warn("Failed to check TMDB for Egyptian category", e);
+            }
+        }
+
+        if (!detected) {
+            const textToScan = `${formData.title || ''} ${formData.description || ''} ${(formData.cast || []).join(' ')} ${formData.director || ''} ${formData.writer || ''}`;
+            if (/مصر|مصري|مصرية|القاهرة|الإسكندرية|الصعيد|صعيدي|مصريين/i.test(textToScan)) {
+                detected = true;
+            }
+        }
+
+        if (detected) {
+            setFormData(prev => {
+                const currentCats = prev.categories || [];
+                if (!currentCats.includes('مصري' as Category)) {
+                    return { ...prev, categories: [...currentCats, 'مصري' as Category] };
+                }
+                return prev;
+            });
+            addToast("تم التعرف على العمل كـ (مصري) وتمت إضافته بالتصنيفات بنجاح! 🇪🇬", "success");
+        } else {
+            addToast("لم يتم العثور على مؤشرات مؤكدة للتصنيف المصري بهذا العمل.", "info");
+        }
     };
      
     const handleGenreChange = (genre: string) => {
@@ -4156,7 +4501,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
 
                 if (enableAutoLinks) {
                     const idToUse = formData.tmdbId || formData.id;
-                    const vipUrl = `https://vidsrc.vip/embed/movie/${idToUse}`;
+                    const vipUrl = `https://vidsrc.pro/embed/movie/${idToUse}`;
                     updatedServers.push({ id: 99991, name: 'سيرفر 1', url: vipUrl, downloadUrl: vipUrl, isActive: true });
                 }
 
@@ -4228,7 +4573,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             
                             if (enableAutoLinks) {
                                 const idToUse = formData.tmdbId || formData.id;
-                                const vipUrl = `https://vidsrc.vip/embed/tv/${idToUse}/${seasonNumber}/${eNum}`;
+                                const vipUrl = `https://vidsrc.pro/embed/tv/${idToUse}/${seasonNumber}/${eNum}`;
                                 epServers.push({ id: 99999 + Math.random(), name: 'سيرفر 1', url: vipUrl, downloadUrl: vipUrl, isActive: true });
                             }
 
@@ -4624,42 +4969,37 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         
                         try {
                             addToast("جاري جلب تحديثات الحلقات من TMDB...", "info");
-                            const sRes = await fetchTMDB(`https://api.themoviedb.org/3/tv/${idToUse}/season/${latestSeason.seasonNumber}?api_key=${API_KEY}&language=ar-SA`);
-                            if (!sRes.ok) throw new Error("فشل جلب الموسم من TMDB.");
-                            const sData = await sRes.json();
-                            
+                            const { sDataAr, sDataEn, sDataDefault } = await fetchTMDBSeasonData(idToUse, latestSeason.seasonNumber, API_KEY);
+                            if (!sDataAr && !sDataEn && !sDataDefault) throw new Error("فشل جلب الموسم من TMDB.");
+
+                            const updatedSeasons = await Promise.all((formData.seasons || []).map(async s => {
+                                if (s.id !== latestSeason.id) return s;
+
+                                const updatedEpisodes = await Promise.all((s.episodes || []).map(async (ep, epIdx) => {
+                                    const localEpNum = extractEpisodeNumber(ep.title) || (epIdx + 1);
+                                    const tmdbArEp = sDataAr?.episodes?.find((tep: any) => tep.episode_number === localEpNum);
+                                    const tmdbEnEp = sDataEn?.episodes?.find((tep: any) => tep.episode_number === localEpNum);
+                                    const tmdbDefEp = sDataDefault?.episodes?.find((tep: any) => tep.episode_number === localEpNum);
+
+                                    if (tmdbArEp || tmdbEnEp || tmdbDefEp) {
+                                        const processed = await processTMDBEpisode(tmdbArEp, tmdbEnEp, s.seasonNumber, tmdbDefEp);
+                                        return {
+                                            ...ep,
+                                            thumbnail: processed.thumbnail || ep.thumbnail,
+                                            description: processed.finalDescription || ep.description || '',
+                                            duration: processed.epDuration || ep.duration,
+                                            publishDate: processed.publishDate || ep.publishDate || ''
+                                        };
+                                    }
+                                    return ep;
+                                }));
+
+                                return { ...s, episodes: updatedEpisodes };
+                            }));
+
                             setFormData(prev => ({
                                 ...prev,
-                                seasons: (prev.seasons || []).map(s => {
-                                    if (s.id !== latestSeason.id) return s;
-                                    
-                                    const updatedEpisodes = (s.episodes || []).map(ep => {
-                                        const localEpNum = extractEpisodeNumber(ep.title);
-                                        const tmdbEp = sData.episodes?.find((tep: any) => tep.episode_number === localEpNum);
-                                        if (tmdbEp) {
-                                            const isGenericTitle = !tmdbEp.name || tmdbEp.name.match(/^Episode \d+$/i) || tmdbEp.name.match(/^الحلقة \d+$/i);
-                                            let finalDescription = tmdbEp.overview || ep.description || `شاهد أحداث الحلقة ${tmdbEp.episode_number} من الموسم ${s.seasonNumber}.`;
-                                            if (!isGenericTitle && tmdbEp.name) {
-                                                finalDescription = `${tmdbEp.name} : ${tmdbEp.overview || ''}`;
-                                            }
-                                            let epDuration = ep.duration || '';
-                                            if (tmdbEp.runtime) {
-                                                if (tmdbEp.runtime > 60) epDuration = `${Math.floor(tmdbEp.runtime/60)}h ${tmdbEp.runtime%60}m`;
-                                                else epDuration = `${tmdbEp.runtime}:00`;
-                                            }
-                                            return {
-                                                ...ep,
-                                                thumbnail: tmdbEp.still_path ? `https://image.tmdb.org/t/p/w500${tmdbEp.still_path}` : ep.thumbnail,
-                                                description: finalDescription,
-                                                duration: epDuration,
-                                                publishDate: tmdbEp.air_date || ep.publishDate || ''
-                                            };
-                                        }
-                                        return ep;
-                                    });
-                                    
-                                    return { ...s, episodes: updatedEpisodes };
-                                })
+                                seasons: updatedSeasons
                             }));
                             addToast("تم تحديث صور ووصف حلقات الموسم الأخير بنجاح!", "success");
                         } catch (err: any) {
@@ -4791,7 +5131,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                     const epServers: Server[] = [];
                     if (enableAutoLinks) {
                         const idToUse = formData.tmdbId || formData.id;
-                        const vipUrl = `https://vidsrc.vip/embed/tv/${idToUse}/${sNum}/${eNum}`;
+                        const vipUrl = `https://vidsrc.pro/embed/tv/${idToUse}/${sNum}/${eNum}`;
                         epServers.push({ id: 99999, name: 'سيرفر 1', url: vipUrl, downloadUrl: vipUrl, isActive: true });
                     }
                     
@@ -5843,7 +6183,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         <div>
                                             <label className={labelClass}>عنوان العمل</label>
                                             <div className="flex items-stretch gap-2">
-                                                <input type="text" name="title" value={formData.title} onChange={handleChange} className={`${inputClass} flex-1`} placeholder="اسم الفيلم أو المسلسل" />
+                                                <input type="text" name="title" value={formData.title || ''} onChange={handleChange} className={`${inputClass} flex-1`} placeholder="اسم الفيلم أو المسلسل" />
                                                 <button type="button" onClick={openTitleGallery} className="flex items-center justify-center rounded-lg bg-gray-800 px-4 text-white shadow-md transition-all hover:bg-gray-700 hover:text-[var(--color-accent)] border border-gray-700" title="اختر عنواناً بدلاً من TMDB"><LanguageIcon className="w-5 h-5"/></button>
                                             </div>
                                         </div>
@@ -5852,11 +6192,63 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                             <input type="text" name="bannerNote" value={formData.bannerNote || ''} onChange={handleChange} className={inputClass} placeholder="مثال: مترجم، مدبلج، حصري..." />
                                         </div>
                                         <div>
-                                            <label className={labelClass}>الوصف (القصة)</label>
-                                            <textarea name="description" value={formData.description} onChange={handleChange} rows={5} className={inputClass + " resize-none h-40"} placeholder="اكتب ملخص القصة..." />
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <label className={labelClass + " !mb-0"}>الوصف (القصة)</label>
+                                                {formData.description && !isTextArabic(formData.description) && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleTranslateDescription}
+                                                        disabled={isTranslatingDescription}
+                                                        className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-sm disabled:opacity-50"
+                                                        title="ترجمة الوصف إلى اللغة العربية تلقائياً"
+                                                    >
+                                                        {isTranslatingDescription ? (
+                                                            <>
+                                                                <svg className="animate-spin h-3.5 w-3.5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                </svg>
+                                                                <span>جاري الترجمة...</span>
+                                                            </>
+                                                        ) : (
+                                                            <span>ترجمة للعربية</span>
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <textarea name="description" value={formData.description || ''} onChange={handleChange} rows={5} className={inputClass + " resize-none h-40"} placeholder="اكتب ملخص القصة..." />
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div><label className={labelClass}>سنة الإنتاج</label><input type="number" name="releaseYear" value={formData.releaseYear} onChange={handleChange} className={inputClass} /></div>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div><label className={labelClass}>سنة الإنتاج</label><input type="number" name="releaseYear" value={formData.releaseYear ?? ''} onChange={handleChange} className={inputClass} /></div>
+                                            <div>
+                                                <label className={labelClass}>دولة الإنتاج</label>
+                                                <div className="flex items-stretch gap-2">
+                                                    <input 
+                                                        type="text" 
+                                                        name="country" 
+                                                        value={formData.country || ''} 
+                                                        onChange={handleChange} 
+                                                        className={inputClass + " flex-1"} 
+                                                        placeholder="مثال: مصر، تركيا..." 
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleRefreshCountry}
+                                                        disabled={isRefreshingCountry}
+                                                        className="flex items-center justify-center rounded-lg bg-gray-800 px-3 text-cyan-400 shadow-md transition-all hover:bg-gray-700 border border-gray-700 hover:text-cyan-300 cursor-pointer"
+                                                        title="تحديث دولة الإنتاج من TMDB"
+                                                    >
+                                                        {isRefreshingCountry ? (
+                                                            <svg className="animate-spin h-5 w-5 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                            </svg>
+                                                        ) : (
+                                                            <RefreshIcon className="w-5 h-5" />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
                                             <div>
                                                 <label className={labelClass}>التقييم (10/x)</label>
                                                 <div className="flex items-stretch gap-2">
@@ -5864,7 +6256,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                         type="number" 
                                                         step="0.1" 
                                                         name="rating" 
-                                                        value={formData.rating} 
+                                                        value={formData.rating ?? ''} 
                                                         onChange={handleChange} 
                                                         className={inputClass + " flex-1 text-yellow-400 font-bold"} 
                                                     />
@@ -5920,10 +6312,38 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 <div className={`${sectionBoxClass} lg:col-span-9 h-full flex flex-col`}>
                                     <h4 className="text-sm font-bold text-gray-500 mb-6 uppercase border-b border-gray-800 pb-2">تفاصيل إضافية</h4>
                                     <div className="space-y-6 flex-1">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
                                             <div><label className={labelClass}>المخرج</label><input type="text" name="director" value={formData.director || ''} onChange={handleChange} className={inputClass} /></div>
                                             <div><label className={labelClass}>الكاتب</label><input type="text" name="writer" value={formData.writer || ''} onChange={handleChange} className={inputClass} /></div>
-                                            <div><label className={labelClass}>التصنيف العمري</label><input type="text" name="ageRating" value={formData.ageRating} onChange={handleChange} className={inputClass} placeholder="+13" /></div>
+                                            <div>
+                                                <label className={labelClass}>التصنيف العمري</label>
+                                                <div className="flex items-stretch gap-2">
+                                                    <input 
+                                                        type="text" 
+                                                        name="ageRating" 
+                                                        value={formData.ageRating || ''} 
+                                                        onChange={handleChange} 
+                                                        className={inputClass + " flex-1"} 
+                                                        placeholder="+16" 
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleRefreshAgeRating}
+                                                        disabled={isRefreshingAgeRating}
+                                                        className="flex items-center justify-center rounded-lg bg-gray-800 px-3 text-cyan-400 shadow-md transition-all hover:bg-gray-700 border border-gray-700 hover:text-cyan-300 cursor-pointer"
+                                                        title="تحديث التصنيف العمري من TMDB"
+                                                    >
+                                                        {isRefreshingAgeRating ? (
+                                                            <svg className="animate-spin h-5 w-5 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                            </svg>
+                                                        ) : (
+                                                            <RefreshIcon className="w-5 h-5" />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
                                             <div><label className={labelClass}>عدد المشاهدات</label><input type="number" name="views" value={formData.views || 0} onChange={handleChange} className={inputClass + " text-blue-400 font-bold"} placeholder="0" /></div>
                                             {isStandalone && <div><label className={labelClass}>المدة</label><input type="text" name="duration" value={formData.duration || ''} onChange={handleChange} className={inputClass} placeholder="1h 30m" /></div>}
                                         </div>
@@ -6222,7 +6642,17 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         </div>
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">تصنيفات البحث</h3>
+                                        <div className="flex flex-wrap items-center justify-between mb-4 border-b border-gray-800 pb-2 gap-2">
+                                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">تصنيفات البحث</h3>
+                                            <button 
+                                                type="button" 
+                                                onClick={handleAutoDetectEgyptianCategory}
+                                                className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all shadow-sm cursor-pointer"
+                                                title="فحص بيانات العمل من TMDB والتعرف على التصنيف المصري تلقائياً"
+                                            >
+                                                <span>🇪🇬 التعرف على التصنيف المصري</span>
+                                            </button>
+                                        </div>
                                         <div className="flex flex-wrap gap-3">
                                             {SEARCH_CATEGORIES.map((cat) => (
                                                 <button key={cat} type="button" onClick={() => handleCategoryChange(cat as Category)} className={`flex items-center gap-2 rounded-full border px-5 py-2 text-xs font-bold transition-all duration-300 ${formData.categories.includes(cat as Category) ? 'scale-105 border-purple-500/50 bg-purple-500/10 text-purple-300 shadow-lg shadow-purple-500/10' : `${INPUT_BG} border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white`}`}>
@@ -6601,7 +7031,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                     <div className={`transition-transform duration-300 ${expandedSeasons.has(season.id) ? 'rotate-180' : ''}`}><ChevronDownIcon className="w-5 h-5 text-gray-500"/></div>
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <input onClick={e => e.stopPropagation()} value={season.title} onChange={e => handleUpdateSeason(season.id, 'title', e.target.value)} className="bg-transparent text-lg font-bold text-white border-none focus:ring-0 p-0 w-32"/>
+                                                            <input onClick={e => e.stopPropagation()} value={season.title || ''} onChange={e => handleUpdateSeason(season.id, 'title', e.target.value)} className="bg-transparent text-lg font-bold text-white border-none focus:ring-0 p-0 w-32"/>
                                                             <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full">{season.episodes.length} حلقة</span>
                                                             {(season.isCompleted || season.episodes.some(ep => ep.isLastEpisode)) && (
                                                                 <span className="text-[10px] bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full font-bold">مكتمل 🔴</span>
@@ -6715,13 +7145,24 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                                                                 <YouTubeIcon className="w-4 h-4 text-red-500"/>
                                                                                 إعلانات وترايلرات هذا الموسم ({normalizeTrailersList(season.trailers, season.trailerUrl, 'إعلان الموسم').length})
                                                                             </label>
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleAddSeasonTrailer(season.id)}
-                                                                                className="text-[11px] font-bold text-[var(--color-accent)] hover:underline flex items-center gap-1"
-                                                                            >
-                                                                                + إضافة إعلان للموسم
-                                                                            </button>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleFetchSeasonTrailersFromTMDB(season.id, season.seasonNumber)}
+                                                                                    className="text-[11px] font-bold text-red-400 hover:text-red-300 hover:underline flex items-center gap-1 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/20 transition-all"
+                                                                                    title="جلب الإعلانات والترايلرات الخاصة بهذا الموسم من TMDB"
+                                                                                >
+                                                                                    <YouTubeIcon className="w-3.5 h-3.5 text-red-500"/>
+                                                                                    جلب إعلانات الموسم من TMDB
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleAddSeasonTrailer(season.id)}
+                                                                                    className="text-[11px] font-bold text-[var(--color-accent)] hover:underline flex items-center gap-1"
+                                                                                >
+                                                                                    + إضافة إعلان للموسم
+                                                                                </button>
+                                                                            </div>
                                                                         </div>
 
                                                                         <div className="space-y-3">
@@ -7607,11 +8048,11 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                             <div className="flex gap-4">
                                 <div className="flex-1">
                                     <label className={labelClass}>من الحلقة رقم</label>
-                                    <input type="number" min="1" value={bulkActionState.startFrom} onChange={(e) => setBulkActionState(prev => ({ ...prev, startFrom: e.target.value === '' ? '' : parseInt(e.target.value) }))} className={inputClass} />
+                                    <input type="number" min="1" value={bulkActionState.startFrom ?? ''} onChange={(e) => setBulkActionState(prev => ({ ...prev, startFrom: e.target.value === '' ? '' : parseInt(e.target.value) }))} className={inputClass} />
                                 </div>
                                 <div className="flex-1">
                                     <label className={labelClass}>إلى الحلقة رقم</label>
-                                    <input type="number" min="1" value={bulkActionState.endTo} onChange={(e) => setBulkActionState(prev => ({ ...prev, endTo: e.target.value === '' ? '' : parseInt(e.target.value) }))} className={inputClass} />
+                                    <input type="number" min="1" value={bulkActionState.endTo ?? ''} onChange={(e) => setBulkActionState(prev => ({ ...prev, endTo: e.target.value === '' ? '' : parseInt(e.target.value) }))} className={inputClass} />
                                 </div>
                             </div>
                             <p className="text-xs text-gray-400 bg-gray-900 p-3 rounded border border-gray-800 leading-relaxed">
@@ -7650,7 +8091,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                 <label className={labelClass}>رابط الصورة للمشغل/الحلقات</label>
                                 <input 
                                     type="text" 
-                                    value={bulkImageState.imageUrl} 
+                                    value={bulkImageState.imageUrl || ''} 
                                     onChange={e => setBulkImageState(prev => ({ ...prev, imageUrl: e.target.value }))} 
                                     className={`${inputClass} text-left font-mono focus:ring-purple-500 focus:border-purple-500`}
                                     dir="ltr"
@@ -7688,7 +8129,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         <input 
                                             type="number" 
                                             min="1" 
-                                            value={bulkImageState.fromEpisodes} 
+                                            value={bulkImageState.fromEpisodes ?? ''} 
                                             onChange={e => setBulkImageState(prev => ({ ...prev, fromEpisodes: e.target.value === '' ? '' : parseInt(e.target.value) }))} 
                                             className={`${inputClass} focus:ring-purple-500 focus:border-purple-500`} 
                                             placeholder="رقم البداية" 
@@ -7699,7 +8140,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         <input 
                                             type="number" 
                                             min="1" 
-                                            value={bulkImageState.toEpisodes} 
+                                            value={bulkImageState.toEpisodes ?? ''} 
                                             onChange={e => setBulkImageState(prev => ({ ...prev, toEpisodes: e.target.value === '' ? '' : parseInt(e.target.value) }))} 
                                             className={`${inputClass} focus:ring-purple-500 focus:border-purple-500`} 
                                             placeholder="رقم النهاية" 
@@ -7748,7 +8189,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         <span className="text-xs font-bold text-gray-500 w-16 text-left">سيرفر {index + 1}:</span>
                                         <input 
                                             type="text" 
-                                            value={name} 
+                                            value={name || ''} 
                                             onChange={e => handleServerNameChange(index, e.target.value)} 
                                             className={`${inputClass} focus:ring-blue-500 focus:border-blue-500 py-2`}
                                             placeholder={`مثال: سيرفر سريع، VIP، إلخ.`}
@@ -7805,7 +8246,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         <input 
                                             type="number" 
                                             min="1" 
-                                            value={bulkServerNamesState.fromEpisodes} 
+                                            value={bulkServerNamesState.fromEpisodes ?? ''} 
                                             onChange={e => setBulkServerNamesState(prev => ({ ...prev, fromEpisodes: e.target.value === '' ? '' : parseInt(e.target.value) }))} 
                                             className={`${inputClass} focus:ring-blue-500 focus:border-blue-500`} 
                                             placeholder="رقم البداية" 
@@ -7816,7 +8257,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                                         <input 
                                             type="number" 
                                             min="1" 
-                                            value={bulkServerNamesState.toEpisodes} 
+                                            value={bulkServerNamesState.toEpisodes ?? ''} 
                                             onChange={e => setBulkServerNamesState(prev => ({ ...prev, toEpisodes: e.target.value === '' ? '' : parseInt(e.target.value) }))} 
                                             className={`${inputClass} focus:ring-blue-500 focus:border-blue-500`} 
                                             placeholder="رقم النهاية" 
@@ -7982,7 +8423,7 @@ const ContentEditModal: React.FC<ContentEditModalProps> = ({ content, onClose, o
                         </p>
                         <input 
                             type="text"
-                            value={editingCharPerson.newCharName}
+                            value={editingCharPerson.newCharName || ''}
                             onChange={(e) => setEditingCharPerson(prev => prev ? { ...prev, newCharName: e.target.value } : null)}
                             className={inputClass + " mb-6"}
                             placeholder="مثال: بيتر باركر / سبايدرمان"

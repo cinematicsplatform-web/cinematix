@@ -1121,7 +1121,17 @@ export const resolveContentDynamicUrls = (contents: Content[], servers: GlobalSe
         // Function to resolve any dynamic or static URL based on a global server, or fallbacks
         const resolveUrl = (originalUrl: string, serverIdFromConfig?: string): string => {
             if (!originalUrl || originalUrl.trim() === '') return originalUrl;
-            if (!originalUrl.startsWith('http://') && !originalUrl.startsWith('https://')) return originalUrl;
+            
+            // Clean dead/unresponsive embed provider domains
+            let cleanedUrl = originalUrl
+                .replace(/vidsrc\.vip/gi, 'vidsrc.pro')
+                .replace(/embed\.su/gi, 'vidsrc.pro')
+                .replace(/vidsrc\.xyz/gi, 'vidsrc.pro')
+                .replace(/vidsrc\.icu/gi, 'vidsrc.pro')
+                .replace(/vidsrc\.su/gi, 'vidsrc.pro')
+                .replace(/vidsrc\.me/gi, 'vidsrc.pro');
+
+            if (!cleanedUrl.startsWith('http://') && !cleanedUrl.startsWith('https://')) return cleanedUrl;
             
             const upgradeProtocol = (url: string): string => {
                 if (typeof window !== 'undefined' && window.location.protocol === 'https:' && url.startsWith('http://')) {
@@ -1131,15 +1141,16 @@ export const resolveContentDynamicUrls = (contents: Content[], servers: GlobalSe
             };
 
             try {
-                const urlObj = new URL(originalUrl);
+                const urlObj = new URL(cleanedUrl);
                 const hostName = urlObj.hostname.toLowerCase();
                 const externalDomains = [
                     'youtube.com', 'youtu.be', 'dailymotion.com', 'ok.ru', 
                     'vk.com', 'uqload', 'drive.google.com', 'vimeo.com',
-                    'facebook.com', 'twitter.com', 'instagram.com'
+                    'facebook.com', 'twitter.com', 'instagram.com',
+                    'vidsrc.pro', 'vidsrc.cc', 'vidsrc.in', 'vidlink.pro', '2embed.cc'
                 ];
                 if (externalDomains.some(domain => hostName.includes(domain))) {
-                    return upgradeProtocol(originalUrl);
+                    return upgradeProtocol(cleanedUrl);
                 }
                 
                 const pathName = urlObj.pathname;
@@ -1197,6 +1208,27 @@ export const resolveContentDynamicUrls = (contents: Content[], servers: GlobalSe
                     downloadUrl: updatedDownloadUrl
                 };
             });
+        } else if (content.autoLinkConfig && content.autoLinkConfig.serverId && (!content.seasons || content.seasons.length === 0)) {
+            const matchedServer = servers.find(s => s.id === content.autoLinkConfig?.serverId) || servers[0];
+            if (matchedServer) {
+                let baseDomain = matchedServer.baseDomain || '';
+                if (typeof window !== 'undefined' && window.location.protocol === 'https:' && baseDomain.startsWith('http://')) {
+                    baseDomain = baseDomain.replace(/^http:\/\//, 'https://');
+                }
+                const slug = content.autoLinkConfig.seriesSlug || '';
+                const suffix = content.autoLinkConfig.suffix || '.mp4';
+                const cleanedSlug = getCleanedSlug(slug);
+                const cleanBaseDomain = baseDomain.endsWith('/') ? baseDomain.slice(0, -1) : baseDomain;
+                const dynamicUrl = `${cleanBaseDomain}/${cleanedSlug}${suffix}`;
+                
+                updatedServers = [{
+                    id: 1,
+                    name: matchedServer.name || 'سيرفر رئيسي',
+                    url: dynamicUrl,
+                    downloadUrl: dynamicUrl,
+                    isActive: true
+                }];
+            }
         }
 
         // 2. Resolve series, seasons, and episodes
@@ -1403,4 +1435,71 @@ export const saveHomeSection = async (section: Partial<HomeSection>): Promise<st
 export const deleteHomeSection = async (id: string): Promise<void> => {
     await db.collection('home_sections').doc(id).delete();
 };
+
+// --- COMMENTS MANAGEMENT ---
+
+export interface CommentItem {
+    id: string;
+    contentId: string;
+    contentTitle?: string;
+    episodeNumber?: number;
+    seasonNumber?: number;
+    userId: string;
+    userName: string;
+    userAvatar?: string;
+    text: string;
+    createdAt: string;
+    status?: 'pending' | 'approved' | 'rejected';
+    reply?: {
+        text: string;
+        repliedAt: string;
+        repliedBy: string;
+    };
+}
+
+export const getComments = async (contentId?: string): Promise<CommentItem[]> => {
+    try {
+        let query: any = db.collection('comments');
+        if (contentId) {
+            query = query.where('contentId', '==', contentId);
+        }
+        const snapshot = await query.get();
+        const list = snapshot.docs.map((doc: any) => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                createdAt: safeGetTimestamp(data.createdAt)
+            } as CommentItem;
+        });
+        return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (e) {
+        console.error("Error fetching comments:", e);
+        return [];
+    }
+};
+
+export const addComment = async (comment: Omit<CommentItem, 'id' | 'createdAt'>): Promise<string> => {
+    const docRef = await db.collection('comments').add({
+        ...comment,
+        status: 'approved',
+        createdAt: serverTimestamp()
+    });
+    return docRef.id;
+};
+
+export const addCommentReply = async (commentId: string, replyText: string, adminName: string = 'إدارة سينماتيكس'): Promise<void> => {
+    await db.collection('comments').doc(commentId).update({
+        reply: {
+            text: replyText,
+            repliedAt: new Date().toISOString(),
+            repliedBy: adminName
+        }
+    });
+};
+
+export const deleteComment = async (commentId: string): Promise<void> => {
+    await db.collection('comments').doc(commentId).delete();
+};
+
 

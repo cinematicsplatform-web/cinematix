@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import type { Content, Person, PersonTask, View } from '@/types';
 import SEO from '@/components/shared/SeoMeta';
 import { ChevronRightIcon } from '@/components/icons/ChevronRightIcon';
-import TMDBPersonGalleryModal from '@/components/shared/TMDBPersonGalleryModal';
 
 export const UserIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
@@ -66,13 +65,9 @@ const PersonProfilePage: React.FC<PersonProfilePageProps> = ({
   const [copiedToast, setCopiedToast] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'series' | 'tasks'>('all');
 
-  // Gallery Modal
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
-  const [currentImageOverride, setCurrentImageOverride] = useState<string | null>(null);
-
   const person = useMemo(() => people.find(p => p.name === name), [people, name]);
 
-  const activeImage = currentImageOverride || person?.image;
+  const activeImage = person?.image;
 
   // Platform Catalog Filmography
   const filmography = useMemo(() => {
@@ -180,7 +175,7 @@ const PersonProfilePage: React.FC<PersonProfilePageProps> = ({
         {/* Hero Section: Avatar & Info */}
         <div className="flex flex-col md:flex-row gap-8 md:gap-12 items-center md:items-start mb-14 bg-[#151922]/60 border border-white/5 backdrop-blur-2xl p-6 md:p-10 rounded-3xl shadow-2xl">
           
-          {/* Avatar Photo + Gallery Trigger */}
+          {/* Avatar Photo */}
           <div className="flex flex-col items-center gap-4 shrink-0">
             <div className="w-56 sm:w-64 md:w-72 aspect-[2/3] rounded-3xl overflow-hidden bg-gray-900 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.6)] relative group">
               {activeImage ? (
@@ -198,17 +193,6 @@ const PersonProfilePage: React.FC<PersonProfilePageProps> = ({
                 </div>
               )}
             </div>
-
-            {/* Choose Other Image / Open Gallery Button */}
-            <button
-              onClick={() => setIsGalleryOpen(true)}
-              className="w-full bg-[#00A7F8]/10 hover:bg-[#00A7F8]/20 border border-[#00A7F8]/30 text-[#00A7F8] font-bold py-2.5 px-4 rounded-2xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span>معرض صور الفنان - اختر صورة من TMDB</span>
-            </button>
           </div>
 
           {/* Details & Biography */}
@@ -451,18 +435,6 @@ const PersonProfilePage: React.FC<PersonProfilePageProps> = ({
         </div>
 
       </div>
-
-      {/* TMDB Image Gallery Modal */}
-      <TMDBPersonGalleryModal
-        isOpen={isGalleryOpen}
-        onClose={() => setIsGalleryOpen(false)}
-        personName={name}
-        tmdbId={person?.tmdbId}
-        currentImage={activeImage}
-        onSelectImage={(imageUrl) => {
-          setCurrentImageOverride(imageUrl);
-        }}
-      />
     </div>
   );
 };

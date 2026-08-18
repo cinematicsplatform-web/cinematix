@@ -433,7 +433,7 @@ const ScheduleEditorView: React.FC<{
                          </div>
                          <div className="space-y-4">
                             <label className={labelClass}>رابط البوستر المباشر</label>
-                            <input value={formData.poster} onChange={e => setFormData({...formData, poster: e.target.value})} className={inputClass + " font-mono text-[10px] text-blue-400"} placeholder="https://..."/>
+                            <input value={formData.poster || ''} onChange={e => setFormData({...formData, poster: e.target.value})} className={inputClass + " font-mono text-[10px] text-blue-400"} placeholder="https://..."/>
                          </div>
                      </div>
                 </div>
@@ -466,15 +466,15 @@ const ScheduleEditorView: React.FC<{
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                            <div><label className={labelClass}>اسم المسلسل (للتنبيهات)</label><input value={formData.seriesName} onChange={e => setFormData({...formData, seriesName: e.target.value})} className={inputClass} placeholder="اسم العمل الظاهر"/></div>
+                            <div><label className={labelClass}>اسم المسلسل (للتنبيهات)</label><input value={formData.seriesName || ''} onChange={e => setFormData({...formData, seriesName: e.target.value})} className={inputClass} placeholder="اسم العمل الظاهر"/></div>
                             <div><label className={labelClass}>رقم الحلقة التالية</label><input type="number" value={formData.nextEpisodeNumber || ''} onChange={e => setFormData({...formData, nextEpisodeNumber: parseInt(e.target.value)})} className={inputClass} placeholder="مثال: 12"/></div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                            <div><label className={labelClass}>وقت البث المجدول</label><input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className={inputClass + " text-lg font-black text-[#00A7F8]"}/></div>
+                            <div><label className={labelClass}>وقت البث المجدول</label><input type="time" value={formData.time || ''} onChange={e => setFormData({...formData, time: e.target.value})} className={inputClass + " text-lg font-black text-[#00A7F8]"}/></div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div><label className={labelClass}>الأولوية</label><select value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value as any})} className={inputClass}><option value="low">عادي</option><option value="medium">متوسط</option><option value="high">مرتفع</option><option value="hot">تريند 🔥</option></select></div>
-                                <div><label className={labelClass}>الحالة</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className={inputClass}><option value="ongoing">مستمر</option><option value="hiatus">متوقف</option><option value="finished">منتهي</option><option value="upcoming">قريباً</option></select></div>
+                                <div><label className={labelClass}>الأولوية</label><select value={formData.priority || 'medium'} onChange={e => setFormData({...formData, priority: e.target.value as any})} className={inputClass}><option value="low">عادي</option><option value="medium">متوسط</option><option value="high">مرتفع</option><option value="hot">تريند 🔥</option></select></div>
+                                <div><label className={labelClass}>الحالة</label><select value={formData.status || 'ongoing'} onChange={e => setFormData({...formData, status: e.target.value as any})} className={inputClass}><option value="ongoing">مستمر</option><option value="hiatus">متوقف</option><option value="finished">منتهي</option><option value="upcoming">قريباً</option></select></div>
                             </div>
                         </div>
 
@@ -495,11 +495,11 @@ const ScheduleEditorView: React.FC<{
                                         <button type="button" onClick={() => setFormData({...formData, sources: formData.sources.filter((_,si)=>si!==i)})} className="absolute -top-2 -left-2 w-7 h-7 bg-red-600 rounded-xl flex items-center justify-center opacity-0 group-hover/src:opacity-100 transition-all shadow-lg">✕</button>
                                         <div>
                                             <label className={labelClass}>اسم المصدر</label>
-                                            <input value={src.name} onChange={e => handleSourceChange(i, 'name', e.target.value)} className={inputClass} placeholder="مثال: EGYBEST"/>
+                                            <input value={src.name || ''} onChange={e => handleSourceChange(i, 'name', e.target.value)} className={inputClass} placeholder="مثال: EGYBEST"/>
                                         </div>
                                         <div>
                                             <label className={labelClass}>رابط المراقبة</label>
-                                            <input value={src.url} onChange={e => handleSourceChange(i, 'url', e.target.value)} className={inputClass + " font-mono text-[10px] text-blue-400"} placeholder="https://..."/>
+                                            <input value={src.url || ''} onChange={e => handleSourceChange(i, 'url', e.target.value)} className={inputClass + " font-mono text-[10px] text-blue-400"} placeholder="https://..."/>
                                         </div>
                                     </div>
                                 ))}
@@ -509,7 +509,7 @@ const ScheduleEditorView: React.FC<{
 
                         <div className="pt-8 border-t border-gray-800">
                             <label className={labelClass}>ملاحظات داخلية (خاصة بك)</label>
-                            <textarea value={formData.internalNotes} onChange={e => setFormData({...formData, internalNotes: e.target.value})} className={inputClass + " h-24 resize-none"} placeholder="اكتب أي ملاحظات هنا..."/>
+                            <textarea value={formData.internalNotes || ''} onChange={e => setFormData({...formData, internalNotes: e.target.value})} className={inputClass + " h-24 resize-none"} placeholder="اكتب أي ملاحظات هنا..."/>
                         </div>
                     </div>
                 </div>

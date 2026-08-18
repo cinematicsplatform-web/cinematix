@@ -27,9 +27,11 @@ export const PLAYER_CONFIG: PlayerSettings = {
   loadingTimeoutMs: 600,
   primaryAccentColor: '#2563eb', // Blue-600
   servers: [
-    { id: 'server1', label: 'VidSrc (XYZ)', domain: 'https://vidsrc.xyz/embed' },
-    { id: 'server2', label: 'Cinematix VIP', domain: 'https://vidsrc.vip/embed' },
-    { id: 'server3', label: '2Embed (Backup)', domain: 'https://www.2embed.cc/embed' }
+    { id: 'server1', label: 'VidSrc PRO (سيرفر 1)', domain: 'https://vidsrc.pro/embed' },
+    { id: 'server2', label: 'VidSrc CC (سيرفر 2)', domain: 'https://vidsrc.cc/v2/embed' },
+    { id: 'server3', label: 'VidSrc IN (سيرفر 3)', domain: 'https://vidsrc.in/embed' },
+    { id: 'server4', label: 'VidLink PRO (سيرفر 4)', domain: 'https://vidlink.pro' },
+    { id: 'server5', label: '2Embed (سيرفر احتياطي)', domain: 'https://www.2embed.cc/embed' }
   ]
 };
 
@@ -44,6 +46,24 @@ export function formatVideoSource(url?: string): string | undefined {
   // Fix http -> https
   if (typeof window !== 'undefined' && window.location.protocol === 'https:' && trimmed.toLowerCase().startsWith('http://')) {
     trimmed = trimmed.replace(/^http:\/\//i, 'https://');
+  }
+
+  // Replace down/unresponsive domains (vidsrc.vip, embed.su, vidsrc.xyz, etc.) with working vidsrc.pro or vidsrc.cc
+  if (
+    trimmed.toLowerCase().includes('vidsrc.vip') ||
+    trimmed.toLowerCase().includes('embed.su') ||
+    trimmed.toLowerCase().includes('vidsrc.xyz') ||
+    trimmed.toLowerCase().includes('vidsrc.icu') ||
+    trimmed.toLowerCase().includes('vidsrc.su') ||
+    trimmed.toLowerCase().includes('vidsrc.me')
+  ) {
+    trimmed = trimmed
+      .replace(/vidsrc\.vip/gi, 'vidsrc.pro')
+      .replace(/embed\.su/gi, 'vidsrc.pro')
+      .replace(/vidsrc\.xyz/gi, 'vidsrc.pro')
+      .replace(/vidsrc\.icu/gi, 'vidsrc.pro')
+      .replace(/vidsrc\.su/gi, 'vidsrc.pro')
+      .replace(/vidsrc\.me/gi, 'vidsrc.pro');
   }
 
   // Handle Google Drive view/preview links -> convert to direct uc stream
