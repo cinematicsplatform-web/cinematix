@@ -462,49 +462,47 @@ export default function AutoLinkPage({
     };
 
     return (
-        /* 
-           تعديل جوهري هنا: تم استخدام w-full h-full max-h-screen overflow-y-auto 
-           لإجبار المتصفح على إظهار شريط التمرير (Scroll) مهما كانت قيود الملف الأب!
-        */
-        <div className="w-full h-full min-h-screen max-h-screen overflow-y-auto bg-[#090b10] text-gray-200 font-['Cairo'] flex flex-col justify-between relative" dir="rtl">
+        <div className="fixed inset-0 z-[200] flex flex-col h-screen h-[100dvh] w-full bg-[#090b10] text-gray-200 font-['Cairo'] overflow-hidden selection:bg-emerald-500 selection:text-black" dir="rtl">
             
-            {/* Sticky Header - معلق في أعلى الشاشة ومريح جداً في التمرير */}
-            <header className="sticky top-0 z-40 w-full bg-[#0e121b]/95 backdrop-blur-md border-b border-gray-800/80 px-4 md:px-8 py-4 shadow-lg shrink-0">
-                <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
+            {/* Header */}
+            <header className="h-16 md:h-20 border-b border-gray-800/80 bg-[#0e121b]/95 backdrop-blur-md px-3.5 sm:px-6 md:px-8 flex items-center justify-between z-40 shrink-0 shadow-lg">
+                <div className="max-w-7xl w-full mx-auto flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
                         <button 
                             type="button" 
                             onClick={onCancel} 
-                            className="text-gray-400 hover:text-white bg-gray-800/60 hover:bg-gray-800 p-2.5 rounded-2xl transition-all duration-200 border border-gray-700/50 cursor-pointer"
+                            className="text-gray-400 hover:text-white bg-gray-800/60 hover:bg-gray-800 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl transition-all duration-200 border border-gray-700/50 cursor-pointer shrink-0"
                             title="رجوع"
                         >
-                            <ArrowRightIcon className="w-5 h-5" />
+                            <ArrowRightIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
-                        <div className="flex items-center gap-3.5">
-                            <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 shrink-0 shadow-sm">
-                                <LinkIcon className="w-6 h-6" />
+                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                            <div className="p-2 sm:p-3 bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 rounded-xl sm:rounded-2xl text-emerald-400 shrink-0 shadow-sm">
+                                <LinkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                             </div>
-                            <div className="flex flex-col">
-                                <h1 className="text-lg md:text-xl font-black text-white tracking-tight">توليد روابط الحلقات تلقائياً</h1>
-                                <p className="text-gray-400 text-xs mt-1 flex items-center gap-1.5 font-medium">
-                                    <span>الموسم الحالي:</span>
-                                    <span className="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">{seasonTitle}</span>
-                                    <span className="text-gray-500 font-mono">(موسم {seasonNumber})</span>
+                            <div className="flex flex-col min-w-0">
+                                <h1 className="text-sm sm:text-lg md:text-xl font-black text-white tracking-tight truncate">توليد روابط الحلقات تلقائياً</h1>
+                                <p className="text-gray-400 text-[11px] sm:text-xs mt-0.5 flex items-center gap-1 sm:gap-1.5 font-medium truncate">
+                                    <span className="shrink-0">الموسم:</span>
+                                    <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 sm:px-2 py-0.5 rounded-md border border-emerald-500/20 truncate">{seasonTitle}</span>
+                                    <span className="text-gray-500 font-mono shrink-0">(موسم {seasonNumber})</span>
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 self-end sm:self-center w-full sm:w-auto">
+                    <div className="hidden sm:flex items-center gap-2.5 shrink-0">
                         <button 
+                            type="button"
                             onClick={onCancel} 
-                            className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-gray-800/80 text-xs font-bold text-gray-300 hover:bg-gray-800 hover:text-white border border-gray-700/50 transition-all duration-200 cursor-pointer"
+                            className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-gray-800/80 text-xs font-bold text-gray-300 hover:bg-gray-800 hover:text-white border border-gray-700/50 transition-all duration-200 cursor-pointer"
                         >
                             إلغاء
                         </button>
                         <button 
+                            type="button"
                             onClick={handleSave} 
-                            className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-bold text-black bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 shadow-lg shadow-emerald-500/20 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer font-black"
+                            className="px-5 py-2 sm:px-6 sm:py-2.5 rounded-xl text-xs font-bold text-black bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 shadow-lg shadow-emerald-500/20 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer font-black"
                         >
                             <LinkIcon className="w-4 h-4 stroke-[2.5]" />
                             <span>اعتماد الروابط</span>
@@ -513,8 +511,9 @@ export default function AutoLinkPage({
                 </div>
             </header>
 
-            {/* Main Content Area - مساحة مفتوحة وتمرير طبيعي بدون قيود */}
-            <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 space-y-8 animate-fade-in my-auto">
+            {/* Main Content Area */}
+            <main className="flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar p-3.5 sm:p-6 md:p-8">
+                <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-8">
                 
                 {/* ⚡ بطاقة المعالجة الذكية والتحليل السريع للروابط */}
                 <div className="bg-gradient-to-r from-emerald-500/10 via-[#10141f] to-[#10141f] border border-emerald-500/30 p-6 md:p-8 rounded-3xl relative overflow-hidden shadow-2xl">
@@ -947,30 +946,30 @@ export default function AutoLinkPage({
                     </div>
                 </div>
 
+                </div>
             </main>
 
-            {/* 
-               تعديل جوهري 2: استخدام sticky bottom-0 mt-auto 
-               بدلاً من fixed عشان متغطيش على أي القوائم الجانبية (Sidebars) وتفضل متثبتة تحت! 
-            */}
-            <footer className="sticky bottom-0 z-40 w-full bg-[#0e121b]/95 backdrop-blur-md border-t border-gray-800/80 py-4 px-4 md:px-8 shadow-2xl shrink-0 mt-auto">
-                <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            {/* Bottom Action Bar */}
+            <footer className="min-h-[4.25rem] sm:min-h-[4.5rem] py-3 border-t border-gray-800/80 bg-[#0e121b]/95 backdrop-blur-xl flex items-center justify-between px-3 sm:px-8 z-40 shrink-0 gap-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+                <div className="max-w-7xl w-full mx-auto flex items-center justify-between gap-3">
                     <div className="hidden md:flex items-center gap-2 text-xs text-gray-400 font-medium">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                         <span>جميع التغييرات جاهزة للتطبيق. تأكد من مسار السلسلة وأرقام الحلقات قبل الاعتماد.</span>
                     </div>
-                    <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                    <div className="flex items-center gap-2.5 sm:gap-3 w-full md:w-auto justify-between md:justify-end">
                         <button 
+                            type="button"
                             onClick={onCancel} 
-                            className="flex-1 md:flex-none px-6 py-3 rounded-xl bg-gray-800/80 text-xs font-bold text-gray-300 hover:bg-gray-800 hover:text-white border border-gray-700/50 transition-all duration-200 cursor-pointer"
+                            className="flex-1 md:flex-none px-3.5 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-gray-800/80 text-xs sm:text-sm font-bold text-gray-300 hover:bg-gray-800 hover:text-white border border-gray-700/50 transition-all duration-200 cursor-pointer text-center shrink-0"
                         >
                             إلغاء والرجوع
                         </button>
                         <button 
+                            type="button"
                             onClick={handleSave} 
-                            className="flex-1 md:flex-none px-8 py-3 rounded-xl text-xs font-black text-black bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 shadow-lg shadow-emerald-500/20 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+                            className="flex-1 md:flex-none px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black text-black bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 shadow-lg shadow-emerald-500/20 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer text-center shrink-0"
                         >
-                            <LinkIcon className="w-4 h-4 stroke-[2.5]" />
+                            <LinkIcon className="w-4 h-4 stroke-[2.5] shrink-0" />
                             <span>توليد واعتماد الروابط الآن</span>
                         </button>
                     </div>

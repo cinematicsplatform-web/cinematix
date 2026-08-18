@@ -41,8 +41,25 @@ const HybridCard: React.FC<HybridCardProps> = ({
     isNetflixRedTheme,
     isSoonCarousel
 }) => {
-    const isExpanded = expandedIndex === index;
+    const [isDesktopOrTv, setIsDesktopOrTv] = useState(() => {
+        if (typeof window === 'undefined') return true;
+        const isTV = /SmartTV|Tizen|WebOS|AppleTV|HbbTV|Roku|NetCast|BRAVIA/i.test(navigator.userAgent) || window.location.search.includes('tv=true');
+        return isTV || window.innerWidth >= 768;
+    });
+
+    useEffect(() => {
+        const checkDevice = () => {
+            const isTV = /SmartTV|Tizen|WebOS|AppleTV|HbbTV|Roku|NetCast|BRAVIA/i.test(navigator.userAgent) || window.location.search.includes('tv=true');
+            setIsDesktopOrTv(isTV || window.innerWidth >= 768);
+        };
+        checkDevice();
+        window.addEventListener('resize', checkDevice);
+        return () => window.removeEventListener('resize', checkDevice);
+    }, []);
+
+    const isExpanded = isDesktopOrTv && expandedIndex === index;
     const [showVideo, setShowVideo] = useState(false);
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     
     const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -129,6 +146,7 @@ const HybridCard: React.FC<HybridCardProps> = ({
     };
 
     const handleMouseEnter = () => {
+        if (!isDesktopOrTv) return;
         if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
         hoverTimerRef.current = setTimeout(() => {
             const pushAmount = calculateRealPush();
@@ -147,23 +165,59 @@ const HybridCard: React.FC<HybridCardProps> = ({
         }
         if (isExpanded) {
             onSetExpandedIndex(null, 0);
-            setShowVideo(false);
-            setIsMuted(true);
         }
+        setShowVideo(false);
+        setIsVideoPlaying(false);
+        setIsMuted(true);
     };
 
     useEffect(() => {
         if (isExpanded && hasTrailer) {
             videoTimerRef.current = setTimeout(() => {
                 setShowVideo(true);
-            }, 400); 
+            }, 5000); 
         } else {
             setShowVideo(false);
+            setIsVideoPlaying(false);
         }
         return () => {
-            if (videoTimerRef.current) clearTimeout(videoTimerRef.current);
+            if (videoTimerRef.current) {
+                clearTimeout(videoTimerRef.current);
+                videoTimerRef.current = null;
+            }
         };
     }, [isExpanded, hasTrailer]);
+
+    useEffect(() => {
+        if (!showVideo) {
+            setIsVideoPlaying(false);
+            return;
+        }
+
+        const handleMessage = (e: MessageEvent) => {
+            try {
+                const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+                if (data && (data.event === 'onStateChange' || data.event === 'infoDelivery')) {
+                    const info = data.info;
+                    const playerState = typeof info === 'object' && info !== null ? info.playerState : info;
+                    if (playerState === 1) {
+                        setIsVideoPlaying(true);
+                    }
+                }
+            } catch (_) {}
+        };
+
+        window.addEventListener('message', handleMessage);
+        
+        const fallbackTimer = setTimeout(() => {
+            setIsVideoPlaying(true);
+        }, 2200);
+
+        return () => {
+            window.removeEventListener('message', handleMessage);
+            clearTimeout(fallbackTimer);
+        };
+    }, [showVideo]);
 
     useEffect(() => {
         if (showVideo && iframeRef.current) {
@@ -191,7 +245,9 @@ const HybridCard: React.FC<HybridCardProps> = ({
     const noteText = getNoteText();
 
     const idleWidthClass = 'w-[calc((100vw-32px)/2.1)] sm:w-[calc((100vw-48px)/3.1)] md:w-[calc((100vw-64px)/4.1)] lg:w-[calc((100vw-64px)/5.1)] xl:w-[calc((100vw-80px)/5.1)]';
-    const expandedWidthClass = 'w-[86vw] sm:w-[calc(((100vw-48px)/3.1)*3.2)] md:w-[calc(((100vw-64px)/4.1)*3.2)] lg:w-[calc(((100vw-64px)/5.1)*3.2)] xl:w-[calc(((100vw-80px)/5.1)*3.2)]';
+    const expandedWidthClass = isDesktopOrTv
+        ? 'w-[86vw] sm:w-[calc(((100vw-48px)/3.1)*3.2)] md:w-[calc(((100vw-64px)/4.1)*3.2)] lg:w-[calc(((100vw-64px)/5.1)*3.2)] xl:w-[calc(((100vw-80px)/5.1)*3.2)]'
+        : idleWidthClass;
 
     const detailUrl = content.type === 'movie' 
         ? `/watch/movie/${content.slug || content.id}` 
@@ -209,6 +265,11 @@ const HybridCard: React.FC<HybridCardProps> = ({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onClick={(e) => {
+              if (!isDesktopOrTv) {
+                e.preventDefault();
+                onSelectContent(content);
+                return;
+              }
               if(isExpanded) {
                 e.preventDefault();
                 onSelectContent(content);
@@ -237,9 +298,12 @@ const HybridCard: React.FC<HybridCardProps> = ({
 
                 <div className="absolute inset-0 w-full h-full">
                     <div className={`absolute inset-0 w-full h-full z-10 transition-opacity duration-500 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
-                        {showVideo && hasTrailer ? (
+                        {/* Always show backdrop image so background is never a black screen */}
+                        <img src={backdropSrc} style={flipStyle} alt={content.title} className="w-full h-full object-cover" />
+
+                        {showVideo && hasTrailer && (
                             <div 
-                                className="relative w-full h-full overflow-hidden bg-black"
+                                className={`absolute inset-0 w-full h-full overflow-hidden bg-black transition-opacity duration-700 ease-in-out ${isVideoPlaying ? 'opacity-100' : 'opacity-0'}`}
                                 style={{ transform: content.flipBackdrop ? 'scaleX(-1)' : undefined }}
                             >
                                 <iframe 
@@ -248,10 +312,11 @@ const HybridCard: React.FC<HybridCardProps> = ({
                                     className="absolute top-1/2 left-1/2 w-[160%] h-[160%] -translate-x-1/2 -translate-y-1/2 pointer-events-none border-none" 
                                     title={content.title}
                                     allow="autoplay; encrypted-media"
+                                    onLoad={() => {
+                                        setTimeout(() => setIsVideoPlaying(true), 800);
+                                    }}
                                 />
                             </div>
-                        ) : (
-                            <img src={backdropSrc} style={flipStyle} alt={content.title} className="w-full h-full object-cover" />
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-body)]/90 via-[var(--bg-body)]/25 via-25% to-transparent pointer-events-none"></div>
                     </div>
@@ -269,7 +334,7 @@ const HybridCard: React.FC<HybridCardProps> = ({
 
                     <div className={`absolute inset-0 z-30 flex flex-col justify-end p-4 md:p-6 transition-opacity duration-300 delay-100 ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                         <div className="absolute bottom-4 left-4 z-40">
-                             {showVideo && (
+                             {showVideo && isVideoPlaying && (
                                 <button 
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMuted(!isMuted); }}
                                     className="w-9 h-9 rounded-full border border-gray-500 hover:border-white flex items-center justify-center text-white bg-black/40 backdrop-blur-sm transition-colors"
